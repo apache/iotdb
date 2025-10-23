@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -35,7 +33,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +73,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  public @NonNull SubscriptionEvent pollTsFileInternal(
+  public SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {
@@ -247,10 +244,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    if (!PipeEventCollector.canSkipParsing4TsFileEvent((PipeTsFileInsertionEvent) event)) {
-      return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
-    }
-
     final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
     final SubscriptionEvent ev =
         new SubscriptionEvent(

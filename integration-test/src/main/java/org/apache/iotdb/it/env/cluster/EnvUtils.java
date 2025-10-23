@@ -21,12 +21,13 @@ package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -98,15 +99,71 @@ public class EnvUtils {
   }
 
   private static boolean checkPortsAvailable(final List<Integer> ports) {
-    final String cmd = getSearchAvailablePortCmd(ports);
     try {
-      return Runtime.getRuntime().exec(cmd).waitFor() == 1;
-    } catch (final IOException ignore) {
-      // ignore
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
+      return listPortOccupation(ports).isEmpty();
+    } catch (IOException e) {
+      IoTDBTestLogger.logger.error("Cannot check available ports", e);
+      return false;
     }
-    return false;
+  }
+
+  public static Map<Integer, Long> listPortOccupation(final List<Integer> ports)
+      throws IOException {
+    return SystemUtils.IS_OS_WINDOWS
+        ? listPortOccupationWindows(ports)
+        : listPortOccupationUnix(ports);
+  }
+
+  public static Map<Integer, Long> listPortOccupation(
+      final List<Integer> ports,
+      String cmd,
+      int targetColumnLength,
+      int addressColumnIndex,
+      int pidColumnIndex)
+      throws IOException {
+    Process process = Runtime.getRuntime().exec(cmd);
+    Map<Integer, Long> result = new HashMap<>();
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] split = line.trim().split("\\s+");
+        if (split.length != targetColumnLength) {
+          continue;
+        }
+        String localAddress = split[addressColumnIndex];
+        for (Integer port : ports) {
+          if (localAddress.endsWith(":" + port)) {
+            result.put(port, Long.parseLong(split[pidColumnIndex]));
+            break;
+          }
+        }
+      }
+    } catch (EOFException ignored) {
+    }
+    return result;
+  }
+
+  /**
+   * List occupied port and the associated pid on windows.
+   *
+   * @param ports ports to be checked
+   * @return (occupiedPort, pid) pairs
+   */
+  public static Map<Integer, Long> listPortOccupationWindows(final List<Integer> ports)
+      throws IOException {
+    return listPortOccupation(ports, "netstat -aon -p tcp", 5, 1, 4);
+  }
+
+  /**
+   * List occupied port and the associated pid on Unix.
+   *
+   * @param ports ports to be checked
+   * @return (occupiedPort, pid) pairs
+   */
+  public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
+      throws IOException {
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN -P -n", 10, 9, 1);
   }
 
   private static String getSearchAvailablePortCmd(final List<Integer> ports) {
@@ -115,7 +172,7 @@ public class EnvUtils {
 
   private static String getWindowsSearchPortCmd(final List<Integer> ports) {
     return "netstat -aon -p tcp | findStr "
-        + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
+        + ports.stream().map(v -> "/C:\"127.0.0.1:" + v + "\"").collect(Collectors.joining(" "));
   }
 
   private static String getUnixSearchPortCmd(final List<Integer> ports) {
@@ -138,8 +195,8 @@ public class EnvUtils {
               Integer.parseInt(System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM)));
         case SCALABLE_SINGLE_NODE_MODE:
           return new Pair<>(
-              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM)),
-              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM)));
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM, "1")),
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM, "1")));
         case HIGH_PERFORMANCE_MODE:
           return new Pair<>(
               Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM)),

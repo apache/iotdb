@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -67,6 +68,7 @@ import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,6 +108,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   protected ConfigManager configManager;
 
+  private int exitStatusCode = 0;
+
   public ConfigNode() {
     super("ConfigNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -121,6 +125,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         "{} default charset is: {}",
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
+    // let IoTDB handle the exception instead of ratis
+    ExitUtils.disableSystemExit();
     ConfigNode configNode = new ConfigNode();
     int returnCode = configNode.run(args);
     if (returnCode != 0) {
@@ -140,6 +146,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       throw new IoTDBException("Error starting", -1);
     }
     active();
+    LOGGER.info("IoTDB started");
   }
 
   @Override
@@ -194,7 +201,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             startUpSleep("restart ConfigNode failed! ");
           }
         }
+        loadSecretKey();
+        loadHardwareCode();
         return;
+      } else {
+        saveSecretKey();
+        saveHardwareCode();
       }
 
       /* Initial startup of Seed-ConfigNode */
@@ -206,6 +218,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
+        // Generate the builtin admin users after initConsensusManager
+        initBuiltinUsers();
 
         // Persistence system parameters after the consensusGroup is built,
         // or the consensusGroup will not be initialized successfully otherwise.
@@ -266,10 +280,15 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
-    } catch (StartupException | IOException | IllegalPathException e) {
+    } catch (Throwable e) {
       LOGGER.error("Meet error while starting up.", e);
+      exitStatusCode = StatusUtils.retrieveExitStatusCode(e);
       stop();
     }
+  }
+
+  protected void initBuiltinUsers() {
+    // nothing to do
   }
 
   void processPid() {
@@ -405,6 +424,22 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     stop();
   }
 
+  protected void saveSecretKey() {
+    // Do nothing
+  }
+
+  protected void saveHardwareCode() {
+    // Do nothing
+  }
+
+  protected void loadSecretKey() throws IOException {
+    // Do nothing
+  }
+
+  protected void loadHardwareCode() throws IOException {
+    // Do nothing
+  }
+
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
     return new TConfigNodeLocation(
         configNodeId,
@@ -467,7 +502,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     } catch (IOException e) {
       LOGGER.error("Meet error when deactivate ConfigNode", e);
     }
-    System.exit(-1);
+    System.exit(exitStatusCode);
   }
 
   /**

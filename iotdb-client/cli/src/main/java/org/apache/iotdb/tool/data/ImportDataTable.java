@@ -29,14 +29,14 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.collections4.MapUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -72,7 +72,7 @@ public class ImportDataTable extends AbstractImportData {
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
             .database(database)
@@ -83,55 +83,57 @@ public class ImportDataTable extends AbstractImportData {
       System.exit(Constants.CODE_ERROR);
     }
     // checkDataBase
-    SessionDataSet sessionDataSet = null;
-    try (ITableSession session = sessionPool.getSession()) {
-      List<String> databases = new ArrayList<>();
-      sessionDataSet = session.executeQueryStatement("show databases");
-      while (sessionDataSet.hasNext()) {
-        RowRecord rowRecord = sessionDataSet.next();
-        databases.add(rowRecord.getField(0).getStringValue());
-      }
-      if (!databases.contains(database)) {
-        ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
-        System.exit(1);
-      }
-      if (Constants.CSV_SUFFIXS.equals(fileType)) {
-        if (StringUtils.isNotBlank(table)) {
-          sessionDataSet = session.executeQueryStatement("show tables");
-          List<String> tables = new ArrayList<>();
-          while (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            tables.add(rowRecord.getField(0).getStringValue());
-          }
-          if (!tables.contains(table)) {
-            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
-            System.exit(1);
-          }
-          sessionDataSet = session.executeQueryStatement("describe " + table);
-          while (sessionDataSet.hasNext()) {
-            RowRecord rowRecord = sessionDataSet.next();
-            final String columnName = rowRecord.getField(0).getStringValue();
-            final String category = rowRecord.getField(2).getStringValue();
-            if (!timeColumn.equalsIgnoreCase(category)) {
-              dataTypes.put(columnName, getType(rowRecord.getField(1).getStringValue()));
-              columnCategory.put(columnName, getColumnCategory(category));
-            }
-          }
-        } else {
-          ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+    if (!Constants.SQL_SUFFIXS.equals(fileType)) {
+      SessionDataSet sessionDataSet = null;
+      try (ITableSession session = sessionPool.getSession()) {
+        List<String> databases = new ArrayList<>();
+        sessionDataSet = session.executeQueryStatement("show databases");
+        while (sessionDataSet.hasNext()) {
+          RowRecord rowRecord = sessionDataSet.next();
+          databases.add(rowRecord.getField(0).getStringValue());
+        }
+        if (!databases.contains(database)) {
+          ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
           System.exit(1);
         }
-      }
-    } catch (StatementExecutionException e) {
-      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
-      System.exit(1);
-    } catch (IoTDBConnectionException e) {
-      throw new RuntimeException(e);
-    } finally {
-      if (ObjectUtils.isNotEmpty(sessionDataSet)) {
-        try {
-          sessionDataSet.close();
-        } catch (Exception e) {
+        if (Constants.CSV_SUFFIXS.equals(fileType)) {
+          if (StringUtils.isNotBlank(table)) {
+            sessionDataSet = session.executeQueryStatement("show tables");
+            List<String> tables = new ArrayList<>();
+            while (sessionDataSet.hasNext()) {
+              RowRecord rowRecord = sessionDataSet.next();
+              tables.add(rowRecord.getField(0).getStringValue());
+            }
+            if (!tables.contains(table)) {
+              ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
+              System.exit(1);
+            }
+            sessionDataSet = session.executeQueryStatement("describe " + table);
+            while (sessionDataSet.hasNext()) {
+              RowRecord rowRecord = sessionDataSet.next();
+              final String columnName = rowRecord.getField(0).getStringValue();
+              final String category = rowRecord.getField(2).getStringValue();
+              if (!timeColumn.equalsIgnoreCase(category)) {
+                dataTypes.put(columnName, getType(rowRecord.getField(1).getStringValue()));
+                columnCategory.put(columnName, getColumnCategory(category));
+              }
+            }
+          } else {
+            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+            System.exit(1);
+          }
+        }
+      } catch (StatementExecutionException e) {
+        ioTPrinter.println(Constants.IMPORT_INIT_MEET_ERROR_MSG + e.getMessage());
+        System.exit(1);
+      } catch (IoTDBConnectionException e) {
+        throw new RuntimeException(e);
+      } finally {
+        if (ObjectUtils.isNotEmpty(sessionDataSet)) {
+          try {
+            sessionDataSet.close();
+          } catch (Exception e) {
+          }
         }
       }
     }

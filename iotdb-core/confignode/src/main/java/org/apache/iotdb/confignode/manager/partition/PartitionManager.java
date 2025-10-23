@@ -522,7 +522,7 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write partition allocation result failed because: {}", status);
+      LOGGER.error("Write partition allocation result failed because: {}", e.getMessage());
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -961,7 +961,7 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
-      throw new NoAvailableRegionGroupException(type);
+      throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 
     final Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =
@@ -1003,14 +1003,10 @@ public class PartitionManager {
   }
 
   public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
       return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
     }
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
       return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
     }
     String msg =
@@ -1097,10 +1093,17 @@ public class PartitionManager {
                         .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
                         .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
                 regionInfo.setTsFileSize(regionSize);
+
+                long rawDataSize =
+                    getLoadManager()
+                        .getLoadCache()
+                        .getRegionRawSizeMap()
+                        .getOrDefault(regionInfo.getDataNodeId(), Collections.emptyMap())
+                        .getOrDefault(regionInfo.getConsensusGroupId().getId(), -1L);
+                regionInfo.setRawDataSize(rawDataSize);
               });
 
       return regionInfoListResp;
-
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

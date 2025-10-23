@@ -33,11 +33,12 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -127,7 +128,7 @@ public class AuthorInfoTest {
               ConfigPhysicalPlanType.CreateUser,
               "user0",
               "",
-              "passwd",
+              "passwd123456",
               "",
               new HashSet<>(),
               false,
@@ -233,7 +234,7 @@ public class AuthorInfoTest {
             "user0",
             "",
             "",
-            "newpwd",
+            "newpwd123456",
             new HashSet<>(),
             false,
             new ArrayList<>());
@@ -557,7 +558,7 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.CreateUser,
             "user0",
             "",
-            "passwd",
+            "passwd123456",
             "",
             new HashSet<>(),
             false,
@@ -656,14 +657,14 @@ public class AuthorInfoTest {
             ConfigPhysicalPlanType.CreateUserWithRawPassword,
             "testuser",
             "",
-            AuthUtils.encryptPassword("password"),
+            AuthUtils.encryptPassword("password123456"),
             "",
             new HashSet<>(),
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    TPermissionInfoResp result = authorInfo.login("testuser", "password");
+    TPermissionInfoResp result = authorInfo.login("testuser", "password123456");
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
   }
 
@@ -688,7 +689,7 @@ public class AuthorInfoTest {
             "",
             Collections.emptySet(),
             false,
-            "password");
+            "password123456");
 
     checkAuthorNonQueryReturn(plan);
 
@@ -701,7 +702,7 @@ public class AuthorInfoTest {
 
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RDropUser,
+            ConfigPhysicalPlanType.RDropUserV2,
             "user",
             "",
             "",
@@ -751,7 +752,7 @@ public class AuthorInfoTest {
             "",
             Collections.emptySet(),
             false,
-            "password");
+            "password123456");
 
     checkAuthorNonQueryReturn(plan);
     checkAuthorNonQueryReturn(

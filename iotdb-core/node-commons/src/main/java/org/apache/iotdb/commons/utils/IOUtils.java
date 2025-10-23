@@ -93,6 +93,36 @@ public class IOUtils {
   }
 
   /**
+   * Write a long (8-byte) into the given stream.
+   *
+   * @param outputStream the destination to insert.
+   * @param i the long value to be written.
+   * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid frequent memory
+   *     allocations. A null may also be passed to use a local buffer.
+   * @throws IOException when an exception raised during operating the stream.
+   */
+  public static void writeLong(
+      OutputStream outputStream, long i, ThreadLocal<ByteBuffer> encodingBufferLocal)
+      throws IOException {
+
+    ByteBuffer encodingBuffer;
+    if (encodingBufferLocal != null) {
+      encodingBuffer = encodingBufferLocal.get();
+      if (encodingBuffer == null) {
+        // 8 bytes is exactly what we need for a long
+        encodingBuffer = ByteBuffer.allocate(8);
+        encodingBufferLocal.set(encodingBuffer);
+      }
+    } else {
+      encodingBuffer = ByteBuffer.allocate(8);
+    }
+
+    encodingBuffer.clear();
+    encodingBuffer.putLong(i);
+    outputStream.write(encodingBuffer.array(), 0, Long.BYTES);
+  }
+
+  /**
    * Read a string from the given stream.
    *
    * @param inputStream the source to read.

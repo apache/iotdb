@@ -39,7 +39,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -426,12 +425,12 @@ public abstract class TabletInsertionEventParser {
   }
 
   private static Object filterValueColumnsByRowIndexList(
-      @NonNull final TSDataType type,
-      @NonNull final Object originValueColumn,
-      @NonNull final List<Integer> rowIndexList,
+      final TSDataType type,
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
       final boolean isSingleOriginValueColumn,
-      @NonNull final BitMap originNullValueColumnBitmap,
-      @NonNull final BitMap nullValueColumnBitmap /* output parameters */) {
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap /* output parameters */) {
     switch (type) {
       case INT32:
         {

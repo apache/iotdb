@@ -30,6 +30,8 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
@@ -71,7 +73,16 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
+  private EncryptParameter encryptParameter;
+
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, boolean isTableModel) {
+    this(schemaList, isTableModel, EncryptUtils.getEncryptParameter());
+  }
+
+  public AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList,
+      boolean isTableModel,
+      EncryptParameter encryptParameter) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.dataTypes = new ArrayList<>();
     this.schemaList = schemaList;
@@ -82,10 +93,19 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     this.list = AlignedTVList.newAlignedList(dataTypes);
     this.sortedList = new ArrayList<>();
     this.ignoreAllNullRows = !isTableModel;
+    this.encryptParameter = encryptParameter;
   }
 
   private AlignedWritableMemChunk(
       List<IMeasurementSchema> schemaList, AlignedTVList list, boolean isTableModel) {
+    this(schemaList, list, isTableModel, EncryptUtils.getEncryptParameter());
+  }
+
+  private AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList,
+      AlignedTVList list,
+      boolean isTableModel,
+      EncryptParameter encryptParameter) {
     this.measurementIndexMap = new LinkedHashMap<>();
     this.schemaList = schemaList;
     for (int i = 0; i < schemaList.size(); i++) {
@@ -95,6 +115,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     this.dataTypes = list.getTsDataTypes();
     this.sortedList = new ArrayList<>();
     this.ignoreAllNullRows = !isTableModel;
+    this.encryptParameter = encryptParameter;
   }
 
   public Set<String> getAllMeasurements() {
@@ -430,7 +451,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public IChunkWriter createIChunkWriter() {
-    return new AlignedChunkWriterImpl(schemaList);
+    return new AlignedChunkWriterImpl(schemaList, encryptParameter);
   }
 
   @SuppressWarnings({"squid:S6541", "squid:S3776"})
@@ -508,7 +529,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
-      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+      AlignedChunkWriterImpl alignedChunkWriter =
+          new AlignedChunkWriterImpl(schemaList, encryptParameter);
       for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
         for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
           // Pair of Time and Index
@@ -645,7 +667,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       return;
     }
 
-    AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+    AlignedChunkWriterImpl alignedChunkWriter =
+        new AlignedChunkWriterImpl(schemaList, encryptParameter);
 
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
@@ -674,7 +697,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
-        alignedChunkWriter = new AlignedChunkWriterImpl(schemaList);
+        alignedChunkWriter = new AlignedChunkWriterImpl(schemaList, encryptParameter);
         encodeInfo.reset();
       }
     }
@@ -859,5 +882,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
           Math.max(avgPointSizeOfLargestColumn, alignedTVList.getAvgPointSizeOfLargestColumn());
     }
     return avgPointSizeOfLargestColumn;
+  }
+
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
   }
 }

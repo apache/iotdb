@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList.SerializationRecorder;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

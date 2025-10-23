@@ -27,13 +27,13 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.data.ImportDataScanTool;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
@@ -51,6 +51,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 
 public class ImportSchemaTree extends AbstractImportSchema {
@@ -67,7 +68,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
             .build();
@@ -215,7 +216,9 @@ public class ImportSchemaTree extends AbstractImportSchema {
           String compressionTypeRaw =
               recordObj.get(headerNames.indexOf(Constants.HEAD_COLUMNS.get(4)));
           CompressionType compressionType = compressInfer(compressionTypeRaw);
-          if (StringUtils.isBlank(path) || path.trim().startsWith(SYSTEM_DATABASE)) {
+          if (StringUtils.isBlank(path)
+              || path.trim().startsWith(SYSTEM_DATABASE)
+              || path.trim().startsWith(AUDIT_DATABASE)) {
             ioTPrinter.println(
                 String.format(
                     "Line '%s', column '%s': illegal path %s",

@@ -166,7 +166,8 @@ public class ConfigNodeSnapshotParser {
   }
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
-      final Path path1, final Path path2, final CNSnapshotFileType type) throws IOException {
+      final Path path1, final Path path2, final CNSnapshotFileType type, final String userName)
+      throws IOException {
     if (path1 == null) {
       LOGGER.warn("Path1 should not be null");
       return null;
@@ -180,7 +181,7 @@ public class ConfigNodeSnapshotParser {
     if (type == CNSnapshotFileType.SCHEMA) {
       return new CNPhysicalPlanGenerator(path1, path2);
     } else {
-      return new CNPhysicalPlanGenerator(path1, type);
+      return new CNPhysicalPlanGenerator(path1, type, userName);
     }
   }
 }

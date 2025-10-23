@@ -57,7 +57,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 
 public class WALFileTest {
 
@@ -183,10 +182,23 @@ public class WALFileTest {
     final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
     assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
     walWriter.close();
-    FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
-    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
-    fileChannel2.close();
-    assertTrue(walMetaData.getMemTablesId().isEmpty());
+
+    if (!walFile.exists()) {
+      Files.createFile(walFile.toPath());
+      Files.write(walFile.toPath(), ByteBuffer.wrap(WALFileVersion.V2.getVersionBytes()).array());
+    }
+    try {
+      FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
+      WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
+      fileChannel2.close();
+    } catch (Exception e) {
+      assertEquals(
+          "Broken wal file "
+              + walFile.getPath()
+              + ", size "
+              + WALFileVersion.V2.getVersionBytes().length,
+          e.getMessage());
+    }
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {

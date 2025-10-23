@@ -158,12 +158,12 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,2024-09-24T06:16:00.000Z,d01,1,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(*) from table1 where device_id = 'd01' group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(*) from table1 where device_id = 'd01' group by 1,device_id order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(1) from table1 where device_id = 'd01' group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count(1) from table1 where device_id = 'd01' group by 1,device_id order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -558,7 +558,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,2024-09-24T06:16:00.000Z,d16,0,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id",
+        "select date_bin(5s, time), (date_bin(5s, time) + 5000) as end_time, device_id, count_if(device_id = 'd01') from table1 group by 1,device_id order by device_id, 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -836,7 +836,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, avg(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id, avg(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -1016,7 +1016,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, sum(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id, sum(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -1940,7 +1940,7 @@ public class IoTDBTableAggregationIT {
         };
 
     tableResultSetEqualTest(
-        "select device_id, date_bin(5s, time), max_by(time, s3), max(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1",
+        "select device_id, date_bin(5s, time), max_by(time, s3), max(s3) from table1 where device_id = 'd01' group by date_bin(5s, time), 1 order by 2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2172,7 +2172,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, first(time),first(s1),first(s2),first(s3),first(s4),first(s5),first(s6),first(s7),first(s8),first(s9),first(s10) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, first(time),first(s1),first(s2),first(s3),first(s4),first(s5),first(s6),first(s7),first(s8),first(s9),first(s10) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2347,7 +2347,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55.0,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, first_by(time, s4), first(s4) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, first_by(time, s4), first(s4) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2491,11 +2491,28 @@ public class IoTDBTableAggregationIT {
         new String[] {
           "2024-09-24T06:15:55.000Z,55,50000,40.0,55.0,false,shanghai_huangpu_red_A_d01_35,shanghai_huangpu_red_A_d01_40,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01'",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
+
+    expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12"
+        };
+    retArray =
+        new String[] {
+          "2024-09-24T06:15:55.000Z,d01,red,55,2024-09-24T06:15:55.000Z,50000,2024-09-24T06:15:50.000Z,40.0,2024-09-24T06:15:40.000Z,55.0,2024-09-24T06:15:55.000Z,false,2024-09-24T06:15:50.000Z,",
+        };
+    repeatTest(
+        "select last(time),last(device_id),last(color),last(s1),last_by(time, s1),last(s2),last_by(time, s2),last(s3),last_by(time, s3),last(s4),last_by(time, s4),last(s5),last_by(time, s5) from table1 where device_id = 'd01'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        2);
 
     expectedHeader =
         new String[] {
@@ -2522,7 +2539,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55,null,null,55.0,null,null,null,0xcafebabe55,2024-09-24T06:15:55.000Z,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -2656,11 +2673,12 @@ public class IoTDBTableAggregationIT {
           "shanghai,shanghai,pudong,d07,2024-09-24T06:15:51.000Z,41,46000,51.0,46.0,false,shanghai_pudong_yellow_A_d07_51,shanghai_pudong_yellow_A_d07_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,",
           "shanghai,shanghai,pudong,d08,2024-09-24T06:15:55.000Z,55,40000,30.0,55.0,true,shanghai_pudong_yellow_B_d08_55,shanghai_pudong_yellow_B_d08_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
         };
-    tableResultSetEqualTest(
+    repeatTest(
         "select province,city,region,device_id, last(time),last(s1),last(s2),last(s3),last(s4),last(s5),last(s6),last(s7),last(s8),last(s9),last(s10) from table1 group by 1,2,3,4 order by 1,2,3,4",
         expectedHeader,
         retArray,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        2);
   }
 
   @Test
@@ -2699,7 +2717,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,2024-09-24T06:15:55.000Z,55.0,",
         };
     repeatTest(
-        "select date_bin(5s, time), device_id, last_by(time, s4), last(s4) from table1 where device_id = 'd01' group by 1,2",
+        "select date_bin(5s, time), device_id, last_by(time, s4), last(s4) from table1 where device_id = 'd01' group by 1,2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME,
@@ -2865,7 +2883,7 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,d01,null,",
         };
     tableResultSetEqualTest(
-        "select date_bin(5s, time), device_id,extreme(s3) from table1 where device_id = 'd01' group by 1, 2",
+        "select date_bin(5s, time), device_id,extreme(s3) from table1 where device_id = 'd01' group by 1, 2 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -3723,7 +3741,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id='d01'",
@@ -3761,7 +3779,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by device_id order by device_id",
@@ -3802,7 +3820,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,device_id,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by 1,2,3,4 order by 1,2,3,4",
@@ -3853,7 +3871,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id,date_bin(5s,time),last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id in ('d01', 'd04', 'd09', 'd12') group by province,city,region,device_id,date_bin(5s,time) order by device_id,date_bin(5s,time)",
@@ -3907,7 +3925,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
@@ -3947,7 +3965,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,region,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd08', 'd12', 'd13') group by 1,2,3 order by 1,2,3",
@@ -3984,7 +4002,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,city,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1,2 order by 1,2",
@@ -4020,7 +4038,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select province,last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where device_id NOT in ('d01', 'd05', 'd08', 'd09', 'd12', 'd13') group by 1 order by 1",
@@ -4058,7 +4076,7 @@ public class IoTDBTableAggregationIT {
           expectedHeader,
           retArray,
           DATABASE_NAME);
-    } catch (Exception e) {
+    } catch (Error e) {
       // second try
       tableResultSetEqualTest(
           "select device_id, last(time),last_by(s1,time),last_by(s2,time),last_by(s3,time),last_by(s4,time),last_by(s5,time),last_by(s6,time),last_by(s7,time),last_by(s8,time),last_by(s9,time),last_by(s10,time) from table1 where city = 'shanghai' and type='A' group by province,city,region,device_id order by device_id",
@@ -4292,6 +4310,42 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void approxPercentileTest() {
+    tableResultSetEqualTest(
+        "select approx_percentile(time, 0.5),approx_percentile(s1,0.5),approx_percentile(s2,0.5),approx_percentile(s3,0.5),approx_percentile(s4,0.5) from table1",
+        buildHeaders(5),
+        new String[] {"2024-09-24T06:15:40.000Z,40,46000,40.0,46.0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,province,approx_percentile(s1,0.5),approx_percentile(s2,0.5) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2", "_col3"},
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,30,null,",
+          "2024-09-24T06:15:31.000Z,beijing,null,31000,",
+          "2024-09-24T06:15:35.000Z,beijing,null,35000,",
+          "2024-09-24T06:15:36.000Z,beijing,36,null,",
+          "2024-09-24T06:15:40.000Z,beijing,40,40000,",
+          "2024-09-24T06:15:41.000Z,beijing,41,null,",
+          "2024-09-24T06:15:46.000Z,beijing,null,46000,",
+          "2024-09-24T06:15:50.000Z,beijing,null,50000,",
+          "2024-09-24T06:15:51.000Z,beijing,null,null,",
+          "2024-09-24T06:15:55.000Z,beijing,55,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,30,null,",
+          "2024-09-24T06:15:31.000Z,shanghai,null,31000,",
+          "2024-09-24T06:15:35.000Z,shanghai,null,35000,",
+          "2024-09-24T06:15:36.000Z,shanghai,36,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,40,40000,",
+          "2024-09-24T06:15:41.000Z,shanghai,41,null,",
+          "2024-09-24T06:15:46.000Z,shanghai,null,46000,",
+          "2024-09-24T06:15:50.000Z,shanghai,null,50000,",
+          "2024-09-24T06:15:51.000Z,shanghai,null,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,55,null,",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest() {
     tableAssertTestFail(
         "select avg() from table1",
@@ -4343,7 +4397,31 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_most_frequent(province, 'test', 100) from table1",
-        "701: The second and third argument of 'approx_most_frequent' function must be numeric literal",
+        "701: The second and third argument of 'approx_most_frequent' function must be positive integer literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent(province, 1.5, 100) from table1",
+        "701: The second and third argument of 'approx_most_frequent' function must be positive integer literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_most_frequent() from table1",
+        "701: Aggregation functions [approx_most_frequent] should only have three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile() from table1",
+        "701: Aggregation functions [approx_percentile] should only have two or three arguments",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,1.1) from table1",
+        "701: percentage should be in [0,1], got 1.1",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,'test') from table1",
+        "701: The second argument of 'approx_percentile' function percentage must be a double literal",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s5,0.5) from table1",
+        "701: Aggregation functions [approx_percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
         DATABASE_NAME);
   }
 

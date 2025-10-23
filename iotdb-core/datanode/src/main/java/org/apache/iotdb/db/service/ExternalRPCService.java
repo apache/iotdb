@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -37,6 +39,9 @@ import java.lang.reflect.InvocationTargetException;
 /** A service to handle RPC request from client. */
 public class ExternalRPCService extends ThriftService implements ExternalRPCServiceMBean {
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
   private IClientRPCServiceWithHandler impl;
 
   public static ExternalRPCService getInstance() {
@@ -52,47 +57,40 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
           InvocationTargetException {
     impl =
         (IClientRPCServiceWithHandler)
-            Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
-                .getDeclaredConstructor()
-                .newInstance();
+            Class.forName(config.getRpcImplClassName()).getDeclaredConstructor().newInstance();
     initSyncedServiceImpl(null);
     processor = new ProcessorWithMetrics(impl);
   }
 
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
-      if (config.isEnableSSL()) {
-        thriftServiceThread =
-            new ThriftServiceThread(
-                processor,
-                getID().getName(),
-                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-                config.getRpcAddress(),
-                config.getRpcPort(),
-                config.getRpcMaxConcurrentClientNum(),
-                config.getThriftServerAwaitTimeForStopService(),
-                new RPCServiceThriftHandler(impl),
-                IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable(),
-                config.getKeyStorePath(),
-                config.getKeyStorePwd(),
-                config.getConnectionTimeoutInMS(),
-                ZeroCopyRpcTransportFactory.INSTANCE);
-      } else {
-        thriftServiceThread =
-            new ThriftServiceThread(
-                processor,
-                getID().getName(),
-                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-                config.getRpcAddress(),
-                config.getRpcPort(),
-                config.getRpcMaxConcurrentClientNum(),
-                config.getThriftServerAwaitTimeForStopService(),
-                new RPCServiceThriftHandler(impl),
-                IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable(),
-                ZeroCopyRpcTransportFactory.INSTANCE);
-      }
+      thriftServiceThread =
+          commonConfig.isEnableThriftClientSSL()
+              ? new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new RPCServiceThriftHandler(impl),
+                  config.isRpcThriftCompressionEnable(),
+                  commonConfig.getKeyStorePath(),
+                  commonConfig.getKeyStorePwd(),
+                  ZeroCopyRpcTransportFactory.INSTANCE)
+              : new ThriftServiceThread(
+                  processor,
+                  getID().getName(),
+                  ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                  getBindIP(),
+                  getBindPort(),
+                  config.getRpcMaxConcurrentClientNum(),
+                  config.getThriftServerAwaitTimeForStopService(),
+                  new RPCServiceThriftHandler(impl),
+                  config.isRpcThriftCompressionEnable(),
+                  ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -102,12 +100,12 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return config.getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+    return config.getRpcPort();
   }
 
   @Override

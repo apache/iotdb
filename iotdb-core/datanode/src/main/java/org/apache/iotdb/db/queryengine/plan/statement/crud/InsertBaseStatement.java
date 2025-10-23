@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -34,15 +31,16 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -78,11 +76,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   // get from client
   protected TSDataType[] dataTypes;
 
+  protected Type[] typeConvertors;
+  protected InputLocation[] inputLocations;
+
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
   protected TsTableColumnCategory[] columnCategories;
-  protected List<Integer> idColumnIndices;
+  protected List<Integer> tagColumnIndices;
   protected List<Integer> attrColumnIndices;
   protected boolean writeToTable = false;
 
@@ -172,25 +173,20 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     this.dataTypes[i] = dataType;
   }
 
+  public void setTypeConvertors(Type[] typeConvertors) {
+    this.typeConvertors = typeConvertors;
+  }
+
+  public void setInputLocations(InputLocation[] inputLocations) {
+    this.inputLocations = inputLocations;
+  }
+
   /** Returns true when this statement is empty and no need to write into the server */
   public abstract boolean isEmpty();
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathOrPatternListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
   }
 
   public abstract ISchemaValidation getSchemaValidation();
@@ -306,19 +302,19 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = new TsTableColumnCategory[measurements.length];
     }
     this.columnCategories[i] = columnCategory;
-    this.idColumnIndices = null;
+    this.tagColumnIndices = null;
   }
 
-  public List<Integer> getIdColumnIndices() {
-    if (idColumnIndices == null && columnCategories != null) {
-      idColumnIndices = new ArrayList<>();
+  public List<Integer> getTagColumnIndices() {
+    if (tagColumnIndices == null && columnCategories != null) {
+      tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
         if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
-          idColumnIndices.add(i);
+          tagColumnIndices.add(i);
         }
       }
     }
-    return idColumnIndices;
+    return tagColumnIndices;
   }
 
   public List<Integer> getAttrColumnIndices() {
@@ -419,7 +415,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     subRemoveAttributeColumns(columnsToKeep);
 
     // to reconstruct indices
-    idColumnIndices = null;
+    tagColumnIndices = null;
     attrColumnIndices = null;
   }
 
@@ -588,7 +584,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       System.arraycopy(
           columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
       columnCategories = tmpCategories;
-      idColumnIndices = null;
+      tagColumnIndices = null;
     }
   }
 
@@ -607,7 +603,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (columnCategories != null) {
       CommonUtils.swapArray(columnCategories, src, target);
     }
-    idColumnIndices = null;
+    if (typeConvertors != null) {
+      CommonUtils.swapArray(typeConvertors, src, target);
+    }
+    if (inputLocations != null) {
+      CommonUtils.swapArray(inputLocations, src, target);
+    }
+    tagColumnIndices = null;
   }
 
   public boolean isWriteToTable() {
@@ -688,7 +690,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             + RamUsageEstimator.shallowSizeOf(dataTypes)
             + RamUsageEstimator.shallowSizeOf(columnCategories)
             // We assume that the integers are all cached by JVM
-            + shallowSizeOfList(idColumnIndices)
+            + shallowSizeOfList(tagColumnIndices)
             + shallowSizeOfList(attrColumnIndices)
             + shallowSizeOfList(logicalViewSchemaList)
             + (Objects.nonNull(logicalViewSchemaList)
@@ -709,6 +711,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
                 RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
                     + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
         : 0L;
+  }
+
+  public List<PartialPath> getDevicePaths() {
+    return Collections.singletonList(devicePath);
   }
 
   protected abstract long calculateBytesUsed();

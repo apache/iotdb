@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -54,8 +56,11 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -74,10 +79,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -107,6 +114,20 @@ public class LoadTsFileManager {
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
+
+  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(CONFIG.getLoadTableSchemaCacheSizeInBytes())
+          .weigher(
+              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
+                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
+
+  public static final Cache<String, String> MEASUREMENT_ID_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(CONFIG.getLoadMeasurementIdCacheSizeInBytes())
+          .weigher((String k, String v) -> v.length())
+          .build();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
@@ -203,7 +224,7 @@ public class LoadTsFileManager {
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
-      throws IOException {
+      throws IOException, PageException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
@@ -222,12 +243,14 @@ public class LoadTsFileManager {
               uuid,
               o -> {
                 try {
-                  return new TsFileWriterManager(new File(getNextFolder(), uuid));
+                  return getFolderManager()
+                      .getNextWithRetry(folder -> new TsFileWriterManager(new File(folder, uuid)));
                 } catch (DiskSpaceInsufficientException e) {
                   exception.set(e);
                   return null;
                 }
               });
+
       if (exception.get() != null || writerManager == null) {
         throw new IOException(
             "Failed to create TsFileWriterManager for uuid "
@@ -255,7 +278,7 @@ public class LoadTsFileManager {
     }
   }
 
-  private String getNextFolder() throws DiskSpaceInsufficientException {
+  private FolderManager getFolderManager() throws DiskSpaceInsufficientException {
     if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
       synchronized (FOLDER_MANAGER) {
         if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
@@ -263,7 +286,7 @@ public class LoadTsFileManager {
           FOLDER_MANAGER.set(
               new FolderManager(
                   Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get().getNextFolder();
+          return FOLDER_MANAGER.get();
         }
       }
     }
@@ -274,12 +297,12 @@ public class LoadTsFileManager {
           FOLDER_MANAGER.set(
               new FolderManager(
                   Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
-          return FOLDER_MANAGER.get().getNextFolder();
+          return FOLDER_MANAGER.get();
         }
       }
     }
 
-    return FOLDER_MANAGER.get().getNextFolder();
+    return FOLDER_MANAGER.get();
   }
 
   public boolean loadAll(
@@ -384,6 +407,7 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
+    private Map<IDeviceID, Set<DataPartitionInfo>> device2Partition;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -392,6 +416,7 @@ public class LoadTsFileManager {
       this.dataPartition2Resource = new HashMap<>();
       this.dataPartition2LastDevice = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
+      device2Partition = new HashMap<>();
       this.isClosed = false;
 
       clearDir(taskDir);
@@ -412,7 +437,8 @@ public class LoadTsFileManager {
      * BatchedAlignedChunkData, it may result in no data for the time column in the new file.
      */
     @SuppressWarnings("squid:S3824")
-    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
+        throws IOException, PageException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -459,26 +485,50 @@ public class LoadTsFileManager {
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
           && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
-        writer
-            .getSchema()
-            .getTableSchemaMap()
-            .computeIfAbsent(
-                tableName,
-                t ->
-                    TableSchema.of(
-                            DataNodeTableCache.getInstance()
-                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
-                        .toTsFileTableSchemaNoAttribute());
+        // If the table does not exist, it means that the table is all deleted by mods
+        final TsTable table =
+            DataNodeTableCache.getInstance()
+                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName, false);
+        if (Objects.nonNull(table)) {
+          writer
+              .getSchema()
+              .getTableSchemaMap()
+              .computeIfAbsent(
+                  tableName,
+                  t ->
+                      SCHEMA_CACHE.get(
+                          t, tab -> TableSchema.of(table).toTsFileTableSchemaNoAttribute()));
+        }
       }
 
-      if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
-        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
-          writer.endChunkGroup();
-          writer.checkMetadataSizeAndMayFlush();
+      IDeviceID device = chunkData.getDevice();
+      IDeviceID lastDevice = dataPartition2LastDevice.get(partitionInfo);
+
+      if (!Objects.equals(device, lastDevice)) {
+        if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
+          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
+          for (DataPartitionInfo partition : partitions) {
+            TsFileIOWriter w = dataPartition2Writer.get(partition);
+            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
+              w.endChunkGroup();
+              w.checkMetadataSizeAndMayFlush();
+            }
+          }
+          device2Partition.remove(lastDevice);
         }
-        writer.startChunkGroup(chunkData.getDevice());
-        dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
+        if (writer.isWritingChunkGroup()) {
+          LOGGER.warn(
+              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              writer.getFile().getAbsolutePath(),
+              partitionInfo,
+              device,
+              lastDevice);
+        }
+        writer.startChunkGroup(device);
+        dataPartition2LastDevice.put(partitionInfo, device);
+        device2Partition.computeIfAbsent(device, k -> new HashSet<>()).add(partitionInfo);
       }
+
       chunkData.writeToFileWriter(writer);
     }
 
@@ -530,6 +580,7 @@ public class LoadTsFileManager {
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
+        tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         endTsFileResource(
             writer,
             tsFileResource,
@@ -694,8 +745,10 @@ public class LoadTsFileManager {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
+      dataPartition2Resource = null;
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
+      device2Partition = null;
       isClosed = true;
     }
   }

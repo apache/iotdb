@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -59,7 +59,9 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       PipeTaskMeta pipeTaskMeta,
       TreePattern treePattern,
       TablePattern tablePattern,
+      String userId,
       String userName,
+      String cliHostname,
       boolean skipIfNoPrivileges,
       Boolean isTableModelEvent,
       String databaseNameFromDataRegion,
@@ -70,7 +72,9 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE,
@@ -89,7 +93,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
     PipeDataNodeResourceManager.memory()
         .forceResize(allocatedMemoryBlock, statement.ramBytesUsed() + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
@@ -98,7 +102,7 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
@@ -130,7 +134,9 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
       PipeTaskMeta pipeTaskMeta,
       TreePattern treePattern,
       TablePattern tablePattern,
+      String userId,
       String userName,
+      String cliHostname,
       boolean skipIfNoPrivileges,
       long startTime,
       long endTime) {

@@ -37,8 +37,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -114,6 +114,7 @@ public class ClusterSchemaInfoTest {
         new GetDatabasePlan(
             Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
             ALL_MATCH_SCOPE,
+            false,
             false,
             false);
     Map<String, TDatabaseSchema> reloadResult =

@@ -27,6 +27,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 public enum StatementType {
   NULL,
 
+  ACCOUNT_UNLOCK,
   AUTHOR,
   LOAD_DATA,
   CREATE_USER,
@@ -48,6 +49,7 @@ public enum StatementType {
   LIST_ROLE_USERS,
   GRANT_WATERMARK_EMBEDDING,
   REVOKE_WATERMARK_EMBEDDING,
+  RENAME_USER,
 
   STORAGE_GROUP_SCHEMA,
   DELETE_STORAGE_GROUP,
@@ -185,5 +187,8 @@ public enum StatementType {
   SHOW_SUBSCRIPTIONS,
   DROP_SUBSCRIPTION,
 
-  SET_CONFIGURATION
+  SET_CONFIGURATION,
+
+  FAST_LAST_QUERY,
+  SHOW_CONFIGURATION,
 }

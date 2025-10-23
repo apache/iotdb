@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -33,6 +34,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -200,6 +202,105 @@ public abstract class TVList implements WALEntryValue {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return timestamps.get(arrayIndex)[elementIndex];
+  }
+
+  /**
+   * Performs a binary search to find the first position whose timestamp is greater than or equal to
+   * the given {@code time}.
+   *
+   * <p>This method assumes timestamps are sorted in ascending order. If the list is not sorted, an
+   * {@link UnsupportedOperationException} will be thrown.
+   *
+   * <p>Typical use case: locate the starting index of a time range query.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>timestamps = [10, 20, 20, 25, 30]
+   *   <li>time = 5 → return 0
+   *   <li>time = 20 → return 1
+   *   <li>time = 21 → return 3
+   *   <li>time = 40 → return 5 (all timestamps &lt; 40)
+   * </ul>
+   *
+   * <p><b>Return value range:</b>
+   *
+   * <ul>
+   *   <li>When a matching or greater element exists: {@code 0 <= index <= seqRowCount - 1}
+   *   <li>When all elements are smaller than {@code time}: {@code index == seqRowCount}
+   * </ul>
+   *
+   * @param time the target timestamp
+   * @param low the lower bound index (inclusive)
+   * @param high the upper bound index (inclusive)
+   * @return the index of the first timestamp ≥ {@code time}, or {@code seqRowCount} if all
+   *     timestamps are smaller
+   */
+  private int binarySearchTimestampFirstGreaterOrEqualsPosition(long time, int low, int high) {
+    if (!sorted && high >= seqRowCount) {
+      throw new UnsupportedOperationException("Current TVList is not sorted");
+    }
+    int mid;
+    while (low <= high) {
+      mid = low + ((high - low) >>> 1);
+      long midTime = getTime(mid);
+      if (midTime < time) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return low;
+  }
+
+  /**
+   * Performs a binary search to find the last position whose timestamp is less than or equal to the
+   * given {@code time}.
+   *
+   * <p>This method assumes timestamps are sorted in ascending order. If the list is not sorted, an
+   * {@link UnsupportedOperationException} will be thrown.
+   *
+   * <p>Typical use case: locate the ending index of a time range query.
+   *
+   * <p>Example:
+   *
+   * <ul>
+   *   <li>timestamps = [10, 20, 20, 25, 30]
+   *   <li>time = 5 → return -1 (no timestamp ≤ 5)
+   *   <li>time = 20 → return 2
+   *   <li>time = 21 → return 2
+   *   <li>time = 50 → return 4
+   * </ul>
+   *
+   * <p><b>Return value range:</b>
+   *
+   * <ul>
+   *   <li>When a matching or smaller element exists: {@code 0 <= index <= seqRowCount - 1}
+   *   <li>When all elements are greater than {@code time}: {@code index == -1}
+   * </ul>
+   *
+   * @param time the target timestamp
+   * @param low the lower bound index (inclusive)
+   * @param high the upper bound index (inclusive)
+   * @return the index of the last timestamp ≤ {@code time}, or {@code -1} if all timestamps are
+   *     greater
+   */
+  private int binarySearchTimestampLastLessOrEqualsPosition(long time, int low, int high) {
+    if (!sorted && high >= seqRowCount) {
+      throw new UnsupportedOperationException("Current TVList is not sorted");
+    }
+
+    int mid;
+    while (low <= high) {
+      mid = low + ((high - low) >>> 1);
+      long midTime = getTime(mid);
+      if (midTime <= time) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return high;
   }
 
   protected void set(int src, int dest) {
@@ -649,22 +750,32 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVListIterator iterator(
+      Ordering scanOrder,
+      int rowCount,
+      Filter globalTimeFilter,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
       int maxNumberOfPointsInPage) {
-    return new TVListIterator(deletionList, floatPrecision, encoding, maxNumberOfPointsInPage);
+    return new TVListIterator(
+        scanOrder,
+        rowCount,
+        globalTimeFilter,
+        deletionList,
+        floatPrecision,
+        encoding,
+        maxNumberOfPointsInPage);
   }
 
   /* TVList Iterator */
-  public class TVListIterator implements MemPointIterator {
+  public class TVListIterator extends MemPointIterator {
     protected int index;
     protected int rows;
     protected boolean probeNext;
-    protected List<TsBlock> tsBlocks;
 
+    protected final Filter globalTimeFilter;
     private final List<TimeRange> deletionList;
-    private final int[] deleteCursor = {0};
+    private final int[] deleteCursor;
     private final int floatPrecision;
     private final TSEncoding encoding;
 
@@ -672,41 +783,152 @@ public abstract class TVList implements WALEntryValue {
     protected final int maxNumberOfPointsInPage;
 
     public TVListIterator(
+        Ordering scanOrder,
+        int rowCount,
+        Filter globalTimeFilter,
         List<TimeRange> deletionList,
         Integer floatPrecision,
         TSEncoding encoding,
         int maxNumberOfPointsInPage) {
+      super(scanOrder);
+      this.globalTimeFilter = globalTimeFilter;
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encoding = encoding;
       this.index = 0;
       this.rows = rowCount;
       this.probeNext = false;
-      this.tsBlocks = new ArrayList<>();
       this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+      int cursor =
+          (deletionList == null || scanOrder.isAscending()) ? 0 : (deletionList.size() - 1);
+      deleteCursor = new int[] {cursor};
+    }
+
+    @Override
+    protected void skipToCurrentTimeRangeStartPosition() {
+      if (timeRange == null || index >= rows) {
+        return;
+      }
+      if (timeRange.contains(getTime(getScanOrderIndex(index)))) {
+        return;
+      }
+
+      int indexInTVList;
+      // Since there may be duplicate timestamps in TVList, we need to move to the index of the
+      // first timestamp that meets the requirements under current scanOrder.
+      if (scanOrder.isAscending()) {
+        long searchTimestamp = timeRange.getMin();
+        if (searchTimestamp <= outer.getMinTime()) {
+          return;
+        }
+        if (searchTimestamp > outer.getMaxTime()) {
+          // all satisfied data has been consumed
+          index = rows;
+          probeNext = true;
+          return;
+        }
+        // For asc scan, if it can not be found, the indexInTVList is too small, and we should move
+        // to the next timestamp position.
+        // If it can be found, move to the min index of current timestamp.
+        indexInTVList =
+            binarySearchTimestampFirstGreaterOrEqualsPosition(
+                searchTimestamp, getScanOrderIndex(index), rows - 1);
+      } else {
+        long searchTimestamp = timeRange.getMax();
+        if (searchTimestamp >= outer.getMaxTime()) {
+          return;
+        }
+        if (searchTimestamp < outer.getMinTime()) {
+          // all satisfied data has been consumed
+          index = rows;
+          probeNext = true;
+          return;
+        }
+        // For desc scan, regardless of whether it is found, the timestamp corresponding to
+        // indexInTVList has met the conditions. We only need to find the index that first
+        // encounters this timestamp during desc scan.
+        indexInTVList =
+            binarySearchTimestampLastLessOrEqualsPosition(
+                searchTimestamp, 0, getScanOrderIndex(index));
+      }
+      int newIndex = getScanOrderIndex(indexInTVList);
+      if (newIndex > index) {
+        index = newIndex;
+      }
+
+      probeNext = false;
     }
 
     protected void prepareNext() {
-      // skip deleted rows
-      while (index < rows
-          && (isNullValue(getValueIndex(index))
-              || isPointDeleted(getTime(index), deletionList, deleteCursor))) {
-        index++;
-      }
+      if (scanOrder.isAscending()) {
+        // For ASC traversal, we first find a valid index and then handle duplicate timestamps.
+        // example:
+        // index: 0 scanOrderIndex: 0 (time: 0 value: 0) (deleted)
+        // index: 1 scanOrderIndex: 1 (time: 1 value: 1)
+        // index: 2 scanOrderIndex: 2 (time: 1 value: 2)
+        // index: 3 scanOrderIndex: 3 (time: 2 value: 2) (deleted)
+        // we will move to index 2 finally, and the index track is (0 -> 1 -> 2)
 
-      // skip duplicated timestamp
-      while (index + 1 < rows && getTime(index + 1) == getTime(index)) {
-        index++;
+        // skip deleted rows
+        skipDeletedOrTimeNotSatisfiedRows();
+        // skip duplicated timestamp
+        while (index + 1 < rows
+            && getTime(getScanOrderIndex(index + 1)) == getTime(getScanOrderIndex(index))) {
+          index++;
+        }
+      } else {
+        // For DESC traversal, we first handle duplicate timestamps and then find a valid index.
+        // example:
+        // index: 0 scanOrderIndex: 3 (time: 0 value: 0) (deleted)
+        // index: 1 scanOrderIndex: 2 (time: 1 value: 1)
+        // index: 2 scanOrderIndex: 1 (time: 1 value: 2)
+        // index: 3 scanOrderIndex: 0 (time: 2 value: 2) (deleted)
+        // we will move to index 2 finally, and the index track is (3 -> 2)
+
+        // First skip the duplicate timestamps of the latest value that has been used in last call,
+        // and then skip the deleted points. At this time, the first valid point we encounter is a
+        // valid one.
+
+        // skip duplicated timestamp
+        while (index > 0
+            && (index <= rows - 1)
+            && getTime(getScanOrderIndex(index - 1)) == getTime(getScanOrderIndex(index))) {
+          index++;
+        }
+        // skip deleted rows
+        skipDeletedOrTimeNotSatisfiedRows();
       }
       probeNext = true;
     }
 
+    protected void skipDeletedOrTimeNotSatisfiedRows() {
+      while (index < rows) {
+        if (!isNullValue(getValueIndex(getScanOrderIndex(index)))) {
+          long time = getTime(getScanOrderIndex(index));
+          if (!isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+              && isTimeSatisfied(time)) {
+            break;
+          }
+        }
+        index++;
+      }
+    }
+
+    protected boolean isTimeSatisfied(long timestamp) {
+      return globalTimeFilter == null || globalTimeFilter.satisfyRow(timestamp, null);
+    }
+
+    // When used as a point reader, we should not apply a pagination controller or push down filter
+    // because it has not yet been merged with other data.
     @Override
     public boolean hasNextTimeValuePair() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       if (!probeNext) {
         prepareNext();
       }
-      return index < rows;
+      return index < rows && !isCurrentTimeExceedTimeRange(getTime(getScanOrderIndex(index)));
     }
 
     @Override
@@ -714,7 +936,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasNextTimeValuePair()) {
         return null;
       }
-      TimeValuePair tvp = getTimeValuePair(index);
+      TimeValuePair tvp = getTimeValuePair(getScanOrderIndex(index));
       next();
       return tvp;
     }
@@ -724,7 +946,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasNextTimeValuePair()) {
         return null;
       }
-      return getTimeValuePair(index);
+      return getTimeValuePair(getScanOrderIndex(index));
     }
 
     @Override
@@ -737,83 +959,166 @@ public abstract class TVList implements WALEntryValue {
 
     @Override
     public boolean hasNextBatch() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       return hasNextTimeValuePair();
     }
 
     @Override
     public TsBlock nextBatch() {
       TSDataType dataType = getDataType();
-      TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+      int maxRowCountOfCurrentBatch =
+          Math.min(
+              paginationController.hasLimit()
+                  ? (int) paginationController.getCurLimit()
+                  : Integer.MAX_VALUE,
+              Math.min(maxNumberOfPointsInPage, rows - index));
+      TsBlockBuilder builder =
+          new TsBlockBuilder(maxRowCountOfCurrentBatch, Collections.singletonList(dataType));
       switch (dataType) {
         case BOOLEAN:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBoolean(getBoolean(index));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              boolean aBoolean = getBoolean(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyBoolean(time, aBoolean)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeBoolean(aBoolean);
+                builder.declarePosition();
+              }
             }
             index++;
           }
           break;
         case INT32:
         case DATE:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeInt(getInt(index));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              int anInt = getInt(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyInteger(time, anInt)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeInt(anInt);
+                builder.declarePosition();
+              }
             }
             index++;
           }
           break;
         case INT64:
         case TIMESTAMP:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeLong(getLong(index));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              long aLong = getLong(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyLong(time, aLong)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeLong(aLong);
+                builder.declarePosition();
+              }
             }
             index++;
           }
           break;
         case FLOAT:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder
-                  .getColumnBuilder(0)
-                  .writeFloat(
-                      roundValueWithGivenPrecision(getFloat(index), floatPrecision, encoding));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              float aFloat =
+                  roundValueWithGivenPrecision(
+                      getFloat(getScanOrderIndex(index)), floatPrecision, encoding);
+              if (pushDownFilter == null || pushDownFilter.satisfyFloat(time, aFloat)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeFloat(aFloat);
+                builder.declarePosition();
+              }
             }
             index++;
           }
           break;
         case DOUBLE:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder
-                  .getColumnBuilder(0)
-                  .writeDouble(
-                      roundValueWithGivenPrecision(getDouble(index), floatPrecision, encoding));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              double aDouble =
+                  roundValueWithGivenPrecision(
+                      getDouble(getScanOrderIndex(index)), floatPrecision, encoding);
+              if (pushDownFilter == null || pushDownFilter.satisfyDouble(time, aDouble)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeDouble(aDouble);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -821,14 +1126,29 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
-          while (index < rows && builder.getPositionCount() < maxNumberOfPointsInPage) {
-            long time = getTime(index);
-            if (!isNullValue(getValueIndex(index))
-                && !isPointDeleted(time, deletionList, deleteCursor)
-                && (index == rows - 1 || time != getTime(index + 1))) {
-              builder.getTimeColumnBuilder().writeLong(time);
-              builder.getColumnBuilder(0).writeBinary(getBinary(index));
-              builder.declarePosition();
+          while (index < rows
+              && builder.getPositionCount() < maxNumberOfPointsInPage
+              && paginationController.hasCurLimit()) {
+            long time = getTime(getScanOrderIndex(index));
+            if (isCurrentTimeExceedTimeRange(time)) {
+              break;
+            }
+            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
+                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+                && isLatestPoint(index, time)
+                && isTimeSatisfied(time)) {
+              Binary binary = getBinary(getScanOrderIndex(index));
+              if (pushDownFilter == null || pushDownFilter.satisfyBinary(time, binary)) {
+                if (paginationController.hasCurOffset()) {
+                  paginationController.consumeOffset();
+                  index++;
+                  continue;
+                }
+                paginationController.consumeLimit();
+                builder.getTimeColumnBuilder().writeLong(time);
+                builder.getColumnBuilder(0).writeBinary(binary);
+                builder.declarePosition();
+              }
             }
             index++;
           }
@@ -837,9 +1157,24 @@ public abstract class TVList implements WALEntryValue {
           throw new UnSupportedDataTypeException(
               String.format("Data type %s is not supported.", dataType));
       }
+      // There is no need to process pushDownFilter and paginationController here because it has
+      // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
-      tsBlocks.add(tsBlock);
+      addTsBlock(tsBlock);
       return tsBlock;
+    }
+
+    protected boolean isLatestPoint(int rowIndex, long currentTime) {
+      if (scanOrder.isAscending()) {
+        return rowIndex == rows - 1 || currentTime != getTime(getScanOrderIndex(rowIndex + 1));
+      } else {
+        return rowIndex == 0 || currentTime != getTime(getScanOrderIndex(rowIndex - 1));
+      }
+    }
+
+    // When traversing in desc order, the index needs to be converted
+    public int getScanOrderIndex(int rowIndex) {
+      return scanOrder.isAscending() ? rowIndex : rows - 1 - rowIndex;
     }
 
     @Override
@@ -912,11 +1247,6 @@ public abstract class TVList implements WALEntryValue {
       return 0;
     }
 
-    @Override
-    public void close() throws IOException {
-      tsBlocks.clear();
-    }
-
     public void next() {
       index++;
       probeNext = false;
@@ -930,7 +1260,7 @@ public abstract class TVList implements WALEntryValue {
       if (!hasCurrent()) {
         return Long.MIN_VALUE;
       }
-      return getTime(index);
+      return getTime(getScanOrderIndex(index));
     }
 
     public int getIndex() {

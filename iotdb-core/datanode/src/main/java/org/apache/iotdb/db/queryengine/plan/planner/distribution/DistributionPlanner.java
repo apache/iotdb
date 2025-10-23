@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.optimization.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.OrderByExpressionWithLimitChangeToTopK;
@@ -45,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -215,7 +214,7 @@ public class DistributionPlanner {
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
 
     // Only execute this step for READ operation
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       setSinkForRootInstance(subPlan, fragmentInstances);
     }
 
@@ -226,7 +225,7 @@ public class DistributionPlanner {
   // And for parallel-able fragment, clone it into several instances with different params.
   public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {
     IFragmentParallelPlaner parallelPlaner =
-        context.getQueryType() == QueryType.READ
+        context.isQuery()
             ? new SimpleFragmentParallelPlanner(subPlan, analysis, context)
             : new WriteFragmentParallelPlanner(subPlan, analysis, context);
     return parallelPlaner.parallelPlan();

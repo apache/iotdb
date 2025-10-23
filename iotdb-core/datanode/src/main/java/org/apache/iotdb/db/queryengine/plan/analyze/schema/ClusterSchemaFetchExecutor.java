@@ -31,9 +31,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
@@ -85,7 +85,7 @@ class ClusterSchemaFetchExecutor {
             ? config.getQueryTimeoutThreshold()
             : context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
     String sql = context == null ? "" : "Fetch Schema for " + context.getQueryType();
-    if (context != null && context.getQueryType() == QueryType.READ) {
+    if (context != null && context.isQuery()) {
       sql += ", " + context.getQueryId() + " : " + context.getSql();
     }
     return coordinator.executeForTreeModel(
@@ -109,7 +109,8 @@ class ClusterSchemaFetchExecutor {
       PathPatternTree patternTree,
       boolean withTags,
       boolean withTemplate,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
@@ -117,7 +118,7 @@ class ClusterSchemaFetchExecutor {
     }
     return executeSchemaFetchQuery(
         new SeriesSchemaFetchStatement(
-            patternTree, templateMap, withTags, false, withTemplate, false),
+            patternTree, templateMap, withTags, false, withTemplate, false, canSeeAuditDB),
         context);
   }
 
@@ -133,7 +134,8 @@ class ClusterSchemaFetchExecutor {
       List<PartialPath> fullPathList,
       PathPatternTree rawPatternTree,
       boolean withTemplate,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SeriesSchemaFetchStatement(
@@ -142,7 +144,8 @@ class ClusterSchemaFetchExecutor {
                 false,
                 withTemplate,
                 withTemplate,
-                withTemplate),
+                withTemplate,
+                canSeeAuditDB),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -151,20 +154,25 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchDeviceLevelRawSchema(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     return executeSchemaFetchQuery(
-        new DeviceSchemaFetchStatement(patternTree, authorityScope), context);
+        new DeviceSchemaFetchStatement(patternTree, authorityScope, canSeeAuditDB), context);
   }
 
   ClusterSchemaTree fetchMeasurementLevelRawSchema(
-      PathPatternTree patternTree, MPPQueryContext context) {
+      PathPatternTree patternTree, MPPQueryContext context, boolean canSeeAuditDB) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SeriesSchemaFetchStatement(patternTree, templateMap, true, true, false, true), context);
+        new SeriesSchemaFetchStatement(
+            patternTree, templateMap, true, true, false, true, canSeeAuditDB),
+        context);
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(
@@ -228,7 +236,8 @@ class ClusterSchemaFetchExecutor {
                 false,
                 false,
                 true,
-                false),
+                false,
+                true),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -257,6 +266,8 @@ class ClusterSchemaFetchExecutor {
       }
       try (SetThreadName ignored = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
+        ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer =
+            new ClusterSchemaTree.SchemaNodeBatchDeserializer();
         Set<String> databaseSet = new HashSet<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
@@ -274,7 +285,7 @@ class ClusterSchemaFetchExecutor {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, databaseSet);
+            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
           }
         }
         result.setDatabases(databaseSet);
@@ -289,7 +300,11 @@ class ClusterSchemaFetchExecutor {
   }
 
   private void parseFetchedData(
-      Binary data, ClusterSchemaTree resultSchemaTree, Set<String> databaseSet) {
+      Binary data,
+      ClusterSchemaTree resultSchemaTree,
+      ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer,
+      Set<String> databaseSet,
+      MPPQueryContext context) {
     InputStream inputStream = new ByteArrayInputStream(data.getValues());
     try {
       byte type = ReadWriteIOUtils.readByte(inputStream);
@@ -299,11 +314,30 @@ class ClusterSchemaFetchExecutor {
           databaseSet.add(ReadWriteIOUtils.readString(inputStream));
         }
       } else if (type == 1) {
-        resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
+        // for data from old version
+        ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
+        if (context != null) {
+          context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
+        }
+        resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
+      } else if (type == 2 || type == 3) {
+        if (deserializer.isFirstBatch()) {
+          long memCost = ReadWriteIOUtils.readLong(inputStream);
+          if (context != null) {
+            context.reserveMemoryForSchemaTree(memCost);
+          }
+        }
+        deserializer.deserializeFromBatch(inputStream);
+        if (type == 3) {
+          // 'type == 3' indicates this batch is finished
+          resultSchemaTree.mergeSchemaTree(deserializer.finish());
+        }
       } else {
         throw new RuntimeException(
             new MetadataException("Failed to fetch schema because of unrecognized data"));
       }
+    } catch (MemoryNotEnoughException e) {
+      throw e;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

@@ -30,7 +30,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,7 +103,6 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
                   .consumerId(Constants.CONSUMER_NAME_PREFIX + i)
                   .consumerGroupId(groupId)
                   .autoCommit(Constants.AUTO_COMMIT)
-                  .autoCommitIntervalMs(Constants.AUTO_COMMIT_INTERVAL)
                   .fileSaveDir(commonParam.getTargetDir())
                   .buildPullConsumer());
     }
@@ -159,6 +158,7 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
                       throw new RuntimeException(e);
                     }
                     commonParam.getCountFile().incrementAndGet();
+                    consumer.commitSync(message);
                   }
                 } catch (Exception e) {
                   e.printStackTrace(System.out);

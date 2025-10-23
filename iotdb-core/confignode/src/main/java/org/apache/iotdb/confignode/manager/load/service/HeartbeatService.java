@@ -133,12 +133,12 @@ public class HeartbeatService {
                 pingRegisteredDataNodes(
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
-                pingRegisteredAINodes(genMLHeartbeatReq(), getNodeManager().getRegisteredAINodes());
+                pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
               }
             });
   }
 
-  private TDataNodeHeartbeatReq genHeartbeatReq() {
+  protected TDataNodeHeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
@@ -207,13 +207,13 @@ public class HeartbeatService {
     }
   }
 
-  private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
+  protected TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
     req.setTimestamp(System.nanoTime());
     return req;
   }
 
-  private TAIHeartbeatReq genMLHeartbeatReq() {
+  private TAIHeartbeatReq genAIHeartbeatReq() {
     /* Generate heartbeat request */
     TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());

@@ -33,11 +33,16 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
 public class ConfigNodeConfig {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeConfig.class);
 
   /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
@@ -81,6 +86,8 @@ public class ConfigNodeConfig {
   /** SeriesPartitionSlot executor class. */
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+
+  private String dataPartitionAllocationStrategy = "INHERIT";
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
@@ -294,6 +301,8 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
+  private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
+
   private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
@@ -419,6 +428,14 @@ public class ConfigNodeConfig {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public String getDataPartitionAllocationStrategy() {
+    return dataPartitionAllocationStrategy;
+  }
+
+  public void setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    this.dataPartitionAllocationStrategy = dataPartitionAllocationStrategy;
   }
 
   public int getCnRpcMaxConcurrentClientNum() {
@@ -1106,6 +1123,14 @@ public class ConfigNodeConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
+  public int getRatisTransferLeaderTimeoutMs() {
+    return ratisTransferLeaderTimeoutMs;
+  }
+
+  public void setRatisTransferLeaderTimeoutMs(int ratisTransferLeaderTimeoutMs) {
+    this.ratisTransferLeaderTimeoutMs = ratisTransferLeaderTimeoutMs;
+  }
+
   public long getConfigNodeRatisLogMax() {
     return configNodeRatisLogMax;
   }
@@ -1152,7 +1177,7 @@ public class ConfigNodeConfig {
     for (Field configField : ConfigNodeConfig.class.getDeclaredFields()) {
       try {
         String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[]")) {
+        if (configType.contains(IoTDBConstant.STRING_ARRAY_CLASS_NAME)) {
           String[] configList = (String[]) configField.get(this);
           configContent = Arrays.asList(configList).toString();
         } else {
@@ -1165,7 +1190,7 @@ public class ConfigNodeConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.warn("Failed to get field {}", configField, e);
       }
     }
     return configMessage.toString();

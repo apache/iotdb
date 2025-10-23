@@ -68,10 +68,10 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv, Collections.singletonList("insert into root.db.d1(time, s1) values (1, 1)"))) {
-        return;
-      }
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Collections.singletonList("insert into root.db.d1(time, s1) values (1, 1)"),
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -97,7 +97,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
@@ -139,12 +139,11 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Collections.singletonList(
-              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"))) {
-        return;
-      }
+              "insert into root.db.d1(time, s1) values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"),
+          null);
       awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -172,7 +171,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 

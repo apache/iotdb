@@ -24,6 +24,8 @@ import org.apache.iotdb.db.utils.io.StreamSerializable;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,7 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class IDPredicate implements StreamSerializable, BufferSerializable {
+public abstract class IDPredicate implements StreamSerializable, BufferSerializable, Accountable {
 
   public int serializedSize() {
     // type
@@ -124,6 +126,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
   }
 
   public static class NOP extends IDPredicate {
+    public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(NOP.class);
 
     public NOP() {
       super(IDPredicateType.NOP);
@@ -158,10 +161,17 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public String toString() {
       return "NOP";
     }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE;
+    }
   }
 
   public static class FullExactMatch extends IDPredicate {
 
+    public static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(FullExactMatch.class);
     private IDeviceID deviceID;
 
     public FullExactMatch(IDeviceID deviceID) {
@@ -228,10 +238,17 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public String toString() {
       return "FullExactMatch{" + "deviceID=" + deviceID + '}';
     }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOfObject(deviceID);
+    }
   }
 
   public static class SegmentExactMatch extends IDPredicate {
 
+    public static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(SegmentExactMatch.class);
     private String pattern;
     private int segmentIndex;
 
@@ -318,10 +335,16 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
           + segmentIndex
           + '}';
     }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(pattern);
+    }
   }
 
   public static class And extends IDPredicate {
 
+    public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(And.class);
     private final List<IDPredicate> predicates = new ArrayList<>();
 
     public And(IDPredicate... predicates) {
@@ -404,6 +427,11 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public String toString() {
       return "And{" + "predicates=" + predicates + '}';
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOfArrayList(predicates);
     }
   }
 }

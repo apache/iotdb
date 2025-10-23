@@ -21,13 +21,14 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.legacy.PipeData;
-import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
+import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
+import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -41,8 +42,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +103,11 @@ public class IoTDBLegacyPipeReceiverAgent {
       final String remoteAddress,
       final IPartitionFetcher partitionFetcher,
       final ISchemaFetcher schemaFetcher) {
+    if (!validatePipeName(syncIdentityInfo)) {
+      return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+          .setMessage("Invalid pipeName");
+    }
+
     final SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);
     LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
@@ -116,6 +122,10 @@ public class IoTDBLegacyPipeReceiverAgent {
           String.format("Auto register database %s error.", identityInfo.getDatabase()));
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
+  }
+
+  private boolean validatePipeName(final TSyncIdentityInfo info) {
+    return info.isSetPipeName() && !info.getPipeName().contains(File.separator);
   }
 
   private void createConnection(final SyncIdentityInfo identityInfo) {
@@ -141,7 +151,13 @@ public class IoTDBLegacyPipeReceiverAgent {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  new SessionInfo(
+                      0,
+                      new UserEntity(
+                          AuthorityChecker.SUPER_USER_ID,
+                          AuthorityChecker.SUPER_USER,
+                          IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+                      ZoneId.systemDefault()),
                   "",
                   partitionFetcher,
                   schemaFetcher,

@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -82,7 +82,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -92,7 +94,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -108,6 +112,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   public PipeRawTabletInsertionEvent(
@@ -137,6 +148,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -154,7 +167,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final boolean needToReport,
-      final String userName) {
+      final String userId,
+      final String userName,
+      final String cliHostname) {
     this(
         isTableModelEvent,
         databaseName,
@@ -169,7 +184,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         null,
         null,
+        userId,
         userName,
+        cliHostname,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -188,6 +205,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         false,
         null,
         0,
+        null,
+        null,
         null,
         null,
         null,
@@ -215,6 +234,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -224,8 +245,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, true,
-        startTime, endTime);
+        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, null,
+        null, true, startTime, endTime);
   }
 
   @Override
@@ -235,7 +256,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
@@ -244,7 +265,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
@@ -256,13 +277,30 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Actually release the occupied memory.
     tablet = null;
     eventParser = null;
+
+    // Update metrics of the source event
+    if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
+      if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateInsertNodeTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime()
+                    - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime());
+      } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateTsFileTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime());
+      }
+    }
+
     return true;
   }
 
-  @Override
-  protected void reportProgress() {
+  protected void eliminateProgressIndex() {
     if (needToReport) {
-      super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
       }
@@ -297,7 +335,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -315,7 +355,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);

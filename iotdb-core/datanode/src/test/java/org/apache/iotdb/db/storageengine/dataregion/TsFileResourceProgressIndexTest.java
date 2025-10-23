@@ -32,7 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
@@ -131,30 +131,23 @@ public class TsFileResourceProgressIndexTest {
     Assert.assertTrue(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(3, new SimpleProgressIndex(5, 4))));
 
-    Assert.assertTrue(
-        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+    Assert.assertTrue(new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndex()));
 
     indexList.forEach(tsFileResource::updateProgressIndex);
 
+    Assert.assertFalse(new MockProgressIndex(-1).isAfter(tsFileResource.getMaxProgressIndex()));
+    Assert.assertFalse(new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndex()));
+    Assert.assertFalse(new MockProgressIndex(1).isAfter(tsFileResource.getMaxProgressIndex()));
     Assert.assertFalse(
-        new MockProgressIndex(-1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
-    Assert.assertFalse(
-        new MockProgressIndex(INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM - 1).isAfter(tsFileResource.getMaxProgressIndex()));
 
     Assert.assertTrue(
-        new MockProgressIndex(INDEX_NUM).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM).isAfter(tsFileResource.getMaxProgressIndex()));
     Assert.assertTrue(
-        new MockProgressIndex(Integer.MAX_VALUE)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(Integer.MAX_VALUE).isAfter(tsFileResource.getMaxProgressIndex()));
 
     Assert.assertFalse(
-        new MockProgressIndex(1, INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
+        new MockProgressIndex(1, INDEX_NUM - 1).isAfter(tsFileResource.getMaxProgressIndex()));
   }
 
   @Test

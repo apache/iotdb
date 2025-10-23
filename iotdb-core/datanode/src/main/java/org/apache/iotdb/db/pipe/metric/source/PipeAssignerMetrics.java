@@ -21,14 +21,13 @@ package org.apache.iotdb.db.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +118,7 @@ public class PipeAssignerMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull PipeDataRegionAssigner pipeDataRegionAssigner) {
+  public void register(PipeDataRegionAssigner pipeDataRegionAssigner) {
     String dataRegionId = pipeDataRegionAssigner.getDataRegionId();
     synchronized (this) {
       assignerMap.putIfAbsent(dataRegionId, pipeDataRegionAssigner);

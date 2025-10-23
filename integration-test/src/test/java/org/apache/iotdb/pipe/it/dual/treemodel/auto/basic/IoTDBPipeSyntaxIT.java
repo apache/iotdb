@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -88,7 +89,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         }
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       for (final String pipeName : expectedPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
@@ -105,7 +108,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         }
       }
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -164,7 +169,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       } catch (SQLException ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -236,7 +243,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         fail(e.getMessage());
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
@@ -319,7 +328,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       } catch (SQLException ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
@@ -577,7 +588,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       } catch (SQLException ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(9, showPipeResult.size());
     }
   }
@@ -623,10 +636,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(3, showPipeResult.size());
 
       showPipeResult = client.showPipe(new TShowPipeReq().setPipeName("p1")).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -635,6 +651,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       // p1 and p2 share the same connector parameters, so they have the same connector.
       showPipeResult =
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -723,7 +740,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         fail(e.getMessage());
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
     }
   }

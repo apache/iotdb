@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -36,7 +36,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.function.TriFunction;
+import org.apache.tsfile.external.commons.lang3.function.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

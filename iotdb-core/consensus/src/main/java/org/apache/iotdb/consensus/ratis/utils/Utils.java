@@ -30,8 +30,10 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
+import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
+import org.apache.ratis.grpc.GrpcTlsConfig;
 import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
@@ -46,9 +48,23 @@ import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyStore;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +73,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
@@ -243,9 +260,10 @@ public class Utils {
     return TimeDuration.valueOf(maxWaitMs, TimeUnit.MILLISECONDS);
   }
 
-  public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
+  public static Parameters initRatisConfig(RaftProperties properties, RatisConfig config) {
     GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
     GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
+
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolCached(
         properties, config.getGrpc().isAsyncRequestThreadPoolCached());
     GrpcConfigKeys.Server.setAsyncRequestThreadPoolSize(
@@ -345,6 +363,48 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+
+    Parameters parameters = new Parameters();
+    if (config.getGrpc().isEnableSSL()) {
+      String keyStorePath = config.getGrpc().getSslKeyStorePath();
+      String keyStorePassword = config.getGrpc().getSslKeyStorePassword();
+      String trustStorePath = config.getGrpc().getSslTrustStorePath();
+      String trustStorePassword = config.getGrpc().getSslTrustStorePassword();
+      try (InputStream keyStoreStream = Files.newInputStream(Paths.get(keyStorePath));
+          InputStream trustStoreStream = Files.newInputStream(Paths.get(trustStorePath))) {
+        // === 1) create KeyManager ===
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(keyStoreStream, keyStorePassword.toCharArray());
+
+        KeyManagerFactory kmf =
+            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(keyStore, keyStorePassword.toCharArray());
+        KeyManager keyManager = kmf.getKeyManagers()[0];
+
+        // === 2) create TrustManager ===
+        KeyStore trustStore = KeyStore.getInstance("JKS");
+        trustStore.load(trustStoreStream, trustStorePassword.toCharArray());
+
+        TrustManagerFactory tmf =
+            TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(trustStore);
+        TrustManager originalTrustManager = tmf.getTrustManagers()[0];
+
+        // The self-signed certification may not set Subject Alternative Name (SAN)
+        // Thrift with ssl didn't check it, but Grpc did.
+        // Wrap to disable the verification
+        TrustManager trustManager =
+            new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
+        GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
+      } catch (AccessDeniedException e) {
+        LOGGER.error("Failed or truststore to load keystore file");
+      } catch (FileNotFoundException e) {
+        LOGGER.error("keystore or truststore file not found");
+      } catch (Exception e) {
+        LOGGER.error("Failed to read key store or trust store.", e);
+      }
+    }
+    return parameters;
   }
 
   public static boolean anyOf(BooleanSupplier... conditions) {

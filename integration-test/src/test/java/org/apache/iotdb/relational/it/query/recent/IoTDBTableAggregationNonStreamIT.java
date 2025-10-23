@@ -20,23 +20,20 @@
 package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
@@ -50,7 +47,7 @@ public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

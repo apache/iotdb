@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
@@ -394,12 +395,12 @@ public class QueryPlanner {
             window.getFrame().get().getEnd().flatMap(FrameBound::getValue);
 
         // process frame start
-        FrameOffsetPlanAndSymbol plan = planFrameOffset(subPlan, startValue.map(coercions::get));
+        FrameOffsetPlanAndSymbol plan = planFrameOffset(subPlan, startValue, coercions);
         subPlan = plan.getSubPlan();
         frameStart = plan.getFrameOffsetSymbol();
 
         // process frame end
-        plan = planFrameOffset(subPlan, endValue.map(coercions::get));
+        plan = planFrameOffset(subPlan, endValue, coercions);
         subPlan = plan.getSubPlan();
         frameEnd = plan.getFrameOffsetSymbol();
       } else if (window.getFrame().isPresent()) {
@@ -509,22 +510,26 @@ public class QueryPlanner {
                 }
               }
             });
-    GroupNode groupNode =
-        new GroupNode(
-            queryIdAllocator.genPlanNodeId(),
-            subPlan.getRoot(),
-            new OrderingScheme(sortSymbols, sortOrderings),
-            sortKeyOffset);
-    PlanBuilder planBuilder =
-        new PlanBuilder(
-            subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+
+    PlanBuilder planBuilder = null;
+    if (!sortSymbols.isEmpty()) {
+      GroupNode groupNode =
+          new GroupNode(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              new OrderingScheme(sortSymbols, sortOrderings),
+              sortKeyOffset);
+      planBuilder =
+          new PlanBuilder(
+              subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+    }
 
     // create window node
     return new PlanBuilder(
         subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
         new WindowNode(
             queryIdAllocator.genPlanNodeId(),
-            planBuilder.getRoot(),
+            planBuilder != null ? planBuilder.getRoot() : subPlan.getRoot(),
             specification,
             functions.buildOrThrow(),
             Optional.empty(),
@@ -570,7 +575,7 @@ public class QueryPlanner {
       return new FrameBoundPlanAndSymbols(subPlan, Optional.empty(), Optional.empty());
     }
 
-    // First, append filter to validate offset values. They mustn't be negative or null.
+    // Append filter to validate offset values. They mustn't be negative or null.
     Symbol offsetSymbol = coercions.get(frameOffset.get());
     Expression zeroOffset = zeroOfType(symbolAllocator.getTypes().getTableModelType(offsetSymbol));
     Expression predicate =
@@ -655,12 +660,20 @@ public class QueryPlanner {
   }
 
   private FrameOffsetPlanAndSymbol planFrameOffset(
-      PlanBuilder subPlan, Optional<Symbol> frameOffset) {
+      PlanBuilder subPlan, Optional<Expression> frameOffset, PlanAndMappings coercions) {
     if (!frameOffset.isPresent()) {
       return new FrameOffsetPlanAndSymbol(subPlan, Optional.empty());
     }
 
-    Symbol offsetSymbol = frameOffset.get();
+    // Report error if frame offsets are literals and they are negative or null
+    if (frameOffset.get() instanceof LongLiteral) {
+      long frameOffsetValue = ((LongLiteral) frameOffset.get()).getParsedValue();
+      if (frameOffsetValue < 0) {
+        throw new SemanticException("Window frame offset value must not be negative or null");
+      }
+    }
+
+    Symbol offsetSymbol = frameOffset.map(coercions::get).get();
     Type offsetType = symbolAllocator.getTypes().getTableModelType(offsetSymbol);
 
     // Append filter to validate offset values. They mustn't be negative or null.
@@ -740,7 +753,7 @@ public class QueryPlanner {
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new IllegalStateException("From clause must not by empty");
+      throw new SemanticException("From clause must not be empty");
     }
   }
 
@@ -1086,6 +1099,49 @@ public class QueryPlanner {
             new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
 
     return new PlanAndMappings(subPlan, mappings);
+  }
+
+  public static NodeAndMappings coerce(
+      RelationPlan plan, List<Type> types, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    checkArgument(visibleFields.size() == types.size());
+
+    Assignments.Builder assignments = Assignments.builder();
+    ImmutableList.Builder<Symbol> mappings = ImmutableList.builder();
+    for (int i = 0; i < types.size(); i++) {
+      Symbol input = visibleFields.get(i);
+      Type type = types.get(i);
+
+      if (!symbolAllocator.getTypes().getTableModelType(input).equals(type)) {
+        Symbol coerced = symbolAllocator.newSymbol(input.getName(), type);
+        assignments.put(coerced, new Cast(input.toSymbolReference(), toSqlType(type)));
+        mappings.add(coerced);
+      } else {
+        assignments.putIdentity(input);
+        mappings.add(input);
+      }
+    }
+
+    ProjectNode coerced =
+        new ProjectNode(idAllocator.genPlanNodeId(), plan.getRoot(), assignments.build());
+    return new NodeAndMappings(coerced, mappings.build());
+  }
+
+  public static List<Symbol> visibleFields(RelationPlan subPlan) {
+    RelationType descriptor = subPlan.getDescriptor();
+    return descriptor.getAllFields().stream()
+        .filter(field -> !field.isHidden())
+        .map(descriptor::indexOf)
+        .map(subPlan.getFieldMappings()::get)
+        .collect(toImmutableList());
+  }
+
+  public static NodeAndMappings pruneInvisibleFields(RelationPlan plan, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    ProjectNode pruned =
+        new ProjectNode(
+            idAllocator.genPlanNodeId(), plan.getRoot(), Assignments.identity(visibleFields));
+    return new NodeAndMappings(pruned, visibleFields);
   }
 
   public static OrderingScheme translateOrderingScheme(

@@ -6,20 +6,20 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - "rc/*"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - "rc/*"
-      - 'force_ci/**'
+      - "force_ci/**"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -38,8 +38,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
-        os: [ ubuntu-latest ]
+        java: [17]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -49,6 +49,8 @@ jobs:
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:

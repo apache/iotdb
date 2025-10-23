@@ -24,6 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -39,9 +41,16 @@ import java.util.Map.Entry;
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
+  private EncryptParameter encryptParameter;
 
   public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
+    encryptParameter = EncryptUtils.getEncryptParameter();
+  }
+
+  public WritableMemChunkGroup(EncryptParameter encryptParameter) {
+    memChunkMap = new HashMap<>();
+    this.encryptParameter = encryptParameter;
   }
 
   @Override
@@ -70,7 +79,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementName(), k -> new WritableMemChunk(schema));
+        schema.getMeasurementName(), k -> new WritableMemChunk(schema, encryptParameter));
   }
 
   @Override
@@ -180,6 +189,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       WALWriteUtils.write(entry.getKey(), buffer);
       IWritableMemChunk memChunk = entry.getValue();
       memChunk.serializeToWAL(buffer);
+    }
+  }
+
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    for (IWritableMemChunk memChunk : memChunkMap.values()) {
+      memChunk.setEncryptParameter(encryptParameter);
     }
   }
 

@@ -19,16 +19,82 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 
-public interface MemPointIterator extends IPointReader {
-  TsBlock getBatch(int tsBlockIndex);
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-  boolean hasNextBatch();
+public abstract class MemPointIterator implements IPointReader {
 
-  TsBlock nextBatch();
+  protected final Ordering scanOrder;
+  // Only used when returning by batch
+  protected Filter pushDownFilter;
+  // Only used when returning by batch
+  protected PaginationController paginationController =
+      PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+  protected TimeRange timeRange;
+  protected List<TsBlock> tsBlocks;
+  protected boolean streamingQueryMemChunk = true;
 
-  void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times);
+  public MemPointIterator(Ordering scanOrder) {
+    this.scanOrder = scanOrder;
+  }
+
+  public abstract TsBlock getBatch(int tsBlockIndex);
+
+  // When returned by nextBatch, the pagination controller and push down filter are applied. This
+  // can only be used when there is no overlap with other pages.
+  public abstract boolean hasNextBatch();
+
+  public abstract TsBlock nextBatch();
+
+  public abstract void encodeBatch(
+      IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times);
+
+  public void setPushDownFilter(Filter pushDownFilter) {
+    this.pushDownFilter = pushDownFilter;
+  }
+
+  public void setLimitAndOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
+  }
+
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    this.timeRange = timeRange;
+    skipToCurrentTimeRangeStartPosition();
+  }
+
+  protected void skipToCurrentTimeRangeStartPosition() {}
+
+  protected boolean isCurrentTimeExceedTimeRange(long time) {
+    return timeRange != null
+        && (scanOrder.isAscending() ? (time > timeRange.getMax()) : (time < timeRange.getMin()));
+  }
+
+  public void setStreamingQueryMemChunk(boolean streamingQueryMemChunk) {
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
+  }
+
+  protected void addTsBlock(TsBlock tsBlock) {
+    if (streamingQueryMemChunk) {
+      return;
+    }
+    tsBlocks = tsBlocks == null ? new ArrayList<>() : tsBlocks;
+    tsBlocks.add(tsBlock);
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (tsBlocks != null) {
+      tsBlocks.clear();
+    }
+  }
 }

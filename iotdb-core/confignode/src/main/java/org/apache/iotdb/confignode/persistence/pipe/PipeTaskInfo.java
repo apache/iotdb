@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -34,9 +36,9 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -214,9 +216,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         new PipeStaticMeta(
             pipeStaticMetaFromCoordinator.getPipeName(),
             pipeStaticMetaFromCoordinator.getCreationTime(),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getSourceParameters().getAttribute()),
             new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute()),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
+            new HashMap<>(pipeStaticMetaFromCoordinator.getSinkParameters().getAttribute()));
 
     // 1. In modify mode, based on the passed attributes:
     //   1.1. if they are empty, the original attributes are filled directly.
@@ -225,11 +227,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
       if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
         alterPipeRequest.setExtractorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
+            copiedPipeStaticMetaFromCoordinator.getSourceParameters().getAttribute());
       } else {
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator
-                .getExtractorParameters()
+                .getSourceParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getExtractorAttributes()))
                 .getAttribute());
@@ -253,11 +255,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+            copiedPipeStaticMetaFromCoordinator.getSinkParameters().getAttribute());
       } else {
         alterPipeRequest.setConnectorAttributes(
             copiedPipeStaticMetaFromCoordinator
-                .getConnectorParameters()
+                .getSinkParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getConnectorAttributes()))
                 .getAttribute());
@@ -396,10 +398,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void validatePipePluginUsageByPipeInternal(String pluginName) {
     Iterable<PipeMeta> pipeMetas = getPipeMetaList();
     for (PipeMeta pipeMeta : pipeMetas) {
-      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getExtractorParameters();
+      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getSourceParameters();
       final String extractorPluginName =
           extractorParameters.getStringOrDefault(
-              Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+              Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
       if (pluginName.equals(extractorPluginName)) {
         String exceptionMessage =
@@ -420,10 +422,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
         throw new PipeException(exceptionMessage);
       }
 
-      PipeParameters connectorParameters = pipeMeta.getStaticMeta().getConnectorParameters();
+      PipeParameters connectorParameters = pipeMeta.getStaticMeta().getSinkParameters();
       final String connectorPluginName =
           connectorParameters.getStringOrDefault(
-              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+              Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
               IOTDB_THRIFT_CONNECTOR.getPipePluginName());
       if (pluginName.equals(connectorPluginName)) {
         String exceptionMessage =
@@ -621,17 +623,21 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
-                          } else {
+                          } else if (!PipeTaskAgent.isHistoryOnlyPipe(
+                                  pipeMeta.getStaticMeta().getSourceParameters())
+                              || !consensusGroupId
+                                  .getType()
+                                  .equals(TConsensusGroupType.DataRegion)) {
                             // If CN does not contain the region group, it means the data
                             // region group is newly added.
+                            // We do not handle history only pipes for new data regions
+
+                            // Newly added leader
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
-                                  new PipeTaskMeta(
-                                      MinimumProgressIndex.INSTANCE,
-                                      newLeader,
-                                      consensusGroupId.getId(),
-                                      false));
+                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader)
+                                      .markAsNewlyAdded());
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
@@ -659,7 +665,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleMetaChangesInternal(final PipeHandleMetaChangePlan plan) {
-    LOGGER.info("Handling pipe meta changes ...");
+    LOGGER.debug("Handling pipe meta changes ...");
 
     pipeMetaKeeper.clear();
 
@@ -676,7 +682,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta);
-              logger.ifPresent(l -> l.info("Recording pipe meta: {}", pipeMeta));
+              logger.ifPresent(l -> l.debug("Recording pipe meta: {}", pipeMeta));
             });
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -805,7 +811,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                  runtimeMeta.onSetPipeDroppedOrStopped();
                   runtimeMeta.setIsStoppedByRuntimeException(true);
 
                   final Map<Integer, PipeRuntimeException> exceptionMap =

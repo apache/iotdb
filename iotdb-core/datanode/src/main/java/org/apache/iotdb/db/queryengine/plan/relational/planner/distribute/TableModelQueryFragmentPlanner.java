@@ -34,6 +34,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
@@ -95,6 +98,45 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
 
     fragmentInstanceList.forEach(
         fi -> fi.setDataNodeFINum(dataNodeFIMap.get(fi.getHostDataNode()).size()));
+
+    if (queryContext.needUpdateScanNumForLastQuery()) {
+      dataNodeFIMap
+          .values()
+          .forEach(
+              fragmentInstances -> {
+                Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceCountMapOfEachTable =
+                    new HashMap<>();
+                fragmentInstances.forEach(
+                    fragmentInstance ->
+                        updateScanNum(
+                            fragmentInstance.getFragment().getPlanNodeTree(),
+                            deviceCountMapOfEachTable));
+
+                // For less size of serde, remove the device which the region count is 1
+                deviceCountMapOfEachTable
+                    .values()
+                    .forEach(deviceMap -> deviceMap.entrySet().removeIf(v -> v.getValue() == 1));
+              });
+    }
+  }
+
+  private void updateScanNum(
+      PlanNode planNode,
+      Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceCountMapOfEachTable) {
+    if (planNode instanceof AggregationTableScanNode) {
+      AggregationTableScanNode aggregationTableScanNode = (AggregationTableScanNode) planNode;
+      Map<DeviceEntry, Integer> deviceMap =
+          deviceCountMapOfEachTable.computeIfAbsent(
+              aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
+
+      aggregationTableScanNode
+          .getDeviceEntries()
+          .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      // Each AggTableScanNode with the same complete tableName in this DataNode holds this map
+      aggregationTableScanNode.setDeviceCountMap(deviceMap);
+      return;
+    }
+    planNode.getChildren().forEach(node -> updateScanNum(node, deviceCountMapOfEachTable));
   }
 
   private void recordPlanNodeRelation(PlanNode root, PlanFragmentId planFragmentId) {
@@ -155,6 +197,7 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
       fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
+    fragment.setIndexInFragmentInstanceList(fragmentInstanceList.size());
     fragmentInstanceList.add(fragmentInstance);
   }
 }

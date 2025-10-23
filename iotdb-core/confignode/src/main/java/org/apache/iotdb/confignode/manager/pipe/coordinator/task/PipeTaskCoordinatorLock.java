@@ -41,12 +41,12 @@ public class PipeTaskCoordinatorLock {
   public void lock() {
     try {
       final long id = idGenerator.incrementAndGet();
-      LOGGER.info(
+      LOGGER.debug(
           "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
           id,
           Thread.currentThread().getName());
       deque.put(id);
-      LOGGER.info(
+      LOGGER.debug(
           "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
           id,
           Thread.currentThread().getName());
@@ -61,12 +61,12 @@ public class PipeTaskCoordinatorLock {
   public boolean tryLock() {
     try {
       final long id = idGenerator.incrementAndGet();
-      LOGGER.info(
+      LOGGER.debug(
           "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
           id,
           Thread.currentThread().getName());
       if (deque.offer(id, 10, TimeUnit.SECONDS)) {
-        LOGGER.info(
+        LOGGER.debug(
             "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
             id,
             Thread.currentThread().getName());
@@ -94,7 +94,7 @@ public class PipeTaskCoordinatorLock {
           "PipeTaskCoordinator lock released by thread {} but the lock is not acquired by any thread",
           Thread.currentThread().getName());
     } else {
-      LOGGER.info(
+      LOGGER.debug(
           "PipeTaskCoordinator lock (id: {}) released by thread {}",
           id,
           Thread.currentThread().getName());

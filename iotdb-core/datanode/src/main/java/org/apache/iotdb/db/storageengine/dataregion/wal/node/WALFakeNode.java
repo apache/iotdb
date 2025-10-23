@@ -44,9 +44,9 @@ public class WALFakeNode implements IWALNode {
 
   public WALFakeNode(Status status, Exception cause) {
     this.status = status;
-    this.successListener = new WALFlushListener(false, null);
+    this.successListener = new WALFlushListener(false);
     this.successListener.succeed();
-    this.failListener = new WALFlushListener(false, null);
+    this.failListener = new WALFlushListener(false);
     this.failListener.fail(cause);
   }
 

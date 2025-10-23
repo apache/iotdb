@@ -20,16 +20,16 @@
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 
-public class PrefixTreePattern extends TreePattern {
+public class PrefixTreePattern extends SingleTreePattern {
 
   public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
     super(isTreeModelDataAllowedToBeCaptured, pattern);
@@ -41,7 +41,7 @@ public class PrefixTreePattern extends TreePattern {
 
   @Override
   public String getDefaultPattern() {
-    return PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
+    return PipeSourceConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
   }
 
   @Override

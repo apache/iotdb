@@ -77,6 +77,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -99,6 +100,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -363,7 +365,8 @@ public class CnToDnInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         CnToDnAsyncRequestType.KILL_QUERY_INSTANCE,
         (req, client, handler) ->
-            client.killQueryInstance((String) req, (DataNodeTSStatusRPCHandler) handler));
+            client.killQueryInstance(
+                (TKillQueryInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.SET_SPACE_QUOTA,
         (req, client, handler) ->
@@ -391,6 +394,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INSERT_RECORD,
+        (req, client, handler) ->
+            client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.UPDATE_TABLE,
         (req, client, handler) ->
@@ -463,6 +470,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.STOP_AND_CLEAR_DATA_NODE,
         (req, client, handler) ->
             client.stopAndClearDataNode((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ENABLE_SEPARATION_OF_ADMIN_POWERS,
+        (req, client, handler) ->
+            client.enableSeparationOfAdminPower((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

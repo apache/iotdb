@@ -65,11 +65,15 @@ public:
         AbstractSessionBuilder::database = database;
         return this;
     }
-    TableSession* build() {
+    TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
+        AbstractSessionBuilder::nodeUrls = nodeUrls;
+        return this;
+    }
+    std::shared_ptr<TableSession> build() {
         sqlDialect = "table";
-        Session* newSession = new Session(this);
+        auto newSession = std::make_shared<Session>(this);
         newSession->open(false);
-        return new TableSession(newSession);
+        return std::make_shared<TableSession>(newSession);
     }
 };
 

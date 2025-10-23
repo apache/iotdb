@@ -52,6 +52,42 @@ public class AuthorTreePlan extends AuthorPlan {
    * @param password password
    * @param permissions permissions
    * @param grantOpt with grant option, only grant statement can set grantOpt = true
+   * @param maxSessioPerUser maxSessionPerUser of user
+   * @param minSessionPerUser minSessionPerUser of user
+   */
+  public AuthorTreePlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String password,
+      final String newPassword,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final List<PartialPath> nodeNameList,
+      final Integer maxSessioPerUser,
+      final Integer minSessionPerUser) {
+    super(
+        authorType,
+        userName,
+        roleName,
+        password,
+        newPassword,
+        grantOpt,
+        maxSessioPerUser,
+        minSessionPerUser);
+    this.permissions = permissions;
+    this.nodeNameList = nodeNameList;
+  }
+
+  /**
+   * {@link AuthorTreePlan} Constructor.
+   *
+   * @param authorType author type
+   * @param userName user name
+   * @param roleName role name
+   * @param password password
+   * @param permissions permissions
+   * @param grantOpt with grant option, only grant statement can set grantOpt = true
    * @param nodeNameList node name in Path structure
    */
   public AuthorTreePlan(
@@ -63,9 +99,35 @@ public class AuthorTreePlan extends AuthorPlan {
       final Set<Integer> permissions,
       final boolean grantOpt,
       final List<PartialPath> nodeNameList) {
-    super(authorType, userName, roleName, password, newPassword, grantOpt);
+    this(
+        authorType,
+        userName,
+        roleName,
+        password,
+        newPassword,
+        permissions,
+        grantOpt,
+        nodeNameList,
+        0,
+        "");
+  }
+
+  public AuthorTreePlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String password,
+      final String newPassword,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final List<PartialPath> nodeNameList,
+      final long executedByUserId,
+      final String newUsername) {
+    super(authorType, userName, roleName, password, newPassword, grantOpt, -1, -1);
     this.permissions = permissions;
     this.nodeNameList = nodeNameList;
+    this.executedByUserId = executedByUserId;
+    this.newUsername = newUsername;
   }
 
   public Set<Integer> getPermissions() {
@@ -118,6 +180,8 @@ public class AuthorTreePlan extends AuthorPlan {
         + super.getGrantOpt()
         + ", paths:"
         + nodeNameList
+        + ", newUsername:"
+        + newUsername
         + "]";
   }
 
@@ -128,6 +192,19 @@ public class AuthorTreePlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
     BasicStructureSerDeUtil.write(newPassword, stream);
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
+      BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
+      BasicStructureSerDeUtil.write(minSessionPerUser, stream);
+    }
+    if (authorType == ConfigPhysicalPlanType.RenameUser) {
+      BasicStructureSerDeUtil.write(newUsername, stream);
+    }
+    if (authorType == ConfigPhysicalPlanType.DropUserV2
+        || authorType == ConfigPhysicalPlanType.UpdateUserV2) {
+      BasicStructureSerDeUtil.write(executedByUserId, stream);
+    }
     if (permissions == null) {
       stream.write((byte) 0);
     } else {
@@ -150,6 +227,19 @@ public class AuthorTreePlan extends AuthorPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     newPassword = BasicStructureSerDeUtil.readString(buffer);
+    ConfigPhysicalPlanType authorType = getAuthorType();
+    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
+      maxSessionPerUser = buffer.getInt();
+      minSessionPerUser = buffer.getInt();
+    }
+    if (authorType == ConfigPhysicalPlanType.RenameUser) {
+      newUsername = BasicStructureSerDeUtil.readString(buffer);
+    }
+    if (authorType == ConfigPhysicalPlanType.DropUserV2
+        || authorType == ConfigPhysicalPlanType.UpdateUserV2) {
+      executedByUserId = buffer.getLong();
+    }
     if (buffer.get() == (byte) 0) {
       this.permissions = null;
     } else {

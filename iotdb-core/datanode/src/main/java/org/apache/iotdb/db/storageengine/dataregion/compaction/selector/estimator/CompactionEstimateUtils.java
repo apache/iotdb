@@ -26,12 +26,14 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
+import org.apache.tsfile.file.metadata.statistics.StringStatistics;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -112,6 +114,10 @@ public class CompactionEstimateUtils {
                 currentSeriesRamSize +=
                     chunkMetadata.getStatistics().getRetainedSizeInBytes()
                         - BinaryStatistics.INSTANCE_SIZE;
+              } else if (dataType == TSDataType.STRING) {
+                currentSeriesRamSize +=
+                    chunkMetadata.getStatistics().getRetainedSizeInBytes()
+                        - StringStatistics.INSTANCE_SIZE;
               } else {
                 break;
               }
@@ -164,7 +170,10 @@ public class CompactionEstimateUtils {
       for (TsFileResource resource : resources) {
         cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
-            new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
+            new CompactionTsFileReader(
+                resource.getTsFilePath(),
+                taskType,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
           for (Map.Entry<IDeviceID, Long> entry :
               getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);

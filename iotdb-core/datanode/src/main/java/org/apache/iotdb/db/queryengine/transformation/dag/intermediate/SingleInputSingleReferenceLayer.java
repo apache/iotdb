@@ -37,7 +37,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,7 +180,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
             }
 
             Column[] columns = parentLayerReader.current();
-            TimeColumn times = (TimeColumn) columns[1];
+            Column times = columns[1];
             Column values = columns[0];
 
             tvList.putColumn(times, values);
@@ -221,12 +220,12 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           }
           // Generate data
           Column[] columns = parentLayerReader.current();
-          TimeColumn times = (TimeColumn) columns[1];
+          Column times = columns[1];
           Column values = columns[0];
           // Put data into container
           tvList.putColumn(times, values);
           parentLayerReader.consumedAll();
-          currentEndTime = times.getEndTime();
+          currentEndTime = times.getLong(times.getPositionCount() - 1);
           // Increase nextIndexEnd
           nextIndexEnd += cachedEndTimeColumn.getPositionCount() - cachedEndConsumed;
           // Update cache
@@ -330,7 +329,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 0;
 
-      private TimeColumn cachedTimes;
+      private Column cachedTimes;
       private int cachedConsumed;
 
       @Override
@@ -373,7 +372,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           }
 
           if (!findWindow) {
-            if (cachedTimes.getEndTime() < displayWindowEnd) {
+            if (cachedTimes.getLong(cachedTimes.getPositionCount() - 1) < displayWindowEnd) {
               YieldableState state = yieldAndCache();
               if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -402,12 +401,12 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           }
         }
         // Initialize essential information
-        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getStartTime());
+        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getLong(0));
         hasAtLeastOneRow = tvList.size() != 0;
         isFirstIteration = false;
 
         // Set initial nextIndexBegin
-        long currentEndTime = cachedTimes.getEndTime();
+        long currentEndTime = cachedTimes.getLong(cachedTimes.getPositionCount() - 1);
         // Find corresponding block
         while (currentEndTime < nextWindowTimeBegin) {
           // Consume all data
@@ -441,7 +440,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           return state;
         }
         Column[] columns = parentLayerReader.current();
-        TimeColumn times = (TimeColumn) columns[1];
+        Column times = columns[1];
         Column values = columns[0];
 
         tvList.putColumn(times, values);
@@ -497,7 +496,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 0;
 
-      private TimeColumn cachedTimes;
+      private Column cachedTimes;
       private Column cachedValues;
       private int cachedConsumed;
 
@@ -542,7 +541,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           }
 
           if (!findWindow) {
-            if (cachedTimes.getEndTime() < displayWindowEnd) {
+            if (cachedTimes.getLong(cachedTimes.getPositionCount() - 1) < displayWindowEnd) {
               YieldableState state = yieldAndCache();
               if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -571,12 +570,12 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           }
         }
         // Initialize essential information
-        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getStartTime());
+        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getLong(0));
         hasAtLeastOneRow = tvList.size() != 0;
         isFirstIteration = false;
 
         // Set initial nextIndexBegin
-        long currentEndTime = cachedTimes.getEndTime();
+        long currentEndTime = cachedTimes.getLong(cachedTimes.getPositionCount() - 1);
         // Find corresponding block
         while (currentEndTime < nextWindowTimeBegin) {
           // Consume all data
@@ -610,7 +609,7 @@ public class SingleInputSingleReferenceLayer extends IntermediateLayer {
           return state;
         }
         Column[] columns = parentLayerReader.current();
-        TimeColumn times = (TimeColumn) columns[1];
+        Column times = columns[1];
         Column values = columns[0];
 
         tvList.putColumn(times, values);

@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -29,7 +32,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -45,16 +47,16 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   private final int[] rowIndices;
 
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   // Min-Heap: minimal timestamp; if same timestamp, maximum TVList index
-  private final PriorityQueue<Pair<Long, Integer>> minHeap =
-      new PriorityQueue<>(
-          (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
+  private final PriorityQueue<Pair<Long, Integer>> heap;
 
   public MergeSortMultiAlignedTVListIterator(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
@@ -65,6 +67,9 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
@@ -76,11 +81,28 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.iteratorIndices = new int[tsDataTypeList.size()];
     this.rowIndices = new int[tsDataTypeList.size()];
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
+    this.heap =
+        new PriorityQueue<>(
+            scanOrder.isAscending()
+                ? (a, b) ->
+                    a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
+                : (a, b) ->
+                    a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < alignedTvListIterators.size(); i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -89,14 +111,14 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     for (int i : probeIterators) {
       AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
       if (iterator.hasNextTimeValuePair()) {
-        minHeap.add(new Pair<>(iterator.currentTime(), i));
+        heap.add(new Pair<>(iterator.currentTime(), i));
       }
     }
     probeIterators.clear();
 
-    while (!minHeap.isEmpty() && !hasNext) {
+    while (!heap.isEmpty() && !hasNext) {
       bitMap.reset();
-      Pair<Long, Integer> top = minHeap.poll();
+      Pair<Long, Integer> top = heap.poll();
       currentTime = top.left;
       probeIterators.add(top.right);
 
@@ -109,18 +131,34 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             .isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
+        // check valueColumnsDeletionList
+        if (valueColumnsDeletionList != null
+            && isPointDeleted(
+                currentTime,
+                valueColumnsDeletionList.get(columnIndex),
+                valueColumnDeleteCursor.get(columnIndex),
+                scanOrder)) {
+          iteratorIndices[columnIndex] = -1;
+          bitMap.mark(columnIndex);
+        }
       }
       hasNext = true;
 
       // duplicated timestamps
-      while (!minHeap.isEmpty() && minHeap.peek().left == currentTime) {
-        Pair<Long, Integer> element = minHeap.poll();
+      while (!heap.isEmpty() && heap.peek().left == currentTime) {
+        Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
 
         for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
           // if current column null, it needs update
+          int iteratorIndex = currentIteratorIndex(columnIndex);
+          if (iteratorIndex == -1) {
+            // -1 means all point of this timestamp was deleted by Deletion and no further
+            // processing is required.
+            continue;
+          }
           if (alignedTvListIterators
-              .get(iteratorIndices[columnIndex])
+              .get(iteratorIndex)
               .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
             rowIndices[columnIndex] =
@@ -137,7 +175,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
               && isPointDeleted(
                   currentTime,
                   valueColumnsDeletionList.get(columnIndex),
-                  valueColumnDeleteCursor.get(columnIndex))) {
+                  valueColumnDeleteCursor.get(columnIndex),
+                  scanOrder)) {
             iteratorIndices[columnIndex] = -1;
             bitMap.mark(columnIndex);
           }
@@ -151,7 +190,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
           AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(idx);
           iterator.next();
           if (iterator.hasNextTimeValuePair()) {
-            minHeap.add(new Pair<>(iterator.currentTime(), idx));
+            heap.add(new Pair<>(iterator.currentTime(), idx));
           } else {
             it.remove();
           }
@@ -178,8 +217,12 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         ValueChunkWriter valueChunkWriter =
             alignedChunkWriterImpl.getValueChunkWriterByIndex(columnIndex);
-        AlignedTVList alignedTVList =
-            alignedTvListIterators.get(currentIteratorIndex(columnIndex)).getAlignedTVList();
+        int iteratorIndex = currentIteratorIndex(columnIndex);
+        if (iteratorIndex == -1) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+        AlignedTVList alignedTVList = alignedTvListIterators.get(iteratorIndex).getAlignedTVList();
 
         // sanity check
         int validColumnIndex =
@@ -262,5 +305,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.alignedTvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

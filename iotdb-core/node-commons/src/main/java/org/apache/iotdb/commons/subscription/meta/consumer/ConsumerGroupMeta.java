@@ -24,7 +24,6 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -263,7 +262,7 @@ public class ConsumerGroupMeta {
   }
 
   private Set<String> removeSubscriptionInternal(
-      @NonNull final String consumerId, final Set<String> topics) {
+      final String consumerId, final Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(

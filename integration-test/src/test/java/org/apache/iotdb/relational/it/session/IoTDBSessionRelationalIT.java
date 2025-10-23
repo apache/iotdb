@@ -26,13 +26,16 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.TableSessionBuilder;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -47,6 +50,7 @@ import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -1226,6 +1230,86 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void autoCreateChineseCharacterTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db1");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一表一\"", iterator.getString(1));
+      }
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db2\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "\"表一\"",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("tag1", rowIndex, "tag:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+          session.insert(tablet);
+          tablet.reset();
+        }
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("show tables from db2");
+      DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertEquals("\"表一\"", iterator.getString(1));
+      }
+    }
+  }
+
+  @Test
   public void insertNonExistTableTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1282,6 +1366,40 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
+  @Test
+  public void insertWrongFieldNumTest() throws IoTDBConnectionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "create table wrong_field_num (s1 int32, s2 int32, s3 int32)");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, s3, time) values (1, 2, 3)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals("701: TimeColumnIndex out of bound: 3-3", e.getMessage());
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, time, s3) values (1, 2, 3)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "701: Inconsistent numbers of non-time column names and values: 3-2", e.getMessage());
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "insert into wrong_field_num(s1, s2, time) values (1, 2, 3, 4)");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "701: Inconsistent numbers of non-time column names and values: 2-3", e.getMessage());
+    }
+  }
+
   private void testOneCastWithTablet(
       TSDataType from, TSDataType to, int testNum, boolean partialInsert)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1334,12 +1452,22 @@ public class IoTDBSessionRelationalIT {
         rec = dataSet.next();
         assertEquals(1, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
-        if (to == TSDataType.BLOB) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
-        } else if (to == TSDataType.DATE) {
-          assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
-        } else {
-          assertEquals(genValue(to, 1).toString(), rec.getFields().get(2).toString());
+
+        switch (to) {
+          case BLOB:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+            break;
+          case DATE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+            break;
+          case FLOAT:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
+            break;
+          case DOUBLE:
+            assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
+            break;
+          default:
+            assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
         }
         assertFalse(dataSet.hasNext());
       } else {
@@ -1503,17 +1631,19 @@ public class IoTDBSessionRelationalIT {
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
 
-    for (TSDataType from : dataTypes) {
-      for (TSDataType to : dataTypes) {
-        System.out.println("from: " + from + ", to: " + to);
-        testOneCastWithTablet(from, to, testNum, false);
-        System.out.println("partial insert");
-        testOneCastWithTablet(from, to, testNum, true);
+    try {
+      for (TSDataType from : dataTypes) {
+        for (TSDataType to : dataTypes) {
+          System.out.println("from: " + from + ", to: " + to);
+          testOneCastWithTablet(from, to, testNum, false);
+          System.out.println("partial insert");
+          testOneCastWithTablet(from, to, testNum, true);
+        }
       }
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+      }
     }
   }
 
@@ -1856,6 +1986,9 @@ public class IoTDBSessionRelationalIT {
           WALEntry entry;
           try (WALReader walReader = new WALReader(walFile)) {
             entry = walReader.next();
+            if (!(entry.getValue() instanceof RelationalInsertTabletNode)) {
+              continue;
+            }
             RelationalInsertTabletNode tabletNode = (RelationalInsertTabletNode) entry.getValue();
             assertTrue(
                 Arrays.stream(tabletNode.getColumnCategories())
@@ -1873,6 +2006,42 @@ public class IoTDBSessionRelationalIT {
     } finally {
       EnvFactory.getEnv().cleanClusterEnvironment();
       EnvFactory.getEnv().initClusterEnvironment();
+    }
+  }
+
+  @Test
+  public void testSqlInsertWithExpiredTTL()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv.getConfig().getCommonConfig().setDataReplicationFactor(2);
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.iot.IoTConsensus");
+    simpleEnv.initClusterEnvironment(1, 3);
+
+    try (ITableSession session = simpleEnv.getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
+      session.executeNonQueryStatement("USE test");
+
+      session.executeNonQueryStatement("CREATE TABLE test_sql_ttl (s1 INT32)");
+      session.executeNonQueryStatement("ALTER TABLE test_sql_ttl SET PROPERTIES TTL=1");
+
+      for (DataNodeWrapper dataNodeWrapper : simpleEnv.getDataNodeWrapperList()) {
+        TableSessionBuilder tableSessionBuilder = new TableSessionBuilder();
+        tableSessionBuilder.nodeUrls(
+            Collections.singletonList(dataNodeWrapper.getIpAndPortString()));
+        tableSessionBuilder.database("test");
+        try (ITableSession subSession = tableSessionBuilder.build()) {
+          subSession.executeNonQueryStatement("INSERT INTO test_sql_ttl (time, s1) VALUES (10, 1)");
+        } catch (StatementExecutionException e) {
+          if (!e.getMessage().contains("is less than ttl time bound")) {
+            throw e;
+          }
+        }
+      }
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
   }
 }

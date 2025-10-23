@@ -139,7 +139,7 @@ schema_replication_factor=1
 # These consensus protocols are currently supported:
 # 1. org.apache.iotdb.consensus.ratis.RatisConsensus
 # 2. org.apache.iotdb.consensus.simple.SimpleConsensus   (The schema_replication_factor can only be set to 1)
-# effectiveMode: first_restart
+# effectiveMode: first_start
 # Datatype: string
 schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
 
@@ -438,26 +438,41 @@ dn_metric_internal_reporter_type=MEMORY
 ### SSL Configuration
 ####################
 
-# Does dn_rpc_port enable SSL
+# Whether enable SSL for thrift client connections
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_thrift_ssl=false
 
-# Rest Service enabled SSL
+# Whether enable SSL for Rest Service
 # effectiveMode: restart
 # Datatype: boolean
+# Privilege: SECURITY
 enable_https=false
 
 # SSL key store path
 # linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
 # windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
 # effectiveMode: restart
+# Privilege: SECURITY
 key_store_path=
 
 # SSL key store password
 # effectiveMode: restart
 # Datatype: String
+# Privilege: SECURITY
 key_store_pwd=
+
+# SSL trust store path
+# linux e.g. /home/iotdb/server.truststore (absolute path) or server.truststore (relative path)
+# windows e.g. C:\\iotdb\\server.truststore (absolute path) or server.truststore (relative path)
+# effectiveMode: restart
+trust_store_path=
+
+# SSL trust store password
+# effectiveMode: restart
+# Datatype: String
+trust_store_pwd=
 
 ####################
 ### Connection Configuration
@@ -588,15 +603,6 @@ cache_init_num=10
 # effectiveMode: restart
 # Datatype: boolean
 client_auth=false
-
-# SSL trust store path
-# effectiveMode: restart
-trust_store_path=""
-
-# SSL trust store password.
-# effectiveMode: restart
-# Datatype: String
-trust_store_pwd=""
 
 # SSL timeout (in seconds)
 # effectiveMode: restart
@@ -805,6 +811,11 @@ device_path_cache_proportion=0.05
 # Datatype: double
 write_memory_variation_report_proportion=0.001
 
+# The maximum memory size in bytes for DataNode to table schema cache
+# effectiveMode: restart
+# Datatype: long
+data_node_table_schema_cache_max_size_in_bytes=1048576
+
 # When an inserting is rejected, waiting period (in ms) to check system again, 50 by default.
 # If the insertion has been rejected and the read load is low, it can be set larger.
 # effectiveMode: restart
@@ -977,6 +988,36 @@ default_double_encoding=GORILLA
 # Datatype: TSEncoding
 default_text_encoding=PLAIN
 
+# BOOLEAN compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+boolean_compressor=LZ4
+
+# INT32/DATE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int32_compressor=LZ4
+
+# INT64/TIMESTAMP compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+int64_compressor=LZ4
+
+# FLOAT compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+float_compressor=LZ4
+
+# DOUBLE compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+double_compressor=LZ4
+
+# TEXT/BINARY/BLOB compression when creating schema automatically is enabled
+# effectiveMode: hot_reload
+# Datatype: TSEncoding
+text_compressor=LZ4
+
 ####################
 ### Query Configurations
 ####################
@@ -1070,9 +1111,18 @@ mode_map_size_threshold=10000
 batch_size=100000
 
 # The memory for external sort in sort operator, when the data size is smaller than sort_buffer_size_in_bytes, the sort operator will use in-memory sort.
-# effectiveMode: restart
+# if sort_buffer_size_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if sort_buffer_size_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
 # Datatype: long
-sort_buffer_size_in_bytes=1048576
+sort_buffer_size_in_bytes=0
+
+# The maximum mod entries size that each FragmentInstance can cache.
+# if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
+# if mods_cache_size_limit_per_fi_in_bytes > 0, the specified value will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+mods_cache_size_limit_per_fi_in_bytes=0
 
 # The threshold of operator count in the result set of EXPLAIN ANALYZE, if the number of operator in the result set is larger than this threshold, operator will be merged.
 # effectiveMode: hot_reload
@@ -1249,6 +1299,7 @@ tier_ttl_in_ms=-1
 ####################
 ### Compaction Configurations
 ####################
+
 # sequence space compaction: only compact the sequence files
 # effectiveMode: hot_reload
 # Datatype: boolean
@@ -1453,14 +1504,14 @@ max_wal_nodes_num=0
 # Duration a wal flush operation will wait before calling fsync in the async mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 10ms-2000ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_async_mode_fsync_delay_in_ms=1000
 
 # Duration a wal flush operation will wait before calling fsync in the sync mode
 # A duration greater than 0 batches multiple wal fsync calls into one. This is useful when disks are slow or WAL write contention exists.
 # Notice: this value affects write performance significantly, values in the range of 0ms-10ms are recommended.
-# effective: hot_reload
+# effectiveMode: hot_reload
 # Datatype: long
 wal_sync_mode_fsync_delay_in_ms=3
 
@@ -1559,6 +1610,7 @@ region_migration_speed_limit_bytes_per_second = 50331648
 ####################
 ### Blob Allocator Configuration
 ####################
+
 # Whether to enable binary allocator.
 # For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
 # effectiveMode: hot_reload
@@ -1640,10 +1692,12 @@ compressor=LZ4
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
 # Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
+# Privilege: SECURITY
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
 
 # If OpenIdAuthorizer is enabled, then openID_url must be set.
 # effectiveMode: restart
+# Privilege: SECURITY
 openID_url=
 
 # encryption provider class
@@ -1907,6 +1961,11 @@ data_region_ratis_max_sleep_time_ms=10000
 ratis_first_election_timeout_min_ms=50
 ratis_first_election_timeout_max_ms=150
 
+# the timeout threshold for transferring leader in ratis
+# effectiveMode: restart
+# Datatype: int
+ratis_transfer_leader_timeout_ms=30000
+
 # preserve certain logs when take snapshot and purge
 # effectiveMode: restart
 # Datatype: int
@@ -1931,6 +1990,7 @@ data_region_ratis_periodic_snapshot_interval=86400
 ####################
 ### IoTConsensusV2 Configuration
 ####################
+
 # Default event buffer size for connector and receiver in iot consensus v2
 # effectiveMode: restart
 # DataType: int
@@ -2092,17 +2152,20 @@ load_active_listening_check_interval_seconds=5
 # UPDATE_NO_BLOB: similar to UPDATE, but will invalidate LastCache for blob series;
 # CLEAN_DEVICE: invalidate LastCache of devices contained in the TsFile;
 # CLEAN_ALL: clean the whole LastCache.
+# effectiveMode: restart
 last_cache_operation_on_load=UPDATE_NO_BLOB
 
 # Whether to cache last values before loading a TsFile. Only effective when
 # last_cache_operation_on_load=UPDATE_NO_BLOB or last_cache_operation_on_load=UPDATE.
 # When set to true, blob series will be ignored even with last_cache_operation_on_load=UPDATE.
 # Enabling this will increase the memory footprint during loading TsFiles.
+# effectiveMode: restart
 cache_last_values_for_load=true
 
 # When cache_last_values_for_load=true, the maximum memory that can be used to cache last values.
 # If this value is exceeded, the cached values will be abandoned and last values will be read from
 # the TsFile in a streaming manner.
+# effectiveMode: restart
 cache_last_values_memory_budget_in_byte=4194304
 
 ####################
@@ -2122,3 +2185,8 @@ write_request_remote_dispatch_max_retry_duration_in_ms=60000
 # effectiveMode: hot_reload
 # Datatype: boolean
 enable_retry_for_unknown_error=false
+
+# The switch to control if allow null value be included in the "quantity total" metric statistic.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+include_null_value_in_write_throughput_metric=false

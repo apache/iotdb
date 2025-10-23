@@ -101,7 +101,7 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
-    return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
+    return tableCache.getTable(name.getDatabaseName(), name.getObjectName(), false) != null;
   }
 
   @Override
@@ -110,7 +110,7 @@ public class TableMetadataImpl implements Metadata {
     final String databaseName = name.getDatabaseName();
     final String tableName = name.getObjectName();
 
-    final TsTable table = tableCache.getTable(databaseName, tableName);
+    final TsTable table = tableCache.getTable(databaseName, tableName, false);
     if (table == null) {
       return Optional.empty();
     }
@@ -570,6 +570,47 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and all type must be the same.");
       }
       return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.BIT_COUNT.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_AND.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_OR.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_XOR
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 2
+          || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.BITWISE_NOT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isIntegerNumber(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.BITWISE_LEFT_SHIFT
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.BITWISE_RIGHT_SHIFT_ARITHMETIC
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 2
+          || !(isIntegerNumber(argumentTypes.get(0)) && isIntegerNumber(argumentTypes.get(1)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts two arguments and they must be Int32 or Int64 data type.",
+                functionName));
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -669,6 +710,38 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregation functions [%s] should only have three arguments", functionName));
         }
         break;
+      case SqlConstant.APPROX_PERCENTILE:
+        int argumentSize = argumentTypes.size();
+        if (argumentSize != 2 && argumentSize != 3) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should only have two or three arguments",
+                  functionName));
+        }
+
+        Type valueColumnType = argumentTypes.get(0);
+        if (!isNumericType(valueColumnType)) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName));
+        }
+
+        // Validate percentage and weight parameters
+        boolean hasInvalidTypes =
+            (argumentSize == 2 && !isDecimalType(argumentTypes.get(1)))
+                || (argumentSize == 3
+                    && (!isIntegerNumber(argumentTypes.get(1))
+                        || !isDecimalType(argumentTypes.get(2))));
+
+        if (hasInvalidTypes) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregation functions [%s] should have weight as integer type and percentage as decimal type",
+                  functionName));
+        }
+
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -692,6 +765,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.MIN:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+      case SqlConstant.APPROX_PERCENTILE:
         return argumentTypes.get(0);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -968,6 +1042,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isBool(Type type) {
     return BOOLEAN.equals(type);
+  }
+
+  public static boolean isDecimalType(Type type) {
+    return DOUBLE.equals(type) || FLOAT.equals(type);
   }
 
   public static boolean isSupportedMathNumericType(Type type) {

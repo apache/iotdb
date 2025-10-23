@@ -32,9 +32,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
@@ -86,7 +86,7 @@ public class PipeInfoTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -121,7 +121,7 @@ public class PipeInfoTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =

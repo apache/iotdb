@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
@@ -70,7 +71,9 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     long creationTime;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
@@ -105,7 +108,9 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
@@ -153,7 +158,9 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
 
@@ -184,7 +191,9 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
     }
 
@@ -215,7 +224,9 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     // show pipe
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);

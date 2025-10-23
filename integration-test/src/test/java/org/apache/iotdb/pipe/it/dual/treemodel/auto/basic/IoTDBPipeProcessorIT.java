@@ -54,20 +54,23 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -92,12 +95,11 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       // the subsequent data processing
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"))) {
-        return;
-      }
+              "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -125,7 +127,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (0, 1)",
@@ -134,9 +136,8 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.vehicle.d0(time, s1) values (20000, 4)",
               "insert into root.vehicle.d0(time, s1) values (20001, 5)",
               "insert into root.vehicle.d0(time, s1) values (45000, 6)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       final Set<String> expectedResSet = new HashSet<>();
 
@@ -145,7 +146,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       expectedResSet.add("45000,6.0,");
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
+          receiverEnv, "select * from root.vehicle.**", "Time,root.vehicle.d0.s1,", expectedResSet);
     }
   }
 }

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +52,7 @@ public class PipeConfigNodeTaskBuilder {
           && consensusGroupIdToPipeTaskMeta.getValue().getLeaderNodeId()
               == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()
           && !ConfigRegionListeningFilter.parseListeningPlanTypeSet(
-                  pipeStaticMeta.getExtractorParameters())
+                  pipeStaticMeta.getSourceParameters())
               .isEmpty()) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupId,
@@ -60,9 +60,9 @@ public class PipeConfigNodeTaskBuilder {
                 new PipeConfigNodeTaskStage(
                     pipeStaticMeta.getPipeName(),
                     pipeStaticMeta.getCreationTime(),
-                    pipeStaticMeta.getExtractorParameters().getAttribute(),
+                    pipeStaticMeta.getSourceParameters().getAttribute(),
                     pipeStaticMeta.getProcessorParameters().getAttribute(),
-                    pipeStaticMeta.getConnectorParameters().getAttribute(),
+                    pipeStaticMeta.getSinkParameters().getAttribute(),
                     consensusGroupIdToPipeTaskMeta.getValue())));
       }
     }

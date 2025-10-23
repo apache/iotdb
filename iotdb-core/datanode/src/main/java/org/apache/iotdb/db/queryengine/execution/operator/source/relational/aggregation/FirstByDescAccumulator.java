@@ -26,12 +26,17 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
 
   public FirstByDescAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
-    super(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+    super(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn, false);
   }
 
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  @Override
+  public TableAccumulator copy() {
+    return new FirstByDescAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
   }
 
   @Override

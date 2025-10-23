@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.UnClosedTsFileReader;
@@ -57,25 +59,25 @@ public class FileReaderManager {
    * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
    * corresponding reader.
    */
-  private Map<String, TsFileSequenceReader> closedFileReaderMap;
+  private Map<TsFileID, TsFileSequenceReader> closedFileReaderMap;
 
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * corresponding reader.
    */
-  private Map<String, TsFileSequenceReader> unclosedFileReaderMap;
+  private Map<TsFileID, TsFileSequenceReader> unclosedFileReaderMap;
 
   /**
    * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the
    * file's reference count.
    */
-  private Map<String, AtomicInteger> closedReferenceMap;
+  private Map<TsFileID, AtomicInteger> closedReferenceMap;
 
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * file's reference count.
    */
-  private Map<String, AtomicInteger> unclosedReferenceMap;
+  private Map<TsFileID, AtomicInteger> unclosedReferenceMap;
 
   private FileReaderManager() {
     closedFileReaderMap = new ConcurrentHashMap<>();
@@ -88,14 +90,14 @@ public class FileReaderManager {
     return FileReaderManagerHelper.INSTANCE;
   }
 
-  public synchronized void closeFileAndRemoveReader(String filePath) throws IOException {
-    closedReferenceMap.remove(filePath);
-    TsFileSequenceReader reader = closedFileReaderMap.remove(filePath);
+  public synchronized void closeFileAndRemoveReader(TsFileID tsFileID) throws IOException {
+    closedReferenceMap.remove(tsFileID);
+    TsFileSequenceReader reader = closedFileReaderMap.remove(tsFileID);
     if (reader != null) {
       reader.close();
     }
-    unclosedReferenceMap.remove(filePath);
-    reader = unclosedFileReaderMap.remove(filePath);
+    unclosedReferenceMap.remove(tsFileID);
+    reader = unclosedFileReaderMap.remove(tsFileID);
     if (reader != null) {
       reader.close();
     }
@@ -106,15 +108,16 @@ public class FileReaderManager {
    * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
    * Otherwise a new reader will be created and cached.
    *
-   * @param filePath the path of the file, of which the reader is desired.
+   * @param filePath the path of the tsfile
+   * @param tsFileID the id of the tsfile, of which the reader is desired.
    * @param isClosed whether the corresponding file still receives insertions or not.
    * @return the reader of the file specified by filePath.
    * @throws IOException when reader cannot be created.
    */
   @SuppressWarnings("squid:S2095")
-  public synchronized TsFileSequenceReader get(String filePath, boolean isClosed)
+  public synchronized TsFileSequenceReader get(String filePath, TsFileID tsFileID, boolean isClosed)
       throws IOException {
-    return get(filePath, isClosed, null);
+    return get(filePath, tsFileID, isClosed, null);
   }
 
   /**
@@ -122,7 +125,8 @@ public class FileReaderManager {
    * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
    * Otherwise a new reader will be created and cached.
    *
-   * @param filePath the path of the file, of which the reader is desired.
+   * @param filePath the path of the tsfile
+   * @param tsFileID the id of the tsfile, of which the reader is desired.
    * @param isClosed whether the corresponding file still receives insertions or not.
    * @param ioSizeRecorder can be null
    * @return the reader of the file specified by filePath.
@@ -130,11 +134,12 @@ public class FileReaderManager {
    */
   @SuppressWarnings("squid:S2095")
   public synchronized TsFileSequenceReader get(
-      String filePath, boolean isClosed, LongConsumer ioSizeRecorder) throws IOException {
+      String filePath, TsFileID tsFileID, boolean isClosed, LongConsumer ioSizeRecorder)
+      throws IOException {
 
-    Map<String, TsFileSequenceReader> readerMap =
+    Map<TsFileID, TsFileSequenceReader> readerMap =
         !isClosed ? unclosedFileReaderMap : closedFileReaderMap;
-    if (!readerMap.containsKey(filePath)) {
+    if (!readerMap.containsKey(tsFileID)) {
       int currentOpenedReaderCount = readerMap.size();
       if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
           && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
@@ -144,16 +149,24 @@ public class FileReaderManager {
       TsFileSequenceReader tsFileReader = null;
       // check if the file is old version
       if (!isClosed) {
-        tsFileReader = new UnClosedTsFileReader(filePath, ioSizeRecorder);
+        tsFileReader =
+            new UnClosedTsFileReader(
+                filePath,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath),
+                ioSizeRecorder);
       } else {
         // already do the version check in TsFileSequenceReader's constructor
-        tsFileReader = new TsFileSequenceReader(filePath, ioSizeRecorder);
+        tsFileReader =
+            new TsFileSequenceReader(
+                filePath,
+                ioSizeRecorder,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
       }
-      readerMap.put(filePath, tsFileReader);
+      readerMap.put(tsFileID, tsFileReader);
       return tsFileReader;
     }
 
-    return readerMap.get(filePath);
+    return readerMap.get(tsFileID);
   }
 
   /**
@@ -165,11 +178,11 @@ public class FileReaderManager {
     synchronized (this) {
       if (!isClosed) {
         unclosedReferenceMap
-            .computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger())
+            .computeIfAbsent(tsFile.getTsFileID(), k -> new AtomicInteger())
             .getAndIncrement();
       } else {
         closedReferenceMap
-            .computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger())
+            .computeIfAbsent(tsFile.getTsFileID(), k -> new AtomicInteger())
             .getAndIncrement();
       }
     }
@@ -181,29 +194,30 @@ public class FileReaderManager {
    */
   public void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
-      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
-        if (unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
-          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), false);
+      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFileID())) {
+        if (unclosedReferenceMap.get(tsFile.getTsFileID()).decrementAndGet() == 0) {
+          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), tsFile.getTsFileID(), false);
         }
-      } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())
-          && (closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0)) {
-        closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), true);
+      } else if (closedReferenceMap.containsKey(tsFile.getTsFileID())
+          && (closedReferenceMap.get(tsFile.getTsFileID()).decrementAndGet() == 0)) {
+        closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), tsFile.getTsFileID(), true);
       }
     }
     tsFile.readUnlock();
   }
 
-  private void closeUnUsedReaderAndRemoveRef(String tsFilePath, boolean isClosed) {
-    Map<String, TsFileSequenceReader> readerMap =
+  private void closeUnUsedReaderAndRemoveRef(
+      String tsFilePath, TsFileID tsFileID, boolean isClosed) {
+    Map<TsFileID, TsFileSequenceReader> readerMap =
         isClosed ? closedFileReaderMap : unclosedFileReaderMap;
-    Map<String, AtomicInteger> refMap = isClosed ? closedReferenceMap : unclosedReferenceMap;
+    Map<TsFileID, AtomicInteger> refMap = isClosed ? closedReferenceMap : unclosedReferenceMap;
     synchronized (this) {
       // check ref num again
-      if (refMap.get(tsFilePath).get() != 0) {
+      if (refMap.get(tsFileID).get() != 0) {
         return;
       }
 
-      TsFileSequenceReader reader = readerMap.get(tsFilePath);
+      TsFileSequenceReader reader = readerMap.get(tsFileID);
       if (reader != null) {
         try {
           reader.close();
@@ -211,8 +225,8 @@ public class FileReaderManager {
           logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
       }
-      readerMap.remove(tsFilePath);
-      refMap.remove(tsFilePath);
+      readerMap.remove(tsFileID);
+      refMap.remove(tsFileID);
       if (resourceLogger.isDebugEnabled()) {
         resourceLogger.debug("{} TsFileReader is closed because of no reference.", tsFilePath);
       }
@@ -226,10 +240,10 @@ public class FileReaderManager {
    * @throws IOException if failed to close file handlers, IOException will be thrown
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
-    Iterator<Map.Entry<String, TsFileSequenceReader>> iterator =
+    Iterator<Map.Entry<TsFileID, TsFileSequenceReader>> iterator =
         closedFileReaderMap.entrySet().iterator();
     while (iterator.hasNext()) {
-      Map.Entry<String, TsFileSequenceReader> entry = iterator.next();
+      Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
       if (resourceLogger.isDebugEnabled()) {
         resourceLogger.debug("{} closedTsFileReader is closed.", entry.getKey());
@@ -239,7 +253,7 @@ public class FileReaderManager {
     }
     iterator = unclosedFileReaderMap.entrySet().iterator();
     while (iterator.hasNext()) {
-      Map.Entry<String, TsFileSequenceReader> entry = iterator.next();
+      Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
       if (resourceLogger.isDebugEnabled()) {
         resourceLogger.debug("{} unclosedTsFileReader is closed.", entry.getKey());
@@ -251,17 +265,17 @@ public class FileReaderManager {
 
   /** This method is only for unit tests. */
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
-    return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
-        || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
+    return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFileID()))
+        || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFileID()));
   }
 
   @TestOnly
-  public Map<String, TsFileSequenceReader> getClosedFileReaderMap() {
+  public Map<TsFileID, TsFileSequenceReader> getClosedFileReaderMap() {
     return closedFileReaderMap;
   }
 
   @TestOnly
-  public Map<String, TsFileSequenceReader> getUnclosedFileReaderMap() {
+  public Map<TsFileID, TsFileSequenceReader> getUnclosedFileReaderMap() {
     return unclosedFileReaderMap;
   }
 

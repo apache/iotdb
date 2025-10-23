@@ -24,11 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
@@ -41,6 +40,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -56,6 +56,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -236,7 +238,8 @@ public class PartitionCache {
       if (!result.isSuccess()) {
         final TGetDatabaseReq req =
             new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-                .setIsTableModel(false);
+                .setIsTableModel(false)
+                .setCanSeeAuditDB(true);
         final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -257,7 +260,8 @@ public class PartitionCache {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true);
+              .setIsTableModel(true)
+              .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
@@ -294,6 +298,8 @@ public class PartitionCache {
         for (final IDeviceID deviceID : result.getMissedDevices()) {
           if (PathUtils.isStartWith(deviceID, SchemaConstant.SYSTEM_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
+          } else if (PathUtils.isStartWith(deviceID, SchemaConstant.AUDIT_DATABASE)) {
+            databaseNamesNeedCreated.add(SchemaConstant.AUDIT_DATABASE);
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
@@ -307,16 +313,14 @@ public class PartitionCache {
         for (final String databaseName : databaseNamesNeedCreated) {
           final long startTime = System.nanoTime();
           try {
-            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-              final TSStatus status =
-                  AuthorityChecker.getTSStatus(
-                      AuthorityChecker.checkSystemPermission(
-                          userName, PrivilegeType.MANAGE_DATABASE),
-                      PrivilegeType.MANAGE_DATABASE);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new RuntimeException(
-                    new IoTDBException(status.getMessage(), status.getCode()));
-              }
+            final TSStatus status =
+                AuthorityChecker.getAccessControl()
+                    .checkCanCreateDatabaseForTree(
+                        AuthorityChecker.createIAuditEntity(
+                            userName, SessionManager.getInstance().getCurrSession()),
+                        new PartialPath(databaseName));
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new IoTDBRuntimeException(status);
             }
           } finally {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -366,15 +370,9 @@ public class PartitionCache {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       long startTime = System.nanoTime();
       try {
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          final TSStatus status =
-              AuthorityChecker.getTSStatus(
-                  AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
-                  PrivilegeType.MANAGE_DATABASE);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-          }
-        }
+        IClientSession clientSession = SessionManager.getInstance().getCurrSession();
+        IAuditEntity entity = AuthorityChecker.createIAuditEntity(userName, clientSession);
+        AuthorityChecker.getAccessControl().checkCanCreateDatabase(userName, database, entity);
       } finally {
         PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
       }
@@ -416,10 +414,12 @@ public class PartitionCache {
       for (final IDeviceID devicePath : deviceIDs) {
         final String databaseName = getDatabaseName(devicePath);
         if (null == databaseName) {
-          logger.debug(
-              "[{} Cache] miss when search device {}",
-              CacheMetrics.DATABASE_CACHE_NAME,
-              devicePath);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search device {}",
+                CacheMetrics.DATABASE_CACHE_NAME,
+                devicePath);
+          }
           status = false;
           if (failFast) {
             break;
@@ -434,8 +434,10 @@ public class PartitionCache {
       if (!status) {
         result.setFailed();
       }
-      logger.debug(
-          "[{} Cache] hit when search device {}", CacheMetrics.DATABASE_CACHE_NAME, deviceIDs);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[{} Cache] hit when search device {}", CacheMetrics.DATABASE_CACHE_NAME, deviceIDs);
+      }
       cacheMetrics.record(status, CacheMetrics.DATABASE_CACHE_NAME);
     } finally {
       databaseCacheLock.readLock().unlock();
@@ -474,11 +476,27 @@ public class PartitionCache {
       try {
         // try to fetch database from config node when miss
         fetchDatabaseAndUpdateCache(result, deviceIDs);
-        if (!result.isSuccess() && isAutoCreate) {
-          // try to auto create database of failed device
-          createDatabaseAndUpdateCache(result, deviceIDs, userName);
-          if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get database Map");
+        if (!result.isSuccess()) {
+          if (isAutoCreate) {
+            // try to auto create database of failed device
+            createDatabaseAndUpdateCache(result, deviceIDs, userName);
+            if (!result.isSuccess()) {
+              throw new StatementAnalyzeException("Failed to get database Map");
+            }
+          } else {
+            // check if it is to auto create the system or audit database
+            for (IDeviceID deviceID : deviceIDs) {
+              if (!deviceID.isTableModel()
+                  && deviceID.startWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)) {
+                createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
+                break;
+              }
+              if (!deviceID.isTableModel()
+                  && deviceID.startWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
+                createDatabaseAndUpdateCache(result, Collections.singletonList(deviceID), userName);
+                break;
+              }
+            }
           }
         }
       } catch (MetadataException e) {
@@ -673,10 +691,12 @@ public class PartitionCache {
             schemaPartitionCache.getIfPresent(databaseName);
         if (null == schemaPartitionTable) {
           // if database not find, then return cache miss.
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-              databaseName);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                databaseName);
+          }
           cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -690,10 +710,12 @@ public class PartitionCache {
               partitionExecutor.getSeriesPartitionSlot(device);
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
-            logger.debug(
-                "[{} Cache] miss when search device {}",
-                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-                device);
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[{} Cache] miss when search device {}",
+                  CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                  device);
+            }
             cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
@@ -705,7 +727,9 @@ public class PartitionCache {
           regionReplicaSetMap.put(seriesPartitionSlots.get(i), replicaSets.get(i));
         }
       }
-      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
@@ -727,10 +751,12 @@ public class PartitionCache {
       SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(database);
       if (null == schemaPartitionTable) {
         // if database not find, then return cache miss.
-        logger.debug(
-            "[{} Cache] miss when search database {}",
-            CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
-            database);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "[{} Cache] miss when search database {}",
+              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+              database);
+        }
         cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -749,7 +775,9 @@ public class PartitionCache {
         regionReplicaSetMap.put(entry.getKey(), regionReplicaSets.get(index++));
       }
 
-      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+      }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
@@ -830,10 +858,12 @@ public class PartitionCache {
 
         DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
         if (null == dataPartitionTable) {
-          logger.debug(
-              "[{} Cache] miss when search database {}",
-              CacheMetrics.DATA_PARTITION_CACHE_NAME,
-              databaseName);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[{} Cache] miss when search database {}",
+                CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                databaseName);
+          }
           cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -875,10 +905,12 @@ public class PartitionCache {
             if (null == cacheConsensusGroupIds
                 || cacheConsensusGroupIds.isEmpty()
                 || null == timePartitionSlot) {
-              logger.debug(
-                  "[{} Cache] miss when search time partition {}",
-                  CacheMetrics.DATA_PARTITION_CACHE_NAME,
-                  timePartitionSlot);
+              if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "[{} Cache] miss when search time partition {}",
+                    CacheMetrics.DATA_PARTITION_CACHE_NAME,
+                    timePartitionSlot);
+              }
               cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
               return null;
             }
@@ -913,7 +945,9 @@ public class PartitionCache {
         }
       }
 
-      logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      }
       cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     } finally {
@@ -1022,12 +1056,16 @@ public class PartitionCache {
   // endregion
 
   public void invalidAllCache() {
-    logger.debug("[Partition Cache] invalid");
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] invalid");
+    }
     removeFromDatabaseCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
     invalidReplicaSetCache();
-    logger.debug("[Partition Cache] is invalid:{}", this);
+    if (logger.isDebugEnabled()) {
+      logger.debug("[Partition Cache] is invalid:{}", this);
+    }
   }
 
   @Override

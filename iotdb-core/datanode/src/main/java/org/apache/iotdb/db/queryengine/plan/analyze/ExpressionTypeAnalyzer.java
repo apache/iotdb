@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicBinaryExpression;
@@ -245,6 +246,16 @@ public class ExpressionTypeAnalyzer {
           TSDataType.INT64,
           TSDataType.FLOAT,
           TSDataType.DOUBLE);
+      if ((arithmeticBinaryExpression.getExpressionType() == ExpressionType.DIVISION
+              || arithmeticBinaryExpression.getExpressionType() == ExpressionType.MODULO)
+          && isExpressionDataTypeSatisfy(
+              arithmeticBinaryExpression.getLeftExpression(), TSDataType.INT64, TSDataType.INT32)
+          && isExpressionDataTypeSatisfy(
+              arithmeticBinaryExpression.getRightExpression(),
+              TSDataType.INT64,
+              TSDataType.INT32)) {
+        return setExpressionType(arithmeticBinaryExpression, TSDataType.INT64);
+      }
       return setExpressionType(arithmeticBinaryExpression, TSDataType.DOUBLE);
     }
 
@@ -483,6 +494,24 @@ public class ExpressionTypeAnalyzer {
           String.format(
               "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
               expressionString, actual.name(), Arrays.toString(expected)));
+    }
+
+    private boolean isExpressionDataTypeSatisfy(Expression input, TSDataType... expected) {
+      NodeRef<Expression> inputRef = NodeRef.of(input);
+      TSDataType actual = expressionTypes.get(inputRef);
+      if (actual == null) {
+        if (expressionTypes.containsKey(inputRef)) {
+          return true;
+        }
+        throw new IllegalStateException(
+            String.format("The type of input expression %s is unknown", input));
+      }
+      for (TSDataType type : expected) {
+        if (actual.equals(type)) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 

@@ -20,14 +20,14 @@
 
 AINODE_CONF="`dirname "$0"`/../conf"
 if [ -f "${AINODE_CONF}/iotdb-ainode.properties" ]; then
-    ain_inference_rpc_port=$(sed '/^ain_inference_rpc_port=/!d;s/.*=//' "${AINODE_CONF}"/iotdb-ainode.properties)
+    ain_rpc_port=$(sed '/^ain_rpc_port=/!d;s/.*=//' "${AINODE_CONF}"/iotdb-ainode.properties)
     # trim the port
-    ain_inference_rpc_port=$(echo "$ain_inference_rpc_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    ain_rpc_port=$(echo "$ain_rpc_port" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 fi
 
-if [ -z "$ain_inference_rpc_port" ]; then
-    echo "WARNING: ain_inference_rpc_port not found in the configuration file. Using default value ain_inference_rpc_port=10810"
-    ain_inference_rpc_port=10810
+if [ -z "$ain_rpc_port" ]; then
+    echo "WARNING: ain_rpc_port not found in the configuration file. Using default value ain_rpc_port=10810"
+    ain_rpc_port=10810
 fi
 
 # fetch parameters with names
@@ -45,18 +45,18 @@ while getopts "i:t:r" opt; do
   esac
 done
 
-# If p_ain_remove_target exists, take the value after the colon of p_ain_remove_target as ain_inference_rpc_port
+# If p_ain_remove_target exists, take the value after the colon of p_ain_remove_target as ain_rpc_port
 if [ -n "$p_ain_remove_target" ]; then
-  ain_inference_rpc_port=${p_ain_remove_target#*:}
+  ain_rpc_port=${p_ain_remove_target#*:}
 fi
 
-echo "Check whether the rpc_port is used..., port is" $ain_inference_rpc_port
+echo "Check whether the rpc_port is used..., port is" $ain_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
-  echo $(lsof -t -i:"${ain_inference_rpc_port}" -sTCP:LISTEN)
-  PID=$(lsof -t -i:"${ain_inference_rpc_port}" -sTCP:LISTEN)
+  echo $(lsof -t -i:"${ain_rpc_port}" -sTCP:LISTEN)
+  PID=$(lsof -t -i:"${ain_rpc_port}" -sTCP:LISTEN)
 elif type netstat > /dev/null 2>&1 ; then
-  PID=$(netstat -anp 2>/dev/null | grep ":${ain_inference_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
+  PID=$(netstat -anp 2>/dev/null | grep ":${ain_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
 else
   echo ""
   echo " Error: No necessary tool."

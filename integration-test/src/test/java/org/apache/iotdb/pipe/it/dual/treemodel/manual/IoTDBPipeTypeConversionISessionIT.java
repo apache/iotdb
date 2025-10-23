@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -45,6 +44,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -77,6 +77,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -95,6 +96,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -104,6 +106,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -138,6 +141,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -178,6 +182,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -226,6 +231,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordsReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -254,6 +260,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -282,6 +289,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedStringRecordsOfOneDeviceReceiveByTsFile() {
     prepareTypeConversionTest(
         (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
@@ -315,15 +323,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         generateMeasurementSchemas();
 
     // Generate createTimeSeries in sender and receiver
-    String uuid = RandomStringUtils.random(8, true, false);
+    String uuid = "bcdedit";
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
+      createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
       createTimeSeries(
-          uuid.toString(), pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
-      createTimeSeries(
-          uuid.toString(),
-          pair.right.getMeasurementName(),
-          pair.right.getType().name(),
-          receiverEnv);
+          uuid, pair.right.getMeasurementName(), pair.right.getType().name(), receiverEnv);
     }
 
     try (ISession senderSession = senderEnv.getSessionConnection();
@@ -337,6 +341,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         senderSession.executeNonQueryStatement("flush");
       } else {
         // Send Tablet data to receiver
+        // Write once to create data regions, guarantee that no any tsFiles will be sent
+        consumer.accept(senderSession, receiverSession, tablet);
         createDataPipe(uuid, false);
         Thread.sleep(2000);
         // The actual implementation logic of inserting data
@@ -378,7 +384,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         String.format(
             "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
             diff, measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(env, Collections.singletonList(timeSeriesCreation));
+    TestUtils.executeNonQueries(env, Collections.singletonList(timeSeriesCreation), null);
   }
 
   private void createDataPipe(String diff, boolean isTSFile) {
@@ -395,7 +401,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.executeNonQueries(senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(
@@ -423,7 +429,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
             break;
           case TEXT:
           case STRING:
-            assertEquals(field.getStringValue(), rowValues.get(i));
+            if (rowValues.get(i) instanceof Binary) {
+              assertEquals(field.getStringValue(), rowValues.get(i).toString());
+            } else {
+              assertEquals(field.getStringValue(), rowValues.get(i));
+            }
             break;
           case INT32:
             assertEquals(field.getIntV(), (int) rowValues.get(i));
@@ -591,44 +601,87 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         switch (sourceType) {
           case INT64:
           case TIMESTAMP:
-            value = ValueConverter.convert(sourceType, targetType, ((long[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case INT32:
-            value = ValueConverter.convert(sourceType, targetType, ((int[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DOUBLE:
-            value = ValueConverter.convert(sourceType, targetType, ((double[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case FLOAT:
-            value = ValueConverter.convert(sourceType, targetType, ((float[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DATE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((LocalDate[]) values[j])[i];
+            if (targetType == TSDataType.DATE) {
+              insertRecord.add(value);
+              break;
+            }
+            if (value != null) {
+              value = DateUtils.parseDateExpressionToInt((LocalDate) value);
+            }
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case TEXT:
           case STRING:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
-            break;
           case BLOB:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case BOOLEAN:
-            value = ValueConverter.convert(sourceType, targetType, ((boolean[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
         }
       }
+      insertRecord.add(tablet.getTimestamp(i));
       insertRecords.add(insertRecord);
     }
 

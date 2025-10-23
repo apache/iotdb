@@ -30,9 +30,9 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.nio.charset.Charset;
 import java.sql.BatchUpdateException;

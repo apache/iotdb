@@ -42,23 +42,32 @@ public abstract class AbstractPipeTableModelDualManualIT {
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
   }
 
   @After
