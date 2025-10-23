@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -54,8 +55,15 @@ import java.util.List;
 
 public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
-  private final IoTDBPipePattern prefixPathPattern = new IoTDBPipePattern("root.db.device.**");
-  private final IoTDBPipePattern fullPathPattern = new IoTDBPipePattern("root.db.device.s1");
+  private final UnionIoTDBPipePattern prefixPathPattern =
+      new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.**"));
+  private final UnionIoTDBPipePattern fullPathPattern =
+      new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.s1"));
+  private final UnionIoTDBPipePattern multiplePathPattern =
+      new UnionIoTDBPipePattern(
+          Arrays.asList(
+              new IoTDBPipePattern("root.db.device.s1"),
+              new IoTDBPipePattern("root.db.device.s2")));
 
   @Test
   public void testCreateDatabase() {
@@ -75,6 +83,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitCreateDatabase(createDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
+    Assert.assertEquals(
+        createDatabasePlan,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .visitCreateDatabase(createDatabasePlan, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -95,6 +108,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitAlterDatabase(alterDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
+    Assert.assertEquals(
+        alterDatabasePlan,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .visitAlterDatabase(alterDatabasePlan, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -111,6 +129,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitDeleteDatabase(deleteDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
+    Assert.assertEquals(
+        deleteDatabasePlan,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .visitDeleteDatabase(deleteDatabasePlan, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -142,6 +165,15 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         createSchemaTemplatePlan.getTemplate().getSchemaMap().get("s1"),
         parsedTemplatePlan.getTemplate().getSchemaMap().get("s1"));
+
+    final CreateSchemaTemplatePlan parsedTemplatePlan2 =
+        (CreateSchemaTemplatePlan)
+            IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+                .visitCreateSchemaTemplate(createSchemaTemplatePlan, multiplePathPattern)
+                .orElseThrow(AssertionError::new);
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList("s1", "s2")),
+        parsedTemplatePlan2.getTemplate().getSchemaMap().keySet());
   }
 
   @Test
@@ -161,6 +193,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, fullPathPattern)
             .orElseThrow(AssertionError::new));
+    Assert.assertEquals(
+        setSchemaTemplatePlanOnFullPath,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -179,6 +216,12 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         pipeUnsetSchemaTemplatePlanOrFullPath,
         IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
             .visitPipeUnsetSchemaTemplate(pipeUnsetSchemaTemplatePlanOrFullPath, fullPathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertEquals(
+        pipeUnsetSchemaTemplatePlanOrFullPath,
+        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+            .visitPipeUnsetSchemaTemplate(
+                pipeUnsetSchemaTemplatePlanOrFullPath, multiplePathPattern)
             .orElseThrow(AssertionError::new));
   }
 
@@ -213,6 +256,14 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         extendSchemaTemplatePlan.getTemplateExtendInfo().getCompressors().get(0),
         parsedTemplatePlan.getTemplateExtendInfo().getCompressors().get(0));
+
+    final ExtendSchemaTemplatePlan parsedTemplatePlan2 =
+        (ExtendSchemaTemplatePlan)
+            IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+                .visitExtendSchemaTemplate(extendSchemaTemplatePlan, multiplePathPattern)
+                .orElseThrow(AssertionError::new);
+    Assert.assertEquals(
+        Arrays.asList("s1", "s2"), parsedTemplatePlan2.getTemplateExtendInfo().getMeasurements());
   }
 
   @Test
@@ -320,6 +371,18 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
                             .orElseThrow(AssertionError::new))
                     .getPatternTreeBytes())
             .getAllPathPatterns());
+
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.db.device.s1")),
+        PathPatternTree.deserialize(
+                ((PipeDeleteTimeSeriesPlan)
+                        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+                            .visitPipeDeleteTimeSeries(
+                                new PipeDeleteTimeSeriesPlan(patternTree.serialize()),
+                                multiplePathPattern)
+                            .orElseThrow(AssertionError::new))
+                    .getPatternTreeBytes())
+            .getAllPathPatterns());
   }
 
   @Test
@@ -336,6 +399,18 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
                             .visitPipeDeleteLogicalView(
                                 new PipeDeleteLogicalViewPlan(patternTree.serialize()),
                                 prefixPathPattern)
+                            .orElseThrow(AssertionError::new))
+                    .getPatternTreeBytes())
+            .getAllPathPatterns());
+
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.db.device.s1")),
+        PathPatternTree.deserialize(
+                ((PipeDeleteLogicalViewPlan)
+                        IoTDBConfigRegionSource.PATTERN_PARSE_VISITOR
+                            .visitPipeDeleteLogicalView(
+                                new PipeDeleteLogicalViewPlan(patternTree.serialize()),
+                                multiplePathPattern)
                             .orElseThrow(AssertionError::new))
                     .getPatternTreeBytes())
             .getAllPathPatterns());

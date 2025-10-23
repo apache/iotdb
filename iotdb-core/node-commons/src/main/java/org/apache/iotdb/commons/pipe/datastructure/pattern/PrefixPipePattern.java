@@ -28,7 +28,7 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.Arrays;
 
-public class PrefixPipePattern extends PipePattern {
+public class PrefixPipePattern extends SinglePipePattern {
 
   public PrefixPipePattern(final String pattern) {
     super(pattern);
