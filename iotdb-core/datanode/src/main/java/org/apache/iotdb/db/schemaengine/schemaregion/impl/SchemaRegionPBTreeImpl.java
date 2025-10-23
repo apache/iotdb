@@ -940,7 +940,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  @Override
+//   @Override
   public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();
@@ -961,8 +961,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
-  }
-
+//   }
+// 
   @Override
   public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;

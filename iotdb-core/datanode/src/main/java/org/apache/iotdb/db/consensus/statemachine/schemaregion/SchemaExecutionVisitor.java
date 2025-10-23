@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+// import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -591,28 +591,28 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     }
   }
 
-  @Override
+//   @Override
   public TSStatus visitCreateLogicalView(
       final CreateLogicalViewNode node, final ISchemaRegion schemaRegion) {
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         node.getViewPathToSourceExpressionMap();
     final List<TSStatus> failingStatus = new ArrayList<>();
     for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
-      try {
-        schemaRegion.createLogicalView(
+//       try {
+//         schemaRegion.createLogicalView(
             SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(
                 entry.getKey(), entry.getValue()));
       } catch (final MetadataException e) {
-        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-        failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
-    }
-    if (!failingStatus.isEmpty()) {
-      return RpcUtils.getStatus(failingStatus);
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
-  }
-
+//         logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+//         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+//       }
+//     }
+//     if (!failingStatus.isEmpty()) {
+//       return RpcUtils.getStatus(failingStatus);
+//     }
+//     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+//   }
+// 
   @Override
   public TSStatus visitAlterLogicalView(
       final AlterLogicalViewNode node, final ISchemaRegion schemaRegion) {

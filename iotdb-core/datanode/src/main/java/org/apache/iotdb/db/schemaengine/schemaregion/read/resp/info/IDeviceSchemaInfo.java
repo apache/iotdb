@@ -23,7 +23,7 @@ import org.apache.tsfile.utils.Binary;
 
 public interface IDeviceSchemaInfo extends ISchemaInfo {
 
-  Boolean isAligned();
+//   Boolean isAligned();
 
   int getTemplateId();
 

@@ -69,10 +69,10 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   public IMemMNode createInternalMNode(IMemMNode parent, String name) {
     return new BasicInternalMNode(parent, name);
   }
-
-  @Override
-  public IMeasurementMNode<IMemMNode> createLogicalViewMNode(
+// 
+//   @Override
+//   public IMeasurementMNode<IMemMNode> createLogicalViewMNode(
       IDeviceMNode<IMemMNode> parent, String name, IMeasurementSchema measurementSchema) {
     throw new UnsupportedOperationException("View is not supported.");
-  }
+//   }
 }

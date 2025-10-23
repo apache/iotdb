@@ -54,7 +54,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
-
+// 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
@@ -104,7 +104,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
     builder.writeNullableText(2, database);
-    builder.writeNullableText(3, series.getSchema().getType().toString());
+//     builder.writeNullableText(3, series.getSchema().getType().toString());
     if (series.isLogicalView()) {
       builder.writeNullableText(4, null);
       builder.writeNullableText(5, null);

@@ -123,7 +123,7 @@ public class LikeExpression extends UnaryExpression {
     ReadWriteIOUtils.write(isNot, stream);
   }
 
-  @Override
+//   @Override
   public String getOutputSymbolInternal() {
     String res =
         expression.getOutputSymbol()
@@ -136,8 +136,8 @@ public class LikeExpression extends UnaryExpression {
       res = res + " escape = '" + escape.get() + "'";
     }
     return res;
-  }
-
+//   }
+// 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitLikeExpression(this, context);

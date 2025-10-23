@@ -50,7 +50,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final long offset;
 
   private final SchemaFilter schemaFilter;
-
+// 
   LogicalViewSchemaSource(
       PartialPath pathPattern,
       long limit,

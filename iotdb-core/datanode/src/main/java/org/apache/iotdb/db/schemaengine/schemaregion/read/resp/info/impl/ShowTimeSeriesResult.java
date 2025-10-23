@@ -33,7 +33,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
 
   private String alias;
 
-  private IMeasurementSchema measurementSchema;
+//   private IMeasurementSchema measurementSchema;
 
   private Map<String, String> tags;
   private Map<String, String> attributes;
@@ -41,13 +41,13 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   private boolean isUnderAlignedDevice;
 
   public ShowTimeSeriesResult(
-      String path,
+//       String path,
       String alias,
-      IMeasurementSchema measurementSchema,
+//       IMeasurementSchema measurementSchema,
       Map<String, String> tags,
       Map<String, String> attributes,
       boolean isUnderAlignedDevice) {
-    super(path);
+//     super(path);
     this.alias = alias;
     this.measurementSchema = measurementSchema;
     this.tags = tags;
@@ -64,7 +64,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   }
 
   @Override
-  public IMeasurementSchema getSchema() {
+//   public IMeasurementSchema getSchema() {
     return measurementSchema;
   }
 
@@ -83,11 +83,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
     return isUnderAlignedDevice;
   }
 
-  @Override
-  public boolean isLogicalView() {
-    return this.measurementSchema.isLogicalView();
-  }
-
+//   @Override
+//   public boolean isLogicalView() {
+//     return this.measurementSchema.isLogicalView();
+//   }
+// 
   @Override
   public ITimeSeriesSchemaInfo snapshot() {
     return this;

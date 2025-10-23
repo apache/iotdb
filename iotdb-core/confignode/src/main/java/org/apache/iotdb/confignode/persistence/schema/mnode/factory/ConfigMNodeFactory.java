@@ -73,10 +73,10 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   public IConfigMNode createInternalMNode(IConfigMNode parent, String name) {
     return new ConfigBasicInternalMNode(parent, name);
   }
-
-  @Override
-  public IMeasurementMNode<IConfigMNode> createLogicalViewMNode(
+// 
+//   @Override
+//   public IMeasurementMNode<IConfigMNode> createLogicalViewMNode(
       IDeviceMNode<IConfigMNode> parent, String name, IMeasurementSchema measurementSchema) {
     throw new UnsupportedOperationException("View is not supported.");
-  }
+//   }
 }

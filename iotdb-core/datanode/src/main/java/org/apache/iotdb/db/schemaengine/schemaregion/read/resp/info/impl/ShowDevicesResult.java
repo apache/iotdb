@@ -34,7 +34,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
-  private Boolean isAligned;
+//   private Boolean isAligned;
   private int templateId;
 
   private Function<String, Binary> attributeProvider;
@@ -55,7 +55,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     this.rawNodes = rawNodes;
   }
 
-  public Boolean isAligned() {
+//   public Boolean isAligned() {
     return isAligned;
   }
 

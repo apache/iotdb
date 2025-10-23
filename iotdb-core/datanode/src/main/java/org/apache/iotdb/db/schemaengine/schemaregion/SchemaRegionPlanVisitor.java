@@ -107,11 +107,11 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
       final IDeactivateTemplatePlan deactivateTemplatePlan, final C context) {
     return visitSchemaRegionPlan(deactivateTemplatePlan, context);
   }
-
+// 
   public R visitCreateLogicalView(
       final ICreateLogicalViewPlan createLogicalViewPlan, final C context) {
-    return visitSchemaRegionPlan(createLogicalViewPlan, context);
-  }
+//     return visitSchemaRegionPlan(createLogicalViewPlan, context);
+//   }
 
   public R visitAlterLogicalView(
       final IAlterLogicalViewPlan alterLogicalViewPlan, final C context) {

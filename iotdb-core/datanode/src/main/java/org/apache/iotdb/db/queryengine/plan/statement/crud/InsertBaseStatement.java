@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+// import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
+// import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -46,17 +47,17 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+// import java.util.ArrayList;
+// import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+// import java.util.HashMap;
+// import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
+// import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class InsertBaseStatement extends Statement implements Accountable {
@@ -87,31 +88,31 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   protected List<Integer> attrColumnIndices;
   protected boolean writeToTable = false;
 
-  // region params used by analyzing logical views.
-
-  /** This param records the logical view schema appeared in this statement. */
+//   // region params used by analyzing logical views.
+// 
+//   /** This param records the logical view schema appeared in this statement. */
   protected List<LogicalViewSchema> logicalViewSchemaList;
-
-  /**
-   * This param records the index of the location where the source of this view should be placed.
-   *
-   * <p>For example, indexListOfLogicalViewPaths[alpha] = beta means source of
-   * logicalViewSchemaList[alpha] should be filled into measurementSchemas[beta].
-   */
+// 
+//   /**
+//    * This param records the index of the location where the source of this view should be placed.
+//    *
+//    * <p>For example, indexListOfLogicalViewPaths[alpha] = beta means source of
+//    * logicalViewSchemaList[alpha] should be filled into measurementSchemas[beta].
+//    */
   protected List<Integer> indexOfSourcePathsOfLogicalViews;
-
-  /** it is the end of last range, the beginning of current range. */
+// 
+//   /** it is the end of last range, the beginning of current range. */
   protected int recordedBeginOfLogicalViewSchemaList = 0;
-
-  /** it is the end of current range. */
+// 
+//   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
-
+// 
   @TableModel protected String databaseName;
 
   protected long ramBytesUsed = Long.MIN_VALUE;
 
-  // endregion
-
+//   // endregion
+// 
   public PartialPath getDevicePath() {
     return devicePath;
   }
@@ -449,96 +450,96 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   // endregion
-
-  // region functions used by analyzing logical views
-  /**
-   * Remove logical view in this statement according to validated schemas. So this function should
-   * be called after validating schemas.
-   */
-  public abstract InsertBaseStatement removeLogicalView();
-
-  public void setFailedMeasurementIndex2Info(
-      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
-    this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
-  }
-
-  /**
-   * This function is used in splitting. Traverse two lists: logicalViewSchemaList, measurements,
-   * then find out all devices in this statement. Those devices will map to their measurements,
-   * recorded in a pair of measurement name and the index of measurement schemas
-   * (this.measurementSchemas).
-   *
-   * @return map from device path to its measurements.
-   */
+// 
+//   // region functions used by analyzing logical views
+//   /**
+//    * Remove logical view in this statement according to validated schemas. So this function should
+//    * be called after validating schemas.
+//    */
+//   public abstract InsertBaseStatement removeLogicalView();
+// 
+//   public void setFailedMeasurementIndex2Info(
+//       Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
+//     this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
+//   }
+// 
+//   /**
+//    * This function is used in splitting. Traverse two lists: logicalViewSchemaList, measurements,
+//    * then find out all devices in this statement. Those devices will map to their measurements,
+//    * recorded in a pair of measurement name and the index of measurement schemas
+//    * (this.measurementSchemas).
+//    *
+//    * @return map from device path to its measurements.
+//    */
   protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
-    boolean[] isLogicalView = new boolean[this.measurements.length];
-    int[] indexMapToLogicalViewList = new int[this.measurements.length];
-    Arrays.fill(isLogicalView, false);
-    if (this.indexOfSourcePathsOfLogicalViews != null) {
-      for (int i = 0; i < this.indexOfSourcePathsOfLogicalViews.size(); i++) {
-        int realIndex = this.indexOfSourcePathsOfLogicalViews.get(i);
-        isLogicalView[realIndex] = true;
-        indexMapToLogicalViewList[realIndex] = i;
-      }
-    }
+//     boolean[] isLogicalView = new boolean[this.measurements.length];
+//     int[] indexMapToLogicalViewList = new int[this.measurements.length];
+//     Arrays.fill(isLogicalView, false);
+//     if (this.indexOfSourcePathsOfLogicalViews != null) {
+//       for (int i = 0; i < this.indexOfSourcePathsOfLogicalViews.size(); i++) {
+//         int realIndex = this.indexOfSourcePathsOfLogicalViews.get(i);
+//         isLogicalView[realIndex] = true;
+//         indexMapToLogicalViewList[realIndex] = i;
+//       }
+//     }
     // construct map from device to measurements and record the index of its measurement
     // schema
-    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-        new HashMap<>();
-    for (int i = 0; i < this.measurements.length; i++) {
+//     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+//         new HashMap<>();
+//     for (int i = 0; i < this.measurements.length; i++) {
       PartialPath targetDevicePath;
-      String measurementName;
-      if (isLogicalView[i]) {
-        int viewIndex = indexMapToLogicalViewList[i];
+//       String measurementName;
+//       if (isLogicalView[i]) {
+//         int viewIndex = indexMapToLogicalViewList[i];
         targetDevicePath =
-            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
-        measurementName =
-            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
-      } else {
+//             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
+//         measurementName =
+//             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
+//       } else {
         targetDevicePath = this.devicePath;
-        measurementName = this.measurements[i];
-      }
-      int index = i;
-      final String finalMeasurementName = measurementName;
-      mapFromDeviceToMeasurementAndIndex.compute(
+//         measurementName = this.measurements[i];
+//       }
+//       int index = i;
+//       final String finalMeasurementName = measurementName;
+//       mapFromDeviceToMeasurementAndIndex.compute(
           targetDevicePath,
-          (k, v) -> {
-            if (v == null) {
-              List<Pair<String, Integer>> valueList = new ArrayList<>();
-              valueList.add(new Pair<>(finalMeasurementName, index));
-              return valueList;
-            } else {
-              v.add(new Pair<>(finalMeasurementName, index));
-              return v;
-            }
-          });
-    }
-    // check this map, ensure that all time series (measurements in each device) only appear once
-    validateMapFromDeviceToMeasurement(mapFromDeviceToMeasurementAndIndex);
-    return mapFromDeviceToMeasurementAndIndex;
-  }
-
-  protected static void validateMapFromDeviceToMeasurement(
-      Map<PartialPath, List<Pair<String, Integer>>> map) {
-    if (map == null) {
-      return;
-    }
-    for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry : map.entrySet()) {
-      List<Pair<String, Integer>> measurementList = entry.getValue();
-      if (measurementList.size() <= 1) {
-        continue;
-      }
-      Set<String> measurementSet = new HashSet<>();
-      for (Pair<String, Integer> thisPair : measurementList) {
-        boolean measurementNotExists = measurementSet.add(thisPair.left);
-        if (!measurementNotExists) {
-          PartialPath devicePath = entry.getKey();
+//           (k, v) -> {
+//             if (v == null) {
+//               List<Pair<String, Integer>> valueList = new ArrayList<>();
+//               valueList.add(new Pair<>(finalMeasurementName, index));
+//               return valueList;
+//             } else {
+//               v.add(new Pair<>(finalMeasurementName, index));
+//               return v;
+//             }
+//           });
+//     }
+//     // check this map, ensure that all time series (measurements in each device) only appear once
+//     validateMapFromDeviceToMeasurement(mapFromDeviceToMeasurementAndIndex);
+//     return mapFromDeviceToMeasurementAndIndex;
+//   }
+// 
+//   protected static void validateMapFromDeviceToMeasurement(
+//       Map<PartialPath, List<Pair<String, Integer>>> map) {
+//     if (map == null) {
+//       return;
+//     }
+//     for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry : map.entrySet()) {
+//       List<Pair<String, Integer>> measurementList = entry.getValue();
+//       if (measurementList.size() <= 1) {
+//         continue;
+//       }
+//       Set<String> measurementSet = new HashSet<>();
+//       for (Pair<String, Integer> thisPair : measurementList) {
+//         boolean measurementNotExists = measurementSet.add(thisPair.left);
+//         if (!measurementNotExists) {
+//           PartialPath devicePath = entry.getKey();
           throw new SemanticException(
-              new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
-        }
-      }
-    }
-  }
+//               new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
+//         }
+//       }
+//     }
+//   }
 
   public void insertColumn(final int pos, final ColumnSchema columnSchema) {
     if (pos < 0 || pos > measurements.length) {
@@ -633,7 +634,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return Optional.ofNullable(databaseName);
   }
 
-  // endregion
+//   // endregion
 
   @TableModel
   public void toLowerCase() {

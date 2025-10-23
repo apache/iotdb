@@ -27,15 +27,15 @@ public interface ITimeSeriesSchemaInfo extends ISchemaInfo {
 
   String getAlias();
 
-  IMeasurementSchema getSchema();
+//   IMeasurementSchema getSchema();
 
   Map<String, String> getTags();
 
   Map<String, String> getAttributes();
 
   boolean isUnderAlignedDevice();
-
-  boolean isLogicalView();
+// 
+//   boolean isLogicalView();
 
   ITimeSeriesSchemaInfo snapshot();
 }
