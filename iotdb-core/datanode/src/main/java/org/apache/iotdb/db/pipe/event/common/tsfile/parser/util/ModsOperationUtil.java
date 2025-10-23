@@ -134,10 +134,10 @@ public class ModsOperationUtil {
 
       // Sort by time range for efficient lookup
       // Different filtering logic for tree model and table model
-      final List<ModEntry> sortedMods;
+      final List<ModEntry> filteredMods;
       if (deviceID.isTableModel()) {
         // For table model: filter modifications that affect the device
-        sortedMods =
+        filteredMods =
             mods.stream()
                 .filter(
                     modification ->
@@ -145,10 +145,10 @@ public class ModsOperationUtil {
                 .collect(Collectors.toList());
       } else {
         // For tree model: no additional filtering needed
-        sortedMods = mods;
+        filteredMods = mods;
       }
       // Store sorted mods and start index
-      modsInfos.add(new ModsInfo(ModificationUtils.sortAndMerge(sortedMods), 0));
+      modsInfos.add(new ModsInfo(ModificationUtils.sortAndMerge(filteredMods), 0));
     }
 
     return modsInfos;
