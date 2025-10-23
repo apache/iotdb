@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.lmax.disruptor.RingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,7 +183,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// Queue size Reporting ///////////////////////////////
 
-  public void recordDisruptorSize(final RingBuffer<?> ringBuffer) {
+  public void recordDisruptorSize(final RingBuffer ringBuffer) {
     if (shouldPrintMessage) {
       disruptorSize = ringBuffer.getBufferSize() - (int) ringBuffer.remainingCapacity();
     }
