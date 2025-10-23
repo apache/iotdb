@@ -339,9 +339,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
-        boolean isDeleted = false;
         if (Objects.isNull(primitiveType)
-            || (isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i)))) {
+            || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
           switch (tablet.getSchemas().get(i).getType()) {
             case TEXT:
             case BLOB:
@@ -349,7 +348,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
           }
           tablet.getBitMaps()[i].mark(rowIndex);
-          isNeedFillTime = isNeedFillTime || !isDeleted;
           continue;
         }
 
@@ -468,20 +466,22 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             }
 
             // Skip the chunk if it is fully deleted by mods
-            final Statistics statistics =
-                findNonAlignedChunkStatistics(
-                    tsFileSequenceReader.getIChunkMetadataList(
-                        currentDevice, chunkHeader.getMeasurementID()),
-                    currentChunkHeaderOffset);
-            if (statistics != null
-                && ModsOperationUtil.isAllDeletedByMods(
-                    currentDevice,
-                    chunkHeader.getMeasurementID(),
-                    statistics.getStartTime(),
-                    statistics.getEndTime(),
-                    currentModifications)) {
-              tsFileSequenceReader.position(nextMarkerOffset);
-              break;
+            if (!currentModifications.isEmpty()) {
+              final Statistics statistics =
+                  findNonAlignedChunkStatistics(
+                      tsFileSequenceReader.getIChunkMetadataList(
+                          currentDevice, chunkHeader.getMeasurementID()),
+                      currentChunkHeaderOffset);
+              if (statistics != null
+                  && ModsOperationUtil.isAllDeletedByMods(
+                      currentDevice,
+                      chunkHeader.getMeasurementID(),
+                      statistics.getStartTime(),
+                      statistics.getEndTime(),
+                      currentModifications)) {
+                tsFileSequenceReader.position(nextMarkerOffset);
+                break;
+              }
             }
 
             if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
@@ -523,21 +523,23 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 break;
               }
 
-              // Skip the chunk if it is fully deleted by mods
-              final Statistics statistics =
-                  findAlignedChunkStatistics(
-                      tsFileSequenceReader.getIChunkMetadataList(
-                          currentDevice, chunkHeader.getMeasurementID()),
-                      currentChunkHeaderOffset);
-              if (statistics != null
-                  && ModsOperationUtil.isAllDeletedByMods(
-                      currentDevice,
-                      chunkHeader.getMeasurementID(),
-                      statistics.getStartTime(),
-                      statistics.getEndTime(),
-                      currentModifications)) {
-                tsFileSequenceReader.position(nextMarkerOffset);
-                break;
+              if (!currentModifications.isEmpty()) {
+                // Skip the chunk if it is fully deleted by mods
+                final Statistics statistics =
+                    findAlignedChunkStatistics(
+                        tsFileSequenceReader.getIChunkMetadataList(
+                            currentDevice, chunkHeader.getMeasurementID()),
+                        currentChunkHeaderOffset);
+                if (statistics != null
+                    && ModsOperationUtil.isAllDeletedByMods(
+                        currentDevice,
+                        chunkHeader.getMeasurementID(),
+                        statistics.getStartTime(),
+                        statistics.getEndTime(),
+                        currentModifications)) {
+                  tsFileSequenceReader.position(nextMarkerOffset);
+                  break;
+                }
               }
 
               // Increase value index

@@ -194,32 +194,35 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
           continue;
         }
 
-        // Safely filter measurements, remove non-existent measurements
-        measurements.removeIf(
-            measurement -> {
-              if (measurement == null || measurement.isEmpty()) {
-                LOGGER.warn("Found null or empty measurement for deviceId: {}, removing", deviceId);
-                return true;
-              }
+        if (!currentModifications.isEmpty()) {
+          // Safely filter measurements, remove non-existent measurements
+          measurements.removeIf(
+              measurement -> {
+                if (measurement == null || measurement.isEmpty()) {
+                  LOGGER.warn(
+                      "Found null or empty measurement for deviceId: {}, removing", deviceId);
+                  return true;
+                }
 
-              try {
-                TimeseriesMetadata meta =
-                    tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
-                return ModsOperationUtil.isAllDeletedByMods(
-                    deviceId,
-                    measurement,
-                    meta.getStatistics().getStartTime(),
-                    meta.getStatistics().getEndTime(),
-                    currentModifications);
-              } catch (IOException e) {
-                LOGGER.warn(
-                    "Failed to read metadata for deviceId: {}, measurement: {}, removing",
-                    deviceId,
-                    measurement,
-                    e);
-                return true;
-              }
-            });
+                try {
+                  TimeseriesMetadata meta =
+                      tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
+                  return ModsOperationUtil.isAllDeletedByMods(
+                      deviceId,
+                      measurement,
+                      meta.getStatistics().getStartTime(),
+                      meta.getStatistics().getEndTime(),
+                      currentModifications);
+                } catch (IOException e) {
+                  LOGGER.warn(
+                      "Failed to read metadata for deviceId: {}, measurement: {}, removing",
+                      deviceId,
+                      measurement,
+                      e);
+                  return true;
+                }
+              });
+        }
 
         // If measurements list is empty after filtering, remove the entire entry
         if (measurements.isEmpty()) {

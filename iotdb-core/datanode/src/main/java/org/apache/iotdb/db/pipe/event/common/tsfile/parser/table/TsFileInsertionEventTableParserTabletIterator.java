@@ -221,12 +221,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     continue;
                   }
 
-                  if (ModsOperationUtil.isAllDeletedByMods(
-                      pair.getLeft(),
-                      iChunkMetadata.getMeasurementUid(),
-                      alignedChunkMetadata.getStartTime(),
-                      alignedChunkMetadata.getEndTime(),
-                      modifications)) {
+                  if (!modifications.isEmpty()
+                      && ModsOperationUtil.isAllDeletedByMods(
+                          pair.getLeft(),
+                          iChunkMetadata.getMeasurementUid(),
+                          alignedChunkMetadata.getStartTime(),
+                          alignedChunkMetadata.getEndTime(),
+                          modifications)) {
                     iChunkMetadataIterator.remove();
                   }
                 }
@@ -432,9 +433,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
       final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
-      boolean isDelete = false;
       if (primitiveType == null
-          || (isDelete = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i)))) {
+          || ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
         switch (dataTypeList.get(i)) {
           case TEXT:
           case BLOB:
@@ -442,7 +442,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
         }
         tablet.getBitMaps()[i].mark(rowIndex);
-        needFillTime = needFillTime || !isDelete;
         continue;
       }
       needFillTime = true;

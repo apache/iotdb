@@ -176,19 +176,15 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
       final int rowIndex = tablet.getRowSize();
 
       boolean isNeedFillTime = false;
-
       final List<Field> fields = rowRecord.getFields();
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
         final String measurement = measurements.get(i);
-        boolean isDeletedByMods = false;
         // Check if this value is deleted by mods
         if (field == null
-            || (isDeletedByMods =
-                ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i)))) {
+            || ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i))) {
           tablet.getBitMaps()[i].mark(rowIndex);
-          isNeedFillTime = isNeedFillTime || !isDeletedByMods;
         } else {
           tablet.addValue(measurement, rowIndex, field.getObjectValue(schemas.get(i).getType()));
           isNeedFillTime = true;
