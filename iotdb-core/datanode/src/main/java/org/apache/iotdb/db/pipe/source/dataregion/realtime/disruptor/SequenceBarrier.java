@@ -22,9 +22,10 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 /**
  * Sequence barrier for consumer coordination
  *
- * <p>Simplified from Disruptor (removed Alert mechanism - IoTDB doesn't need it)
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and simplified for IoTDB's Pipe module (removed Alert mechanism - IoTDB doesn't need it).
  *
- * <p>MUST preserve:
+ * <p>Core features preserved from LMAX Disruptor:
  *
  * <ul>
  *   <li>waitFor() logic for waiting sequences

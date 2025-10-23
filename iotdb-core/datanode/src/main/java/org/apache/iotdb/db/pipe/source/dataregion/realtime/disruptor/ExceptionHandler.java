@@ -22,6 +22,9 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 /**
  * Exception handler for event processing errors
  *
+ * <p>This interface is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor) and
+ * adapted for IoTDB's Pipe module.
+ *
  * @param <T> event type
  */
 public interface ExceptionHandler<T> {

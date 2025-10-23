@@ -19,20 +19,66 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.locks.LockSupport;
 
+/**
+ * Multi-producer sequencer for coordinating concurrent publishers
+ *
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and preserves the core lock-free multi-producer algorithm for IoTDB's Pipe module.
+ *
+ * <p>Key features preserved from LMAX Disruptor:
+ *
+ * <ul>
+ *   <li>Lock-free CAS-based sequence claiming
+ *   <li>Availability buffer for out-of-order publishing detection
+ *   <li>Backpressure via gating sequences
+ *   <li>Cache line padding to prevent false sharing
+ * </ul>
+ */
 public final class MultiProducerSequencer {
 
+  /** Ring buffer size (must be power of 2) - immutable after construction */
   private final int bufferSize;
+
+  /**
+   * Producer cursor tracking highest claimed sequence Updated via CAS in next() method Volatile
+   * reads/writes handled by Sequence class
+   */
   private final Sequence cursor = new Sequence();
+
+  /**
+   * Array of consumer sequences for backpressure control MUST be volatile for safe publication when
+   * modified by SequenceGroups Array reference is replaced atomically via
+   * AtomicReferenceFieldUpdater
+   */
   volatile Sequence[] gatingSequences;
 
-  // CRITICAL: Cache to avoid repeated getMinimumSequence calls
+  /**
+   * Cached minimum gating sequence to reduce contention Updated opportunistically in next() to
+   * avoid expensive array scan Does not need to be perfectly accurate (conservative is safe)
+   */
   private final Sequence gatingSequenceCache = new Sequence();
 
-  // CRITICAL: Available buffer tracks published sequences
-  private final int[] availableBuffer;
+  /**
+   * CRITICAL: Availability flags for tracking published sequences
+   *
+   * <p>Handles out-of-order publishing in multi-producer scenario: - Thread A claims seq 10, still
+   * writing - Thread B claims seq 11, finishes and publishes - Consumer MUST wait for seq 10 before
+   * reading seq 11
+   *
+   * <p>Memory visibility guarantees: - Writers use lazySet() for store-store barrier (cheaper than
+   * volatile write) - Readers use get() for volatile read (ensures visibility across threads)
+   *
+   * <p>AtomicIntegerArray provides same semantics as Unsafe without reflection
+   */
+  private final AtomicIntegerArray availableBuffer;
+
+  /** Mask for fast modulo: sequence & indexMask == sequence % bufferSize */
   private final int indexMask;
+
+  /** Shift for calculating wrap count: sequence >>> indexShift */
   private final int indexShift;
 
   public MultiProducerSequencer(int bufferSize, Sequence[] gatingSequences) {
@@ -45,7 +91,7 @@ public final class MultiProducerSequencer {
 
     this.bufferSize = bufferSize;
     this.gatingSequences = gatingSequences != null ? gatingSequences : new Sequence[0];
-    this.availableBuffer = new int[bufferSize];
+    this.availableBuffer = new AtomicIntegerArray(bufferSize);
     this.indexMask = bufferSize - 1;
     this.indexShift = log2(bufferSize);
 
@@ -73,8 +119,8 @@ public final class MultiProducerSequencer {
       current = cursor.get();
       next = current + n;
 
-      long wrapPoint = next - bufferSize;
-      long cachedGatingSequence = gatingSequenceCache.get();
+      final long wrapPoint = next - bufferSize;
+      final long cachedGatingSequence = gatingSequenceCache.get();
 
       if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
         long gatingSequence = Sequence.getMinimumSequence(gatingSequences, current);
@@ -105,11 +151,14 @@ public final class MultiProducerSequencer {
     }
   }
 
-  /** CORE: Check if available - MUST use Unsafe.getIntVolatile */
+  /**
+   * CORE: Check if sequence is available for consumption Uses volatile read to ensure visibility of
+   * published sequences
+   */
   public boolean isAvailable(long sequence) {
     int index = calculateIndex(sequence);
     int flag = calculateAvailabilityFlag(sequence);
-    return availableBuffer[index] == flag;
+    return availableBuffer.get(index) == flag;
   }
 
   /** CORE: Get highest published - exact same algorithm */
@@ -178,25 +227,29 @@ public final class MultiProducerSequencer {
 
   /** Initialize available buffer */
   private void initialiseAvailableBuffer() {
-    for (int i = availableBuffer.length - 1; i != 0; i--) {
+    for (int i = availableBuffer.length() - 1; i != 0; i--) {
       setAvailableBufferValue(i, -1);
     }
     setAvailableBufferValue(0, -1);
   }
 
   /**
-   * CORE: Set available - MUST use Unsafe.putOrderedInt
+   * CORE: Mark sequence as available for consumption
    *
-   * <p>putOrderedInt provides: - Store-store barrier (not full fence) - Cheaper than volatile write
-   * - Sufficient for this use case
+   * <p>Uses lazySet() which provides: - Store-store barrier (ensures all prior writes are visible)
+   * - Cheaper than full volatile write (no store-load barrier) - Sufficient for this use case
+   * (readers use volatile get)
    */
   private void setAvailable(final long sequence) {
     setAvailableBufferValue(calculateIndex(sequence), calculateAvailabilityFlag(sequence));
   }
 
-  /** CRITICAL: Use Unsafe.putOrderedInt for correct memory semantics */
+  /**
+   * Set availability flag with release semantics lazySet() ensures previous event writes are
+   * visible before flag update
+   */
   private void setAvailableBufferValue(int index, int flag) {
-    availableBuffer[index] = flag;
+    availableBuffer.lazySet(index, flag);
   }
 
   /** Calculate availability flag */

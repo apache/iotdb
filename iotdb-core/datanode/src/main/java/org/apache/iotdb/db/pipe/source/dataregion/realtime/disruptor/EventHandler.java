@@ -22,6 +22,9 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 /**
  * Event handler for processing events from RingBuffer
  *
+ * <p>This interface is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor) and
+ * adapted for IoTDB's Pipe module.
+ *
  * @param <T> event type
  */
 @FunctionalInterface

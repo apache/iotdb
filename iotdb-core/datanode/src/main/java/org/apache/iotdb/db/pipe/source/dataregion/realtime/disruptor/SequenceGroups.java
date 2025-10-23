@@ -24,8 +24,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Utility for atomic management of sequence arrays
  *
+ * <p>This implementation is based on LMAX Disruptor (https://github.com/LMAX-Exchange/disruptor)
+ * and adapted for IoTDB's Pipe module.
+ *
  * <p>Provides thread-safe operations for adding and removing sequences from gating sequence arrays
- * used to track consumer progress
+ * used to track consumer progress.
  */
 final class SequenceGroups {
 
