@@ -127,8 +127,4 @@ public class Disruptor<T> {
     started = false;
     LOGGER.info("Disruptor shutdown completed");
   }
-
-  public RingBuffer<T> getRingBuffer() {
-    return ringBuffer;
-  }
 }
