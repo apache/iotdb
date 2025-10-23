@@ -130,7 +130,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
+      tsFileSequenceReader =
+          new TsFileSequenceReader(
+              tsFile.getAbsolutePath(),
+              !currentModifications.isEmpty(),
+              !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();

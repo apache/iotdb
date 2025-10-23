@@ -188,8 +188,6 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
         // Check if measurements list is deleted or empty
         if (measurements == null || measurements.isEmpty()) {
-          LOGGER.warn(
-              "Found null or empty measurements list for deviceId: {}, removing entry", deviceId);
           iterator.remove();
           continue;
         }
@@ -198,9 +196,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
           // Safely filter measurements, remove non-existent measurements
           measurements.removeIf(
               measurement -> {
-                if (measurement == null || measurement.isEmpty()) {
-                  LOGGER.warn(
-                      "Found null or empty measurement for deviceId: {}, removing", deviceId);
+                if (measurement == null) {
                   return true;
                 }
 
