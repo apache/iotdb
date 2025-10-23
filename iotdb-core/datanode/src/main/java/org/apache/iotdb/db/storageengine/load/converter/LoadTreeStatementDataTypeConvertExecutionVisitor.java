@@ -93,7 +93,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
             new TsFileInsertionEventScanParser(
-                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+                file,
+                new IoTDBTreePattern(null),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                true)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(

@@ -78,7 +78,7 @@ public class TsFileInsertionEventParserProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod) throws IOException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -94,7 +94,8 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           userName,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory
@@ -109,7 +110,8 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     if (treePattern instanceof UnionIoTDBTreePattern
@@ -128,7 +130,8 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -144,7 +147,8 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -161,7 +165,8 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            sourceEvent)
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -171,7 +176,8 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(
