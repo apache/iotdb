@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

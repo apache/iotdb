@@ -32,9 +32,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;

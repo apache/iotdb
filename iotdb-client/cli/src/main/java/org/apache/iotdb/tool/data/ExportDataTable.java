@@ -27,11 +27,11 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.ColumnSchemaBuilder;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;

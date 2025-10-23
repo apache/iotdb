@@ -105,8 +105,8 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 

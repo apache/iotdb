@@ -23,8 +23,8 @@ import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.PrefixPathList;
 import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.List;

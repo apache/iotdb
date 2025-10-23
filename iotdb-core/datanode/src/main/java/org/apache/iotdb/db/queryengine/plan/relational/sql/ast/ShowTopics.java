@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -29,7 +27,7 @@ public class ShowTopics extends SubscriptionStatement {
 
   private final String topicName;
 
-  public ShowTopics(@Nullable final String topicName) {
+  public ShowTopics(final String topicName) {
     this.topicName = topicName;
   }
 
