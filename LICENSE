@@ -330,3 +330,13 @@ Project page: https://github.com/apache/commons-collections
 License: https://github.com/apache/commons-collections/blob/master/LICENSE.txt
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from LMax Disruptor project.
+
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/source/dataregion/realtime/disruptor/*
+
+LMax Disruptor is open source software licensed under the Apache License 2.0 and supported by the Apache Software Foundation.
+Project page: https://github.com/LMAX-Exchange/disruptor
+License: https://github.com/LMAX-Exchange/disruptor/blob/master/LICENCE.txt
+
+--------------------------------------------------------------------------------

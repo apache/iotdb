@@ -27,7 +27,6 @@
     "com.google.guava:listenablefuture",
     "com.google.j2objc:j2objc-annotations",
     "com.h2database:h2-mvstore",
-    "com.lmax:disruptor",
     "com.nimbusds:content-type",
     "com.nimbusds:lang-tag",
     "com.nimbusds:nimbus-jose-jwt",
