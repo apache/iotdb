@@ -1735,8 +1735,12 @@ public class IoTDBDescriptor {
                 .orElse(
                     properties.getProperty(
                         "default_storage_group_level",
-                        ConfigurationFileUtils.getConfigurationDefaultValue(
-                            "default_database_level")))),
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_database_level"))
+                            .orElse(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_storage_group_level"))))),
         startUp);
     conf.setDefaultBooleanEncoding(
         properties.getProperty(
