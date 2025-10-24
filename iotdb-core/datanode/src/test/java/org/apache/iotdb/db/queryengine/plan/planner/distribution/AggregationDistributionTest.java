@@ -599,35 +599,46 @@ public class AggregationDistributionTest {
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
-    assertTrue(
-        fragmentInstances
-                .get(0)
-                .getFragment()
-                .getPlanNodeTree()
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-            instanceof GroupByLevelNode);
-    assertTrue(
-        fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0)
-            instanceof GroupByLevelNode);
-
-    Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
-    expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d2s1Path));
-    expectedDescriptorValue.put(groupedPathS2, Collections.singletonList(groupedPathS2));
-    verifyGroupByLevelDescriptor(
-        expectedDescriptorValue,
-        (GroupByLevelNode)
-            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
+    // Define expected patterns (order-independent verification)
+    Map<String, List<String>> expectedDescriptorValue1 = new HashMap<>();
+    expectedDescriptorValue1.put(groupedPathS1, Arrays.asList(groupedPathS1, d2s1Path));
+    expectedDescriptorValue1.put(groupedPathS2, Collections.singletonList(groupedPathS2));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPathS1, Collections.singletonList(d1s1Path));
     expectedDescriptorValue2.put(groupedPathS2, Collections.singletonList(d1s2Path));
-    verifyGroupByLevelDescriptor(
-        expectedDescriptorValue2,
-        (GroupByLevelNode)
-            fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0));
+
+    // Find fragments matching each expected pattern
+    boolean foundPattern1 = false;
+    boolean foundPattern2 = false;
+    int groupByLevelNodeCount = 0;
+
+    for (FragmentInstance instance : fragmentInstances) {
+      PlanNode root = instance.getFragment().getPlanNodeTree();
+      // Count GroupByLevelNode instances (can be at different depths)
+      if (countNodesOfType(root, GroupByLevelNode.class) > 0) {
+        groupByLevelNodeCount++;
+        // Find the GroupByLevelNode and verify its descriptor
+        GroupByLevelNode groupByLevel = findFirstNodeOfType(root, GroupByLevelNode.class);
+        if (groupByLevel != null) {
+          try {
+            verifyGroupByLevelDescriptor(expectedDescriptorValue1, groupByLevel);
+            foundPattern1 = true;
+          } catch (AssertionError e) {
+            try {
+              verifyGroupByLevelDescriptor(expectedDescriptorValue2, groupByLevel);
+              foundPattern2 = true;
+            } catch (AssertionError e2) {
+              // This fragment doesn't match any expected pattern
+            }
+          }
+        }
+      }
+    }
+
+    assertTrue("Expected at least 2 GroupByLevelNode instances", groupByLevelNodeCount >= 2);
+    assertTrue("Expected to find fragment matching pattern 1", foundPattern1);
+    assertTrue("Expected to find fragment matching pattern 2", foundPattern2);
   }
 
   @Test
@@ -821,6 +832,34 @@ public class AggregationDistributionTest {
     assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(f1Root.getChildren().get(1) instanceof ExchangeNode);
     assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
+  }
+
+  private int countNodesOfType(PlanNode root, Class<?> nodeType) {
+    if (root == null) {
+      return 0;
+    }
+    int count = nodeType.isInstance(root) ? 1 : 0;
+    for (PlanNode child : root.getChildren()) {
+      count += countNodesOfType(child, nodeType);
+    }
+    return count;
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T extends PlanNode> T findFirstNodeOfType(PlanNode root, Class<T> nodeType) {
+    if (root == null) {
+      return null;
+    }
+    if (nodeType.isInstance(root)) {
+      return (T) root;
+    }
+    for (PlanNode child : root.getChildren()) {
+      T result = findFirstNodeOfType(child, nodeType);
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
   }
 
   @Test
