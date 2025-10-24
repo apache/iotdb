@@ -560,7 +560,7 @@ public class TsFileInsertionDataContainerTest {
         isQuery
             ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
             : new TsFileInsertionScanDataContainer(
-                tsFile, pattern, startTime, endTime, null, null)) {
+                tsFile, pattern, startTime, endTime, null, null, false)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);

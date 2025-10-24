@@ -553,7 +553,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
                   endTime,
                   pipeTaskMeta,
                   this)
-              .provide());
+              .provide(isWithMod));
       return dataContainer.get();
     } catch (final IOException e) {
       close();

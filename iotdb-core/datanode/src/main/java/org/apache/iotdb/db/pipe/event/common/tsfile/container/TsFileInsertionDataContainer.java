@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -26,6 +27,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -48,6 +51,10 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent sourceEvent; // used to report progress
+
+  // mods entry
+  protected PipeMemoryBlock allocatedMemoryBlockForModifications;
+  protected PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   protected final long initialTimeNano = System.nanoTime();
   protected boolean timeUsageReported = false;
@@ -116,6 +123,15 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
     if (allocatedMemoryBlockForTablet != null) {
       allocatedMemoryBlockForTablet.close();
+    }
+
+    if (currentModifications != null) {
+      // help GC
+      currentModifications = null;
+    }
+
+    if (allocatedMemoryBlockForModifications != null) {
+      allocatedMemoryBlockForModifications.close();
     }
   }
 }
