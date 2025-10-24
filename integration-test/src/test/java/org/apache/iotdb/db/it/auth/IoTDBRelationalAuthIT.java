@@ -568,4 +568,41 @@ public class IoTDBRelationalAuthIT {
       }
     }
   }
+
+  @Test
+  public void testAudit() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      try {
+        adminStmt.execute("grant select on database __audit to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("grant select on table __audit.t1 to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("revoke select on table __audit.t1 from user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("grant select on table __audit.t1 to role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("revoke select on table __audit.t1 from role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+    }
+  }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -339,6 +340,11 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant/revoke privileges of admin user");
+        }
+        List<PartialPath> paths = getNodeNameList();
+        if (paths.stream().anyMatch(Audit::includeByAuditTreeDB)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to " + Audit.TREE_MODEL_AUDIT_DATABASE);
         }
         break;
     }
