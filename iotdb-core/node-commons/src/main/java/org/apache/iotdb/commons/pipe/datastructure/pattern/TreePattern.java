@@ -35,12 +35,16 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 
@@ -58,6 +62,49 @@ public abstract class TreePattern {
     return isTreeModelDataAllowedToBeCaptured;
   }
 
+  //////////////////////////// Interface ////////////////////////////
+
+  public abstract boolean isSingle();
+
+  public abstract String getPattern();
+
+  public abstract boolean isRoot();
+
+  /** Check if this pattern is legal. Different pattern type may have different rules. */
+  public abstract boolean isLegal();
+
+  /** Check if this pattern matches all time-series under a database. */
+  public abstract boolean coversDb(final String db);
+
+  /** Check if a device's all measurements are covered by this pattern. */
+  public abstract boolean coversDevice(final IDeviceID device);
+
+  /**
+   * Check if a database may have some measurements matched by the pattern.
+   *
+   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
+   */
+  public abstract boolean mayOverlapWithDb(final String db);
+
+  /**
+   * Check if a device may have some measurements matched by the pattern.
+   *
+   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
+   *
+   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
+   */
+  public abstract boolean mayOverlapWithDevice(final IDeviceID device);
+
+  /**
+   * Check if a full path with device and measurement can be matched by pattern.
+   *
+   * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
+   */
+  public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
+
+  //////////////////////////// Utilities ////////////////////////////
+
   public static <T> List<T> applyIndexesOnList(
       final int[] filteredIndexes, final List<T> originalList) {
     return Objects.nonNull(originalList)
@@ -66,7 +113,8 @@ public abstract class TreePattern {
   }
 
   /**
-   * Interpret from source parameters and get a {@link TreePattern}.
+   * Interpret from source parameters and get a {@link TreePattern}. This method parses both
+   * inclusion and exclusion patterns.
    *
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
@@ -75,9 +123,79 @@ public abstract class TreePattern {
     final boolean isTreeModelDataAllowedToBeCaptured =
         isTreeModelDataAllowToBeCaptured(sourceParameters);
 
-    final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
-    final String pattern =
-        sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+    // 1. Define the default inclusion pattern (matches all, "root.**")
+    // This is used if no inclusion patterns are specified.
+    final TreePattern defaultInclusionPattern =
+        buildUnionPattern(
+            isTreeModelDataAllowedToBeCaptured,
+            Collections.singletonList(
+                new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
+
+    // 2. Parse INCLUSION patterns using the helper
+    final TreePattern inclusionPattern =
+        parsePatternUnion(
+            sourceParameters,
+            isTreeModelDataAllowedToBeCaptured,
+            // 'path' keys (IoTDB wildcard)
+            EXTRACTOR_PATH_KEY,
+            SOURCE_PATH_KEY,
+            // 'pattern' keys (Prefix or IoTDB via format)
+            EXTRACTOR_PATTERN_KEY,
+            SOURCE_PATTERN_KEY,
+            // Default pattern if no keys are found
+            defaultInclusionPattern);
+
+    // 3. Parse EXCLUSION patterns using the helper
+    final TreePattern exclusionPattern =
+        parsePatternUnion(
+            sourceParameters,
+            isTreeModelDataAllowedToBeCaptured,
+            // 'path.exclusion' keys (IoTDB wildcard)
+            EXTRACTOR_PATH_EXCLUSION_KEY,
+            SOURCE_PATH_EXCLUSION_KEY,
+            // 'pattern.exclusion' keys (Prefix)
+            EXTRACTOR_PATTERN_EXCLUSION_KEY,
+            SOURCE_PATTERN_EXCLUSION_KEY,
+            // Default for exclusion is "match nothing" (null)
+            null);
+
+    // 4. Combine inclusion and exclusion
+    if (exclusionPattern == null) {
+      // No exclusion defined, return the inclusion pattern directly
+      return inclusionPattern;
+    } else {
+      // Both are defined, wrap them in an ExclusionTreePattern
+      return new ExclusionTreePattern(
+          isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
+    }
+  }
+
+  /**
+   * A private helper method to parse a set of 'path' and 'pattern' keys into a single union
+   * TreePattern. This contains the original logic of parsePipePatternFromSourceParameters.
+   *
+   * @param sourceParameters The source parameters.
+   * @param isTreeModelDataAllowedToBeCaptured Flag for TreePattern constructor.
+   * @param extractorPathKey Key for extractor path (e.g., "extractor.path").
+   * @param sourcePathKey Key for source path (e.g., "source.path").
+   * @param extractorPatternKey Key for extractor pattern (e.g., "extractor.pattern").
+   * @param sourcePatternKey Key for source pattern (e.g., "source.pattern").
+   * @param defaultPattern The pattern to return if both path and pattern are null. If this
+   *     parameter is null, this method returns null.
+   * @return The parsed TreePattern, or defaultPattern, or null if defaultPattern is null and no
+   *     patterns are specified.
+   */
+  private static TreePattern parsePatternUnion(
+      final PipeParameters sourceParameters,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final String extractorPathKey,
+      final String sourcePathKey,
+      final String extractorPatternKey,
+      final String sourcePatternKey,
+      final TreePattern defaultPattern) {
+
+    final String path = sourceParameters.getStringByKeys(extractorPathKey, sourcePathKey);
+    final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
 
     // 1. If both "source.path" and "source.pattern" are specified, their union will be used.
     if (path != null && pattern != null) {
@@ -110,10 +228,8 @@ public abstract class TreePattern {
     }
 
     // 4. If neither "source.path" nor "source.pattern" is specified,
-    // this pipe source will match all data.
-    return buildUnionPattern(
-        isTreeModelDataAllowedToBeCaptured,
-        Collections.singletonList(new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
+    // return the provided default pattern (which may be null).
+    return defaultPattern;
   }
 
   /**
@@ -229,43 +345,4 @@ public abstract class TreePattern {
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
-
-  public abstract boolean isSingle();
-
-  public abstract String getPattern();
-
-  public abstract boolean isRoot();
-
-  /** Check if this pattern is legal. Different pattern type may have different rules. */
-  public abstract boolean isLegal();
-
-  /** Check if this pattern matches all time-series under a database. */
-  public abstract boolean coversDb(final String db);
-
-  /** Check if a device's all measurements are covered by this pattern. */
-  public abstract boolean coversDevice(final IDeviceID device);
-
-  /**
-   * Check if a database may have some measurements matched by the pattern.
-   *
-   * @return {@code true} if the pattern may overlap with the database, {@code false} otherwise.
-   */
-  public abstract boolean mayOverlapWithDb(final String db);
-
-  /**
-   * Check if a device may have some measurements matched by the pattern.
-   *
-   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
-   * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
-   */
-  public abstract boolean mayOverlapWithDevice(final IDeviceID device);
-
-  /**
-   * Check if a full path with device and measurement can be matched by pattern.
-   *
-   * <p>NOTE: this is only called when {@link TreePattern#mayOverlapWithDevice} is {@code true}.
-   */
-  public abstract boolean matchesMeasurement(final IDeviceID device, final String measurement);
 }
