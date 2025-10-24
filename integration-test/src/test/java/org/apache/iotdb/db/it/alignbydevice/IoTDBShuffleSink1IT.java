@@ -36,7 +36,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBShuffleSink1IT {
-  private static final String[] SINGLE_SERIES =
+  protected static final String[] SINGLE_SERIES =
       new String[] {
         "create database root.single",
         "insert into root.single.d1(time,s1) values (1,2)",
@@ -45,7 +45,7 @@ public class IoTDBShuffleSink1IT {
         "insert into root.single.d2(time,s1) values (now(),5)"
       };
   // two devices
-  private static final String[] MULTI_SERIES =
+  protected static final String[] MULTI_SERIES =
       new String[] {
         "create database root.sg",
         "insert into root.sg.d1(time,s1,s2) values (1,2,2)",
@@ -55,7 +55,7 @@ public class IoTDBShuffleSink1IT {
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
     EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupNumPerDatabase(2);
@@ -65,7 +65,7 @@ public class IoTDBShuffleSink1IT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
