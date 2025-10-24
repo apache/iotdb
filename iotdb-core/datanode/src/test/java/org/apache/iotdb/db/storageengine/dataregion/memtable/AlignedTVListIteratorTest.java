@@ -870,7 +870,6 @@ public class AlignedTVListIteratorTest {
             columnIdxList,
             measurementSchema,
             tvListMap,
-            Collections.emptyList(),
             Arrays.asList(
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
     chunk.sortTvLists();
