@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.dual.treemodel.manual;
+package org.apache.iotdb.pipe.it.manual;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -33,13 +33,12 @@ import java.util.HashSet;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTreeModelManualIT {
+@Category({MultiClusterIT2ManualCreateSchema.class})
+public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualManualIT {
 
   @Override
   protected void setupConfig() {
     super.setupConfig();
-    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
