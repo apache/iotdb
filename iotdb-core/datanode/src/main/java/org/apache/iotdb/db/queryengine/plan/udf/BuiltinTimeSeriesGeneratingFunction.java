@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin;
+package org.apache.iotdb.db.queryengine.plan.udf;
 
 import org.apache.iotdb.commons.udf.builtin.String.UDTFConcat;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFEndsWith;
@@ -28,6 +28,51 @@ import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLength;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLocate;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
+import org.apache.iotdb.commons.udf.builtin.UDTFAbs;
+import org.apache.iotdb.commons.udf.builtin.UDTFAcos;
+import org.apache.iotdb.commons.udf.builtin.UDTFAsin;
+import org.apache.iotdb.commons.udf.builtin.UDTFAtan;
+import org.apache.iotdb.commons.udf.builtin.UDTFBottomK;
+import org.apache.iotdb.commons.udf.builtin.UDTFCeil;
+import org.apache.iotdb.commons.udf.builtin.UDTFChangePoints;
+import org.apache.iotdb.commons.udf.builtin.UDTFCommonDerivative;
+import org.apache.iotdb.commons.udf.builtin.UDTFCommonValueDifference;
+import org.apache.iotdb.commons.udf.builtin.UDTFConst;
+import org.apache.iotdb.commons.udf.builtin.UDTFConstE;
+import org.apache.iotdb.commons.udf.builtin.UDTFConstPi;
+import org.apache.iotdb.commons.udf.builtin.UDTFContains;
+import org.apache.iotdb.commons.udf.builtin.UDTFCos;
+import org.apache.iotdb.commons.udf.builtin.UDTFCosh;
+import org.apache.iotdb.commons.udf.builtin.UDTFDegrees;
+import org.apache.iotdb.commons.udf.builtin.UDTFEqualSizeBucketAggSample;
+import org.apache.iotdb.commons.udf.builtin.UDTFEqualSizeBucketM4Sample;
+import org.apache.iotdb.commons.udf.builtin.UDTFEqualSizeBucketOutlierSample;
+import org.apache.iotdb.commons.udf.builtin.UDTFEqualSizeBucketRandomSample;
+import org.apache.iotdb.commons.udf.builtin.UDTFExp;
+import org.apache.iotdb.commons.udf.builtin.UDTFFloor;
+import org.apache.iotdb.commons.udf.builtin.UDTFInRange;
+import org.apache.iotdb.commons.udf.builtin.UDTFJexl;
+import org.apache.iotdb.commons.udf.builtin.UDTFLog;
+import org.apache.iotdb.commons.udf.builtin.UDTFLog10;
+import org.apache.iotdb.commons.udf.builtin.UDTFM4;
+import org.apache.iotdb.commons.udf.builtin.UDTFMasterRepair;
+import org.apache.iotdb.commons.udf.builtin.UDTFMatches;
+import org.apache.iotdb.commons.udf.builtin.UDTFNonNegativeDerivative;
+import org.apache.iotdb.commons.udf.builtin.UDTFNonNegativeValueDifference;
+import org.apache.iotdb.commons.udf.builtin.UDTFNonZeroCount;
+import org.apache.iotdb.commons.udf.builtin.UDTFNonZeroDuration;
+import org.apache.iotdb.commons.udf.builtin.UDTFOnOff;
+import org.apache.iotdb.commons.udf.builtin.UDTFRadians;
+import org.apache.iotdb.commons.udf.builtin.UDTFSign;
+import org.apache.iotdb.commons.udf.builtin.UDTFSin;
+import org.apache.iotdb.commons.udf.builtin.UDTFSinh;
+import org.apache.iotdb.commons.udf.builtin.UDTFSqrt;
+import org.apache.iotdb.commons.udf.builtin.UDTFTan;
+import org.apache.iotdb.commons.udf.builtin.UDTFTanh;
+import org.apache.iotdb.commons.udf.builtin.UDTFTimeDifference;
+import org.apache.iotdb.commons.udf.builtin.UDTFTopK;
+import org.apache.iotdb.commons.udf.builtin.UDTFZeroCount;
+import org.apache.iotdb.commons.udf.builtin.UDTFZeroDuration;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -93,7 +138,9 @@ public enum BuiltinTimeSeriesGeneratingFunction {
       "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
   JEXL("JEXL", UDTFJexl.class),
   MASTER_REPAIR("MASTER_REPAIR", UDTFMasterRepair.class),
-  M4("M4", UDTFM4.class);
+  M4("M4", UDTFM4.class),
+  FORECAST("FORECAST", UDTFForecast.class),
+  ;
 
   private final String functionName;
   private final Class<?> functionClass;

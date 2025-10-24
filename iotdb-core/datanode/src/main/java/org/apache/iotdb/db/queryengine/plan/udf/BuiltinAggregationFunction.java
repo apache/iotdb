@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin;
+package org.apache.iotdb.db.queryengine.plan.udf;
 
 import java.util.Arrays;
 import java.util.HashSet;
