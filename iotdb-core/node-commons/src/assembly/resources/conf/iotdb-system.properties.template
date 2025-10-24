@@ -1607,6 +1607,12 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
+# This may reduce file copies but may also result in a worse disk load-balance
+# effectiveMode: hot_reload
+# Datatype: boolean
+keep_same_disk_when_loading_snapshot=false
+
 ####################
 ### Blob Allocator Configuration
 ####################
