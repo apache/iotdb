@@ -194,7 +194,7 @@ public class AggregationNode extends MultiChildProcessNode {
       outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
     }
     outputColumnNames.addAll(
-        aggregationDescriptorList.stream()
+        getDeduplicatedDescriptors(aggregationDescriptorList).stream()
             .map(AggregationDescriptor::getOutputColumnNames)
             .flatMap(List::stream)
             .collect(Collectors.toList()));
