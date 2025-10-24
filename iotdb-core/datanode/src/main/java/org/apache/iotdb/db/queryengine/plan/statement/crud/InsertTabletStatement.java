@@ -113,9 +113,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     setAligned(isAligned);
     setTimes(tablet.getTimestamps());
-    setColumns(Arrays.stream(tablet.getValues()).map(this::convertTableColumn).toArray());
-    setBitMaps(tablet.getBitMaps());
     setRowCount(tablet.getRowSize());
+    final Object[] columns = new Object[tablet.getValues().length];
+    for (int i = 0; i < tablet.getValues().length; ++i) {
+      columns[i] = convertTableColumn(tablet.getValues()[i], tablet.getRowSize(), dataTypes[i]);
+    }
+    setColumns(columns);
+    setBitMaps(tablet.getBitMaps());
 
     if (Objects.nonNull(databaseName)) {
       setWriteToTable(true);
@@ -127,7 +131,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
   }
 
-  private Object convertTableColumn(final Object input) {
+  private Object convertTableColumn(final Object input, final int rowCount, final TSDataType type) {
     if (input instanceof LocalDate[]) {
       return Arrays.stream(((LocalDate[]) input))
           .map(date -> Objects.nonNull(date) ? DateUtils.parseDateExpressionToInt(date) : 0)
@@ -137,6 +141,30 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       return Arrays.stream(((Binary[]) input))
           .map(binary -> Objects.nonNull(binary) ? binary : Binary.EMPTY_VALUE)
           .toArray(Binary[]::new);
+    } else if (input == null) {
+      switch (type) {
+        case BOOLEAN:
+          return new boolean[rowCount];
+        case INT32:
+        case DATE:
+          return new int[rowCount];
+        case INT64:
+        case TIMESTAMP:
+          return new long[rowCount];
+        case FLOAT:
+          return new float[rowCount];
+        case DOUBLE:
+          return new double[rowCount];
+        case TEXT:
+        case BLOB:
+        case STRING:
+          final Binary[] result = new Binary[rowCount];
+          Arrays.fill(result, Binary.EMPTY_VALUE);
+          return result;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("data type %s is not supported when convert data at client", type));
+      }
     }
 
     return input;
