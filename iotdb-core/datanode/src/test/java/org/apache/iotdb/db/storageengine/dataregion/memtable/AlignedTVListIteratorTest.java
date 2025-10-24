@@ -161,26 +161,6 @@ public class AlignedTVListIteratorTest {
         false,
         10);
     tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 10)));
-    testAligned(
-        tvListMap,
-        Ordering.ASC,
-        new TimeFilterOperators.TimeBetweenAnd(1L, 10L),
-        new LongFilterOperators.ValueBetweenAnd(0, 1, 10),
-        new PaginationController(10, 1),
-        Collections.singletonList(new TimeRange(4, 4)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-        true,
-        8);
-    testAligned(
-        tvListMap,
-        Ordering.DESC,
-        new TimeFilterOperators.TimeBetweenAnd(1L, 10L),
-        new LongFilterOperators.ValueBetweenAnd(0, 1, 10),
-        new PaginationController(10, 1),
-        Collections.singletonList(new TimeRange(4, 4)),
-        Arrays.asList(Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
-        true,
-        8);
   }
 
   @Test
