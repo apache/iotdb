@@ -21,8 +21,8 @@ package org.apache.iotdb.pipe.it.manual;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-
 import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
+
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
