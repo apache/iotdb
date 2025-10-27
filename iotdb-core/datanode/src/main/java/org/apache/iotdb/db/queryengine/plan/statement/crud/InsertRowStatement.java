@@ -480,8 +480,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public String toString() {
     return "InsertRowNode{"
-        + "deviceID="
-        + deviceID
+        + "devicePath="
+        + devicePath
         + ", time="
         + time
         + ", values="

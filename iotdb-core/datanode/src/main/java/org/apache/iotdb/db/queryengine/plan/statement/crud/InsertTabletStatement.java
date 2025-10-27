@@ -493,8 +493,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public String toString() {
     return "InsertTabletStatement{"
-        + "deviceIDs="
-        + Arrays.toString(deviceIDs)
+        + "devicePath="
+        + devicePath
         + ", measurements="
         + Arrays.toString(measurements)
         + ", rowCount="
