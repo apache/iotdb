@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 
 import java.util.Map;
 import java.util.Set;

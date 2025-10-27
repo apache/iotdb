@@ -92,15 +92,17 @@ public class StubSink implements ISink {
   }
 
   @Override
-  public void abort() {
+  public boolean abort() {
     closed = true;
     tsBlocks.clear();
+    return true;
   }
 
   @Override
-  public void close() {
+  public boolean close() {
     closed = true;
     tsBlocks.clear();
+    return true;
   }
 
   @Override

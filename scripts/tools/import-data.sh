@@ -49,11 +49,13 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
 for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
 MAIN_CLASS=org.apache.iotdb.tool.data.ImportData
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" $JVM_OPTS -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

@@ -136,7 +136,7 @@ public class UnsetTemplateProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -199,7 +199,7 @@ public class UnsetTemplateProcedure
             .getClusterSchemaManager()
             .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

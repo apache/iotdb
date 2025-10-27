@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -215,6 +216,18 @@ public class TableDeviceCacheEntry {
   TimeValuePair getTimeValuePair(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
+  }
+
+  boolean updateInputMap(final @Nonnull Map<String, Pair<TSDataType, TimeValuePair>> updateMap) {
+    // Shall only call this for original table device
+    for (final String measurement : updateMap.keySet()) {
+      final TimeValuePair result = getTimeValuePair(measurement);
+      if (result == null) {
+        return false;
+      }
+      updateMap.get(measurement).setRight(result);
+    }
+    return true;
   }
 
   // Shall pass in "" if last by time

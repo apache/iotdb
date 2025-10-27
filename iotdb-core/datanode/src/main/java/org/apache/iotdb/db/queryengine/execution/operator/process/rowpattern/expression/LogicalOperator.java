@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import java.util.List;
 
 public enum LogicalOperator implements NaryOperator {
@@ -41,7 +43,7 @@ public enum LogicalOperator implements NaryOperator {
     public Object apply(List<Object> operands) {
       for (Object operand : operands) {
         if (!(operand instanceof Boolean)) {
-          throw new IllegalArgumentException("OR operator only accepts Boolean operands");
+          throw new SemanticException("OR operator only accepts Boolean operands");
         }
         if ((Boolean) operand) {
           return true; // short-circuit

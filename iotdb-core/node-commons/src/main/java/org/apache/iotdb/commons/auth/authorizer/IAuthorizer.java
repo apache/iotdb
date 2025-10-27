@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 
 import java.util.List;
 import java.util.Map;
@@ -165,6 +166,15 @@ public interface IAuthorizer extends SnapshotProcessor {
   void updateUserPassword(String userName, String newPassword) throws AuthException;
 
   /**
+   * Rename the specified user.
+   *
+   * @param username The original name of the specified user.
+   * @param newUsername The new name to be specified.
+   * @throws AuthException If the original name does not exist or the new name is already existed.
+   */
+  void renameUser(String username, String newUsername) throws AuthException;
+
+  /**
    * Check if the user have the privilege or grant option on the target.
    *
    * @param userName The name of the user whose privileges are checked.
@@ -183,6 +193,14 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return A list contains all usernames.
    */
   List<String> listAllUsers();
+
+  /**
+   * List existing users info in the database.
+   *
+   * @return A list contains all users' baisc info including userid, username,maxSessionPerUser and
+   *     minSessionPerUser.
+   */
+  List<TListUserInfo> listAllUsersInfo();
 
   /**
    * List existing roles in the database.
@@ -206,6 +224,14 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @return A user whose name is username or null if such user does not exist.
    */
   User getUser(String username) throws AuthException;
+
+  /**
+   * Find a user by its userId.
+   *
+   * @param userId the index of the user.
+   * @return A user whose id is userId or null if such user does not exist.
+   */
+  User getUser(long userId) throws AuthException;
 
   /**
    * get all user

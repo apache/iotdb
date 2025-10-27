@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
@@ -46,6 +45,7 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -77,8 +77,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -277,14 +279,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      if (device.isDevice()
-          && device.getAsDeviceMNode().isAlignedNullable() != null
-          && device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "time series under this device is aligned, please use createAlignedTimeseries or change device.",
-            device.getFullPath());
-      }
-
       final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
@@ -369,14 +363,6 @@ public class MTreeBelowSGMemoryImpl {
           throw new AliasAlreadyExistException(
               devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
         }
-      }
-
-      if (device.isDevice()
-          && device.getAsDeviceMNode().isAlignedNullable() != null
-          && !device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "Time series under this device is not aligned, please use createTimeSeries or change device.",
-            devicePath.getFullPath());
       }
 
       final IDeviceMNode<IMemMNode> entityMNode;
@@ -1135,6 +1121,37 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       return reader;
     }
+  }
+
+  public int fillLastQueryMap(
+      final PartialPath prefixPath,
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
+      throws MetadataException {
+    final int[] sensorNum = {0};
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, prefixPath, store, true, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            final Map<String, Pair<TSDataType, TimeValuePair>> measurementMap = new HashMap<>();
+            for (final IMemMNode child : node.getChildren().values()) {
+              if (child instanceof IMeasurementMNode) {
+                measurementMap.put(
+                    child.getName(),
+                    new Pair<>(((IMeasurementMNode<?>) child).getDataType(), null));
+              }
+            }
+            final IDeviceID deviceID = node.getPartialPath().getIDeviceID();
+            mapToFill
+                .computeIfAbsent(new TableId(null, deviceID.getTableName()), o -> new HashMap<>())
+                .put(deviceID, measurementMap);
+            sensorNum[0] += measurementMap.size();
+          }
+        }) {
+      updater.update();
+    }
+    return sensorNum[0];
   }
 
   // Used for device query/fetch with filters during show device or table query

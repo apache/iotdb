@@ -40,6 +40,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertThrows;
+
 public class SessionUtilsTest {
 
   @Test
@@ -125,19 +127,20 @@ public class SessionUtilsTest {
             TSDataType.DOUBLE,
             TSDataType.TEXT,
             TSDataType.BOOLEAN);
-    ByteBuffer timeBuffer = SessionUtils.getValueBuffer(typeList, valueList);
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6");
+    ByteBuffer timeBuffer = SessionUtils.getValueBuffer(typeList, valueList, measurements);
     Assert.assertNotNull(timeBuffer);
 
     valueList = new ArrayList<>();
     valueList.add(null);
     typeList = Collections.singletonList(TSDataType.INT32);
-    timeBuffer = SessionUtils.getValueBuffer(typeList, valueList);
+    timeBuffer = SessionUtils.getValueBuffer(typeList, valueList, measurements);
     Assert.assertNotNull(timeBuffer);
 
     valueList = Collections.singletonList(false);
     typeList = Collections.singletonList(TSDataType.UNKNOWN);
     try {
-      SessionUtils.getValueBuffer(typeList, valueList);
+      SessionUtils.getValueBuffer(typeList, valueList, measurements);
     } catch (Exception e) {
       Assert.assertTrue(e instanceof IoTDBConnectionException);
     }
@@ -202,6 +205,23 @@ public class SessionUtilsTest {
 
     ByteBuffer timeBuffer = SessionUtils.getValueBuffer(tablet);
     Assert.assertNotNull(timeBuffer);
+  }
+
+  @Test
+  public void testGetValueBufferWithWrongType() {
+    List<Object> valueList = Arrays.asList(12L, 13, 1.2, 0.707f, false, "false");
+    List<TSDataType> typeList =
+        Arrays.asList(
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.BOOLEAN);
+    List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6");
+    assertThrows(
+        ClassCastException.class,
+        () -> SessionUtils.getValueBuffer(typeList, valueList, measurements));
   }
 
   @Test

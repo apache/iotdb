@@ -196,6 +196,13 @@ struct TSetThrottleQuotaReq {
   2: required TThrottleQuota throttleQuota
 }
 
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
+  2: optional list<bool> pipeCompletedList
+  3: optional list<i64> pipeRemainingEventCountList
+  4: optional list<double> pipeRemainingTimeList
+}
+
 struct TLicense {
     1: required i64 licenseIssueTimestamp
     2: required i64 expireTimestamp
@@ -286,7 +293,8 @@ enum TAggregationType {
   MAX,
   COUNT_ALL,
   APPROX_COUNT_DISTINCT,
-  APPROX_MOST_FREQUENT
+  APPROX_MOST_FREQUENT,
+  APPROX_PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {
@@ -297,6 +305,11 @@ struct TShowConfigurationTemplateResp {
 struct TShowConfigurationResp {
   1: required TSStatus status
   2: required string content
+}
+
+struct TShowAppliedConfigurationsResp {
+  1: required TSStatus status
+  2: optional map<string, string> data
 }
 
 // for AINode

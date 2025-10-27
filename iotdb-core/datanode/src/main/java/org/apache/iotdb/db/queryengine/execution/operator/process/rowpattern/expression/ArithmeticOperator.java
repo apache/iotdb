@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 public enum ArithmeticOperator implements BinaryOperator {
   ADD {
     @Override
@@ -71,11 +73,10 @@ public enum ArithmeticOperator implements BinaryOperator {
       try {
         return Double.parseDouble((String) obj);
       } catch (NumberFormatException e) {
-        throw new IllegalArgumentException("Cannot parse String to double: " + obj);
+        throw new SemanticException("Cannot parse String to double: " + obj);
       }
     } else {
-      throw new IllegalArgumentException(
-          "Unsupported type for arithmetic operation: " + obj.getClass());
+      throw new SemanticException("Unsupported type for arithmetic operation: " + obj.getClass());
     }
   }
 }

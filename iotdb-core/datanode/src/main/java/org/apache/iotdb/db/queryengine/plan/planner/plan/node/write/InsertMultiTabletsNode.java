@@ -134,9 +134,10 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
-  public void setSearchIndex(long index) {
+  public SearchNode setSearchIndex(long index) {
     searchIndex = index;
     insertTabletNodeList.forEach(plan -> plan.setSearchIndex(index));
+    return this;
   }
 
   @Override

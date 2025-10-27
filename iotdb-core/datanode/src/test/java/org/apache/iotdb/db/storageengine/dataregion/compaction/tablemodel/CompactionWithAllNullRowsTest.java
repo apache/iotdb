@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -36,9 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -49,7 +48,6 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -57,6 +55,7 @@ import org.junit.runners.Parameterized;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 @RunWith(Parameterized.class)
 public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
@@ -248,8 +247,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
   }
 
   @Test
-  @Ignore
-  public void testCompactionWithAllDeletion() throws IOException, IllegalPathException {
+  public void testCompactionWithAllDeletion1() throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     IDeviceID deviceID = null;
     try (CompactionTableModelTestFileWriter writer =
@@ -280,6 +278,39 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testCompactionWithAllDeletion2() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    IDeviceID deviceID = null;
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      deviceID = writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"),
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, true, true, true, true, true, true, true, true, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource1
+        .getModFileForWrite()
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
+                new TimeRange(Long.MIN_VALUE, 11)));
+    resource1.getModFileForWrite().close();
+    seqResources.add(resource1);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertEquals(12, target.getFileStartTime());
+    Assert.assertEquals(12, target.getFileEndTime());
+  }
+
+  @Test
   public void testCompactionWithAllValueColumnDeletion() throws IOException, IllegalPathException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     IDeviceID deviceID = null;
@@ -298,16 +329,40 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     }
     resource1
         .getModFileForWrite()
-        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s0"), 11));
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "t1",
+                    new IDPredicate.FullExactMatch(deviceID),
+                    Collections.singletonList("s0")),
+                new TimeRange(Long.MIN_VALUE, 11)));
     resource1
         .getModFileForWrite()
-        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s1"), 11));
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "t1",
+                    new IDPredicate.FullExactMatch(deviceID),
+                    Collections.singletonList("s1")),
+                new TimeRange(Long.MIN_VALUE, 11)));
     resource1
         .getModFileForWrite()
-        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s2"), 11));
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "t1",
+                    new IDPredicate.FullExactMatch(deviceID),
+                    Collections.singletonList("s2")),
+                new TimeRange(Long.MIN_VALUE, 11)));
     resource1
         .getModFileForWrite()
-        .write(new TreeDeletionEntry(new MeasurementPath(deviceID, "s3"), 11));
+        .write(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    "t1",
+                    new IDPredicate.FullExactMatch(deviceID),
+                    Collections.singletonList("s3")),
+                new TimeRange(Long.MIN_VALUE, 11)));
     resource1.getModFileForWrite().close();
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =

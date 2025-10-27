@@ -225,6 +225,38 @@ public class RowPatternRecognitionTest {
   }
 
   @Test
+  public void testPatternFunctions() {
+    String sql =
+        "SELECT * "
+            + "FROM table1 "
+            + "MATCH_RECOGNIZE ( "
+            + "  ORDER BY time "
+            + "  MEASURES "
+            + "    %s AS col1 "
+            + "  PATTERN (A B+) "
+            + "  DEFINE "
+            + "    B AS B.s2 > 5"
+            + ") AS m";
+
+    assertTestSuccess(String.format(sql, "RPR_LAST(A.s1)"));
+
+    assertTestFail(
+        String.format(sql, "LAST(A.s1)"),
+        "Pattern recognition function names cannot be LAST or FIRST, use RPR_LAST or RPR_FIRST instead.");
+    assertTestFail(
+        String.format(sql, "FIRST(A.s1)"),
+        "Pattern recognition function names cannot be LAST or FIRST, use RPR_LAST or RPR_FIRST instead.");
+    assertTestFail(
+        String.format(sql, "RPR_LAT(A.s1)"), "Unknown pattern recognition function: RPR_LAT");
+    assertTestFail(
+        String.format(sql, "\"RPP_LAST\"(s2)"),
+        "Pattern recognition function name must not be delimited: RPP_LAST");
+    assertTestFail(
+        String.format(sql, "A.RPP_LAST(s2)"),
+        "Pattern recognition function name must not be qualified: a.rpp_last");
+  }
+
+  @Test
   public void testPatternQuantifiers() {
     String sql =
         "SELECT * "

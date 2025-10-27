@@ -180,7 +180,7 @@ public class WALManager implements IService {
     // threshold, the system continues to delete expired files until the disk size is smaller than
     // the threshold.
     boolean firstLoop = true;
-    while ((firstLoop || shouldThrottle()) && !Thread.interrupted()) {
+    while ((firstLoop || shouldThrottle())) {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
@@ -189,6 +189,10 @@ public class WALManager implements IService {
             getThrottleThreshold());
       }
       firstLoop = false;
+      if (Thread.interrupted()) {
+        logger.info("Timed wal delete thread is interrupted.");
+        return;
+      }
     }
   }
 
@@ -267,12 +271,15 @@ public class WALManager implements IService {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
-
+    logger.info("Stopping WALManager");
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
+    logger.info("Deleting outdated files before exiting");
+    deleteOutdatedFilesInWALNodes();
     clear();
+    logger.info("WALManager stopped");
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {

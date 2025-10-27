@@ -126,6 +126,7 @@ public class IoTDBRestServiceInsertValuesIT {
     ping();
     prepareTableData();
     testInsertValues();
+    testInsertQuery();
     testUpdatingValues();
     testInsertValuesWithSameTimestamp();
     testInsertWithWrongMeasurementNum1();
@@ -178,6 +179,28 @@ public class IoTDBRestServiceInsertValuesIT {
         assertEquals(22.0, jsonArray.get(2).getAsDouble(), 0.1);
       }
     }
+  }
+
+  public void testInsertQuery() {
+    // create table wf02
+    String createSql =
+        "create table wf02 (tag1 string tag, status boolean field, temperature float field)";
+    String insertQuerySql = "insert into wf02 select * from wf01";
+
+    // execute NonQuery
+    nonQuery(sqlHandler("t1", createSql));
+    JsonObject res = nonQuery(sqlHandler("t1", insertQuerySql));
+    assertEquals(res.get("code").getAsInt(), 200);
+    JsonObject jsonObject = query(sqlHandler("t1", "select time, status from wf02"));
+    JsonArray valuesList = jsonObject.getAsJsonArray("values");
+    for (int i = 0; i < valuesList.size(); i++) {
+      JsonArray jsonArray = valuesList.get(i).getAsJsonArray();
+      assertTrue(jsonArray.get(1).getAsBoolean());
+    }
+
+    // execute Query
+    res = query(sqlHandler("t1", insertQuerySql));
+    assertEquals(res.get("code").getAsInt(), 301);
   }
 
   public void testUpdatingValues() {

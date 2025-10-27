@@ -68,8 +68,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,6 +126,7 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private IndexedConsensusRequest lastConsensusRequest;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -208,12 +209,14 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}, lastConsensusRequest: {}",
             thisNode.getGroupId(),
             getMinSyncIndex(),
-            indexedConsensusRequest.getSearchIndex());
+            indexedConsensusRequest.getSearchIndex(),
+            lastConsensusRequest.getSerializedRequests());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
@@ -358,7 +361,7 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
-      File targetFile = new File(storageDir, targetFilePath);
+      File targetFile = getSnapshotPath(targetFilePath);
       Path parentDir = Paths.get(targetFile.getParent());
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir);
@@ -405,7 +408,23 @@ public class IoTConsensusServerImpl {
 
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    stateMachine.loadSnapshot(new File(storageDir, snapshotId));
+    stateMachine.loadSnapshot(getSnapshotPath(snapshotId));
+  }
+
+  private File getSnapshotPath(String snapshotRelativePath) {
+    File storageDirFile = new File(storageDir);
+    File snapshotDir = new File(storageDir, snapshotRelativePath);
+    try {
+      if (!snapshotDir
+          .getCanonicalFile()
+          .toPath()
+          .startsWith(storageDirFile.getCanonicalFile().toPath())) {
+        throw new IllegalArgumentException("Invalid snapshotRelativePath: " + snapshotRelativePath);
+      }
+    } catch (IOException e) {
+      throw new IllegalArgumentException(e);
+    }
+    return snapshotDir;
   }
 
   @FunctionalInterface
@@ -820,7 +839,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = new File(storageDir, snapshotId);
+    File snapshotDir = getSnapshotPath(snapshotId);
     if (snapshotDir.exists()) {
       try {
         FileUtils.deleteDirectory(snapshotDir);

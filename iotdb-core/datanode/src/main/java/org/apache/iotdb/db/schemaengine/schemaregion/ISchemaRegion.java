@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -55,6 +56,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
@@ -335,6 +339,11 @@ public interface ISchemaRegion {
   void deactivateTemplateInBlackList(final IDeactivateTemplatePlan plan) throws MetadataException;
 
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException;
+
+  int fillLastQueryMap(
+      final PartialPath pattern,
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
       throws MetadataException;
 
   // endregion

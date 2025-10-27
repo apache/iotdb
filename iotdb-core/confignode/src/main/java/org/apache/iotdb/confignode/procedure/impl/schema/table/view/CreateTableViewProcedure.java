@@ -111,7 +111,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
             .detectMissingFieldTypes();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -123,7 +123,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.PRE_RELEASE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -138,7 +138,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
             new PreCreateTableViewPlan(database, oldView, oldStatus), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

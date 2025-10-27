@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.structure.BalanceTreeMap;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -39,6 +40,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -56,12 +59,36 @@ public class PartitionBalancer {
 
   private final IManager configManager;
 
-  // Map<DatabaseName, DataPartitionPolicyTable>
+  private final DataPartitionAllocationStrategy dataPartitionAllocationStrategy;
+  // Map<DatabaseName, DataPartitionPolicyTable>, employed by INHERIT allocation strategy
   private final Map<String, DataPartitionPolicyTable> dataPartitionPolicyTableMap;
+
+  private enum DataPartitionAllocationStrategy {
+    // The INHERIT strategy tries to allocate adjacent DataPartitions as
+    // consistent as possible, while ensuring load balancing.
+    INHERIT,
+    // The SHUFFLE strategy tries to allocate adjacent DataPartitions as
+    // inconsistent as possible, note the result could be unbalanced.
+    SHUFFLE
+  }
 
   public PartitionBalancer(IManager configManager) {
     this.configManager = configManager;
     this.dataPartitionPolicyTableMap = new ConcurrentHashMap<>();
+    switch (ConfigNodeDescriptor.getInstance().getConf().getDataPartitionAllocationStrategy()) {
+      case "INHERIT":
+        this.dataPartitionAllocationStrategy = DataPartitionAllocationStrategy.INHERIT;
+        break;
+      case "SHUFFLE":
+        this.dataPartitionAllocationStrategy = DataPartitionAllocationStrategy.SHUFFLE;
+        break;
+      default:
+        LOGGER.warn(
+            "Unknown DataPartition allocation strategy {}, using INHERIT strategy by default.",
+            ConfigNodeDescriptor.getInstance().getConf().getDataPartitionAllocationStrategy());
+        this.dataPartitionAllocationStrategy = DataPartitionAllocationStrategy.INHERIT;
+        break;
+    }
   }
 
   /**
@@ -152,56 +179,25 @@ public class PartitionBalancer {
           List<TTimePartitionSlot> timePartitionSlots =
               seriesPartitionEntry.getValue().getTimePartitionSlots();
           timePartitionSlots.sort(Comparator.comparingLong(TTimePartitionSlot::getStartTime));
-
-          for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
-
-            // 1. The historical DataPartition will try to inherit successor DataPartition first
-            TConsensusGroupId successor =
-                getPartitionManager()
-                    .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
-            if (successor != null && availableDataRegionGroupCounter.containsKey(successor)) {
-              seriesPartitionTable.putDataPartition(timePartitionSlot, successor);
-              availableDataRegionGroupCounter.put(
-                  successor, availableDataRegionGroupCounter.get(successor) + 1);
-              continue;
-            }
-
-            // 2. Assign DataPartition base on the DataAllotTable
-            TConsensusGroupId allotGroupId =
-                allotTable.getRegionGroupIdOrActivateIfNecessary(seriesPartitionSlot);
-            if (availableDataRegionGroupCounter.containsKey(allotGroupId)) {
-              seriesPartitionTable.putDataPartition(timePartitionSlot, allotGroupId);
-              availableDataRegionGroupCounter.put(
-                  allotGroupId, availableDataRegionGroupCounter.get(allotGroupId) + 1);
-              continue;
-            }
-
-            // 3. The allotDataRegionGroup is unavailable,
-            // try to inherit predecessor DataPartition
-            TConsensusGroupId predecessor =
-                getPartitionManager()
-                    .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
-            if (predecessor != null && availableDataRegionGroupCounter.containsKey(predecessor)) {
-              seriesPartitionTable.putDataPartition(timePartitionSlot, predecessor);
-              availableDataRegionGroupCounter.put(
-                  predecessor, availableDataRegionGroupCounter.get(predecessor) + 1);
-              continue;
-            }
-
-            // 4. Assign the DataPartition to DataRegionGroup with the least DataPartitions
-            // If the above DataRegionGroups are unavailable
-            TConsensusGroupId greedyGroupId = availableDataRegionGroupCounter.getKeyWithMinValue();
-            seriesPartitionTable.putDataPartition(timePartitionSlot, greedyGroupId);
-            availableDataRegionGroupCounter.put(
-                greedyGroupId, availableDataRegionGroupCounter.get(greedyGroupId) + 1);
-            LOGGER.warn(
-                "[PartitionBalancer] The SeriesSlot: {} in TimeSlot: {} will be allocated to DataRegionGroup: {}, because the original target: {} is currently unavailable.",
-                seriesPartitionSlot,
-                timePartitionSlot,
-                greedyGroupId,
-                allotGroupId);
+          switch (dataPartitionAllocationStrategy) {
+            case INHERIT:
+              inheritAllocationStrategy(
+                  database,
+                  allotTable,
+                  seriesPartitionSlot,
+                  timePartitionSlots,
+                  availableDataRegionGroupCounter,
+                  seriesPartitionTable);
+              break;
+            case SHUFFLE:
+              shuffleAllocationStrategy(
+                  database,
+                  seriesPartitionSlot,
+                  timePartitionSlots,
+                  availableDataRegionGroupCounter,
+                  seriesPartitionTable);
+              break;
           }
-
           dataPartitionTable
               .getDataPartitionMap()
               .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
@@ -213,6 +209,104 @@ public class PartitionBalancer {
     }
 
     return result;
+  }
+
+  private void inheritAllocationStrategy(
+      String database,
+      DataPartitionPolicyTable allotTable,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      List<TTimePartitionSlot> timePartitionSlots,
+      BalanceTreeMap<TConsensusGroupId, Integer> availableDataRegionGroupCounter,
+      SeriesPartitionTable seriesPartitionTable) {
+    for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
+
+      // 1. The historical DataPartition will try to inherit successor DataPartition first
+      TConsensusGroupId successor =
+          getPartitionManager()
+              .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      if (successor != null && availableDataRegionGroupCounter.containsKey(successor)) {
+        seriesPartitionTable.putDataPartition(timePartitionSlot, successor);
+        availableDataRegionGroupCounter.put(
+            successor, availableDataRegionGroupCounter.get(successor) + 1);
+        continue;
+      }
+
+      // 2. Assign DataPartition base on the DataAllotTable
+      TConsensusGroupId allotGroupId =
+          allotTable.getRegionGroupIdOrActivateIfNecessary(seriesPartitionSlot);
+      if (availableDataRegionGroupCounter.containsKey(allotGroupId)) {
+        seriesPartitionTable.putDataPartition(timePartitionSlot, allotGroupId);
+        availableDataRegionGroupCounter.put(
+            allotGroupId, availableDataRegionGroupCounter.get(allotGroupId) + 1);
+        continue;
+      }
+
+      // 3. The allotDataRegionGroup is unavailable,
+      // try to inherit predecessor DataPartition
+      TConsensusGroupId predecessor =
+          getPartitionManager()
+              .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      if (predecessor != null && availableDataRegionGroupCounter.containsKey(predecessor)) {
+        seriesPartitionTable.putDataPartition(timePartitionSlot, predecessor);
+        availableDataRegionGroupCounter.put(
+            predecessor, availableDataRegionGroupCounter.get(predecessor) + 1);
+        continue;
+      }
+
+      // 4. Assign the DataPartition to DataRegionGroup with the least DataPartitions
+      // If the above DataRegionGroups are unavailable
+      TConsensusGroupId greedyGroupId = availableDataRegionGroupCounter.getKeyWithMinValue();
+      seriesPartitionTable.putDataPartition(timePartitionSlot, greedyGroupId);
+      availableDataRegionGroupCounter.put(
+          greedyGroupId, availableDataRegionGroupCounter.get(greedyGroupId) + 1);
+      LOGGER.warn(
+          "[PartitionBalancer] The SeriesSlot: {} in TimeSlot: {} will be allocated to DataRegionGroup: {}, because the original target: {} is currently unavailable.",
+          seriesPartitionSlot,
+          timePartitionSlot,
+          greedyGroupId,
+          allotGroupId);
+    }
+  }
+
+  private void shuffleAllocationStrategy(
+      String database,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      List<TTimePartitionSlot> timePartitionSlots,
+      BalanceTreeMap<TConsensusGroupId, Integer> availableDataRegionGroupCounter,
+      SeriesPartitionTable seriesPartitionTable) {
+    final SecureRandom random = new SecureRandom();
+    List<TConsensusGroupId> availableDataRegionGroups =
+        new ArrayList<>(availableDataRegionGroupCounter.keySet());
+    for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
+      if (availableDataRegionGroups.size() == 1) {
+        // Only one available DataRegionGroup
+        seriesPartitionTable.putDataPartition(
+            timePartitionSlot, availableDataRegionGroups.iterator().next());
+        continue;
+      }
+      TConsensusGroupId predecessor =
+          getPartitionManager()
+              .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      TConsensusGroupId successor =
+          getPartitionManager()
+              .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+      if (predecessor != null
+          && successor != null
+          && !predecessor.equals(successor)
+          && availableDataRegionGroups.size() == 2) {
+        // Only two available DataRegionGroups and predecessor equals successor
+        seriesPartitionTable.putDataPartition(
+            timePartitionSlot, random.nextBoolean() ? successor : predecessor);
+        continue;
+      }
+      TConsensusGroupId targetGroupId;
+      do {
+        // Randomly pick a DataRegionGroup from availableDataRegionGroups
+        targetGroupId =
+            availableDataRegionGroups.get(random.nextInt(availableDataRegionGroups.size()));
+      } while (targetGroupId.equals(predecessor) || targetGroupId.equals(successor));
+      seriesPartitionTable.putDataPartition(timePartitionSlot, targetGroupId);
+    }
   }
 
   /**

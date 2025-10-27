@@ -919,4 +919,13 @@ public class IoTDBCaseWhenThenIT {
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
   }
+
+  @Test
+  public void testThenWithBinarySameConstant() {
+    String sql = "SELECT CASE WHEN true THEN 200 + (s1 - 200) END AS result FROM root.sg.d1";
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "result"};
+    String[] retArray =
+        new String[] {"0,0.0,", "1000000,11.0,", "20000000,22.0,", "210000000,33.0,"};
+    resultSetEqualTest(sql, expectedHeader, retArray);
+  }
 }

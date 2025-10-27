@@ -304,10 +304,6 @@ public class ModificationFile implements AutoCloseable {
       }
       if (nextEntry == null) {
         try {
-          if (inputStream.available() == 0) {
-            close();
-            return false;
-          }
           nextEntry = ModEntry.createFrom(inputStream);
         } catch (EOFException e) {
           close();
@@ -394,7 +390,6 @@ public class ModificationFile implements AutoCloseable {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
         String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
-        List<ModEntry> allSettledModifications = new ArrayList<>();
         try (ModificationFile compactedModificationFile =
             new ModificationFile(newModsFileName, false)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
@@ -402,7 +397,6 @@ public class ModificationFile implements AutoCloseable {
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
             List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
             compactedModificationFile.write(settledModifications);
-            allSettledModifications.addAll(settledModifications);
           }
         } catch (IOException e) {
           LOGGER.error("compact mods file exception of {}", file, e);

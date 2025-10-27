@@ -76,7 +76,9 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               // DatabaseName may be null for config region group
               if (Objects.isNull(databaseName)
                   || (!databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                      && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + "."))) {
+                      && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
+                      && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
+                      && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + "."))) {
                 // null or -1 means empty origin leader
                 final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left.getLeaderId());
                 final int newLeaderNodeId = (pair.right == null ? -1 : pair.right.getLeaderId());

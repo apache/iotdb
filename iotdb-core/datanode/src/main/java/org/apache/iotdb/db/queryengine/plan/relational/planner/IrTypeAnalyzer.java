@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -71,9 +72,9 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -227,30 +228,34 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-      Set<Type> resultTypes =
+      LinkedHashSet<Type> resultTypes =
           node.getWhenClauses().stream()
               .map(
                   clause -> {
                     Type operandType = process(clause.getOperand(), context);
-                    checkArgument(
-                        operandType.equals(BOOLEAN),
-                        "When clause operand must be boolean: %s",
-                        operandType);
+                    if (!operandType.equals(BOOLEAN)) {
+                      throw new SemanticException(
+                          String.format("When clause operand must be boolean: %s", operandType));
+                    }
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
               defaultValue -> {
                 Type defaultType = process(defaultValue, context);
-                checkArgument(
-                    defaultType.equals(resultType),
-                    "Default result type must be the same as WHEN result types: %s vs %s",
-                    defaultType,
-                    resultType);
+                if (!defaultType.equals(resultType)) {
+                  throw new SemanticException(
+                      String.format(
+                          "Default result type must be the same as WHEN result types: %s vs %s",
+                          defaultType, resultType));
+                }
               });
 
       return setExpressionType(node, resultType);
@@ -260,31 +265,37 @@ public class IrTypeAnalyzer {
     protected Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
       Type operandType = process(node.getOperand(), context);
 
-      Set<Type> resultTypes =
+      LinkedHashSet<Type> resultTypes =
           node.getWhenClauses().stream()
               .map(
                   clause -> {
                     Type clauseOperandType = process(clause.getOperand(), context);
-                    checkArgument(
-                        clauseOperandType.equals(operandType),
-                        "WHEN clause operand type must match CASE operand type: %s vs %s",
-                        clauseOperandType,
-                        operandType);
+                    if (!clauseOperandType.equals(operandType)) {
+                      throw new SemanticException(
+                          String.format(
+                              "WHEN clause operand type must match CASE operand type: %s vs %s",
+                              clauseOperandType, operandType));
+                    }
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
+      if (resultTypes.size() != 1) {
+        throw new SemanticException(
+            String.format("All result types must be the same: %s", resultTypes));
+      }
+
       Type resultType = resultTypes.iterator().next();
       node.getDefaultValue()
           .ifPresent(
               defaultValue -> {
                 Type defaultType = process(defaultValue, context);
-                checkArgument(
-                    defaultType.equals(resultType),
-                    "Default result type must be the same as WHEN result types: %s vs %s",
-                    defaultType,
-                    resultType);
+                if (!defaultType.equals(resultType)) {
+                  throw new SemanticException(
+                      String.format(
+                          "Default result type must be the same as WHEN result types: %s vs %s",
+                          defaultType, resultType));
+                }
               });
 
       return setExpressionType(node, resultType);
@@ -292,18 +303,27 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitCoalesceExpression(CoalesceExpression node, Context context) {
-      Set<Type> types =
+      LinkedHashSet<Type> types =
           node.getOperands().stream()
               .map(operand -> process(operand, context))
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
-      checkArgument(types.size() == 1, "All operands must have the same type: %s", types);
+      if (types.size() != 1) {
+        throw new SemanticException(
+            String.format("All operands must have the same type: %s", types));
+      }
       return setExpressionType(node, types.iterator().next());
     }
 
     @Override
     protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
       return setExpressionType(node, process(node.getValue(), context));
+    }
+
+    @Override
+    protected Type visitExtract(Extract node, Context context) {
+      process(node.getExpression(), context);
+      return setExpressionType(node, INT64);
     }
 
     @Override

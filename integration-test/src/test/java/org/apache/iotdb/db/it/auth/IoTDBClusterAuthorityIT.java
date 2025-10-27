@@ -62,6 +62,7 @@ public class IoTDBClusterAuthorityIT {
   @Before
   public void setUp() throws Exception {
     // Init 1C1D environment
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
@@ -83,7 +84,9 @@ public class IoTDBClusterAuthorityIT {
             "",
             new HashSet<>(),
             false,
-            AuthUtils.serializePartialPathList(new ArrayList<>()));
+            AuthUtils.serializePartialPathList(new ArrayList<>()),
+            0,
+            "");
     TAuthorizerResp authorizerResp = client.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -100,7 +103,9 @@ public class IoTDBClusterAuthorityIT {
                 "",
                 new HashSet<>(),
                 false,
-                AuthUtils.serializePartialPathList(new ArrayList<>()));
+                AuthUtils.serializePartialPathList(new ArrayList<>()),
+                0,
+                "");
         status = client.operatePermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -145,11 +150,13 @@ public class IoTDBClusterAuthorityIT {
               AuthorType.CREATE_USER.ordinal(),
               "tempuser0",
               "",
-              "passwd",
+              "passwd123456",
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setUserName("tempuser1");
@@ -178,7 +185,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0
@@ -193,7 +202,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -210,7 +221,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setRoleName("temprole1");
@@ -228,7 +241,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0,temprole0
@@ -243,7 +258,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -257,10 +274,12 @@ public class IoTDBClusterAuthorityIT {
               "tempuser0",
               "",
               "",
-              "newpwd",
+              "newpwd123456",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -276,7 +295,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               pathPrivilegeList,
               false,
-              AuthUtils.serializePartialPathList(nodeNameList));
+              AuthUtils.serializePartialPathList(nodeNameList),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: root.ln.** ,read_data
@@ -303,7 +324,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               pathPrivilegeList,
               false,
-              AuthUtils.serializePartialPathList(nodeNameList));
+              AuthUtils.serializePartialPathList(nodeNameList),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: root.ln.** ,read_data
@@ -319,7 +342,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(nodeNameList));
+              AuthUtils.serializePartialPathList(nodeNameList),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: root.ln.** ,read_data; [temprole0]
@@ -335,7 +360,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               revokePathPrivilege,
               false,
-              AuthUtils.serializePartialPathList(nodeNameList));
+              AuthUtils.serializePartialPathList(nodeNameList),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: ; [temprole0]
@@ -351,7 +378,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               revokePathPrivilege,
               false,
-              AuthUtils.serializePartialPathList(nodeNameList));
+              AuthUtils.serializePartialPathList(nodeNameList),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: ; [temprole0]
@@ -367,7 +396,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -390,7 +421,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -410,7 +443,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -427,7 +462,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -445,7 +482,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -453,7 +492,7 @@ public class IoTDBClusterAuthorityIT {
       assertEquals(new HashMap<>(), authorizerResp.getPermissionInfo().getRoleInfo());
       assertEquals(new HashSet<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleSet());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.TREE),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
@@ -463,7 +502,7 @@ public class IoTDBClusterAuthorityIT {
               .priSet
               .size());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
@@ -471,7 +510,7 @@ public class IoTDBClusterAuthorityIT {
               .getSysPriSet()
               .size());
       assertEquals(
-          PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM),
+          PrivilegeType.getValidPrivilegeCount(PrivilegeModelType.SYSTEM),
           authorizerResp
               .getPermissionInfo()
               .getUserInfo()
@@ -487,7 +526,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               Collections.singleton(PrivilegeType.MANAGE_USER.ordinal()),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: MANAGE_USER
@@ -511,7 +552,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               Collections.singleton(PrivilegeType.MANAGE_DATABASE.ordinal()),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // in confignode: tempuser0: MANAGE_USER
@@ -536,7 +579,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -550,7 +595,9 @@ public class IoTDBClusterAuthorityIT {
               "",
               new HashSet<>(),
               false,
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              0,
+              "");
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

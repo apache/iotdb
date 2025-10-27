@@ -34,10 +34,10 @@ jobs:
   AINode:
     strategy:
       fail-fast: false
-      max-parallel: 15
+      max-parallel: 1
       matrix:
         os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, gpu]
 
     steps:
       - uses: actions/checkout@v4
@@ -48,10 +48,10 @@ jobs:
         shell: bash
         run: |
           mvn clean verify \
-          -P with-integration-tests \
+          -P with-integration-tests,with-ainode \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 \
-          -pl integration-test \
+          -DintegrationTest.forkCount=1 \
+          -pl integration-test,iotdb-core/ainode \
           -am \
           -PAIClusterIT
       - name: Upload Artifact

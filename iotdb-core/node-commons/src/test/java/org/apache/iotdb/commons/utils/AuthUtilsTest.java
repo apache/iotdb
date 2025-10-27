@@ -35,16 +35,16 @@ public class AuthUtilsTest {
 
   @Test
   public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
-    AuthUtils.validatePassword("hello@");
-    AuthUtils.validatePassword("hello$");
-    AuthUtils.validatePassword("hello$^");
-    AuthUtils.validatePassword("hel_lo$^");
-    AuthUtils.validatePassword("he!l_lo$^");
-    AuthUtils.validatePassword("he!l_l$o$^");
+    AuthUtils.validatePassword("hello@123456");
+    AuthUtils.validatePassword("hello$123456");
+    AuthUtils.validatePassword("hello$^123456");
+    AuthUtils.validatePassword("hel_lo$^123456");
+    AuthUtils.validatePassword("he!l_lo$^123456");
+    AuthUtils.validatePassword("he!l_l$o$^123456");
     AuthUtils.validatePassword("he!l_l!@#$%^*()_+-=$o$^");
-    AuthUtils.validatePassword("he!l^^+=");
-    AuthUtils.validatePassword("he!l*^^+=");
-    AuthUtils.validatePassword("he!!l*^^+=");
+    AuthUtils.validatePassword("he!l^^+=123456");
+    AuthUtils.validatePassword("he!l*^^+=123456");
+    AuthUtils.validatePassword("he!!l*^^+=123456");
     AuthUtils.validatePassword("he!!l*()^^+=");
     AuthUtils.validateUsername("!@#$%&^&*()_+-=");
     AuthUtils.validateUsername("!@!%^&!@#%$#@#$%&^&*()_+-=");

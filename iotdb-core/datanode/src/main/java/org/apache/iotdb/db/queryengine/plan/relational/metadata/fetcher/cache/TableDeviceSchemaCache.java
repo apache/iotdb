@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -149,7 +150,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -234,7 +235,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -314,7 +315,7 @@ public class TableDeviceSchemaCache {
 
   /**
    * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time".
+   * "time". If you want to get the last of "time", use "" to represent.
    *
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
@@ -443,6 +444,11 @@ public class TableDeviceSchemaCache {
                         database2Use, isAligned, measurements, measurementSchemas)
                     + entry.tryUpdateLastCache(measurements, timeValuePairs),
         Objects.isNull(timeValuePairs));
+  }
+
+  public boolean getLastCache(
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> inputMap) {
+    return dualKeyCache.batchApply(inputMap, TableDeviceCacheEntry::updateInputMap);
   }
 
   // WARNING: This is not guaranteed to affect table model's cache

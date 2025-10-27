@@ -19,20 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener;
 
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
-
 /** This class helps judge whether wal is flushed to the storage device. */
 public class WALFlushListener extends AbstractResultListener {
-  // handler for pipeline, only exists when value is InsertNode
-  private final WALEntryHandler walEntryHandler;
 
-  public WALFlushListener(boolean wait, WALEntryValue value) {
+  public WALFlushListener(boolean wait) {
     super(wait);
-    walEntryHandler = new WALEntryHandler(value);
-  }
-
-  public WALEntryHandler getWalEntryHandler() {
-    return walEntryHandler;
   }
 }

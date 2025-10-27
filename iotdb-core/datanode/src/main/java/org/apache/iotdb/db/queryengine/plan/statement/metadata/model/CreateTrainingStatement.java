@@ -32,7 +32,6 @@ import java.util.Objects;
 public class CreateTrainingStatement extends Statement implements IConfigStatement {
 
   private final String modelId;
-  private final String modelType;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
@@ -40,9 +39,8 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
   private List<PartialPath> targetPathPatterns;
   private List<List<Long>> targetTimeRanges;
 
-  public CreateTrainingStatement(String modelId, String modelType) {
+  public CreateTrainingStatement(String modelId) {
     this.modelId = modelId;
-    this.modelType = modelType;
   }
 
   public void setTargetPathPatterns(List<PartialPath> targetPathPatterns) {
@@ -65,10 +63,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
     return modelId;
   }
 
-  public String getModelType() {
-    return modelType;
-  }
-
   public void setExistingModelId(String existingModelId) {
     this.existingModelId = existingModelId;
   }
@@ -87,7 +81,7 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, modelType, existingModelId, parameters);
+    return Objects.hash(super.hashCode(), modelId, existingModelId, parameters);
   }
 
   @Override
@@ -97,7 +91,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
     }
     CreateTrainingStatement target = (CreateTrainingStatement) obj;
     return modelId.equals(target.modelId)
-        && modelType.equals(target.modelType)
         && Objects.equals(existingModelId, target.existingModelId)
         && Objects.equals(parameters, target.parameters);
   }
@@ -107,9 +100,6 @@ public class CreateTrainingStatement extends Statement implements IConfigStateme
     return "CreateTrainingStatement{"
         + "modelId='"
         + modelId
-        + '\''
-        + ", modelType='"
-        + modelType
         + '\''
         + ", parameters="
         + parameters

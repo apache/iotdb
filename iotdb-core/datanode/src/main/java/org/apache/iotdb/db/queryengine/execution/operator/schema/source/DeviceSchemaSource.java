@@ -154,4 +154,12 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
   }
+
+  @Override
+  public boolean checkRegionDatabaseIncluded(final ISchemaRegion schemaRegion) {
+    String databasePath = schemaRegion.getDatabaseFullPath();
+    return pathPattern.include(new PartialPath(databasePath.split("\\.")))
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
+  }
 }

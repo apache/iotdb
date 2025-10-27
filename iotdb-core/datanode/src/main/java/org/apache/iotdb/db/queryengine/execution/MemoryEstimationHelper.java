@@ -23,12 +23,15 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class MemoryEstimationHelper {
 
@@ -40,6 +43,13 @@ public class MemoryEstimationHelper {
 
   private static final long MEASUREMENT_PATH_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class);
+
+  private static final long ARRAY_LIST_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
+  private static final long INTEGER_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  public static final long TIME_RANGE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   private MemoryEstimationHelper() {
     // hide the constructor
@@ -90,5 +100,39 @@ public class MemoryEstimationHelper {
       totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
     }
     return totalSize;
+  }
+
+  public static long getEstimatedSizeOfMeasurementPathNodes(
+      @Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    long totalSize = MEASUREMENT_PATH_INSTANCE_SIZE;
+    String[] nodes = partialPath.getNodes();
+    if (nodes != null && nodes.length > 0) {
+      totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
+    }
+    return totalSize;
+  }
+
+  // This method should only be called if the content in the current PartialPath comes from other
+  // structures whose memory cost have already been calculated.
+  public static long getEstimatedSizeOfCopiedPartialPath(@Nullable final PartialPath partialPath) {
+    if (partialPath == null) {
+      return 0;
+    }
+    return PARTIAL_PATH_INSTANCE_SIZE + RamUsageEstimator.shallowSizeOf(partialPath.getNodes());
+  }
+
+  public static long getEstimatedSizeOfIntegerArrayList(List<Integer> integerArrayList) {
+    if (integerArrayList == null) {
+      return 0L;
+    }
+    long size = ARRAY_LIST_INSTANCE_SIZE;
+    size +=
+        (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) integerArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    size += INTEGER_INSTANCE_SIZE * integerArrayList.size();
+    return RamUsageEstimator.alignObjectSize(size);
   }
 }

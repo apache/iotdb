@@ -37,6 +37,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -86,8 +88,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env) {
+    preRelease(env, null);
+  }
+
+  protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
@@ -104,8 +110,13 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void commitRelease(final ConfigNodeProcedureEnv env) {
+    commitRelease(env, null);
+  }
+
+  protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitReleaseTable(
+            database, table.getTableName(), env.getConfigManager(), oldName);
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
           "Failed to {} for table {}.{} to DataNode, failure results: {}",
@@ -122,8 +133,14 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    rollbackPreRelease(env, null);
+  }
+
+  protected void rollbackPreRelease(
+      final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.rollbackPreRelease(
+            database, table.getTableName(), env.getConfigManager(), tableName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

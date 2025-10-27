@@ -228,6 +228,8 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions =
       new LinkedHashMap<>();
 
+  private Insert insert;
+
   private DataPartition dataPartition;
 
   // only be used in write plan and won't be used in query
@@ -1513,5 +1515,32 @@ public class Analysis implements IAnalysis {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public void setInsert(Insert insert) {
+    this.insert = insert;
+  }
+
+  public Insert getInsert() {
+    return insert;
+  }
+
+  public static final class Insert {
+    private final Table table;
+    private final List<ColumnSchema> columns;
+
+    public Insert(Table table, List<ColumnSchema> columns) {
+      this.table = requireNonNull(table, "table is null");
+      this.columns = requireNonNull(columns, "columns is null");
+      checkArgument(!columns.isEmpty(), "No columns given to insert");
+    }
+
+    public Table getTable() {
+      return table;
+    }
+
+    public List<ColumnSchema> getColumns() {
+      return columns;
+    }
   }
 }

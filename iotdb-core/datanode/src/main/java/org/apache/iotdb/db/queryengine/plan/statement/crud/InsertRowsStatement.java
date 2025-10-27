@@ -56,6 +56,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
     statementType = StatementType.BATCH_INSERT_ROWS;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {

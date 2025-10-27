@@ -175,6 +175,9 @@ public class InformationSchema {
     regionTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.TS_FILE_SIZE_BYTES_TABLE_MODEL, TSDataType.INT64));
+    regionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.COMPRESSION_RATIO_TABLE_MODEL, TSDataType.DOUBLE));
     regionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(REGIONS, regionTable);
 

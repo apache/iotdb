@@ -185,6 +185,10 @@ public final class Patterns {
     return typeOf(PatternRecognitionNode.class);
   }
 
+  public static Pattern<UnionNode> union() {
+    return typeOf(UnionNode.class);
+  }
+
   /*public static Pattern<TableWriterNode> tableWriterNode()
   {
       return typeOf(TableWriterNode.class);

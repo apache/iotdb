@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -130,7 +131,10 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileDataCorrectness(TsFileResource resource) {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            resource.getTsFilePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
       if (!reader.isComplete()) {
         logger.error("{} {} illegal tsfile", resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
@@ -413,9 +417,8 @@ public class TsFileResourceUtils {
   }
 
   public static void updateTsFileResource(
-      TsFileSequenceReader reader, TsFileResource tsFileResource, boolean cacheLastValues)
-      throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, cacheLastValues);
+      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, false);
     tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }

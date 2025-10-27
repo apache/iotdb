@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -44,10 +44,10 @@ public class PermissionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PermissionManager.class);
 
-  private final ConfigManager configManager;
-  private final AuthorInfo authorInfo;
+  protected final ConfigManager configManager;
+  protected final AuthorInfo authorInfo;
 
-  public PermissionManager(ConfigManager configManager, AuthorInfo authorInfo) {
+  public PermissionManager(final ConfigManager configManager, final AuthorInfo authorInfo) {
     this.configManager = configManager;
     this.authorInfo = authorInfo;
   }
@@ -106,7 +106,7 @@ public class PermissionManager {
     }
   }
 
-  private ConsensusManager getConsensusManager() {
+  protected ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
   }
 
@@ -122,7 +122,7 @@ public class PermissionManager {
     return authorInfo.checkUserPrivileges(username, union);
   }
 
-  public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp fetchAuthorizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthorizedPTree(username, permission);
   }
@@ -136,5 +136,18 @@ public class PermissionManager {
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
       throws AuthException {
     return authorInfo.checkRoleOfUser(username, rolename);
+  }
+
+  public TPermissionInfoResp getUser(String username) throws AuthException {
+    return authorInfo.getUser(username);
+  }
+
+  public String getUserName(long userId) throws AuthException {
+    return authorInfo.getUserName(userId);
+  }
+
+  public TSStatus enableSeparationOfPowers(
+      String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
+    throw new UnsupportedOperationException("Enable separation of powers is not supported");
   }
 }

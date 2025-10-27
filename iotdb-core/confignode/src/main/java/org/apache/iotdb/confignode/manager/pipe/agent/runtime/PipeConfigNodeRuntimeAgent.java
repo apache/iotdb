@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
@@ -30,8 +29,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
@@ -156,17 +155,11 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
 
-    // Stop all pipes locally if critical exception occurs
-    if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
-    }
+    // Do not call "stopAllPipesWithCriticalException" because the sinks are not reused in
+    // ConfigNodeSubtask
   }
 
   /////////////////////////// Periodical Job Executor ///////////////////////////
-
-  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
-    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
-  }
 
   public void registerPhantomReferenceCleanJob(
       String id, Runnable periodicalJob, long intervalInSeconds) {

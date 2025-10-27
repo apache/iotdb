@@ -173,6 +173,8 @@ public class ExpressionAndValuePointers {
         ReadWriteIOUtils.write(1, byteBuffer);
       } else if (assignment.valuePointer instanceof ScalarValuePointer) {
         ReadWriteIOUtils.write(2, byteBuffer);
+      } else if (assignment.valuePointer instanceof AggregationValuePointer) {
+        ReadWriteIOUtils.write(3, byteBuffer);
       } else {
         throw new IllegalArgumentException("Unknown ValuePointer type");
       }
@@ -185,6 +187,11 @@ public class ExpressionAndValuePointers {
             (ClassifierValuePointer) assignment.valuePointer, byteBuffer);
       } else if (assignment.valuePointer instanceof ScalarValuePointer) {
         ScalarValuePointer.serialize((ScalarValuePointer) assignment.valuePointer, byteBuffer);
+      } else if (assignment.valuePointer instanceof AggregationValuePointer) {
+        AggregationValuePointer.serialize(
+            (AggregationValuePointer) assignment.valuePointer, byteBuffer);
+      } else {
+        throw new IllegalArgumentException("Unknown ValuePointer type");
       }
     }
 
@@ -198,6 +205,8 @@ public class ExpressionAndValuePointers {
         ReadWriteIOUtils.write(1, stream);
       } else if (assignment.valuePointer instanceof ScalarValuePointer) {
         ReadWriteIOUtils.write(2, stream);
+      } else if (assignment.valuePointer instanceof AggregationValuePointer) {
+        ReadWriteIOUtils.write(3, stream);
       } else {
         throw new IllegalArgumentException("Unknown ValuePointer type");
       }
@@ -209,6 +218,11 @@ public class ExpressionAndValuePointers {
         ClassifierValuePointer.serialize((ClassifierValuePointer) assignment.valuePointer, stream);
       } else if (assignment.valuePointer instanceof ScalarValuePointer) {
         ScalarValuePointer.serialize((ScalarValuePointer) assignment.valuePointer, stream);
+      } else if (assignment.valuePointer instanceof AggregationValuePointer) {
+        AggregationValuePointer.serialize(
+            (AggregationValuePointer) assignment.valuePointer, stream);
+      } else {
+        throw new IllegalArgumentException("Unknown ValuePointer type");
       }
     }
 
@@ -224,6 +238,8 @@ public class ExpressionAndValuePointers {
         valuePointer = ClassifierValuePointer.deserialize(byteBuffer);
       } else if (type == 2) {
         valuePointer = ScalarValuePointer.deserialize(byteBuffer);
+      } else if (type == 3) {
+        valuePointer = AggregationValuePointer.deserialize(byteBuffer);
       } else {
         throw new IllegalArgumentException("Unknown ValuePointer type");
       }

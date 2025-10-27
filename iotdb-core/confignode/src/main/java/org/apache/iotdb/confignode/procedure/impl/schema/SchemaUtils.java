@@ -48,6 +48,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -223,10 +225,14 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> preReleaseTable(
-      final String database, final TsTable table, final ConfigManager configManager) {
+      final String database,
+      final TsTable table,
+      final ConfigManager configManager,
+      final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -240,7 +246,10 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> commitReleaseTable(
-      final String database, final String tableName, final ConfigManager configManager) {
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -251,6 +260,7 @@ public class SchemaUtils {
       // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -264,7 +274,10 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> rollbackPreRelease(
-      final String database, final String tableName, final ConfigManager configManager) {
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -275,6 +288,7 @@ public class SchemaUtils {
       // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();

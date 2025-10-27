@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
@@ -102,7 +102,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final IoTDBDataRegionExtractor extractor) {
+  public void register(final IoTDBDataRegionSource extractor) {
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     pipe.add(pipeID);
     if (Objects.nonNull(metricService)) {

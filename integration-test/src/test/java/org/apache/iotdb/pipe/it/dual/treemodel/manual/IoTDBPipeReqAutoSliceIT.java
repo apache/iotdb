@@ -373,8 +373,8 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualTreeModelManualIT {
         Arrays.asList(
             "create timeseries root.test.db.status with datatype=INT32,encoding=PLAIN",
             "create timeseries root.test.db.temperature with datatype=INT32,encoding=PLAIN");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, timeSeriesCreation);
-    TestUtils.tryExecuteNonQueriesWithRetry(receiverEnv, timeSeriesCreation);
+    TestUtils.executeNonQueries(senderEnv, timeSeriesCreation, null);
+    TestUtils.executeNonQueries(receiverEnv, timeSeriesCreation, null);
   }
 
   private Tablet createTablet() {

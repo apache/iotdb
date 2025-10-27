@@ -95,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
@@ -189,6 +190,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowSpecificati
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
@@ -208,6 +210,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -217,10 +220,14 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -228,6 +235,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -258,6 +266,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -268,6 +277,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
@@ -495,12 +505,13 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanInsertIntoTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          queryContext);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      if (!node.parseRawExpression(
+      if (!node.parseWhere(
           null,
           table,
           table.getColumnList().stream()
@@ -524,7 +535,8 @@ public class StatementAnalyzer {
                     assignment -> {
                       final Expression parsedColumn =
                           analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getName());
+                                  translationMap, translationMap.getScope(), assignment.getName())
+                              .getRight();
                       if (!(parsedColumn instanceof SymbolReference)
                           || table
                                   .getColumnSchema(((SymbolReference) parsedColumn).getName())
@@ -538,10 +550,16 @@ public class StatementAnalyzer {
                       }
                       attributeNames.add((SymbolReference) parsedColumn);
 
-                      return new UpdateAssignment(
-                          parsedColumn,
+                      final Pair<Type, Expression> expressionPair =
                           analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue()));
+                              translationMap, translationMap.getScope(), assignment.getValue());
+                      if (!expressionPair.getLeft().equals(StringType.STRING)
+                          && !expressionPair.getLeft().equals(BinaryType.TEXT)
+                          && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
+                        throw new SemanticException(
+                            "Update's attribute value must be STRING, TEXT or null.");
+                      }
+                      return new UpdateAssignment(parsedColumn, expressionPair.getRight());
                     })
                 .collect(Collectors.toList()));
       }
@@ -555,16 +573,14 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          queryContext);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
-      if (Objects.isNull(table)) {
-        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
-      }
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
-      node.parseRawExpression(
+      node.parseWhere(
           null,
           table,
           table.getColumnList().stream()
@@ -592,10 +608,121 @@ public class StatementAnalyzer {
       throw new SemanticException("USE statement is not supported yet.");
     }
 
+    private boolean containsAnyFieldColumn(
+        Set<String> insertColumns, Map<String, ColumnSchema> columnSchemaMap) {
+      for (String column : insertColumns) {
+        if (columnSchemaMap.containsKey(column)
+            && columnSchemaMap.get(column).getColumnCategory() == TsTableColumnCategory.FIELD) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Do not consider type coercion at the moment
+    private boolean typesMatchForInsert(List<Type> tableTypes, List<Type> queryTypes) {
+      if (tableTypes.size() != queryTypes.size()) {
+        return false;
+      }
+
+      for (int i = 0; i < tableTypes.size(); i++) {
+        if (!tableTypes.get(i).equals(queryTypes.get(i))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
-      throw new SemanticException(
-          "This kind of insert statement is not supported yet, please check your grammar.");
+      queryContext.setQueryType(QueryType.READ_WRITE);
+      // analyze the query that creates the data
+      Scope queryScope = analyze(insert.getQuery(), Optional.empty(), false);
+
+      // verify the insert table exists
+      QualifiedObjectName targetTable =
+          createQualifiedObjectName(sessionContext, insert.getTarget());
+      if (!metadata.tableExists(targetTable)) {
+        TableMetadataImpl.throwTableNotExistsException(
+            targetTable.getDatabaseName(), targetTable.getObjectName());
+      }
+      // verify access privileges
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(), targetTable, queryContext);
+
+      // verify the insert destination columns match the query
+      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, targetTable);
+      if (!tableSchema.isPresent()) {
+        TableMetadataImpl.throwTableNotExistsException(
+            targetTable.getDatabaseName(), targetTable.getObjectName());
+      }
+      List<ColumnSchema> columns =
+          tableSchema.get().getColumns().stream()
+              .filter(column -> !column.isHidden())
+              .collect(toImmutableList());
+      analysis.registerTable(insert.getTable(), tableSchema, targetTable);
+
+      LinkedHashSet<String> tableColumns =
+          columns.stream()
+              .map(ColumnSchema::getName)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+      LinkedHashSet<String> insertColumns;
+      if (insert.getColumns().isPresent()) {
+        insertColumns =
+            insert.getColumns().get().stream()
+                .map(Identifier::getValue)
+                .map(column -> column.toLowerCase(ENGLISH))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> columnNames = new HashSet<>();
+        for (String insertColumn : insertColumns) {
+          if (!tableColumns.contains(insertColumn)) {
+            throw new SemanticException(
+                String.format(
+                    "Insert column name does not exist in target table: %s", insertColumn));
+          }
+          if (!columnNames.add(insertColumn)) {
+            throw new SemanticException(
+                String.format("Insert column name is specified more than once: %s", insertColumn));
+          }
+        }
+      } else {
+        insertColumns = tableColumns;
+      }
+
+      // insert columns should contain time
+      if (!insertColumns.contains(TIME_COLUMN_NAME)) {
+        throw new SemanticException("time column can not be null");
+      }
+      // insert columns should contain at least one field column
+      Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
+      if (!containsAnyFieldColumn(insertColumns, columnSchemaMap)) {
+        throw new SemanticException("No Field column present");
+      }
+
+      // set Insert in analysis
+      analysis.setInsert(
+          new Analysis.Insert(
+              insert.getTable(),
+              insertColumns.stream().map(columnSchemaMap::get).collect(toImmutableList())));
+
+      List<Type> tableTypes =
+          insertColumns.stream()
+              .map(insertColumn -> tableSchema.get().getColumn(insertColumn).getType())
+              .collect(toImmutableList());
+      List<Type> queryTypes =
+          queryScope.getRelationType().getVisibleFields().stream()
+              .map(Field::getType)
+              .collect(toImmutableList());
+      if (!typesMatchForInsert(tableTypes, queryTypes)) {
+        throw new SemanticException(
+            String.format(
+                "Insert query has mismatched column types: Table: [%s], Query: [%s]",
+                Joiner.on(", ").join(tableTypes), Joiner.on(", ").join(queryTypes)));
+      }
+
+      return createAndAssignScope(
+          insert, scope, Field.newUnqualified(Insert.ROWS, Insert.ROWS_TYPE, Insert.ROWS_CATEGORY));
     }
 
     @Override
@@ -644,7 +771,8 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(
               AnalyzeUtils.getDatabaseName(node, queryContext),
-              node.getTable().getName().getSuffix()));
+              node.getTable().getName().getSuffix()),
+          queryContext);
       AnalyzeUtils.analyzeDelete(node, queryContext);
 
       analysis.setScope(node, ret);
@@ -782,20 +910,7 @@ public class StatementAnalyzer {
 
         boolean isRecursive = false;
         if (with.isRecursive()) {
-          // cannot nest pattern recognition within recursive query
-
-          isRecursive = tryProcessRecursiveQuery(withQuery, name, withScopeBuilder);
-          // WITH query is not shaped accordingly to the rules for expandable query and will be
-          // processed like a plain WITH query.
-          // Since RECURSIVE is specified, any reference to WITH query name is considered a
-          // recursive reference and is not allowed.
-          if (!isRecursive) {
-            List<Node> recursiveReferences =
-                findReferences(withQuery.getQuery(), withQuery.getName());
-            if (!recursiveReferences.isEmpty()) {
-              throw new SemanticException("recursive reference not allowed in this context");
-            }
-          }
+          throw new SemanticException("recursive cte is not supported yet.");
         }
 
         if (!isRecursive) {
@@ -1996,6 +2111,22 @@ public class StatementAnalyzer {
       }
 
       @Override
+      protected List<Expression> visitExtract(Extract node, Scope context) {
+        List<Expression> childResult = process(node.getExpression(), context);
+        if (expandedExpressions == null) {
+          // no Columns need to be expanded
+          return Collections.singletonList(node);
+        }
+
+        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
+        for (Expression expression : childResult) {
+          resultBuilder.add(new Extract(expression, node.getField()));
+        }
+
+        return resultBuilder.build();
+      }
+
+      @Override
       protected List<Expression> visitSearchedCaseExpression(
           SearchedCaseExpression node, Scope context) {
         ImmutableList.Builder<List<Expression>> firstChildResultListBuilder =
@@ -2843,7 +2974,9 @@ public class StatementAnalyzer {
         }
         for (int i = 0; i < descFieldSize; i++) {
           Type descFieldType = relationType.getFieldByIndex(i).getType();
-          if (descFieldType != outputFieldTypes[i]) {
+          Optional<Type> commonSuperType =
+              CompatibleResolver.getCommonSuperType(outputFieldTypes[i], descFieldType);
+          if (!commonSuperType.isPresent()) {
             throw new SemanticException(
                 String.format(
                     "column %d in %s query has incompatible types: %s, %s",
@@ -2852,6 +2985,7 @@ public class StatementAnalyzer {
                     outputFieldTypes[i].getDisplayName(),
                     descFieldType.getDisplayName()));
           }
+          outputFieldTypes[i] = commonSuperType.get();
         }
       }
 
@@ -2933,11 +3067,10 @@ public class StatementAnalyzer {
           return resultScope;
         }
       }
-
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
 
       // access control
-      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name);
+      accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name, queryContext);
 
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
@@ -4326,10 +4459,8 @@ public class StatementAnalyzer {
       queryContext.setQueryType(QueryType.WRITE);
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
-      if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable()))) {
-        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTable());
-      }
+      // Check if the table exists
+      DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
       return null;
     }
 
@@ -4362,7 +4493,8 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanSelectFromTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
 
       final TsTable table =
@@ -4394,7 +4526,7 @@ public class StatementAnalyzer {
       final String tableName = node.getTableName();
 
       if (Objects.isNull(database)) {
-        throw new SemanticException("The database must be set before show devices.");
+        throw new SemanticException("The database must be set.");
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
@@ -4439,11 +4571,11 @@ public class StatementAnalyzer {
       return translationMap;
     }
 
-    private Expression analyzeAndRewriteExpression(
+    private Pair<Type, Expression> analyzeAndRewriteExpression(
         final TranslationMap translationMap, final Scope scope, final Expression expression) {
-      analyzeExpression(expression, scope);
+      final Type type = analyzeExpression(expression, scope).getType(expression);
       scope.getRelationType().getAllFields();
-      return translationMap.rewrite(expression);
+      return new Pair<>(type, translationMap.rewrite(expression));
     }
 
     @Override
@@ -4786,13 +4918,9 @@ public class StatementAnalyzer {
       if (TableBuiltinTableFunction.FORECAST.getFunctionName().equalsIgnoreCase(functionName)) {
         String timeColumn =
             (String)
-                argumentSpecificationsByName
-                    .get(ForecastTableFunction.TIMECOL_PARAMETER_NAME)
-                    .getDefaultValue()
-                    .get();
+                argumentSpecificationsByName.get(TIMECOL_PARAMETER_NAME).getDefaultValue().get();
         for (TableFunctionArgument argument : arguments) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              argument.getName().get().getValue())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(argument.getName().get().getValue())) {
             if (argument.getValue() instanceof StringLiteral) {
               timeColumn = ((StringLiteral) argument.getValue()).getValue();
             }
@@ -4811,8 +4939,7 @@ public class StatementAnalyzer {
         int position = -1;
         String timeColumn = null;
         for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
-          if (ForecastTableFunction.TIMECOL_PARAMETER_NAME.equalsIgnoreCase(
-              parameterSpecifications.get(i).getName())) {
+          if (TIMECOL_PARAMETER_NAME.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
             position = i;
             timeColumn = (String) parameterSpecifications.get(i).getDefaultValue().get();
             break;
@@ -4833,6 +4960,10 @@ public class StatementAnalyzer {
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
     private void tryUpdateOrderByForForecast(
         List<TableFunctionArgument> arguments, String timeColumn) {
+      if (timeColumn == null || timeColumn.isEmpty()) {
+        throw new SemanticException(
+            String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+      }
       for (TableFunctionArgument argument : arguments) {
         if (argument.getValue() instanceof TableFunctionTableArgument) {
           TableFunctionTableArgument input = (TableFunctionTableArgument) argument.getValue();
@@ -4841,7 +4972,7 @@ public class StatementAnalyzer {
                 new OrderBy(
                     Collections.singletonList(
                         new SortItem(
-                            new Identifier(timeColumn),
+                            new Identifier(timeColumn.toLowerCase(ENGLISH)),
                             SortItem.Ordering.ASCENDING,
                             SortItem.NullOrdering.FIRST))));
           }

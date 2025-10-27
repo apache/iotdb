@@ -214,7 +214,10 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     for (TDataNodeLocation dataNode : removedDataNodes) {
       List<TConsensusGroupId> migratedFailedRegions =
           replicaSets.stream()
-              .filter(replica -> replica.getDataNodeLocations().contains(dataNode))
+              .filter(
+                  replica ->
+                      replica.getDataNodeLocations().stream()
+                          .anyMatch(loc -> loc.getDataNodeId() == dataNode.dataNodeId))
               .map(TRegionReplicaSet::getRegionId)
               .collect(Collectors.toList());
       if (!migratedFailedRegions.isEmpty()) {

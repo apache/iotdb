@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregators;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.MatchResult.NO_MATCH;
 
@@ -29,7 +33,7 @@ public class Matcher {
   private final Program program;
 
   //  private final ThreadEquivalence threadEquivalence;
-  //  private final List<MatchAggregationInstantiator> aggregations;
+  private final List<PatternAggregator> patternAggregators;
 
   private static class Runtime {
     private static final long INSTANCE_SIZE =
@@ -51,9 +55,13 @@ public class Matcher {
     private final PatternCaptures patternCaptures;
 
     // for each thread, array of MatchAggregations evaluated by this thread
-    //    private final MatchAggregations aggregations;
+    private final PatternAggregators aggregators;
 
-    public Runtime(Program program, int inputLength, boolean matchingAtPartitionStart) {
+    public Runtime(
+        Program program,
+        int inputLength,
+        boolean matchingAtPartitionStart,
+        List<PatternAggregator> patternAggregators) {
       int initialCapacity = 2 * program.size();
       threads = new IntList(initialCapacity);
       freeThreadIds = new IntStack(initialCapacity);
@@ -62,6 +70,7 @@ public class Matcher {
               initialCapacity, program.getMinSlotCount(), program.getMinLabelCount());
       this.inputLength = inputLength;
       this.matchingAtPartitionStart = matchingAtPartitionStart;
+      this.aggregators = new PatternAggregators(initialCapacity, patternAggregators);
       //      this.aggregations =
       //          new MatchAggregations(
       //              initialCapacity, aggregationInstantiators, aggregationsMemoryContext);
@@ -73,7 +82,7 @@ public class Matcher {
     private int forkThread(int parent) {
       int child = newThread();
       patternCaptures.copy(parent, child);
-      //      aggregations.copy(parent, child);
+      aggregators.copy(parent, child);
       return child;
     }
 
@@ -98,7 +107,7 @@ public class Matcher {
     private void killThread(int threadId) {
       freeThreadIds.push(threadId);
       patternCaptures.release(threadId);
-      //      aggregations.release(threadId);
+      aggregators.release(threadId);
     }
 
     private long getSizeInBytes() {
@@ -108,12 +117,13 @@ public class Matcher {
           + threads.getSizeInBytes()
           + freeThreadIds.getSizeInBytes()
           + patternCaptures.getSizeInBytes();
-      //          + aggregations.getSizeInBytes();
+      //                + patternAggregators.getSizeInBytes();
     }
   }
 
-  public Matcher(Program program) {
+  public Matcher(Program program, List<PatternAggregator> patternAggregators) {
     this.program = program;
+    this.patternAggregators = patternAggregators;
   }
 
   public MatchResult run(PatternVariableRecognizer patternVariableRecognizer) {
@@ -123,7 +133,8 @@ public class Matcher {
     int inputLength = patternVariableRecognizer.getInputLength();
     boolean matchingAtPartitionStart = patternVariableRecognizer.isMatchingAtPartitionStart();
 
-    Runtime runtime = new Runtime(program, inputLength, matchingAtPartitionStart);
+    Runtime runtime =
+        new Runtime(program, inputLength, matchingAtPartitionStart, patternAggregators);
 
     advanceAndSchedule(current, runtime.newThread(), 0, 0, runtime);
 
@@ -159,7 +170,7 @@ public class Matcher {
             // incorrectly saved label does not matter
             runtime.patternCaptures.saveLabel(threadId, label);
             if (patternVariableRecognizer.evaluateLabel(
-                runtime.patternCaptures.getLabels(threadId))) {
+                runtime.patternCaptures.getLabels(threadId), runtime.aggregators.get(threadId))) {
               advanceAndSchedule(next, threadId, pointer + 1, index + 1, runtime);
             } else {
               runtime.scheduleKill(threadId);

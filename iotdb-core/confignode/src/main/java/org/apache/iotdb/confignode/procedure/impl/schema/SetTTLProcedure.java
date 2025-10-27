@@ -97,7 +97,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
     if (res.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
-      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+      setFailure(new ProcedureException(new IoTDBException(res)));
     } else {
       setNextState(SetTTLState.UPDATE_DATANODE_CACHE);
     }

@@ -21,18 +21,21 @@ package org.apache.iotdb.confignode.consensus.response.model;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+// TODO: Will be removed in the future
 public class ModelTableResp implements DataSet {
 
   private final TSStatus status;
   private final List<ByteBuffer> serializedAllModelInformation;
+  private Map<String, String> modelTypeMap;
+  private Map<String, String> algorithmMap;
 
   public ModelTableResp(TSStatus status) {
     this.status = status;
@@ -49,7 +52,11 @@ public class ModelTableResp implements DataSet {
     this.serializedAllModelInformation.add(modelInformation.serializeShowModelResult());
   }
 
-  public TShowModelResp convertToThriftResponse() throws IOException {
-    return new TShowModelResp(status, serializedAllModelInformation);
+  public void setModelTypeMap(Map<String, String> modelTypeMap) {
+    this.modelTypeMap = modelTypeMap;
+  }
+
+  public void setAlgorithmMap(Map<String, String> algorithmMap) {
+    this.algorithmMap = algorithmMap;
   }
 }

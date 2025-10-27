@@ -68,8 +68,8 @@ public class TreeViewTest {
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
-    DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable);
-    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE);
+    DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
   }
 
   @After

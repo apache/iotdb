@@ -456,8 +456,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               } else if ("false".equalsIgnoreCase((String) parameterObj)
                   || "N".equalsIgnoreCase((String) parameterObj)) {
                 setBoolean(parameterIndex, false);
-              } else if (((String) parameterObj).matches("-?\\d+\\.?\\d*")) {
-                setBoolean(parameterIndex, !((String) parameterObj).matches("-?[0]+[.]*[0]*"));
               } else {
                 throw new SQLException(
                     "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");

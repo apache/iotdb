@@ -25,8 +25,10 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.read.common.Field;
+import org.awaitility.Awaitility;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.QoS;
@@ -38,6 +40,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -90,19 +93,32 @@ public class IoTDBMQTTServiceIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
       session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       String payload1 = "test1,tag1=t1,tag2=t2 field1=1,field2=1f,field3=1i32 1";
-      connection.publish(DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
-      Thread.sleep(1000);
-      try (final SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select tag1,tag2,field1,field2,field3 from test1 where time = 1")) {
-        assertEquals(5, dataSet.getColumnNames().size());
-        List<Field> fields = dataSet.next().getFields();
-        assertEquals("t1", fields.get(0).getStringValue());
-        assertEquals("t2", fields.get(1).getStringValue());
-        assertEquals(1d, fields.get(2).getDoubleV(), 0);
-        assertEquals(1f, fields.get(3).getFloatV(), 0);
-        assertEquals(1, fields.get(4).getIntV(), 0);
-      }
+      Awaitility.await()
+          .atMost(3, TimeUnit.MINUTES)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                connection.publish(
+                    DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
+                try (final SessionDataSet dataSet =
+                    session.executeQueryStatement(
+                        "select tag1,tag2,field1,field2,field3 from test1 where time = 1")) {
+                  assertEquals(5, dataSet.getColumnNames().size());
+                  List<Field> fields = dataSet.next().getFields();
+                  assertEquals("t1", fields.get(0).getStringValue());
+                  assertEquals("t2", fields.get(1).getStringValue());
+                  assertEquals(1d, fields.get(2).getDoubleV(), 0);
+                  assertEquals(1f, fields.get(3).getFloatV(), 0);
+                  assertEquals(1, fields.get(4).getIntV(), 0);
+                  return true;
+                } catch (StatementExecutionException e) {
+                  if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
+                    return false;
+                  } else {
+                    throw e;
+                  }
+                }
+              });
     }
   }
 
@@ -112,21 +128,34 @@ public class IoTDBMQTTServiceIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
       session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       String payload1 = "test2,tag1=t1,tag2=t2 attr3=a3,attr4=a4 field1=1,field2=1f,field3=1i32 1";
-      connection.publish(DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
-      Thread.sleep(1000);
-      try (final SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select tag1,tag2,attr3,attr4,field1,field2,field3 from test2 where time = 1")) {
-        assertEquals(7, dataSet.getColumnNames().size());
-        List<Field> fields = dataSet.next().getFields();
-        assertEquals("t1", fields.get(0).getStringValue());
-        assertEquals("t2", fields.get(1).getStringValue());
-        assertEquals("a3", fields.get(2).getStringValue());
-        assertEquals("a4", fields.get(3).getStringValue());
-        assertEquals(1d, fields.get(4).getDoubleV(), 0);
-        assertEquals(1f, fields.get(5).getFloatV(), 0);
-        assertEquals(1, fields.get(6).getIntV(), 0);
-      }
+      Awaitility.await()
+          .atMost(3, TimeUnit.MINUTES)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                connection.publish(
+                    DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
+                try (final SessionDataSet dataSet =
+                    session.executeQueryStatement(
+                        "select tag1,tag2,attr3,attr4,field1,field2,field3 from test2 where time = 1")) {
+                  assertEquals(7, dataSet.getColumnNames().size());
+                  List<Field> fields = dataSet.next().getFields();
+                  assertEquals("t1", fields.get(0).getStringValue());
+                  assertEquals("t2", fields.get(1).getStringValue());
+                  assertEquals("a3", fields.get(2).getStringValue());
+                  assertEquals("a4", fields.get(3).getStringValue());
+                  assertEquals(1d, fields.get(4).getDoubleV(), 0);
+                  assertEquals(1f, fields.get(5).getFloatV(), 0);
+                  assertEquals(1, fields.get(6).getIntV(), 0);
+                  return true;
+                } catch (StatementExecutionException e) {
+                  if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
+                    return false;
+                  } else {
+                    throw e;
+                  }
+                }
+              });
     }
   }
 }

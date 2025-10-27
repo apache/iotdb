@@ -19,33 +19,41 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsResp;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.ModelStatus;
 import org.apache.iotdb.commons.model.ModelType;
-import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
-import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
-import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
+import org.apache.iotdb.confignode.exception.NoAvailableAINodeException;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 public class ModelManager {
@@ -81,7 +89,7 @@ public class ModelManager {
 
   public TSStatus dropModel(TDropModelReq req) {
     if (modelInfo.checkModelType(req.getModelId()) != ModelType.USER_DEFINED) {
-      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
           .setMessage(String.format("Built-in model %s can't be removed", req.modelId));
     }
     if (!modelInfo.contain(req.modelId)) {
@@ -91,54 +99,100 @@ public class ModelManager {
     return configManager.getProcedureManager().dropModel(req.getModelId());
   }
 
+  public TSStatus loadModel(TLoadModelReq req) {
+    try (AINodeClient client = getAINodeClient()) {
+      org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq loadModelReq =
+          new org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq(
+              req.existingModelId, req.deviceIdList);
+      return client.loadModel(loadModelReq);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to load model due to", e);
+      return new TSStatus(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus unloadModel(TUnloadModelReq req) {
+    try (AINodeClient client = getAINodeClient()) {
+      org.apache.iotdb.ainode.rpc.thrift.TUnloadModelReq unloadModelReq =
+          new org.apache.iotdb.ainode.rpc.thrift.TUnloadModelReq(req.modelId, req.deviceIdList);
+      return client.unloadModel(unloadModelReq);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to unload model due to", e);
+      return new TSStatus(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   public TShowModelResp showModel(final TShowModelReq req) {
-    try {
-      final DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
-      return ((ModelTableResp) response).convertToThriftResponse();
-    } catch (final ConsensusException e) {
-      LOGGER.warn(
-          String.format("Unexpected error happened while showing model %s: ", req.getModelId()), e);
-      // consensus layer related errors
-      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new TShowModelResp(res, Collections.emptyList());
-    } catch (final IOException e) {
-      LOGGER.warn("Fail to get ModelTable", e);
-      return new TShowModelResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
+    try (AINodeClient client = getAINodeClient()) {
+      TShowModelsReq showModelsReq = new TShowModelsReq();
+      if (req.isSetModelId()) {
+        showModelsReq.setModelId(req.getModelId());
+      }
+      TShowModelsResp resp = client.showModels(showModelsReq);
+      TShowModelResp res =
+          new TShowModelResp().setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      res.setModelIdList(resp.getModelIdList());
+      res.setModelTypeMap(resp.getModelTypeMap());
+      res.setCategoryMap(resp.getCategoryMap());
+      res.setStateMap(resp.getStateMap());
+      return res;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to show models due to", e);
+      return new TShowModelResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()));
+    }
+  }
+
+  public TShowLoadedModelResp showLoadedModel(final TShowLoadedModelReq req) {
+    try (AINodeClient client = getAINodeClient()) {
+      TShowLoadedModelsReq showModelsReq =
+          new TShowLoadedModelsReq().setDeviceIdList(req.getDeviceIdList());
+      TShowLoadedModelsResp resp = client.showLoadedModels(showModelsReq);
+      TShowLoadedModelResp res =
+          new TShowLoadedModelResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      res.setDeviceLoadedModelsMap(resp.getDeviceLoadedModelsMap());
+      return res;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to show loaded models due to", e);
+      return new TShowLoadedModelResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()));
+    }
+  }
+
+  public TShowAIDevicesResp showAIDevices() {
+    try (AINodeClient client = getAINodeClient()) {
+      org.apache.iotdb.ainode.rpc.thrift.TShowAIDevicesResp resp = client.showAIDevices();
+      TShowAIDevicesResp res =
+          new TShowAIDevicesResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      res.setDeviceIdList(resp.getDeviceIdList());
+      return res;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to show AI devices due to", e);
+      return new TShowAIDevicesResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()));
     }
   }
 
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    try {
-      GetModelInfoResp response =
-          (GetModelInfoResp) configManager.getConsensusManager().read(new GetModelInfoPlan(req));
-      if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return new TGetModelInfoResp(response.getStatus());
-      }
-      int aiNodeId = response.getTargetAINodeId();
-      if (aiNodeId != 0) {
-        response.setTargetAINodeAddress(
-            configManager.getNodeManager().getRegisteredAINode(aiNodeId));
-      } else {
-        if (configManager.getNodeManager().getRegisteredAINodes().isEmpty()) {
-          return new TGetModelInfoResp(
-              new TSStatus(TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode())
-                  .setMessage("There is no AINode available"));
-        }
-        response.setTargetAINodeAddress(
-            configManager.getNodeManager().getRegisteredAINodes().get(0));
-      }
-      return response.convertToThriftResponse();
-    } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while getting model: ", e);
-      // consensus layer related errors
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new TGetModelInfoResp(res);
-    }
+    return new TGetModelInfoResp()
+        .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+        .setAiNodeAddress(
+            configManager
+                .getNodeManager()
+                .getRegisteredAINodes()
+                .get(0)
+                .getLocation()
+                .getInternalEndPoint());
   }
 
   // Currently this method is only used by built-in timer_xl
@@ -172,6 +226,16 @@ public class ModelManager {
       res.setMessage(e.getMessage());
       return res;
     }
+  }
+
+  private AINodeClient getAINodeClient() throws NoAvailableAINodeException, ClientManagerException {
+    List<TAINodeInfo> aiNodeInfo = configManager.getNodeManager().getRegisteredAINodeInfoList();
+    if (aiNodeInfo.isEmpty()) {
+      throw new NoAvailableAINodeException();
+    }
+    TEndPoint targetAINodeEndPoint =
+        new TEndPoint(aiNodeInfo.get(0).getInternalAddress(), aiNodeInfo.get(0).getInternalPort());
+    return AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint);
   }
 
   public List<Integer> getModelDistributions(String modelName) {

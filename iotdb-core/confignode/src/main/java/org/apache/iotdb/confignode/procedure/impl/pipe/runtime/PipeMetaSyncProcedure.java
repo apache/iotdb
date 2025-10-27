@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -53,9 +53,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -87,7 +87,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (System.currentTimeMillis() - LAST_EXECUTION_TIME.get() < MIN_EXECUTION_INTERVAL_MS) {
       // Skip by setting the pipeTaskInfo to null
       pipeTaskInfo = null;
-      LOGGER.info(
+      LOGGER.debug(
           "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
@@ -103,7 +103,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromValidateTask");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -111,7 +111,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
 
     // Re-balance the external source tasks here in case of any changes in the dataRegion
     pipeTaskInfo
@@ -127,17 +127,16 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
                   new PipeExternalSourceLoadBalancer(
                       pipeMeta
                           .getStaticMeta()
-                          .getExtractorParameters()
+                          .getSourceParameters()
                           .getStringOrDefault(
                               Arrays.asList(
-                                  PipeExtractorConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
-                                  PipeExtractorConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
-                              PipeExtractorConstant
-                                  .EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+                                  PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                  PipeSourceConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                              PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
               final int parallelism =
                   pipeMeta
                       .getStaticMeta()
-                      .getExtractorParameters()
+                      .getSourceParameters()
                       .getIntOrDefault(
                           Arrays.asList(
                               EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
@@ -171,7 +170,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
 
     final List<PipeMeta> pipeMetaList = new ArrayList<>();
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
@@ -197,7 +196,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
@@ -210,28 +209,28 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromValidateTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
     // Do nothing
   }

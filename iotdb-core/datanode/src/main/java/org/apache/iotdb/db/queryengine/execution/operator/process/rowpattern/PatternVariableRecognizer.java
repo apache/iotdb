@@ -80,7 +80,7 @@ public class PatternVariableRecognizer {
   // evaluate the last label in matchedLabels. It has been tentatively appended to the match
   // The `evaluateLabel` method is used to determine whether it is feasible to identify the current
   // row as a label
-  public boolean evaluateLabel(ArrayView matchedLabels) {
+  public boolean evaluateLabel(ArrayView matchedLabels, PatternAggregator[] patternAggregators) {
     int label = matchedLabels.get(matchedLabels.length() - 1);
     // The variable `evaluation` stores the logic for determining whether a row can be identified as
     // `label`
@@ -89,6 +89,7 @@ public class PatternVariableRecognizer {
     // `label`
     return patternVariableComputation.test(
         matchedLabels,
+        patternAggregators,
         partitionStart,
         searchStart,
         searchEnd,
@@ -108,8 +109,9 @@ public class PatternVariableRecognizer {
     public PatternVariableComputation(
         List<PhysicalValueAccessor> valueAccessors,
         Computation computation,
+        List<PatternAggregator> patternAggregators,
         List<String> labelNames) {
-      super(valueAccessors, computation);
+      super(valueAccessors, computation, patternAggregators);
       this.labelNames = requireNonNull(labelNames, "labelNames is null");
     }
 
@@ -121,6 +123,7 @@ public class PatternVariableRecognizer {
      */
     public boolean test(
         ArrayView matchedLabels,
+        PatternAggregator[] patternAggregators,
         int partitionStart,
         int searchStart,
         int searchEnd,
@@ -133,6 +136,7 @@ public class PatternVariableRecognizer {
           this.compute(
               currentRow,
               matchedLabels,
+              patternAggregators,
               partitionStart,
               searchStart,
               searchEnd,

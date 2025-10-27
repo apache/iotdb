@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -33,7 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
 public class TableSchema {
 
@@ -52,6 +56,11 @@ public class TableSchema {
 
   public List<ColumnSchema> getColumns() {
     return columns;
+  }
+
+  public Map<String, ColumnSchema> getColumnSchemaMap() {
+    // return a map column name -> ColumnSchema
+    return columns.stream().collect(Collectors.toMap(ColumnSchema::getName, Function.identity()));
   }
 
   public void setProps(final Map<String, String> props) {
@@ -73,14 +82,28 @@ public class TableSchema {
         .orElse(null);
   }
 
+  public ColumnSchema getColumn(final String columnName) {
+    List<ColumnSchema> columnScheme =
+        columns.stream()
+            .filter(column -> column.getName().equals(columnName))
+            .collect(toImmutableList());
+    if (columnScheme.isEmpty()) {
+      return null;
+    } else if (columnScheme.size() > 1) {
+      throw new SemanticException(
+          String.format("Columns in table shall not share the same name %s.", columnName));
+    }
+    return columnScheme.get(0);
+  }
+
   /**
-   * Given the name of an ID column, return the index of this column among all ID columns, return -1
-   * if not found.
+   * Given the name of an TAG column, return the index of this column among all TAG columns, return
+   * -1 if not found.
    */
-  public int getIndexAmongIdColumns(final String idColumnName) {
+  public int getIndexAmongTagColumns(final String tagColumnName) {
     int index = 0;
-    for (final ColumnSchema column : getIdColumns()) {
-      if (column.getName().equals(idColumnName)) {
+    for (final ColumnSchema column : getTagColumns()) {
+      if (column.getName().equals(tagColumnName)) {
         return index;
       }
       index++;
@@ -199,7 +222,7 @@ public class TableSchema {
     return "TableSchema{" + "tableName='" + tableName + '\'' + ", columns=" + columns + '}';
   }
 
-  public List<ColumnSchema> getIdColumns() {
+  public List<ColumnSchema> getTagColumns() {
     return columns.stream()
         .filter(c -> c.getColumnCategory() == TsTableColumnCategory.TAG)
         .collect(Collectors.toList());

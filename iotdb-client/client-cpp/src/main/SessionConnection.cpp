@@ -35,6 +35,7 @@ SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endp
                                      int fetchSize,
                                      int maxRetries,
                                      int64_t retryInterval,
+                                     int64_t connectionTimeout,
                                      std::string dialect,
                                      std::string db)
     : session(session_ptr),
@@ -44,6 +45,7 @@ SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endp
       fetchSize(fetchSize),
       maxRetryCount(maxRetries),
       retryIntervalMs(retryInterval),
+      connectionTimeoutInMs(connectionTimeout),
       sqlDialect(std::move(dialect)),
       database(std::move(db)) {
     this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;

@@ -47,12 +47,14 @@ public class IoTDBRegionMigrateClusterCrashIoTV2StreamIT
         .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void clusterCrash1() throws Exception {
     killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void clusterCrash2() throws Exception {
     killClusterTest(buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), false);
   }
@@ -72,7 +74,8 @@ public class IoTDBRegionMigrateClusterCrashIoTV2StreamIT
     killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), true);
   }
 
-  @Test
+  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
+  //  @Test
   public void clusterCrash7() throws Exception {
     killClusterTest(buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), true);
   }

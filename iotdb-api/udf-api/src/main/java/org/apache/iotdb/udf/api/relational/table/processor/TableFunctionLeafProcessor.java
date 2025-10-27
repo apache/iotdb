@@ -39,4 +39,9 @@ public interface TableFunctionLeafProcessor {
 
   /** This method is called to determine if the processor has finished processing all data. */
   boolean isFinish();
+
+  /** This method is mainly used to release the resources used in the UDF. */
+  default void beforeDestroy() {
+    // do nothing
+  }
 }

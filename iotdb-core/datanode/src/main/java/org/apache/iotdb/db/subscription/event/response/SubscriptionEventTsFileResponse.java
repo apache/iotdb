@@ -36,7 +36,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.thrift.annotation.Nullable;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,7 +163,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     return Optional.empty();
   }
 
-  private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
+  private CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
       final long writingOffset)
       throws IOException, InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     final long tsFileLength = tsFile.length();

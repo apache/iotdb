@@ -30,11 +30,14 @@ import java.util.List;
 public class DeviceSchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final PathPatternTree authorityScope;
+  private final boolean canSeeAuditDB;
 
-  public DeviceSchemaFetchStatement(PathPatternTree patternTree, PathPatternTree authorityScope) {
+  public DeviceSchemaFetchStatement(
+      PathPatternTree patternTree, PathPatternTree authorityScope, boolean canSeeAuditDB) {
     super();
     this.patternTree = patternTree;
     this.authorityScope = authorityScope;
+    this.canSeeAuditDB = canSeeAuditDB;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -44,6 +47,10 @@ public class DeviceSchemaFetchStatement extends Statement {
 
   public PathPatternTree getAuthorityScope() {
     return authorityScope;
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
   }
 
   @Override

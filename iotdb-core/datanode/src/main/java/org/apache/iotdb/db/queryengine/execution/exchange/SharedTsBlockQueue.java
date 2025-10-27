@@ -28,7 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -74,7 +74,7 @@ public class SharedTsBlockQueue {
 
   private ListenableFuture<Void> blockedOnMemory;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
   private boolean alreadyRegistered = false;
 
   private LocalSourceHandle sourceHandle;

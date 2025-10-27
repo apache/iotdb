@@ -34,7 +34,7 @@ public class PipeLogManager {
 
   public Optional<Logger> schedule(
       final Class<?> logClass,
-      final int maxAverageScale,
+      final double maxAverageScale,
       final int maxLogInterval,
       final int scale) {
     return logClass2LogStatusMap

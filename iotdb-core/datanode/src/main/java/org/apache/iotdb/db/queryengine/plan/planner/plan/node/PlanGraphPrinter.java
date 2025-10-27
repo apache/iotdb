@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
@@ -55,7 +56,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
@@ -83,13 +83,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 import com.google.common.base.Joiner;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
-import org.eclipse.jetty.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -99,7 +100,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -547,24 +547,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLastQueryScan(LastQueryScanNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
-      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
-    }
-    boxValue.add(printRegion(node.getRegionReplicaSet()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
-  public List<String> visitAlignedLastQueryScan(
-      AlignedLastQueryScanNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AlignedLastQueryScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Aligned: %s", node.isAligned()));
     boxValue.add(
         String.format(
-            "Series: %s%s",
-            node.getSeriesPath().getIDeviceID(), node.getSeriesPath().getMeasurementList()));
-    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+            "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
+    if (StringUtils.isNotBlank(node.getOutputViewPath())) {
       boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
@@ -813,6 +800,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitInto(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Into-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node,
       GraphContext context) {
@@ -840,7 +837,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (node.getMonthDuration() != 0) {
       boxValue.add(String.format("Interval: %smo", node.getMonthDuration()));
     } else {
-      boxValue.add(String.format("Interval: %s" + TIMESTAMP_PRECISION, node.getNonMonthDuration()));
+      boxValue.add(
+          String.format(
+              "Interval: %s" + CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              node.getNonMonthDuration()));
     }
     boxValue.add(String.format("GapFillColumn: %s", node.getGapFillColumn()));
     if (!node.getGapFillGroupingKeys().isEmpty()) {
@@ -1096,6 +1096,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         regionReplicaSet == null || regionReplicaSet == DataPartition.NOT_ASSIGNED
             ? REGION_NOT_ASSIGNED
             : String.valueOf(regionReplicaSet.getRegionId().id));
+  }
+
+  @Override
+  public List<String> visitUnion(UnionNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Union-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
   }
 
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {

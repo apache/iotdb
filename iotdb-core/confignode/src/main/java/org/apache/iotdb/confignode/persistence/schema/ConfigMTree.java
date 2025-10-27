@@ -91,10 +91,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
@@ -277,10 +277,13 @@ public class ConfigMTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public int getDatabaseNum(
-      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
+      final PartialPath pathPattern,
+      final PathPatternTree scope,
+      final boolean isPrefixMatch,
+      final boolean needAuditDB)
       throws MetadataException {
     try (final DatabaseCounter<IConfigMNode> counter =
-        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope)) {
+        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope, needAuditDB)) {
       return (int) counter.count();
     }
   }
@@ -1067,7 +1070,7 @@ public class ConfigMTree {
       throws IOException {
     serializeChildren(storageGroupNode.getAsMNode(), outputStream);
 
-    ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
@@ -1097,7 +1100,7 @@ public class ConfigMTree {
     IConfigMNode internalMNode;
     IConfigMNode tableNode;
 
-    if (type == STORAGE_GROUP_MNODE_TYPE) {
+    if (type == DATABASE_MNODE_TYPE) {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
       stack.push(new Pair<>(databaseMNode, true));
@@ -1129,7 +1132,7 @@ public class ConfigMTree {
           stack.push(new Pair<>(internalMNode, hasDB));
           name = internalMNode.getName();
           break;
-        case STORAGE_GROUP_MNODE_TYPE:
+        case DATABASE_MNODE_TYPE:
           databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
           while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
             databaseMNode.addChild(stack.pop().left);

@@ -25,6 +25,11 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import javax.net.ssl.SSLHandshakeException;
+
+import java.io.EOFException;
+import java.net.SocketTimeoutException;
+
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
 
@@ -113,8 +118,26 @@ public class TElasticFramedTransport extends TTransport {
       return got;
     }
 
-    // Read another frame of data
-    readFrame();
+    try {
+      // Read another frame of data
+      readFrame();
+    } catch (TTransportException e) {
+      // There is a bug fixed in Thrift 0.15. Some unnecessary error logs may be printed.
+      // See https://issues.apache.org/jira/browse/THRIFT-5411 and
+      // https://github.com/apache/thrift/commit/be20ad7e08fab200391e3eab41acde9da2a4fd07
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SocketTimeoutException) {
+        throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
+      }
+      // When client with SSL shut down due to time out. Some unnecessary error logs may be printed.
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SSLHandshakeException
+          && e.getCause().getCause() != null
+          && e.getCause().getCause() instanceof EOFException) {
+        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      }
+      throw e;
+    }
     return readBuffer.read(buf, off, len);
   }
 
@@ -136,13 +159,28 @@ public class TElasticFramedTransport extends TTransport {
             TTransportException.CORRUPTED_DATA,
             "Singular frame size ("
                 + size
-                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
+                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, "
+                + "please confirm that you are using the right port");
       } else {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
             "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
       }
     }
+
+    int high24 = size >>> 8;
+    if (high24 >= 0x160300 && high24 <= 0x160303 && (i32buf[3] & 0xFF) <= 0x02) {
+      // The typical TLS ClientHello requests start with 0x160300 ~ 0x160303
+      // The 4th byte is typically in [0x00, 0x01, 0x02].
+      close();
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          "Singular frame size ("
+              + size
+              + ") detected, you may be sending TLS ClientHello requests to the Non-SSL Thrift-RPC"
+              + " port, please confirm that you are using the right configuration");
+    }
+
     readBuffer.fill(underlying, size);
   }
 

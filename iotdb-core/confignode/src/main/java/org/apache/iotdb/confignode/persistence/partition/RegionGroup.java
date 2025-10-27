@@ -95,8 +95,10 @@ public class RegionGroup {
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 
-  public synchronized void removeRegionLocation(TDataNodeLocation node) {
-    replicaSet.getDataNodeLocations().remove(node);
+  public synchronized void removeRegionLocation(int nodeId) {
+    replicaSet
+        .getDataNodeLocations()
+        .removeIf(tDataNodeLocation -> nodeId == tDataNodeLocation.getDataNodeId());
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 

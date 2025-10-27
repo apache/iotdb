@@ -185,11 +185,13 @@ public class WritingMetrics implements IMetricSet {
   public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
   public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
+  public static final String WAL_ENTRY_NUM_FOR_ONE_TSFILE = "wal_entry_num_for_one_tsfile";
   public static final String WAL_QUEUE_CURRENT_MEM_COST = "wal_queue_current_mem_cost";
   public static final String WAL_QUEUE_MAX_MEM_COST = "wal_queue_max_mem_cost";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram serializedWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram wroteWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram walCompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -216,6 +218,12 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
+    walEntryNumForOneTsFileHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_ENTRY_NUM_FOR_ONE_TSFILE);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
@@ -280,6 +288,7 @@ public class WritingMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.WAL_NODE_NUM.toString(), Tag.NAME.toString(), WAL_NODES_NUM);
     usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     Arrays.asList(
             USED_RATIO,
             ENTRIES_COUNT,
@@ -916,6 +925,10 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWALBufferEntriesCount(long count) {
     entriesCountHistogram.update(count);
+  }
+
+  public void recordWALEntryNumForOneTsFile(long count) {
+    walEntryNumForOneTsFileHistogram.update(count);
   }
 
   public void recordWALQueueMaxMemorySize(long size) {

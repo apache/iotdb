@@ -142,13 +142,13 @@ public class CreateTableProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.PRE_RELEASE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
@@ -175,13 +175,14 @@ public class CreateTableProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.commitReleaseTable(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
@@ -224,13 +225,14 @@ public class CreateTableProcedure
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+        SchemaUtils.rollbackPreRelease(
+            database, table.getTableName(), env.getConfigManager(), null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
