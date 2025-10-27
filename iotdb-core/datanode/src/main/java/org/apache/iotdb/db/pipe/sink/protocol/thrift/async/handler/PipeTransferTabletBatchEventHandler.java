@@ -119,7 +119,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       PipeLogger.log(
           LOGGER::warn,
           exception,
-          "Failed to transfer TabletInsertionEvent batch. Total failed events: %s, related pipe names: %s",
+          "Failed to transfer TabletInsertionEvent batch. Total failed events: %s, related pipe names: %s, message: %s",
           events.size(),
           events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {

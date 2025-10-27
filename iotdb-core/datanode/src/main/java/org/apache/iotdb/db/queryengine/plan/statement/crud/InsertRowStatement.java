@@ -476,4 +476,16 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
         + RamUsageEstimator.sizeOf(measurementIsAligned);
   }
+
+  @Override
+  public String toString() {
+    return "InsertRowNode{"
+        + "deviceID="
+        + deviceID
+        + ", time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
+  }
 }
