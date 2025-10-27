@@ -833,7 +833,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
           "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,need_last_cache,",
-          Collections.singleton("information_schema,INF,null,null,null,null,null,"));
+          Collections.singleton("information_schema,INF,null,null,null,null,null,false,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
