@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ClassifierDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.MatchNumberDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.Navigation;
@@ -65,6 +66,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPositi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
@@ -81,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -101,7 +106,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
@@ -117,9 +124,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -135,9 +145,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -148,7 +158,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilde
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.extractPatternRecognitionExpressions;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.pruneInvisibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractPredicates;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.CROSS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.IMPLICIT;
@@ -158,6 +171,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
@@ -221,6 +236,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     final Scope scope = analysis.getScope(table);
+
+    // Common Table Expression
+    final Query namedQuery = analysis.getNamedQuery(table);
+    if (namedQuery != null) {
+      RelationPlan subPlan;
+      if (analysis.isExpandableQuery(namedQuery)) {
+        // recursive cte
+        throw new SemanticException("unexpected recursive cte");
+      } else {
+        subPlan = process(namedQuery, null);
+      }
+
+      // Add implicit coercions if view query produces types that don't match the declared output
+      // types of the view (e.g., if the underlying tables referenced by the view changed)
+      List<Type> types =
+          analysis.getOutputDescriptor(table).getAllFields().stream()
+              .map(Field::getType)
+              .collect(toImmutableList());
+
+      NodeAndMappings coerced = coerce(subPlan, types, symbolAllocator, idAllocator);
+      return new RelationPlan(coerced.getNode(), scope, coerced.getFields(), outerContext);
+    }
+
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
@@ -875,7 +913,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       case ALL_WITH_UNMATCHED:
         return RowsPerMatch.ALL_WITH_UNMATCHED;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + rowsPerMatch);
+        throw new SemanticException("Unexpected rows per match: " + rowsPerMatch);
     }
   }
 
@@ -992,8 +1030,53 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             new ScalarValuePointer(
                 planValuePointer(descriptor.getLabel(), descriptor.getNavigation(), subsets),
                 Symbol.from(translations.rewrite(accessor.getExpression())));
+      } else if (accessor.getDescriptor() instanceof AggregationDescriptor) {
+        AggregationDescriptor descriptor = (AggregationDescriptor) accessor.getDescriptor();
+
+        Map<NodeRef<Expression>, Symbol> mappings = new HashMap<>();
+
+        Optional<Symbol> matchNumberSymbol = Optional.empty();
+        if (!descriptor.getMatchNumberCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("match_number", INT64);
+          for (Expression call : descriptor.getMatchNumberCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          matchNumberSymbol = Optional.of(symbol);
+        }
+
+        Optional<Symbol> classifierSymbol = Optional.empty();
+        if (!descriptor.getClassifierCalls().isEmpty()) {
+          Symbol symbol = symbolAllocator.newSymbol("classifier", STRING);
+
+          for (Expression call : descriptor.getClassifierCalls()) {
+            mappings.put(NodeRef.of(call), symbol);
+          }
+          classifierSymbol = Optional.of(symbol);
+        }
+
+        TranslationMap argumentTranslation = translations.withAdditionalIdentityMappings(mappings);
+
+        Set<IrLabel> labels =
+            descriptor.getLabels().stream()
+                .flatMap(label -> planLabels(Optional.of(label), subsets).stream())
+                .collect(Collectors.toSet());
+
+        pointer =
+            new AggregationValuePointer(
+                descriptor.getFunction(),
+                new AggregationLabelSet(labels, descriptor.getMode() == RUNNING),
+                descriptor.getArguments().stream()
+                    .filter(
+                        argument -> !DereferenceExpression.isQualifiedAllFieldsReference(argument))
+                    .map(
+                        argument ->
+                            coerceIfNecessary(
+                                analysis, argument, argumentTranslation.rewrite(argument)))
+                    .collect(Collectors.toList()),
+                classifierSymbol,
+                matchNumberSymbol);
       } else {
-        throw new IllegalArgumentException(
+        throw new SemanticException(
             "Unexpected descriptor type: " + accessor.getDescriptor().getClass().getName());
       }
 
@@ -1039,8 +1122,66 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       case LAST:
         return SkipToPosition.LAST;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + position);
+        throw new SemanticException("Unexpected skip to position: " + position);
     }
+  }
+
+  @Override
+  protected RelationPlan visitUnion(Union node, Void context) {
+    Preconditions.checkArgument(!node.getRelations().isEmpty(), "No relations specified for UNION");
+
+    SetOperationPlan setOperationPlan = process(node);
+
+    PlanNode planNode =
+        new UnionNode(
+            idAllocator.genPlanNodeId(),
+            setOperationPlan.getChildren(),
+            setOperationPlan.getSymbolMapping(),
+            ImmutableList.copyOf(setOperationPlan.getSymbolMapping().keySet()));
+    if (node.isDistinct()) {
+      planNode = distinct(planNode);
+    }
+    return new RelationPlan(
+        planNode, analysis.getScope(node), planNode.getOutputSymbols(), outerContext);
+  }
+
+  private SetOperationPlan process(SetOperation node) {
+    RelationType outputFields = analysis.getOutputDescriptor(node);
+    List<Symbol> outputs =
+        outputFields.getAllFields().stream()
+            .map(symbolAllocator::newSymbol)
+            .collect(toImmutableList());
+
+    ImmutableListMultimap.Builder<Symbol, Symbol> symbolMapping = ImmutableListMultimap.builder();
+    ImmutableList.Builder<PlanNode> children = ImmutableList.builder();
+
+    for (Relation child : node.getRelations()) {
+      RelationPlan plan = process(child, null);
+
+      NodeAndMappings planAndMappings;
+      List<Type> types = analysis.getRelationCoercion(child);
+      if (types == null) {
+        // no coercion required, only prune invisible fields from child outputs
+        planAndMappings = pruneInvisibleFields(plan, idAllocator);
+      } else {
+        // apply required coercion and prune invisible fields from child outputs
+        planAndMappings = coerce(plan, types, symbolAllocator, idAllocator);
+      }
+      for (int i = 0; i < outputFields.getAllFields().size(); i++) {
+        symbolMapping.put(outputs.get(i), planAndMappings.getFields().get(i));
+      }
+
+      children.add(planAndMappings.getNode());
+    }
+    return new SetOperationPlan(children.build(), symbolMapping.build());
+  }
+
+  private PlanNode distinct(PlanNode node) {
+    return singleAggregation(
+        idAllocator.genPlanNodeId(),
+        node,
+        ImmutableMap.of(),
+        singleGroupingSet(node.getOutputSymbols()));
   }
 
   // ================================ Implemented later =====================================
@@ -1053,11 +1194,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitIntersect(Intersect node, Void context) {
     throw new IllegalStateException("Intersect is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitUnion(Union node, Void context) {
-    throw new IllegalStateException("Union is not supported in current version.");
   }
 
   @Override
@@ -1330,6 +1466,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         measurements[j] = null;
         measurementSchemas[j] = null;
       }
+    }
+  }
+
+  private static final class SetOperationPlan {
+    private final List<PlanNode> children;
+    private final ListMultimap<Symbol, Symbol> symbolMapping;
+
+    private SetOperationPlan(List<PlanNode> children, ListMultimap<Symbol, Symbol> symbolMapping) {
+      this.children = children;
+      this.symbolMapping = symbolMapping;
+    }
+
+    public List<PlanNode> getChildren() {
+      return children;
+    }
+
+    public ListMultimap<Symbol, Symbol> getSymbolMapping() {
+      return symbolMapping;
     }
   }
 

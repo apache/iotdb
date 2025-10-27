@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -52,12 +56,18 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
+  // mods entry
+  protected PipeMemoryBlock allocatedMemoryBlockForModifications;
+  protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
+
   protected final long initialTimeNano = System.nanoTime();
   protected boolean timeUsageReported = false;
 
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
   protected TsFileSequenceReader tsFileSequenceReader;
+
+  protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
   protected TsFileInsertionEventParser(
       final String pipeName,
@@ -83,9 +93,10 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
-    // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlockForTablet =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
   }
 
   /**
@@ -95,6 +106,9 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   @Override
   public void close() {
+
+    tabletInsertionIterable = null;
+
     try {
       if (pipeName != null && !timeUsageReported) {
         PipeTsFileToTabletsMetrics.getInstance()
@@ -116,6 +130,15 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     if (allocatedMemoryBlockForTablet != null) {
       allocatedMemoryBlockForTablet.close();
+    }
+
+    if (currentModifications != null) {
+      // help GC
+      currentModifications = null;
+    }
+
+    if (allocatedMemoryBlockForModifications != null) {
+      allocatedMemoryBlockForModifications.close();
     }
   }
 }

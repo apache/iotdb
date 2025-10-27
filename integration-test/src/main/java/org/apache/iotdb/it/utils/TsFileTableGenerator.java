@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.it.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -173,11 +178,13 @@ public class TsFileTableGenerator implements AutoCloseable {
     tablet.addValue(row, column, String.format("test point %d", random.nextInt()));
   }
 
-  public long getTotalNumber() {
-    return table2TimeSet.entrySet().stream()
-        .mapToInt(
-            entry -> entry.getValue().size() * table2MeasurementSchema.get(entry.getKey()).size())
-        .sum();
+  public void generateDeletion(final String table) throws IOException {
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TableDeletionEntry(
+              new DeletionPredicate(table), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
+    }
   }
 
   @Override

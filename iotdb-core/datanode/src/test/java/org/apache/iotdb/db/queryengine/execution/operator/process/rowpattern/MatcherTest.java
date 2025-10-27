@@ -157,7 +157,7 @@ public class MatcherTest {
   private static MatchResult match(IrRowPattern pattern, String input) {
     Program program = IrRowPatternToProgramRewriter.rewrite(pattern, LABEL_MAPPING);
 
-    Matcher matcher = new Matcher(program);
+    Matcher matcher = new Matcher(program, ImmutableList.of());
 
     int[] mappedInput = new int[input.length()];
     for (int i = 0; i < input.length(); i++) {
@@ -195,7 +195,7 @@ public class MatcherTest {
      * the label based on the definition of the label in the DEFINE clause.
      */
     @Override
-    public boolean evaluateLabel(ArrayView matchedLabels) {
+    public boolean evaluateLabel(ArrayView matchedLabels, PatternAggregator[] patternAggregators) {
       int position = matchedLabels.length() - 1;
       return input[position] == matchedLabels.get(position);
     }

@@ -224,6 +224,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup =
         firstKeyMap.get(belongedGroup.getFirstKey());
     if (Objects.nonNull(cacheEntryGroup) && cacheEntryGroup.isEmpty()) {
+      // The removal is non-atomic, but it's ok because it's just a cache and does not affect the
+      // consistency if you evicts some entries being added
       if (Objects.nonNull(firstKeyMap.remove(belongedGroup.getFirstKey()))) {
         memory +=
             sizeComputer.computeFirstKeySize(belongedGroup.getFirstKey())

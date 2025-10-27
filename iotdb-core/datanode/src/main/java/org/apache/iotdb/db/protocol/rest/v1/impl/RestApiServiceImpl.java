@@ -112,7 +112,7 @@ public class RestApiServiceImpl extends RestApiService {
             COORDINATOR.executeForTableModel(
                 ((CreateTableViewStatement) statement).getCreateTableView(),
                 new SqlParser(),
-                SESSION_MANAGER.getCurrSessionAndUpdateIdleTime(),
+                SESSION_MANAGER.getCurrSession(),
                 queryId,
                 SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
                 sql.getSql(),

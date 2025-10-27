@@ -22,6 +22,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -32,6 +34,8 @@ public class ExecuteStatementHandler {
   public static boolean validateStatement(Statement statement) {
     return !(statement instanceof QueryStatement)
         && !(statement instanceof ShowModelsStatement)
+        && !(statement instanceof ShowAIDevicesStatement)
+        && !(statement instanceof ShowLoadedModelsStatement)
         && !(statement instanceof ShowStatement
             && !(statement instanceof DropSchemaTemplateStatement))
         && !(statement instanceof AuthorStatement

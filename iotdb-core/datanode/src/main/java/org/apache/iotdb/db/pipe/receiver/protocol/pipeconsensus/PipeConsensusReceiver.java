@@ -27,12 +27,12 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -46,14 +46,14 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusReceiverMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
+import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -67,8 +67,8 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,6 +168,9 @@ public class PipeConsensusReceiver {
     // will reject synchronization.
     TPipeConsensusTransferResp resp = preCheckForReceiver(req);
     if (resp != null) {
+      // release tsFileWriter if pre-check failed as leader will resend the whole tsFileEvent
+      releaseTsFileWriter(
+          pipeConsensusTsFileWriterPool.tryToFindCorrespondingWriter(req.getCommitId()), false);
       return resp;
     }
 
@@ -400,20 +403,8 @@ public class PipeConsensusReceiver {
         } finally {
           // Exception may occur when disk system go wrong. At this time, we may reset all resource
           // and receive this file from scratch when leader will try to resend this file from
-          // scratch
-          // as well.
-          closeCurrentWritingFileWriter(tsFileWriter, false);
-          deleteCurrentWritingFile(tsFileWriter);
-          // must return tsfileWriter after deleting its file.
-          try {
-            tsFileWriter.returnSelf(consensusPipeName);
-          } catch (IOException | DiskSpaceInsufficientException returnException) {
-            LOGGER.warn(
-                "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
-                consensusPipeName,
-                tsFileWriter,
-                returnException);
-          }
+          // scratch as well.
+          releaseTsFileWriter(tsFileWriter, false);
         }
       }
     } finally {
@@ -432,7 +423,6 @@ public class PipeConsensusReceiver {
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
-    boolean isReturnTsFileWriter = false;
     try {
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
@@ -458,17 +448,8 @@ public class PipeConsensusReceiver {
       writingFileWriter.getFD().sync();
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
-      //
-      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
-      // name as the current tsfile, it will bypass the judgment logic of
-      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
-      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
-      // Close exception.
+      // 2. writingFileWriter and writingFile will be reset in `releaseTsFileWriter`
       writingFileWriter.close();
-      tsFileWriter.setWritingFileWriter(null);
-
-      // writingFile will be deleted after load if no exception occurs
-      tsFileWriter.setWritingFile(null);
 
       long endPreCheckNanos = System.nanoTime();
       pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
@@ -481,8 +462,6 @@ public class PipeConsensusReceiver {
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // if transfer success, disk buffer will be released.
-        isReturnTsFileWriter = true;
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file {} successfully.",
             consensusPipeName,
@@ -521,20 +500,7 @@ public class PipeConsensusReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter(tsFileWriter, false);
-      deleteCurrentWritingFile(tsFileWriter);
-      // must return tsfileWriter after deleting its file.
-      if (isReturnTsFileWriter) {
-        try {
-          tsFileWriter.returnSelf(consensusPipeName);
-        } catch (IOException | DiskSpaceInsufficientException e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
-              consensusPipeName,
-              tsFileWriter,
-              e);
-        }
-      }
+      releaseTsFileWriter(tsFileWriter, false);
     }
   }
 
@@ -557,7 +523,6 @@ public class PipeConsensusReceiver {
         req.getFileNames().stream()
             .map(fileName -> new File(currentWritingDirPath, fileName))
             .collect(Collectors.toList());
-    boolean isReturnTsFileWriter = false;
     try {
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
@@ -593,17 +558,8 @@ public class PipeConsensusReceiver {
       writingFileWriter.getFD().sync();
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
-      //
-      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
-      // name as the current tsfile, it will bypass the judgment logic of
-      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
-      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
-      // Close exception.
+      // 2. writingFileWriter and writingFile will be reset in `releaseTsFileWriter`
       writingFileWriter.close();
-      tsFileWriter.setWritingFileWriter(null);
-
-      // WritingFile will be deleted after load if no exception occurs
-      tsFileWriter.setWritingFile(null);
 
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
@@ -620,8 +576,6 @@ public class PipeConsensusReceiver {
       pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // if transfer success, disk buffer will be released.
-        isReturnTsFileWriter = true;
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Seal file with mods {} successfully.",
             consensusPipeName,
@@ -649,22 +603,10 @@ public class PipeConsensusReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter(tsFileWriter, false);
+      releaseTsFileWriter(tsFileWriter, false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
       IoTDBReceiverAgent.cleanPipeReceiverDir(currentWritingDirPath);
-      // must return tsfileWriter after deleting its file.
-      if (isReturnTsFileWriter) {
-        try {
-          tsFileWriter.returnSelf(consensusPipeName);
-        } catch (IOException | DiskSpaceInsufficientException e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
-              consensusPipeName,
-              tsFileWriter,
-              e);
-        }
-      }
     }
   }
 
@@ -868,97 +810,13 @@ public class PipeConsensusReceiver {
     return !offsetCorrect;
   }
 
-  private void closeCurrentWritingFileWriter(
-      PipeConsensusTsFileWriter tsFileWriter, boolean fsyncBeforeClose) {
-    if (tsFileWriter.getWritingFileWriter() != null) {
-      try {
-        if (fsyncBeforeClose) {
-          tsFileWriter.getWritingFileWriter().getFD().sync();
-        }
-        tsFileWriter.getWritingFileWriter().close();
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: Current writing file writer {} was closed.",
-            consensusPipeName,
-            tsFileWriter.getWritingFile() == null
-                ? "null"
-                : tsFileWriter.getWritingFile().getPath());
-      } catch (IOException e) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to close current writing file writer {}, because {}.",
-            consensusPipeName,
-            tsFileWriter.getWritingFile() == null
-                ? "null"
-                : tsFileWriter.getWritingFile().getPath(),
-            e.getMessage(),
-            e);
-      }
-      tsFileWriter.setWritingFileWriter(null);
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: Current writing file writer is null. No need to close.",
-            consensusPipeName.toString());
-      }
-    }
-  }
-
-  private void deleteFileOrDirectoryIfExists(File file, String reason) {
-    if (file.exists()) {
-      try {
-        if (file.isDirectory()) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.deleteDirectory(file);
-                return null;
-              });
-        } else {
-          RetryUtils.retryOnException(() -> FileUtils.delete(file));
-        }
-        LOGGER.info(
-            "PipeConsensus-PipeName-{}: {} {} was deleted.",
-            consensusPipeName,
-            reason,
-            file.getPath());
-      } catch (IOException e) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: {} Failed to delete {}, because {}.",
-            consensusPipeName,
-            reason,
-            file.getPath(),
-            e.getMessage(),
-            e);
-      }
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: {} {} is not existed. No need to delete.",
-            consensusPipeName,
-            reason,
-            file.getPath());
-      }
-    }
-  }
-
-  private void deleteCurrentWritingFile(PipeConsensusTsFileWriter tsFileWriter) {
-    if (tsFileWriter.getWritingFile() != null) {
-      deleteFileOrDirectoryIfExists(
-          tsFileWriter.getWritingFile(),
-          String.format("TsFileWriter-%s delete current writing file", tsFileWriter.index));
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus-PipeName-{}: Current writing file is null. No need to delete.",
-            consensusPipeName.toString());
-      }
-    }
-  }
-
   private void updateWritingFileIfNeeded(
       final PipeConsensusTsFileWriter tsFileWriter,
       final String fileName,
       final boolean isSingleFile)
       throws IOException {
-    if (isFileExistedAndNameCorrect(tsFileWriter, fileName)) {
+    if (isFileExistedAndNameCorrect(tsFileWriter, fileName)
+        && tsFileWriter.getWritingFileWriter() != null) {
       return;
     }
 
@@ -973,7 +831,10 @@ public class PipeConsensusReceiver {
     // If there are multiple files we can not delete the current file
     // instead they will be deleted after seal request
     if (tsFileWriter.getWritingFile() != null && isSingleFile) {
-      deleteCurrentWritingFile(tsFileWriter);
+      deleteFileOrDirectoryIfExists(
+          tsFileWriter.getWritingFile(),
+          false,
+          String.format("Update TsFileWriter-%s", tsFileWriter.index));
     }
 
     // Make sure receiver file dir exists
@@ -1002,11 +863,6 @@ public class PipeConsensusReceiver {
         tsFileWriter.getWritingFile().getPath());
   }
 
-  private String getReceiverFileBaseDir() throws DiskSpaceInsufficientException {
-    // Get next receiver file base dir by folder manager
-    return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
-  }
-
   private void initiateTsFileBufferFolder(List<String> receiverBaseDirsName) throws IOException {
     // initiate receiverFileDirs
     for (String receiverFileBaseDir : receiverBaseDirsName) {
@@ -1026,7 +882,8 @@ public class PipeConsensusReceiver {
                 consensusPipeName, newReceiverDir.getPath()));
       }
       // Remove exists dir
-      deleteFileOrDirectoryIfExists(newReceiverDir, "Initial Receiver: delete origin receive dir");
+      deleteFileOrDirectoryIfExists(
+          newReceiverDir, true, "Initial Receiver: delete origin receive dir");
 
       if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
@@ -1046,7 +903,7 @@ public class PipeConsensusReceiver {
     // Clear the original receiver file dir if exists
     for (String receiverFileBaseDir : receiveDirs) {
       File receiverDir = new File(receiverFileBaseDir);
-      deleteFileOrDirectoryIfExists(receiverDir, "Clear receive dir manually");
+      deleteFileOrDirectoryIfExists(receiverDir, true, "Clear receive dir manually");
     }
   }
 
@@ -1112,6 +969,17 @@ public class PipeConsensusReceiver {
           IOTDB_CONFIG.getTsFileWriterCheckInterval());
     }
 
+    public PipeConsensusTsFileWriter tryToFindCorrespondingWriter(TCommitId commitId) {
+      Optional<PipeConsensusTsFileWriter> tsFileWriter =
+          pipeConsensusTsFileWriterPool.stream()
+              .filter(
+                  item ->
+                      item.isUsed()
+                          && Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
+              .findFirst();
+      return tsFileWriter.orElse(null);
+    }
+
     @SuppressWarnings("java:S3655")
     public PipeConsensusTsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
       Optional<PipeConsensusTsFileWriter> tsFileWriter =
@@ -1159,20 +1027,11 @@ public class PipeConsensusReceiver {
               writer -> {
                 if (System.currentTimeMillis() - writer.lastUsedTs
                     >= IOTDB_CONFIG.getTsFileWriterZombieThreshold()) {
-                  try {
-                    writer.closeSelf(consensusPipeName);
-                    writer.returnSelf(consensusPipeName);
-                    LOGGER.info(
-                        "PipeConsensus-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
-                        consensusPipeName,
-                        writer.index);
-                  } catch (IOException | DiskSpaceInsufficientException e) {
-                    LOGGER.warn(
-                        "PipeConsensus-PipeName-{}: receiver watch dog failed to return tsFileWriter-{}.",
-                        consensusPipeName.toString(),
-                        writer.index,
-                        e);
-                  }
+                  releaseTsFileWriter(writer, false);
+                  LOGGER.info(
+                      "PipeConsensus-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
+                      consensusPipeName,
+                      writer.index);
                 }
               });
     }
@@ -1196,17 +1055,7 @@ public class PipeConsensusReceiver {
                 break;
               }
             }
-
-            try {
-              tsFileWriter.closeSelf(consensusPipeName);
-              tsFileWriter.returnSelf(consensusPipeName);
-            } catch (IOException | DiskSpaceInsufficientException e) {
-              LOGGER.warn(
-                  "PipeConsensus-PipeName-{}: receiver thread failed to return tsFileWriter-{} when exiting.",
-                  consensusPipeName.toString(),
-                  tsFileWriter.index,
-                  e);
-            }
+            releaseTsFileWriter(tsFileWriter, false);
           });
     }
   }
@@ -1230,44 +1079,49 @@ public class PipeConsensusReceiver {
     }
 
     public void rollToNextWritingPath() throws IOException, DiskSpaceInsufficientException {
-      String receiverBasePath;
-      try {
-        receiverBasePath = getReceiverFileBaseDir();
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.",
-            e);
-        throw e;
-      }
-      if (Objects.isNull(receiverBasePath)) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to get pipeConsensus receiver file base directory, because folderManager is null. May because the disk is full.",
-            consensusPipeName.toString());
-        throw new DiskSpaceInsufficientException(receiveDirs);
-      }
-
-      String localWritingDirPath = receiverBasePath + File.separator + index;
-      this.localWritingDir = new File(localWritingDirPath);
-      // Remove exists dir
-      deleteFileOrDirectoryIfExists(
-          this.localWritingDir,
-          String.format("TsFileWriter-%s roll to new dir and delete last writing dir", index));
-      if (!this.localWritingDir.mkdirs()) {
-        LOGGER.warn(
-            "PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}. May because authority or dir already exists etc.",
-            consensusPipeName,
-            index,
-            this.localWritingDir.getPath());
+      if (folderManager == null) {
         throw new IOException(
             String.format(
-                "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, index, this.localWritingDir.getPath()));
+                "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
+                consensusPipeName, index));
       }
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
-          consensusPipeName,
-          index,
-          localWritingDirPath);
+      this.localWritingDir =
+          folderManager.getNextWithRetry(
+              receiverBasePath -> {
+                if (receiverBasePath == null) {
+                  LOGGER.warn(
+                      "PipeConsensus-PipeName-{}: Failed to get base directory", consensusPipeName);
+                  return null;
+                }
+                File writingDir = new File(receiverBasePath + File.separator + index);
+                deleteFileOrDirectoryIfExists(
+                    writingDir,
+                    true,
+                    String.format(
+                        "TsFileWriter-%s roll to new dir and delete last writing dir", index));
+
+                if (writingDir.mkdirs()) {
+                  LOGGER.info(
+                      "PipeConsensus-PipeName-{}: tsfileWriter-{} roll to writing path {}",
+                      consensusPipeName,
+                      index,
+                      writingDir.getPath());
+                  return writingDir;
+                }
+                LOGGER.warn(
+                    "PipeConsensus-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}",
+                    consensusPipeName,
+                    index,
+                    writingDir.getPath());
+                return null;
+              });
+
+      if (this.localWritingDir == null) {
+        throw new IOException(
+            String.format(
+                "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
+                consensusPipeName, index));
+      }
     }
 
     public File getLocalWritingDir() {
@@ -1292,13 +1146,17 @@ public class PipeConsensusReceiver {
       return writingFileWriter;
     }
 
-    public void setWritingFileWriter(RandomAccessFile writingFileWriter) {
+    public void setWritingFileWriter(RandomAccessFile writingFileWriter) throws IOException {
       this.writingFileWriter = writingFileWriter;
       if (writingFileWriter == null) {
         LOGGER.info(
             "PipeConsensus-{}: TsFileWriter-{} set null writing file writer",
             consensusPipeName.toString(),
             index);
+      } else {
+        // seek to the end of the file to ensure that the next piece will be appended to the end of
+        // the file.
+        this.writingFileWriter.seek(this.writingFileWriter.length());
       }
     }
 
@@ -1344,45 +1202,110 @@ public class PipeConsensusReceiver {
           consensusPipeName.toString(),
           index);
     }
+  }
 
-    public void closeSelf(ConsensusPipeName consensusPipeName) {
-      // close file writer
-      if (writingFileWriter != null) {
-        try {
-          writingFileWriter.close();
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: TsFileWriter-{} exit: Writing file writer was closed.",
-              consensusPipeName.toString(),
-              index);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "PipeConsensus-PipeName-{}: TsFileWriter-{} exit: Close Writing file writer error.",
-              consensusPipeName,
-              index,
-              e);
+  private void closeCurrentWritingFileWriter(
+      PipeConsensusTsFileWriter tsFileWriter, boolean fsyncBeforeClose) {
+    if (tsFileWriter.getWritingFileWriter() != null) {
+      try {
+        if (fsyncBeforeClose) {
+          tsFileWriter.getWritingFileWriter().getFD().sync();
         }
-        setWritingFileWriter(null);
-      } else {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "PipeConsensus-PipeName-{}: TsFileWriter-{} exit: Writing file writer is null. No need to close.",
-              consensusPipeName.toString(),
-              index);
-        }
+        tsFileWriter.getWritingFileWriter().close();
+        LOGGER.info(
+            "PipeConsensus-PipeName-{}: Current writing file writer {} was closed.",
+            consensusPipeName,
+            tsFileWriter.getWritingFile() == null
+                ? "null"
+                : tsFileWriter.getWritingFile().getPath());
+        tsFileWriter.setWritingFileWriter(null);
+      } catch (IOException e) {
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: Failed to close current writing file writer {}, because {}.",
+            consensusPipeName,
+            tsFileWriter.getWritingFile() == null
+                ? "null"
+                : tsFileWriter.getWritingFile().getPath(),
+            e.getMessage(),
+            e);
       }
+    } else {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "PipeConsensus-PipeName-{}: Current writing file writer is null. No need to close.",
+            consensusPipeName.toString());
+      }
+    }
+  }
 
-      // close file
-      if (writingFile != null) {
-        deleteFileOrDirectoryIfExists(
-            writingFile, String.format("TsFileWriter-%s exit: delete writing file", this.index));
-        setWritingFile(null);
-      } else {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "PipeConsensus-PipeName-{}: TsFileWriter exit: Writing file is null. No need to delete.",
-              consensusPipeName.toString());
+  private void deleteFileOrDirectoryIfExists(File file, boolean deleteDir, String reason) {
+    if (file.exists()) {
+      try {
+        if (file.isDirectory()) {
+          if (deleteDir) {
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.deleteDirectory(file);
+                  return null;
+                });
+          } else {
+            // There may be multiple files such as mods and tsfile pieces in the dir. Here we clean
+            // the
+            // dir instead of deleting it to avoid repeatedly deleting and creating the base dir for
+            // tsfile writer
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.cleanDirectory(file);
+                  return null;
+                });
+          }
+        } else {
+          RetryUtils.retryOnException(() -> FileUtils.delete(file));
         }
+        LOGGER.info(
+            "PipeConsensus-PipeName-{}: {} {} was deleted.",
+            consensusPipeName,
+            reason,
+            file.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "PipeConsensus-PipeName-{}: {} Failed to delete {}, because {}.",
+            consensusPipeName,
+            reason,
+            file.getPath(),
+            e.getMessage(),
+            e);
       }
+    } else {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "PipeConsensus-PipeName-{}: {} {} is not existed. No need to delete.",
+            consensusPipeName,
+            reason,
+            file.getPath());
+      }
+    }
+  }
+
+  private void releaseTsFileWriter(
+      PipeConsensusTsFileWriter tsFileWriter, boolean fsyncBeforeClose) {
+    if (tsFileWriter == null) {
+      return;
+    }
+    closeCurrentWritingFileWriter(tsFileWriter, fsyncBeforeClose);
+    deleteFileOrDirectoryIfExists(
+        tsFileWriter.getLocalWritingDir(),
+        false,
+        String.format("Release TsFileWriter-%s", tsFileWriter.index));
+    tsFileWriter.setWritingFile(null);
+    try {
+      tsFileWriter.returnSelf(consensusPipeName);
+    } catch (IOException | DiskSpaceInsufficientException e) {
+      LOGGER.warn(
+          "PipeConsensus-PipeName-{}: Failed to return tsFileWriter {}.",
+          consensusPipeName,
+          tsFileWriter,
+          e);
     }
   }
 

@@ -277,10 +277,13 @@ public class ConfigMTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public int getDatabaseNum(
-      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
+      final PartialPath pathPattern,
+      final PathPatternTree scope,
+      final boolean isPrefixMatch,
+      final boolean needAuditDB)
       throws MetadataException {
     try (final DatabaseCounter<IConfigMNode> counter =
-        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope)) {
+        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope, needAuditDB)) {
       return (int) counter.count();
     }
   }

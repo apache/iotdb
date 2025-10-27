@@ -20,13 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -73,7 +72,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -128,7 +126,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
       for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         try {
-          if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
             continue;
           }
         } catch (IllegalPathException e) {
@@ -154,26 +152,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // check WRITE_DATA permission of timeseries
           long startTime = System.nanoTime();
           try {
-            String userName = loadTsFileAnalyzer.context.getSession().getUserName();
-            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-              TSStatus status;
-              try {
-                List<PartialPath> paths =
-                    Collections.singletonList(
-                        new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
-                status =
-                    AuthorityChecker.getTSStatus(
-                        AuthorityChecker.checkFullPathOrPatternListPermission(
-                            userName, paths, PrivilegeType.WRITE_DATA),
-                        paths,
-                        PrivilegeType.WRITE_DATA);
-              } catch (IllegalPathException e) {
-                throw new RuntimeException(e);
-              }
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new AuthException(
-                    TSStatusCode.representOf(status.getCode()), status.getMessage());
-              }
+            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+            TSStatus status =
+                AuthorityChecker.getAccessControl()
+                    .checkFullPathWriteDataPermission(
+                        userEntity, device, timeseriesMetadata.getMeasurementId());
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new AuthException(
+                  TSStatusCode.representOf(status.getCode()), status.getMessage());
             }
           } finally {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -313,6 +299,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
           schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
+          databasesNeededToBeSet.removeIf(
+              database ->
+                  database.startsWith(databaseName)
+                      || databaseName.startsWith(database.getFullPath()));
         }
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
@@ -338,7 +328,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     // 1.check Authority
     TSStatus status =
         AuthorityChecker.checkAuthority(
-            statement, loadTsFileAnalyzer.context.getSession().getUserName());
+            statement, loadTsFileAnalyzer.context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
     }
@@ -440,7 +430,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
       if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new LoadAnalyzeException(
+        throw new LoadAnalyzeTypeMismatchException(
             String.format(
                 "Device %s in TsFile is %s, but in IoTDB is %s.",
                 device,
@@ -463,15 +453,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
         }
 
         // check datatype
-        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                  device,
-                  TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementName(),
-                  tsFileSchema.getType(),
-                  iotdbSchema.getType()));
+        if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          LOGGER.debug(
+              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+              device,
+              TsFileConstant.PATH_SEPARATOR,
+              iotdbSchema.getMeasurementName(),
+              tsFileSchema.getType(),
+              iotdbSchema.getType());
         }
 
         // check encoding

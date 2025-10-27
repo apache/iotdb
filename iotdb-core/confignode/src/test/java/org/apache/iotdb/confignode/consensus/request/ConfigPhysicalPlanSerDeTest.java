@@ -65,6 +65,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -494,7 +495,7 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.CreateUser,
             "thulab",
             "",
-            "passwd",
+            "passwd123456",
             "",
             new HashSet<>(),
             false,
@@ -519,7 +520,7 @@ public class ConfigPhysicalPlanSerDeTest {
     // alter user
     req0 =
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.UpdateUser,
+            ConfigPhysicalPlanType.UpdateUserV2,
             "tempuser",
             "",
             "",
@@ -620,7 +621,7 @@ public class ConfigPhysicalPlanSerDeTest {
     // drop user
     req0 =
         new AuthorTreePlan(
-            ConfigPhysicalPlanType.DropUser,
+            ConfigPhysicalPlanType.DropUserV2,
             "xiaoming",
             "",
             "",
@@ -643,6 +644,36 @@ public class ConfigPhysicalPlanSerDeTest {
             false,
             new ArrayList<>());
     req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+
+    // rename user
+    req0 =
+        new AuthorTreePlan(
+            ConfigPhysicalPlanType.RenameUser,
+            "oldUserName",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>(),
+            233,
+            "newUserName");
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    req0 =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RRenameUser,
+            "oldUserName",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            "",
+            666,
+            "newUserName");
+    req1 = (AuthorRelationalPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -886,7 +917,7 @@ public class ConfigPhysicalPlanSerDeTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
@@ -911,7 +942,7 @@ public class ConfigPhysicalPlanSerDeTest {
     extractorAttributes.put("pattern", "root.db");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("batch.enable", "false");
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
@@ -949,7 +980,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void OperateMultiplePipesPlanV2Test() throws IOException {
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1, 1, false);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
@@ -962,7 +993,7 @@ public class ConfigPhysicalPlanSerDeTest {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
 
-    final PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2, 2, false);
+    final PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
     final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
     pipeTasks.put(2, pipeTaskMeta1);
     final PipeStaticMeta pipeStaticMeta1 =
@@ -1061,8 +1092,8 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
-                put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987, 1, false));
-                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789, 1, false));
+                put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

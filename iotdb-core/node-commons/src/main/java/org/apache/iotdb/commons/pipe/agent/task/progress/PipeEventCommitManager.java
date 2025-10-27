@@ -118,8 +118,28 @@ public class PipeEventCommitManager {
         }
       }
     }
-    if (committerKey == null || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+    if (committerKey == null) {
       return;
+    }
+    if (event.hasMultipleCommitIds()) {
+      commitMultipleIds(committerKey, event);
+    } else {
+      commitSingleId(committerKey, event.getCommitId(), event);
+    }
+  }
+
+  private void commitMultipleIds(final CommitterKey committerKey, final EnrichedEvent event) {
+    for (final long commitId : event.getCommitIds()) {
+      if (commitSingleId(committerKey, commitId, event)) {
+        return;
+      }
+    }
+  }
+
+  private boolean commitSingleId(
+      final CommitterKey committerKey, final long commitId, final EnrichedEvent event) {
+    if (commitId <= EnrichedEvent.NO_COMMIT_ID) {
+      return false;
     }
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
@@ -142,10 +162,11 @@ public class PipeEventCommitManager {
               Thread.currentThread().getStackTrace());
         }
       }
-      return;
+      return false;
     }
 
     committer.commit(event);
+    return true;
   }
 
   private CommitterKey generateCommitterKey(
@@ -174,17 +195,6 @@ public class PipeEventCommitManager {
 
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
-  }
-
-  public long getGivenConsensusPipeCommitId(
-      final String consensusPipeName, final long creationTime, final int consensusGroupId) {
-    final CommitterKey committerKey =
-        generateCommitterKey(consensusPipeName, creationTime, consensusGroupId);
-    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
-    if (committer == null) {
-      return 0;
-    }
-    return committer.getCurrentCommitId();
   }
 
   //////////////////////////// singleton ////////////////////////////

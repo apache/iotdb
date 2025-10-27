@@ -20,11 +20,17 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -64,9 +70,14 @@ public abstract class Computation {
    */
   public static class ComputationParser {
 
-    public static Computation parse(Expression expression) {
+    public static Computation parse(ExpressionAndValuePointers expressionAndValuePointers) {
+      Expression expression = expressionAndValuePointers.getExpression();
+      List<Assignment> assignments = expressionAndValuePointers.getAssignments();
       AtomicInteger counter = new AtomicInteger(0);
       Map<String, Integer> symbolToIndex = new HashMap<>();
+      for (int i = 0; i < assignments.size(); i++) {
+        symbolToIndex.put(assignments.get(i).getSymbol().getName(), i);
+      }
       return parse(expression, counter, symbolToIndex);
     }
 
@@ -102,15 +113,11 @@ public abstract class Computation {
         NaryOperator op = mapLogicalOperator(logicalExpr.getOperator());
         return new NaryComputation(computations, op);
       } else if (expression instanceof SymbolReference) {
-        // Upon encountering a SymbolReference type, it is converted into a ReferenceComputation.
+        // upon encountering a SymbolReference type, it is converted into a ReferenceComputation.
         // B.value < LAST(B.value) -> b_0 < b_1
         // LAST(B.value, 1) < LAST(B.value, 2) -> b_0 < b_1 + 1
         SymbolReference symRef = (SymbolReference) expression;
         String name = symRef.getName();
-        // If an index has not been previously assigned to the symbol, a new index is allocated.
-        if (!symbolToIndex.containsKey(name)) {
-          symbolToIndex.put(name, counter.getAndIncrement());
-        }
         int index = symbolToIndex.get(name);
         return new ReferenceComputation(index);
       } else if (expression instanceof LongLiteral) {
@@ -126,6 +133,31 @@ public abstract class Computation {
         // undefined pattern variable is 'true'
         BooleanLiteral constExpr = (BooleanLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof BinaryLiteral) {
+        BinaryLiteral constExpr = (BinaryLiteral) expression;
+        return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof GenericLiteral) { // handle the CAST function
+        GenericLiteral constExpr = (GenericLiteral) expression;
+        String type = constExpr.getType();
+
+        if ("DATE".equalsIgnoreCase(type)) { // CAST(... AS DATE)
+          String dateStr = constExpr.getValue();
+          int dateInt = Integer.parseInt(dateStr);
+          return new ConstantComputation(dateInt);
+        } else if ("TIMESTAMP".equalsIgnoreCase(type)) { // CAST(... AS TIMESTAMP)
+          String timestampStr = constExpr.getValue();
+          long timestampLong = Long.parseLong(timestampStr);
+          return new ConstantComputation(timestampLong);
+        } else {
+          return new ConstantComputation(constExpr.getValue());
+        }
+      } else if (expression instanceof Cast) {
+        // non-constant CAST scenario, such AS CAST(A.quantity AS INT64)
+        Cast castExpr = (Cast) expression;
+        Computation inner = parse(castExpr.getExpression(), counter, symbolToIndex);
+        DataType targetType = castExpr.getType();
+
+        return new CastComputation(inner, targetType);
       } else {
         throw new SemanticException(
             "Unsupported expression type: " + expression.getClass().getName());

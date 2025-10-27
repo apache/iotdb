@@ -66,15 +66,14 @@ public class PipeRuntimeExceptionTest {
   @Test
   public void testPipeRuntimeConnectorCriticalException() {
     long currentTime = System.currentTimeMillis();
-    PipeRuntimeConnectorCriticalException e =
-        new PipeRuntimeConnectorCriticalException("test", currentTime);
-    Assert.assertEquals(new PipeRuntimeConnectorCriticalException("test", currentTime), e);
+    PipeRuntimeSinkCriticalException e = new PipeRuntimeSinkCriticalException("test", currentTime);
+    Assert.assertEquals(new PipeRuntimeSinkCriticalException("test", currentTime), e);
     ByteBuffer buffer = ByteBuffer.allocate(32);
     e.serialize(buffer);
     buffer.position(0);
     try {
-      PipeRuntimeConnectorCriticalException e1 =
-          (PipeRuntimeConnectorCriticalException)
+      PipeRuntimeSinkCriticalException e1 =
+          (PipeRuntimeSinkCriticalException)
               PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
       Assert.assertEquals(e.hashCode(), e1.hashCode());
     } catch (ClassCastException classCastException) {

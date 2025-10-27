@@ -209,7 +209,6 @@ public class UDFInfo implements SnapshotProcessor {
       return false;
     }
 
-    acquireUDFTableLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
       serializeExistedJarToMD5(fileOutputStream);
@@ -220,8 +219,6 @@ public class UDFInfo implements SnapshotProcessor {
       fileOutputStream.getFD().sync();
 
       return true;
-    } finally {
-      releaseUDFTableLock();
     }
   }
 

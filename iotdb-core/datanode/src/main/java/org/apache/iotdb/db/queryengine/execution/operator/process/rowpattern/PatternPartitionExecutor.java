@@ -68,6 +68,11 @@ public final class PatternPartitionExecutor {
   private final Optional<LogicalIndexNavigation> skipToNavigation;
   private final Matcher matcher;
   private final List<PatternVariableComputation> patternVariableComputations;
+  // an array of all MatchAggregations from all row pattern measures,
+  // used to reset the MatchAggregations for every new match.
+  // each of MeasureComputations also has access to the MatchAggregations,
+  // and uses them to compute the result values
+  private final PatternAggregator[] patternAggregators;
   private final List<PatternExpressionComputation> measureComputations;
   private final List<String> labelNames;
 
@@ -87,6 +92,7 @@ public final class PatternPartitionExecutor {
       Optional<LogicalIndexNavigation> skipToNavigation,
       Matcher matcher,
       List<PatternVariableComputation> patternVariableComputations,
+      List<PatternAggregator> patternAggregators,
       List<PatternExpressionComputation> measureComputations,
       List<String> labelNames) {
     // Partition
@@ -103,6 +109,7 @@ public final class PatternPartitionExecutor {
     this.skipToNavigation = skipToNavigation;
     this.matcher = matcher;
     this.patternVariableComputations = ImmutableList.copyOf(patternVariableComputations);
+    this.patternAggregators = patternAggregators.toArray(new PatternAggregator[] {});
     this.measureComputations = ImmutableList.copyOf(measureComputations);
     this.labelNames = ImmutableList.copyOf(labelNames);
 
@@ -167,6 +174,10 @@ public final class PatternPartitionExecutor {
         lastSkippedPosition = currentPosition;
         matchNumber++;
       } else { // non-empty match
+        for (PatternAggregator patternAggregator : patternAggregators) {
+          patternAggregator.reset();
+        }
+
         if (rowsPerMatch.isOneRow()) {
           outputOneRowPerMatch(builder, matchResult, patternStart, searchStart, searchEnd);
         } else {
@@ -283,6 +294,7 @@ public final class PatternPartitionExecutor {
               // evaluate the MEASURES clause with the last row in the match
               patternStart + labels.length() - 1,
               labels,
+              patternAggregators,
               partitionStart,
               searchStart,
               searchEnd,
@@ -358,6 +370,7 @@ public final class PatternPartitionExecutor {
           measureComputation.compute(
               position,
               labels,
+              patternAggregators,
               partitionStart,
               searchStart,
               searchEnd,

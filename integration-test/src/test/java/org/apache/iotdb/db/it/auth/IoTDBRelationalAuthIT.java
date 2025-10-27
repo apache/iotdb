@@ -44,11 +44,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBRelationalAuthIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -62,9 +65,24 @@ public class IoTDBRelationalAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
 
-      adminStmt.execute("create user testuser 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
+      try (Connection userCon =
+              EnvFactory.getEnv()
+                  .getConnection("testuser", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+          Statement userStmt = userCon.createStatement()) {
+        ResultSet resultSet = userStmt.executeQuery("LIST USER");
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals("10000", resultSet.getString(1));
+        Assert.assertEquals("testuser", resultSet.getString(2));
+        Assert.assertFalse(resultSet.next());
+      }
       adminStmt.execute("create database testdb");
-      adminStmt.execute("GRANT MANAGE_USER to user testuser");
+      adminStmt.execute("GRANT SECURITY to user testuser");
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("GRANT MANAGE_USER to user testuser");
+          });
       Assert.assertThrows(
           SQLException.class,
           () -> {
@@ -82,7 +100,11 @@ public class IoTDBRelationalAuthIT {
             adminStmt.execute("GRANT MAINTAIN to user testuser");
           });
 
-      adminStmt.execute("GRANT MANAGE_ROLE TO USER testuser");
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            adminStmt.execute("GRANT MANAGE_ROLE to user testuser");
+          });
       adminStmt.execute("GRANT SELECT ON ANY TO USER testuser");
       adminStmt.execute("GRANT INSERT ON ANY TO USER testuser");
       adminStmt.execute("GRANT DELETE ON ANY TO USER testuser");
@@ -103,8 +125,7 @@ public class IoTDBRelationalAuthIT {
       Set<String> ans =
           new HashSet<>(
               Arrays.asList(
-                  ",,MANAGE_USER,false,",
-                  ",,MANAGE_ROLE,false,",
+                  ",,SECURITY,false,",
                   ",*.*,SELECT,false,",
                   ",*.*,INSERT,false,",
                   ",*.*,DELETE,false,",
@@ -116,7 +137,7 @@ public class IoTDBRelationalAuthIT {
       adminStmt.execute("create role testrole");
       adminStmt.execute("GRANT ROLE testrole to testuser");
       rs = adminStmt.executeQuery("LIST USER OF ROLE testrole");
-      TestUtils.assertResultSetEqual(rs, "User,", Collections.singleton("testuser,"));
+      TestUtils.assertResultSetEqual(rs, "UserId,User,", Collections.singleton("10000,testuser,"));
       rs = adminStmt.executeQuery("LIST ROLE OF USER testuser");
       TestUtils.assertResultSetEqual(rs, "Role,", Collections.singleton("testrole,"));
     }
@@ -126,8 +147,8 @@ public class IoTDBRelationalAuthIT {
   public void checkAuthorStatementPrivilegeCheck() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user testuser 'password'");
-      adminStmt.execute("create user testuser2 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
+      adminStmt.execute("create user testuser2 'password123456'");
       adminStmt.execute("create role testrole");
       adminStmt.execute("create database testdb");
 
@@ -159,8 +180,7 @@ public class IoTDBRelationalAuthIT {
           });
 
       // admin can do all things below.
-      adminStmt.execute("GRANT MANAGE_USER to user testuser2 with grant option");
-      adminStmt.execute("GRANT MANAGE_ROLE to user testuser");
+      adminStmt.execute("GRANT SECURITY to user testuser with grant option");
 
       adminStmt.execute("use testdb");
       adminStmt.execute("GRANT SELECT ON TABLE TB to user testuser");
@@ -177,51 +197,21 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("testuser", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userStmt = userCon1.createStatement()) {
-      // 1. user1's privileges
-      // testdb.TB select
-      // testdb.TB insert
-      // testdb.* insert
-      // any alter
-      // manage_role
 
-      // cannot create user
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("CREATE USER testuser3 'password'");
-          });
       // can create role
       userStmt.execute("CREATE ROLE testrole2");
       // can grant role to user
       userStmt.execute("GRANT ROLE testrole2 to testuser");
-      // cannot grant privileges to other
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT SELECT ON testdb.TB to role testrole2");
-          });
-
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT ALTER ON ANY to role testrole2");
-          });
-
-      // cannot grant manage_role to other
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT manage_role to role testrole2");
-          });
 
       // can list itself privileges and the all roles privileges
       ResultSet rs = userStmt.executeQuery("List privileges of user testuser");
       Set<String> ans =
           new HashSet<>(
               Arrays.asList(
-                  ",,MANAGE_ROLE,false,",
+                  ",,SECURITY,true,",
                   ",*.*,ALTER,false,",
                   ",testdb.*,INSERT,false,",
                   ",testdb.tb,SELECT,false,",
@@ -233,59 +223,14 @@ public class IoTDBRelationalAuthIT {
       rs = userStmt.executeQuery("List privileges of role testrole2");
       TestUtils.assertResultSetEqual(
           rs, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
-      // testdb.TB's privilege is not grant option.
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT insert on testdb.TB to role testrole2");
-          });
-
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT ALTER on any to role testrole2");
-          });
-    }
-
-    try (Connection userCon1 =
-            EnvFactory.getEnv().getConnection("testuser2", "password", BaseEnv.TABLE_SQL_DIALECT);
-        Statement userStmt = userCon1.createStatement()) {
-      // 2. user2's privileges
-      // MANAGE_USER with grant option
-      // testdb.tb drop with grant option
-      // testdb.tb create with grant option
-      // testdb.* drop with grant option
-      // any select with grant option
-
-      // can create user.
-      userStmt.execute("CREATE USER testuser3 'password'");
-
-      // can not create role
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("CREATE ROLE testrole3");
-          });
-
-      // cannot list role's privileges
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.executeQuery("List privileges of role testrole");
-          });
+      userStmt.execute("CREATE USER testuser3 'password123456'");
 
       userStmt.execute("GRANT drop on database testdb to user testuser3");
       userStmt.execute("GRANT SELECT ON database testdb to user testuser3");
-      ResultSet rs = userStmt.executeQuery("List privileges of user testuser3");
-      Set<String> ans =
-          new HashSet<>(Arrays.asList(",testdb.*,SELECT,false,", ",testdb.*,DROP,false,"));
+      rs = userStmt.executeQuery("List privileges of user testuser3");
+      ans = new HashSet<>(Arrays.asList(",testdb.*,SELECT,false,", ",testdb.*,DROP,false,"));
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
       userStmt.execute("REVOKE SELECT ON DATABASE testdb from user testuser3");
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userStmt.execute("GRANT CREATE ON DATABASE testdb to user testuser3");
-          });
 
       rs = userStmt.executeQuery("List privileges of user testuser3");
       TestUtils.assertResultSetEqual(
@@ -314,7 +259,7 @@ public class IoTDBRelationalAuthIT {
       try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement adminStmt = adminCon.createStatement()) {
         adminStmt.execute("create database testdb");
-        adminStmt.execute(isUser ? "create user test 'password'" : "create role test");
+        adminStmt.execute(isUser ? "create user test 'password123456'" : "create role test");
         adminStmt.execute("use testdb");
 
         // 1. grant all on table tb1 with grant option
@@ -324,7 +269,7 @@ public class IoTDBRelationalAuthIT {
                 + " with grant option");
         Set<String> listPrivilegeResult = new HashSet<>();
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
-          if (privilegeType.isRelationalPrivilege()) {
+          if (privilegeType.isRelationalPrivilege() && !privilegeType.isDeprecated()) {
             listPrivilegeResult.add(
                 (isUser ? "," : "test,") + "testdb.tb1," + privilegeType + ",true,");
           }
@@ -421,6 +366,9 @@ public class IoTDBRelationalAuthIT {
         // 1. grant all on user/role
         adminStmt.execute("grant all to " + (isUser ? "user test" : "role test"));
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          if (privilegeType.isDeprecated() || privilegeType.isHided()) {
+            continue;
+          }
           if (privilegeType.isRelationalPrivilege()) {
             listPrivilegeResult.add((isUser ? "," : "test,") + "*.*," + privilegeType + ",false,");
           } else if (privilegeType.forRelationalSys()) {
@@ -459,8 +407,8 @@ public class IoTDBRelationalAuthIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password'");
-      adminStmt.execute("create user test2 'password'");
+      adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create user test2 'password123456'");
       adminStmt.execute("grant all to user test");
       adminStmt.execute("grant all to user test2 with grant option");
       adminStmt.execute("revoke SELECT ON ANY from user test");
@@ -470,7 +418,9 @@ public class IoTDBRelationalAuthIT {
 
     Set<String> listUserPrivilegeResult = new HashSet<>();
     for (PrivilegeType privilegeType : PrivilegeType.values()) {
-      if (privilegeType == PrivilegeType.SELECT) {
+      if (privilegeType == PrivilegeType.SELECT
+          || privilegeType.isDeprecated()
+          || privilegeType.isHided()) {
         continue;
       }
       if (privilegeType.isRelationalPrivilege()) {
@@ -483,6 +433,9 @@ public class IoTDBRelationalAuthIT {
 
     Set<String> listRolePrivilegeResult = new HashSet<>();
     for (PrivilegeType privilegeType : PrivilegeType.values()) {
+      if (privilegeType.isDeprecated() || privilegeType.isHided()) {
+        continue;
+      }
       if (privilegeType.isRelationalPrivilege()) {
         listRolePrivilegeResult.add("role1,*.*," + privilegeType + ",true,");
       }
@@ -492,7 +445,7 @@ public class IoTDBRelationalAuthIT {
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       ResultSet resultSet = userConStatement.executeQuery("List privileges of user test");
       TestUtils.assertResultSetEqual(
@@ -502,24 +455,11 @@ public class IoTDBRelationalAuthIT {
       resultSet = userConStatement.executeQuery("List privileges of role role1");
       TestUtils.assertResultSetEqual(
           resultSet, "Role,Scope,Privileges,GrantOption,", listRolePrivilegeResult);
-
-      // Do not have grant option
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userConStatement.execute("GRANT SELECT ON DATABASE TEST to role role1");
-          });
-
-      // Do not have grant option
-      Assert.assertThrows(
-          SQLException.class,
-          () -> {
-            userConStatement.execute("GRANT ALL to user test2");
-          });
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can grant all to user test
       userConStatement.execute("GRANT ALL to user test");
@@ -531,11 +471,12 @@ public class IoTDBRelationalAuthIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("revoke MANAGE_USER from user test2");
+      adminStmt.execute("revoke SECURITY from user test2");
     }
 
     try (Connection userCon =
-            EnvFactory.getEnv().getConnection("test2", "password", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv()
+                .getConnection("test2", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // user2 can not grant all to user test
       Assert.assertThrows(
@@ -581,9 +522,9 @@ public class IoTDBRelationalAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {
       // normal case
-      adminStmt.execute("create user testuser 'password'");
+      adminStmt.execute("create user testuser 'password123456'");
       // username abnormal
-      adminStmt.execute("create user \"!@#$%^*()_+-=1\" 'password'");
+      adminStmt.execute("create user \"!@#$%^*()_+-=1\" 'password123456'");
 
       // username and password abnormal
       adminStmt.execute("create user \"!@#$%^*()_+-=2\" '!@#$%^*()_+-='");
@@ -593,11 +534,11 @@ public class IoTDBRelationalAuthIT {
 
       ResultSet resultSet = adminStmt.executeQuery("List user");
       Set<String> resultSetList = new HashSet<>();
-      resultSetList.add("root,");
-      resultSetList.add("testuser,");
-      resultSetList.add("!@#$%^*()_+-=1,");
-      resultSetList.add("!@#$%^*()_+-=2,");
-      TestUtils.assertResultSetEqual(resultSet, "User,", resultSetList);
+      resultSetList.add("0,root,");
+      resultSetList.add("10000,testuser,");
+      resultSetList.add("10001,!@#$%^*()_+-=1,");
+      resultSetList.add("10002,!@#$%^*()_+-=2,");
+      TestUtils.assertResultSetEqual(resultSet, "UserId,User,", resultSetList);
       resultSet = adminStmt.executeQuery("List role");
       TestUtils.assertResultSetEqual(resultSet, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
       adminStmt.execute("GRANT role \"!@#$%^*()_+-=3\" to  \"!@#$%^*()_+-=1\"");
@@ -613,6 +554,55 @@ public class IoTDBRelationalAuthIT {
       TestUtils.assertResultSetEqual(set, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
     } catch (IoTDBSQLException e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testAlterNonExistingUser() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      try {
+        adminStmt.execute("ALTER USER nonExist SET PASSWORD 'asdfer1124566'");
+      } catch (SQLException e) {
+        assertEquals("701: User nonExist not found", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testAudit() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      try {
+        adminStmt.execute("grant select on database __audit to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("grant select on table __audit.t1 to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("revoke select on table __audit.t1 from user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("grant select on table __audit.t1 to role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
+      try {
+        adminStmt.execute("revoke select on table __audit.t1 from role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to __audit", e.getMessage());
+      }
     }
   }
 }

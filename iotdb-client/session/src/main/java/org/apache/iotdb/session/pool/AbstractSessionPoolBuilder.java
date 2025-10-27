@@ -25,6 +25,5 @@ import org.apache.iotdb.session.AbstractSessionBuilder;
 public class AbstractSessionPoolBuilder extends AbstractSessionBuilder {
   int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
   long waitToGetSessionTimeoutInMs = 60_000;
-  boolean enableCompression = false;
   int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
 }

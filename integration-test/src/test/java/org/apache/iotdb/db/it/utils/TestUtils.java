@@ -40,6 +40,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.text.DateFormat;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -51,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +61,7 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.apache.iotdb.itbase.env.BaseEnv.TREE_SQL_DIALECT;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
@@ -229,7 +232,36 @@ public class TestUtils {
         expectedRetArray,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        database);
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    tableResultSetEqualByDataTypeTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String timeZone,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String database) {
+    tableResultSetEqualTest(
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        database,
+        timeZone);
   }
 
   public static void tableResultSetEqualTest(
@@ -239,9 +271,21 @@ public class TestUtils {
       String userName,
       String password,
       String database) {
+    tableResultSetEqualTest(
+        sql, expectedHeader, expectedRetArray, userName, password, database, "+00:00");
+  }
+
+  public static void tableResultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
     try (Connection connection =
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
-      connection.setClientInfo("time_zone", "+00:00");
+      connection.setClientInfo("time_zone", timeZone);
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + database);
         try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -258,6 +302,57 @@ public class TestUtils {
               builder.append(resultSet.getString(i)).append(",");
             }
             assertEquals(expectedRetArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(expectedRetArray.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void tableResultSetEqualByDataTypeTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password,
+      String database,
+      String timeZone) {
+    try (Connection connection =
+        EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", timeZone);
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            for (int i = 1; i <= expectedHeader.length; i++) {
+              if (resultSetMetaData.getColumnType(i) == Types.BOOLEAN) {
+                assertEquals(
+                    Boolean.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getBoolean(i));
+              } else if (resultSetMetaData.getColumnType(i) == Types.INTEGER) {
+                assertEquals(
+                    Optional.of(Integer.valueOf(expectedRetArray[cnt].split(",")[i - 1])),
+                    Optional.of(resultSet.getInt(i)));
+              } else if (resultSetMetaData.getColumnType(i) == Types.DOUBLE) {
+                assertEquals(
+                    Double.valueOf(expectedRetArray[cnt].split(",")[i - 1]),
+                    resultSet.getDouble(i),
+                    DELTA);
+              } else if (resultSetMetaData.getColumnType(i) == Types.VARCHAR) {
+                assertEquals(expectedRetArray[cnt].split(",")[i - 1], resultSet.getString(i));
+              }
+            }
             cnt++;
           }
           assertEquals(expectedRetArray.length, cnt);
@@ -572,6 +667,20 @@ public class TestUtils {
   }
 
   public static void assertTableNonQueryTestFail(
+      String sql, String errMsg, String userName, String password) {
+    assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
+  public static void assertNonQueryTestFail(Statement statement, String sql, String errMsg) {
+    try {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
       String sql, String errMsg, String userName, String password, String dbName) {
     assertTableNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password, dbName);
   }
@@ -579,6 +688,17 @@ public class TestUtils {
   public static void assertNonQueryTestFail(
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertTableNonQueryTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -623,7 +743,8 @@ public class TestUtils {
   public static void assertResultSetEqual(
       final ResultSet actualResultSet,
       final String expectedHeader,
-      final Collection<String> expectedResult) {
+      final Collection<String> expectedResult,
+      final boolean printResult) {
     try {
       final ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       final StringBuilder header = new StringBuilder();
@@ -631,22 +752,49 @@ public class TestUtils {
         header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
       assertEquals(expectedHeader, header.toString());
+      if (printResult) {
+        System.out.println(header);
+      }
 
       final Collection<String> actualRetSet =
           expectedResult instanceof Set ? new HashSet<>() : new ArrayList<>();
 
+      int rowCount = 0;
       while (actualResultSet.next()) {
+        if (printResult) {
+          System.out.println("Row " + rowCount++);
+        }
         StringBuilder builder = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           builder.append(actualResultSet.getString(i)).append(",");
+          if (printResult) {
+            System.out.println(
+                "Column "
+                    + i
+                    + "("
+                    + resultSetMetaData.getColumnName(i)
+                    + ")"
+                    + ": "
+                    + actualResultSet.getString(i));
+          }
         }
         actualRetSet.add(builder.toString());
+        if (printResult) {
+          System.out.println(builder);
+        }
       }
       assertEquals(expectedResult, actualRetSet);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }
+  }
+
+  public static void assertResultSetEqual(
+      final ResultSet actualResultSet,
+      final String expectedHeader,
+      final Collection<String> expectedResult) {
+    assertResultSetEqual(actualResultSet, expectedHeader, expectedResult, false);
   }
 
   public static void assertResultSetEqual(
@@ -753,6 +901,17 @@ public class TestUtils {
     }
   }
 
+  public static void executeTableNonQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void executeNonQueryWithRetry(final BaseEnv env, final String sql) {
     executeNonQueryWithRetry(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
@@ -817,64 +976,162 @@ public class TestUtils {
     }
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(
-        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    executeNonQuery(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
-      String dataBaseName, String sqlDialect, BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(
+      String dataBaseName,
+      String sqlDialect,
+      BaseEnv env,
+      String sql,
+      Connection defaultConnection) {
+    executeNonQuery(
         env,
         sql,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
         dataBaseName,
-        sqlDialect);
+        sqlDialect,
+        defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
-      BaseEnv env, String sql, String userName, String password) {
-    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
+  public static void executeNonQuery(
+      BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
+    executeNonQueries(env, Collections.singletonList(sql), userName, password, defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(
+  public static void executeNonQuery(
       BaseEnv env,
       String sql,
       String userName,
       String password,
       String dataBaseName,
-      String sqlDialect) {
-    return tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(sql), userName, password, dataBaseName, sqlDialect);
+      String sqlDialect,
+      Connection defaultConnection) {
+    executeNonQueries(
+        env,
+        Collections.singletonList(sql),
+        userName,
+        password,
+        dataBaseName,
+        sqlDialect,
+        defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(
+  public static void executeNonQueries(
+      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
         null,
-        TREE_SQL_DIALECT);
+        TREE_SQL_DIALECT,
+        defaultConnection);
   }
 
-  public static boolean tryExecuteNonQueriesWithRetry(
-      String dataBase, String sqlDialect, BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(
+  public static void executeNonQueries(
+      String dataBase,
+      String sqlDialect,
+      BaseEnv env,
+      List<String> sqlList,
+      Connection defaultConnection) {
+    executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
         dataBase,
-        sqlDialect);
+        sqlDialect,
+        defaultConnection);
   }
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it returns a flag to indicate the result of the execution.
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    executeNonQueries(env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      String dataBase,
+      String sqlDialect,
+      Connection defaultConnection) {
+    int lastIndex = 0;
+    Connection localConnection = null;
+    Connection connectionToUse = defaultConnection;
+    Statement statement;
+    try {
+      // create a new connection if default is not provided or the previous is broken
+      if (connectionToUse == null) {
+        localConnection =
+            env.getConnection(
+                userName,
+                password,
+                BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                    ? BaseEnv.TABLE_SQL_DIALECT
+                    : TREE_SQL_DIALECT);
+        connectionToUse = localConnection;
+      }
+      statement = connectionToUse.createStatement();
+      if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
+        statement.execute("use " + dataBase);
+      }
+      for (int i = lastIndex; i < sqlList.size(); ++i) {
+        statement.execute(sqlList.get(i));
+      }
+    } catch (SQLException e) {
+      // the default connection should be closed by the upper level
+      // while the local connection should be closed here
+      if (connectionToUse == localConnection && localConnection != null) {
+        try {
+          localConnection.close();
+        } catch (SQLException ex) {
+          // ignore
+        }
+      }
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static boolean tryExecuteNonQuery(BaseEnv env, String sql) {
+    return tryExecuteNonQuery(env, sql, null);
+  }
+
+  public static boolean tryExecuteNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    return tryExecuteNonQuery(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
+  }
+
+  public static boolean tryExecuteNonQuery(
+      BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
+    return tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, defaultConnection);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
+  }
+
   public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String userName, String password) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, userName, password, null, TREE_SQL_DIALECT);
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, userName, password, null, TREE_SQL_DIALECT, defaultConnection);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(
@@ -883,17 +1140,28 @@ public class TestUtils {
       String userName,
       String password,
       String dataBase,
-      String sqlDialect) {
+      String sqlDialect,
+      Connection defaultConnection) {
     int lastIndex = 0;
+    Connection localConnection = null;
+    Connection connectionToUse = defaultConnection;
+    Statement statement = null;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection =
+      try {
+        // create a new connection if default is not provided or the previous is broken
+        if (connectionToUse == null) {
+          localConnection =
               env.getConnection(
                   userName,
                   password,
                   BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
                       ? BaseEnv.TABLE_SQL_DIALECT
                       : TREE_SQL_DIALECT);
-          Statement statement = connection.createStatement()) {
+          connectionToUse = localConnection;
+        }
+        if (statement == null) {
+          statement = connectionToUse.createStatement();
+        }
         if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && dataBase != null) {
           statement.execute("use " + dataBase);
         }
@@ -903,6 +1171,18 @@ public class TestUtils {
         }
         return true;
       } catch (SQLException e) {
+        // the default connection should be closed by the upper level
+        // while the local connection should be closed here
+        if (connectionToUse == localConnection && localConnection != null) {
+          try {
+            localConnection.close();
+            localConnection = null;
+          } catch (SQLException ex) {
+            // ignore
+          }
+        }
+        connectionToUse = null;
+
         if (retryCountLeft > 0) {
           try {
             Thread.sleep(10000);
@@ -1014,6 +1294,17 @@ public class TestUtils {
 
   public static void executeQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeTableQuery(String sql, String userName, String password) {
+    try (Connection connection =
+            EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
     } catch (SQLException e) {

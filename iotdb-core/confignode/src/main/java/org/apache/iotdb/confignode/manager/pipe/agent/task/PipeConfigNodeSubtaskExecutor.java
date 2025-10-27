@@ -28,7 +28,7 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
   private static final int THREAD_NUM = 1;
 
   private PipeConfigNodeSubtaskExecutor() {
-    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL, true);
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL.getName(), true);
   }
 
   /**
@@ -36,7 +36,7 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
    */
   @TestOnly
   public PipeConfigNodeSubtaskExecutor(final Object ignored) {
-    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL, true);
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL.getName(), true);
   }
 
   private static class PipeSchemaSubtaskExecutorHolder {

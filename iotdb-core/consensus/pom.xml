@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>2.0.5-SNAPSHOT</version>
+        <version>2.0.6-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-consensus</artifactId>
     <name>IoTDB: Core: Consensus</name>
@@ -39,59 +39,59 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-consensus</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>pipe-api</artifactId>
-            <version>2.0.5-SNAPSHOT</version>
+            <version>2.0.6-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-server</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-server-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-client</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-grpc</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-proto</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.ratis</groupId>
+            <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-metrics-api</artifactId>
         </dependency>
         <dependency>
@@ -101,14 +101,6 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -126,7 +118,6 @@
             <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

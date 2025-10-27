@@ -20,19 +20,21 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalAggregationPointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.AbstractIntType;
+import org.apache.tsfile.read.common.type.AbstractLongType;
+import org.apache.tsfile.read.common.type.AbstractVarcharType;
+import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
-import org.apache.tsfile.read.common.type.IntType;
-import org.apache.tsfile.read.common.type.LongType;
-import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -51,15 +53,22 @@ public class PatternExpressionComputation {
   // depend on actual data in the TsBlock are delegated to the valueAccessor for positioning.
   private final Computation computation;
 
+  // It stores all the aggregation functions in the current pattern expression.
+  private final PatternAggregator[] patternAggregators;
+
   public PatternExpressionComputation(
-      List<PhysicalValueAccessor> valueAccessors, Computation computation) {
+      List<PhysicalValueAccessor> valueAccessors,
+      Computation computation,
+      List<PatternAggregator> patternAggregators) {
     this.valueAccessors = valueAccessors;
     this.computation = computation;
+    this.patternAggregators = patternAggregators.toArray(new PatternAggregator[] {});
   }
 
   public Object compute(
       int currentRow,
       ArrayView matchedLabels, // If the value is i, the currentRow matches labelNames[i]
+      PatternAggregator[] patternAggregators,
       int partitionStart,
       int searchStart,
       int searchEnd,
@@ -103,6 +112,13 @@ public class PatternExpressionComputation {
             values.add(null);
           }
         }
+      } else if (accessor instanceof PhysicalAggregationPointer) {
+        PatternAggregator aggregator =
+            patternAggregators[((PhysicalAggregationPointer) accessor).getIndex()];
+
+        values.add(
+            aggregator.aggregate(
+                currentRow, matchedLabels, partition, partitionStart, patternStart));
       }
     }
 
@@ -137,15 +153,15 @@ public class PatternExpressionComputation {
 
     if (type instanceof BooleanType) {
       return partition.getBoolean(channel, position);
-    } else if (type instanceof IntType) {
+    } else if (type instanceof AbstractIntType) {
       return partition.getInt(channel, position);
-    } else if (type instanceof LongType || type instanceof TimestampType) {
+    } else if (type instanceof AbstractLongType) {
       return partition.getLong(channel, position);
     } else if (type instanceof FloatType) {
       return partition.getFloat(channel, position);
     } else if (type instanceof DoubleType) {
       return partition.getDouble(channel, position);
-    } else if (type instanceof StringType) {
+    } else if (type instanceof AbstractVarcharType || type instanceof BlobType) {
       return partition.getBinary(channel, position);
     } else {
       throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());

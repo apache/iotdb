@@ -21,8 +21,13 @@ package org.apache.iotdb.confignode.pipe.annotation;
 
 import org.apache.iotdb.commons.pipe.datastructure.result.Result;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityTestUtils;
+import org.apache.iotdb.pipe.api.PipePlugin;
 
 import org.junit.Test;
+import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
+
+import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -30,8 +35,12 @@ public class PipePluginAnnotationTest {
 
   @Test
   public void testPipePluginVisibility() {
+    // Use the Reflections library to scan the classpath
+    final Reflections reflections =
+        new Reflections("org.apache.iotdb.confignode", new SubTypesScanner(false));
+    final Set<Class<? extends PipePlugin>> subTypes = reflections.getSubTypesOf(PipePlugin.class);
     final Result<Void, String> result =
-        VisibilityTestUtils.testVisibilityCompatibilityEntry("org.apache.iotdb.confignode");
+        VisibilityTestUtils.testVisibilityCompatibilityEntry(subTypes);
     if (result.isErr()) {
       fail(result.getErr());
     }

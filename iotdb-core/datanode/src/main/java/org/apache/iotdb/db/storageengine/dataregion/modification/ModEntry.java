@@ -25,15 +25,17 @@ import org.apache.iotdb.db.utils.io.StreamSerializable;
 import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public abstract class ModEntry
-    implements StreamSerializable, BufferSerializable, Comparable<ModEntry> {
+    implements StreamSerializable, BufferSerializable, Comparable<ModEntry>, Accountable {
 
   protected ModType modType;
   protected TimeRange timeRange;
@@ -177,7 +179,13 @@ public abstract class ModEntry
     }
 
     public static ModType deserialize(InputStream stream) throws IOException {
-      byte typeNum = ReadWriteIOUtils.readByte(stream);
+      // The ModIterator needs to use this EOFException to determine whether it has finished
+      // reading. And we should not use InputStream.available() to make this judgments outside,
+      // because calling it frequently will have a certain overhead.
+      int typeNum = stream.read();
+      if (typeNum == -1) {
+        throw new EOFException();
+      }
       switch (typeNum) {
         case 0x00:
           return TABLE_DELETION;

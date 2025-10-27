@@ -237,8 +237,10 @@ public class TableDeviceSchemaValidator {
             relationSqlParser,
             SessionManager.getInstance().getCurrSession(),
             SessionManager.getInstance().requestQueryId(),
-            SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+            context == null
+                ? SessionManager.getInstance()
+                    .getSessionInfo(SessionManager.getInstance().getCurrSession())
+                : context.getSession(),
             "Create device or update device attribute for insert",
             LocalExecutionPlanner.getInstance().metadata,
             // Never timeout for write statement

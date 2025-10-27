@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.it.env.cluster;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 
 import java.io.File;
 
@@ -209,7 +209,6 @@ public class ClusterConstant {
   // Paths
   public static final String USER_DIR = "user.dir";
   public static final String TARGET = "target";
-  public static final String PYTHON_PATH = "venv/bin/python3";
 
   public static final String DATA_NODE_NAME = "DataNode";
 

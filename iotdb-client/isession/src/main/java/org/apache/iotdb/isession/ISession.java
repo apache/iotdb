@@ -76,11 +76,11 @@ public interface ISession extends AutoCloseable {
 
   void close() throws IoTDBConnectionException;
 
-  String getTimeZone();
+  String getTimeZone() throws IoTDBConnectionException;
 
   void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
 
-  void setTimeZoneOfSession(String zoneId);
+  void setTimeZoneOfSession(String zoneId) throws IoTDBConnectionException;
 
   /**
    * @deprecated Use {@link #createDatabase(String)} instead.
@@ -244,7 +244,7 @@ public interface ISession extends AutoCloseable {
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  String getTimestampPrecision() throws TException;
+  String getTimestampPrecision() throws TException, IoTDBConnectionException;
 
   void insertAlignedRecord(
       String deviceId, long time, List<String> measurements, List<String> values)

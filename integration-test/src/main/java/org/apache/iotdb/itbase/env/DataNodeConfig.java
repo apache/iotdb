@@ -45,4 +45,10 @@ public interface DataNodeConfig {
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 
   DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
+
+  DataNodeConfig setWalThrottleSize(long walThrottleSize);
+
+  DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
+
+  DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
 }

@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+
+import org.apache.tsfile.encrypt.EncryptParameter;
 
 public enum InnerSeqCompactionPerformer {
   READ_CHUNK,
@@ -38,12 +41,25 @@ public enum InnerSeqCompactionPerformer {
         "Illegal compaction performer for seq inner compaction " + name);
   }
 
+  @TestOnly
   public ISeqCompactionPerformer createInstance() {
     switch (this) {
       case READ_CHUNK:
         return new ReadChunkCompactionPerformer();
       case FAST:
         return new FastCompactionPerformer(false);
+      default:
+        throw new IllegalCompactionPerformerException(
+            "Illegal compaction performer for seq inner compaction " + this);
+    }
+  }
+
+  public ISeqCompactionPerformer createInstance(EncryptParameter encryptParameter) {
+    switch (this) {
+      case READ_CHUNK:
+        return new ReadChunkCompactionPerformer(encryptParameter);
+      case FAST:
+        return new FastCompactionPerformer(false, encryptParameter);
       default:
         throw new IllegalCompactionPerformerException(
             "Illegal compaction performer for seq inner compaction " + this);

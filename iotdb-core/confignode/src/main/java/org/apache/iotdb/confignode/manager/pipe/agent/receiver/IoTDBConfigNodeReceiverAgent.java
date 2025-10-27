@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.receiver;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.protocol.IoTDBConfigNodeReceiver;
 
@@ -37,7 +37,7 @@ public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigNodeReceiver::new);
+        IoTDBSinkRequestVersion.VERSION_1.getVersion(), IoTDBConfigNodeReceiver::new);
   }
 
   @Override

@@ -24,9 +24,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -56,6 +55,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -68,7 +69,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -81,7 +84,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -107,21 +112,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     device2Measurements = null;
   }
 
-  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionExtractor extractor) {
+  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource extractor) {
     final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
-  }
-
-  public void markAsTableModelEvent() {
-    if (event instanceof PipeInsertionEvent) {
-      ((PipeInsertionEvent) event).markAsTableModelEvent();
-    }
-  }
-
-  public void markAsTreeModelEvent() {
-    if (event instanceof PipeInsertionEvent) {
-      ((PipeInsertionEvent) event).markAsTreeModelEvent();
-    }
   }
 
   @Override
@@ -208,7 +201,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -219,7 +214,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userId,
             userName,
+            cliHostname,
             skipIfNoPrivileges,
             startTime,
             endTime),
@@ -230,7 +227,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);

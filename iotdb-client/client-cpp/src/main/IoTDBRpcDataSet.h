@@ -83,8 +83,8 @@ public:
     std::shared_ptr<Binary> getBinary(const std::string& columnName);
     boost::optional<std::string> getStringByIndex(int32_t columnIndex);
     boost::optional<std::string> getString(const std::string& columnName);
-    int64_t getTimestampByIndex(int32_t columnIndex);
-    int64_t getTimestamp(const std::string& columnName);
+    boost::optional<int64_t> getTimestampByIndex(int32_t columnIndex);
+    boost::optional<int64_t> getTimestamp(const std::string& columnName);
     boost::optional<boost::gregorian::date> getDateByIndex(int32_t columnIndex);
     boost::optional<boost::gregorian::date> getDate(const std::string& columnName);
 
@@ -122,7 +122,7 @@ private:
     std::shared_ptr<Binary> getBinaryByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
     boost::optional<std::string> getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
     boost::optional<boost::gregorian::date> getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-    int64_t getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+    boost::optional<int64_t> getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
 
     std::string sql_;
     bool isClosed_;

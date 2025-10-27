@@ -31,52 +31,36 @@ import java.util.Map;
 public class CreateTrainingTask implements IConfigTask {
 
   private final String modelId;
-  private final String modelType;
   private final boolean isTableModel;
   private final Map<String, String> parameters;
-  private final boolean useAllData;
-  private final List<List<Long>> timeRanges;
+
   private final String existingModelId;
 
   // Data schema for table model
-  private List<String> targetTables;
-  private List<String> targetDbs;
+  private String targetSql = null;
   // Data schema for tree model
   private List<String> targetPaths;
+  private List<List<Long>> timeRanges;
 
+  // For table model
   public CreateTrainingTask(
-      String modelId,
-      String modelType,
-      Map<String, String> parameters,
-      boolean useAllData,
-      List<List<Long>> timeRanges,
-      String existingModelId,
-      List<String> targetTables,
-      List<String> targetDbs) {
+      String modelId, Map<String, String> parameters, String existingModelId, String targetSql) {
     this.modelId = modelId;
-    this.modelType = modelType;
     this.parameters = parameters;
-    this.useAllData = useAllData;
-    this.timeRanges = timeRanges;
     this.existingModelId = existingModelId;
-
+    this.targetSql = targetSql;
     this.isTableModel = true;
-    this.targetTables = targetTables;
-    this.targetDbs = targetDbs;
   }
 
+  // For tree model
   public CreateTrainingTask(
       String modelId,
-      String modelType,
       Map<String, String> parameters,
-      boolean useAllData,
       List<List<Long>> timeRanges,
       String existingModelId,
       List<String> targetPaths) {
     this.modelId = modelId;
-    this.modelType = modelType;
     this.parameters = parameters;
-    this.useAllData = useAllData;
     this.timeRanges = timeRanges;
     this.existingModelId = existingModelId;
 
@@ -88,15 +72,6 @@ public class CreateTrainingTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createTraining(
-        modelId,
-        modelType,
-        isTableModel,
-        parameters,
-        useAllData,
-        timeRanges,
-        existingModelId,
-        targetTables,
-        targetDbs,
-        targetPaths);
+        modelId, isTableModel, parameters, timeRanges, existingModelId, targetSql, targetPaths);
   }
 }

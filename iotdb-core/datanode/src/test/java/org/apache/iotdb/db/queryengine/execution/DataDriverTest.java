@@ -76,6 +76,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 
 public class DataDriverTest {
 
@@ -93,6 +94,7 @@ public class DataDriverTest {
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    IoTDBDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, DATA_DRIVER_TEST_SG);
   }
@@ -120,6 +122,7 @@ public class DataDriverTest {
       FragmentInstanceStateMachine stateMachine =
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      Mockito.when(dataRegion.tryReadLock(Mockito.anyLong())).thenReturn(true);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
       fragmentInstanceContext.setDataRegion(dataRegion);
@@ -180,14 +183,16 @@ public class DataDriverTest {
       LimitOperator limitOperator =
           new LimitOperator(driverContext.getOperatorContexts().get(3), 250, timeJoinOperator);
 
+      fragmentInstanceContext.setSourcePaths(driverContext.getPaths());
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";
       Mockito.when(
               dataRegion.query(
-                  driverContext.getPaths(),
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
-                  fragmentInstanceContext,
-                  null,
-                  null))
+                  eq(driverContext.getPaths()),
+                  eq(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId)),
+                  eq(fragmentInstanceContext),
+                  Mockito.isNull(),
+                  Mockito.isNull(),
+                  Mockito.anyLong()))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
       fragmentInstanceContext.initializeNumOfDrivers(1);

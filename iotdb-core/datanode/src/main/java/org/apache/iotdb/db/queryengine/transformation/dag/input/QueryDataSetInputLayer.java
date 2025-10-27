@@ -129,6 +129,9 @@ public class QueryDataSetInputLayer {
 
     @Override
     public TSDataType[] getDataTypes() {
+      if (columnIndex == dataTypes.length) {
+        return new TSDataType[] {TSDataType.INT64};
+      }
       return new TSDataType[] {dataTypes[columnIndex]};
     }
 

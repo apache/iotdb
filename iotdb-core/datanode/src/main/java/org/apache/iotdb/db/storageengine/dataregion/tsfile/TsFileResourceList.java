@@ -354,7 +354,7 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   public List<TsFileResource> getArrayList() {
-    List<TsFileResource> list = new ArrayList<>();
+    List<TsFileResource> list = new ArrayList<>(count);
     TsFileResource current = header;
     while (current != null) {
       list.add(current);

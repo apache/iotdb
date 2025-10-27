@@ -292,7 +292,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               String.format("%.2f", compressionRatio),
               memTableSize,
               writer.getPos());
-          CompressionRatio.getInstance().updateRatio(memTableSize, writer.getPos());
+          CompressionRatio.getInstance().updateRatio(memTableSize, writer.getPos(), dataRegionId);
         } catch (IOException e) {
           logger.error(
               "{}: {} update compression ratio failed",

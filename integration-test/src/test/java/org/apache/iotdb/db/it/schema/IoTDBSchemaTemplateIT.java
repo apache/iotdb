@@ -177,7 +177,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       expectedResult =
           new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true", "root.sg1.d3,true"));
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg1.**")) {
         while (resultSet.next()) {
           String actualResult =
               resultSet.getString(ColumnHeaderConstant.DEVICE)
@@ -258,7 +258,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg1.**")) {
         while (resultSet.next()) {
           String actualResult =
               resultSet.getString(ColumnHeaderConstant.DEVICE)
@@ -556,7 +556,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // created
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2,s3) VALUES (2,1,1,1)");
 
-      try (ResultSet resultSet = statement.executeQuery("count timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("count timeseries root.sg1.**")) {
         Assert.assertTrue(resultSet.next());
         long resultRecord = resultSet.getLong(1);
         Assert.assertEquals(3, resultRecord);

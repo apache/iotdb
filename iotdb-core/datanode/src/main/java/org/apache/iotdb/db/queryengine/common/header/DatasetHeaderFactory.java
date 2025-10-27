@@ -211,6 +211,14 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowLoadedModelsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showLoadedModelsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowAIDevicesHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showAIDevicesColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowLogicalViewHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showLogicalViewColumnHeaders, true);
   }

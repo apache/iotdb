@@ -105,7 +105,8 @@ public class FunctionTestUtils {
             Collections.singletonList(inputDataType),
             new ArrayList<>(),
             new HashMap<>(),
-            ascending);
+            ascending,
+            false);
     WindowAggregator aggregator =
         new WindowAggregator(accumulator, outputDataType, Collections.singletonList(0));
     return new AggregationWindowFunction(aggregator);

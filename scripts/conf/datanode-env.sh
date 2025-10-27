@@ -337,6 +337,7 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
 # these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
 # option below tries to optimize safepoint stw time for large counted loop.
 # NOTE: it may have an impact on JIT's black-box optimization.

@@ -86,12 +86,30 @@ public enum ComparisonOperator implements BinaryOperator {
     NormalizedValue normLeft = normalize(left);
     NormalizedValue normRight = normalize(right);
 
+    // float/double mixed comparison: convert to double and compare with tolerance
+    if (normLeft.type == NormalizedValue.Type.DOUBLE
+        && normRight.type == NormalizedValue.Type.DOUBLE) {
+      double d1 = (Double) normLeft.value;
+      double d2 = (Double) normRight.value;
+      if (almostEqual(d1, d2)) {
+        return 0;
+      }
+      return Double.compare(d1, d2);
+    }
+
     if (normLeft.type != normRight.type) {
       throw new SemanticException(
           "Cannot compare values of different types: " + normLeft.type + " vs. " + normRight.type);
     }
 
     return normLeft.compareTo(normRight);
+  }
+
+  private static final double EPSILON = 1e-7;
+
+  private static boolean almostEqual(double a, double b) {
+    double diff = Math.abs(a - b);
+    return diff <= EPSILON;
   }
 
   /** provide a unified comparison logic */
@@ -140,6 +158,8 @@ public enum ComparisonOperator implements BinaryOperator {
       return new NormalizedValue(NormalizedValue.Type.BOOLEAN, obj);
     } else if (obj instanceof Binary) {
       return new NormalizedValue(NormalizedValue.Type.BINARY, obj);
+    } else if (obj instanceof byte[]) {
+      return new NormalizedValue(NormalizedValue.Type.BINARY, new Binary((byte[]) obj));
     } else {
       throw new SemanticException("Unsupported type: " + obj.getClass());
     }

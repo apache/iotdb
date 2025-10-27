@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.Retry;
 import org.apache.iotdb.subscription.it.RetryRule;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
@@ -100,6 +101,15 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
   }
 
   @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
+  }
+
+  @Override
   @After
   public void tearDown() throws Exception {
     try {
@@ -110,6 +120,7 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionTre
     subs.dropTopic(topicName2);
     dropDB(database);
     dropDB(database2);
+    schemaList.clear();
     super.tearDown();
   }
 

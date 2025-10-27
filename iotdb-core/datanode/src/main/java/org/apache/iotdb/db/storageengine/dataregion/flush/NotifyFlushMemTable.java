@@ -36,11 +36,4 @@ public class NotifyFlushMemTable extends AbstractMemTable {
   public boolean isSignalMemTable() {
     return true;
   }
-
-  @Override
-  public boolean isTotallyGeneratedByPipe() {
-    // Even though the `isTotallyGeneratedByPipe` for the corresponding memory table of this
-    // `NotifyFlushMemTable` might be true, we still return false to ensure data integrity.
-    return false;
-  }
 }

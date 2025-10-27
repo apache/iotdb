@@ -127,6 +127,7 @@ statement
     | removeRegionStatement
     | removeDataNodeStatement
     | removeConfigNodeStatement
+    | removeAINodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -140,6 +141,7 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showConfigurationStatement
     | showCurrentSqlDialectStatement
     | setSqlDialectStatement
     | showCurrentUserStatement
@@ -156,6 +158,8 @@ statement
     | grantUserRoleStatement
     | revokeUserRoleStatement
     | alterUserStatement
+    | alterUserAccountUnlockStatement
+    | renameUserStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -163,7 +167,12 @@ statement
 
     // AI
     | createModelStatement
+    | dropModelStatement
     | showModelsStatement
+    | showLoadedModelsStatement
+    | showAIDevicesStatement
+    | loadModelStatement
+    | unloadModelStatement
 
     // View, Trigger, CQ, Quota are not supported yet
     ;
@@ -576,15 +585,15 @@ migrateRegionStatement
     ;
 
 reconstructRegionStatement
-    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
     ;
 
 extendRegionStatement
-    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    : EXTEND REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* TO targetDataNodeId=INTEGER_VALUE
     ;
 
 removeRegionStatement
-    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    : REMOVE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM targetDataNodeId=INTEGER_VALUE
     ;
 
 removeDataNodeStatement
@@ -593,6 +602,10 @@ removeDataNodeStatement
 
 removeConfigNodeStatement
     : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
+    ;
+
+removeAINodeStatement
+    : REMOVE AINODE (aiNodeId=INTEGER_VALUE)?
     ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
@@ -675,11 +688,15 @@ showCurrentTimestampStatement
     : SHOW CURRENT_TIMESTAMP
     ;
 
+showConfigurationStatement
+    : SHOW (ALL)? CONFIGURATION (ON nodeId=INTEGER_VALUE)? (WITH DESC)?
+    ;
+
 
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUserStatement
-    : CREATE USER userName=identifier password=string
+    : CREATE USER userName=usernameWithRoot password=string
     ;
 
 createRoleStatement
@@ -687,7 +704,7 @@ createRoleStatement
     ;
 
 dropUserStatement
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 dropRoleStatement
@@ -695,15 +712,32 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=string
+    : ALTER USER userName=usernameWithRoot SET PASSWORD password=string
+    ;
+
+alterUserAccountUnlockStatement
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
+usernameWithRoot
+    : ROOT
+    | identifier
+    ;
+
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT_SIGN host=string)?
+    ;
+
+renameUserStatement
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 grantUserRoleStatement
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 revokeUserRoleStatement
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 
@@ -712,7 +746,7 @@ grantStatement
     ;
 
 listUserPrivilegeStatement
-    : LIST PRIVILEGES OF USER userName=identifier
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
 listRolePrivilegeStatement
@@ -724,7 +758,7 @@ listUserStatement
     ;
 
 listRoleStatement
-    : LIST ROLE (OF USER userName=identifier)?
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
 
@@ -755,6 +789,8 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
+    | SYSTEM
+    | SECURITY
     ;
 
 objectPrivilege
@@ -787,38 +823,38 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
-    ;
-
-trainingData
-    : ALL
-    | dataElement(',' dataElement)*
-    ;
-
-dataElement
-    : databaseElement
-    | tableElement
-    ;
-
-databaseElement
-    : DATABASE database=identifier ('(' timeRange ')')?
-    ;
-
-tableElement
-    : TABLE tableName=qualifiedName ('(' timeRange ')')?
-    ;
-
-timeRange
-    : '[' startTime=timeValue ',' endTime=timeValue ']'
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? FROM MODEL existingModelId=identifier ON DATASET '(' targetData=string ')'
     ;
 
 hparamPair
     : hparamKey=identifier '=' hyparamValue=primaryExpression
     ;
 
+dropModelStatement
+    : DROP MODEL modelId=identifier
+    ;
+
 showModelsStatement
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
+    ;
+
+showLoadedModelsStatement
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=string
+    ;
+
+showAIDevicesStatement
+    : SHOW AI_DEVICES
+    ;
+
+loadModelStatement
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=string
+    ;
+
+unloadModelStatement
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -1142,6 +1178,7 @@ primaryExpression
         trimSource=valueExpression ')'                                                    #trim
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+    | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
@@ -1361,7 +1398,7 @@ authorizationUser
 
 nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
+    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
@@ -1380,7 +1417,7 @@ nonReserved
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
@@ -1390,10 +1427,13 @@ nonReserved
     ;
 
 ABSENT: 'ABSENT';
+ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODE: 'AINODE';
 AINODES: 'AINODES';
+AI_DEVICES: 'AI_DEVICES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';
@@ -1570,6 +1610,7 @@ LINEAR: 'LINEAR';
 LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
+LOADED: 'LOADED';
 LOCAL: 'LOCAL';
 LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
@@ -1749,6 +1790,8 @@ UNCONDITIONAL: 'UNCONDITIONAL';
 UNION: 'UNION';
 UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
+UNLOAD: 'UNLOAD';
+UNLOCK: 'UNLOCK';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
 UNTIL: 'UNTIL';
@@ -1782,7 +1825,9 @@ WRAPPER: 'WRAPPER';
 WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
+AUDIT: 'AUDIT';
 
+AT_SIGN: '@';
 EQ: '=';
 NEQ: '<>' | '!=';
 LT: '<';

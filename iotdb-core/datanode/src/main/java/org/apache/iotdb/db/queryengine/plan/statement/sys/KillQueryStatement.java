@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -32,6 +30,8 @@ import java.util.List;
 
 public class KillQueryStatement extends Statement implements IConfigStatement {
   private final String queryId;
+  // if allowedUsername is null, this statement can kill other user's queries
+  private String allowedUsername;
 
   public KillQueryStatement(String queryId) {
     this.queryId = queryId;
@@ -49,14 +49,17 @@ public class KillQueryStatement extends Statement implements IConfigStatement {
     return queryId;
   }
 
-  @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public String getAllowedUsername() {
+    return allowedUsername;
+  }
+
+  public void setAllowedUsername(String allowedUsername) {
+    this.allowedUsername = allowedUsername;
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override

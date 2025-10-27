@@ -42,7 +42,7 @@ public class MetricConfigTest {
     properties.setProperty("cn_metric_iotdb_reporter_host", "0.0.0.0");
     properties.setProperty("cn_metric_iotdb_reporter_port", "6669");
     properties.setProperty("cn_metric_iotdb_reporter_username", "user");
-    properties.setProperty("cn_metric_iotdb_reporter_password", "password");
+    properties.setProperty("cn_metric_iotdb_reporter_password", "password123456");
     properties.setProperty("cn_metric_iotdb_reporter_max_connection_number", "1");
     properties.setProperty("cn_metric_iotdb_reporter_location", "metric");
     properties.setProperty("cn_metric_iotdb_reporter_push_period", "5");
@@ -60,7 +60,7 @@ public class MetricConfigTest {
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());
-    assertEquals("password", reporterConfig.getPassword());
+    assertEquals("password123456", reporterConfig.getPassword());
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
     assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
@@ -78,7 +78,7 @@ public class MetricConfigTest {
     properties.setProperty("dn_metric_iotdb_reporter_host", "0.0.0.0");
     properties.setProperty("dn_metric_iotdb_reporter_port", "6669");
     properties.setProperty("dn_metric_iotdb_reporter_username", "user");
-    properties.setProperty("dn_metric_iotdb_reporter_password", "password");
+    properties.setProperty("dn_metric_iotdb_reporter_password", "password123456");
     properties.setProperty("dn_metric_iotdb_reporter_max_connection_number", "1");
     properties.setProperty("dn_metric_iotdb_reporter_location", "metric");
     properties.setProperty("dn_metric_iotdb_reporter_push_period", "5");
@@ -97,7 +97,7 @@ public class MetricConfigTest {
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());
-    assertEquals("password", reporterConfig.getPassword());
+    assertEquals("password123456", reporterConfig.getPassword());
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
     assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());

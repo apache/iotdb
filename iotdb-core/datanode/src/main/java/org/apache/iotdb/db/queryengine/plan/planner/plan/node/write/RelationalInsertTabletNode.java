@@ -115,10 +115,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         deviceIDs = new IDeviceID[1];
       }
       if (deviceIDs[0] == null) {
-        String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+        String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
         deviceIdSegments[0] = this.getTableName();
-        for (int i = 0; i < idColumnIndices.size(); i++) {
-          final Integer columnIndex = idColumnIndices.get(i);
+        for (int i = 0; i < tagColumnIndices.size(); i++) {
+          final Integer columnIndex = tagColumnIndices.get(i);
           Object idSeg = ((Object[]) columns[columnIndex])[0];
           boolean isNull =
               bitMaps != null && bitMaps[columnIndex] != null && bitMaps[columnIndex].isMarked(0);
@@ -132,10 +132,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       deviceIDs = new IDeviceID[rowCount];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
+      for (int i = 0; i < tagColumnIndices.size(); i++) {
+        final Integer columnIndex = tagColumnIndices.get(i);
         Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
         boolean isNull =
             bitMaps != null

@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
-import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.concurrent.atomic.AtomicBoolean;

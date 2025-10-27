@@ -40,7 +40,7 @@ public class RemoveRegionTask implements IConfigTask {
 
   public RemoveRegionTask(RemoveRegion removeRegion) {
     this.statement =
-        new RemoveRegionStatement(removeRegion.getRegionId(), removeRegion.getDataNodeId());
+        new RemoveRegionStatement(removeRegion.getRegionIds(), removeRegion.getDataNodeId());
     this.model = Model.TABLE;
   }
 

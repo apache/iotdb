@@ -406,8 +406,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             System.currentTimeMillis() - time,
             storageGroupFullPath);
       } catch (Exception e) {
-        e.printStackTrace();
-        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin", e);
       }
     }
   }
@@ -424,7 +423,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       mLogReader.skip(offset);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Failed to skip {} from {}", offset, schemaRegionDirPath, e);
     }
     while (mLogReader.hasNext()) {
       plan = mLogReader.next();

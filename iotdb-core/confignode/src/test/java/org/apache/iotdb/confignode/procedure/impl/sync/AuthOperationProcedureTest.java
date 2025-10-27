@@ -112,7 +112,7 @@ public class AuthOperationProcedureTest {
                     "table",
                     new HashSet<>(PrivilegeType.CREATE.ordinal(), PrivilegeType.SELECT.ordinal()),
                     false,
-                    "password"),
+                    "password123456"),
                 datanodes,
                 false);
         proc.serialize(outputStream);

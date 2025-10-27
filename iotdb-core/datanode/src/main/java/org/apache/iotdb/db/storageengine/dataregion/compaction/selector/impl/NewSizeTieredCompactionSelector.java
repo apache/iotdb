@@ -199,7 +199,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       performer =
           sequence ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
       estimator = performer.getInnerSpaceEstimator().orElse(null);
-      if (estimator == null) {
+      if (estimator == null || !estimator.supportsRoughEstimation()) {
         estimateCompactionTaskMemoryDuringSelection = false;
       }
       memoryCost = 0;

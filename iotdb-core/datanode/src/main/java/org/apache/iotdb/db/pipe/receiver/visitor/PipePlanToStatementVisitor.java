@@ -315,7 +315,11 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public Delete visitDeleteData(final RelationalDeleteDataNode node, final Void context) {
-    final Delete statement = new Delete();
+    final Delete statement =
+        new Delete(
+            new Table(
+                QualifiedName.of(
+                    node.getDatabaseName(), node.getModEntries().get(0).getTableName())));
     statement.setDatabaseName(node.getDatabaseName());
     statement.setTableDeletionEntries(node.getModEntries());
     return statement;

@@ -143,7 +143,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getBoolean(i));
+          hll.add(column.getBoolean(position));
         }
       }
     }
@@ -174,7 +174,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getInt(i));
+          hll.add(column.getInt(position));
         }
       }
     }
@@ -205,7 +205,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getLong(i));
+          hll.add(column.getLong(position));
         }
       }
     }
@@ -236,7 +236,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getFloat(i));
+          hll.add(column.getFloat(position));
         }
       }
     }
@@ -267,7 +267,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getDouble(i));
+          hll.add(column.getDouble(position));
         }
       }
     }
@@ -298,7 +298,7 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
         groupId = groupIds[position];
         HyperLogLog hll = hlls.get(groupId, maxStandardError);
         if (!column.isNull(position)) {
-          hll.add(column.getBinary(i));
+          hll.add(column.getBinary(position));
         }
       }
     }

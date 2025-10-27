@@ -67,6 +67,7 @@ public class SchemaConstant {
       "device_attribute_remote_updater.snapshot.tmp";
 
   public static final String SYSTEM_DATABASE = "root.__system";
+  public static final String AUDIT_DATABASE = "root.__audit";
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
   public static final PatternDFA ALL_MATCH_DFA = new PatternDFA(ALL_MATCH_PATTERN, false);

@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -29,7 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +48,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
   private boolean grantOpt;
+  private long executedByUserId;
+  private String newUsername = "";
+  private String loginAddr;
+
+  // the id of userName
+  private long associatedUsedId = -1;
 
   /**
    * Constructor with AuthorType.
@@ -99,6 +109,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
         this.setType(StatementType.LIST_ROLE);
         break;
+      case RENAME_USER:
+        this.setType(StatementType.RENAME_USER);
+        break;
+      case ACCOUNT_UNLOCK:
+        this.setType(StatementType.ACCOUNT_UNLOCK);
+        break;
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -125,6 +141,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setUserName(String userName) {
     this.userName = userName;
+    if (authorType != AuthorType.CREATE_USER) {
+      this.associatedUsedId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    }
   }
 
   public String getRoleName() {
@@ -141,6 +160,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setPassWord(String password) {
     this.password = password;
+  }
+
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
   }
 
   public String getNewPassword() {
@@ -175,6 +202,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.grantOpt = grantOpt;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthor(this, context);
@@ -195,6 +238,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case REVOKE_USER_ROLE:
       case UPDATE_USER:
+      case RENAME_USER:
+      case ACCOUNT_UNLOCK:
         queryType = QueryType.WRITE;
         break;
       case LIST_USER:
@@ -214,135 +259,99 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  /**
+   * Post-process when the statement is successfully executed.
+   *
+   * @return null if the post-process succeeds, a status otherwise.
+   */
+  public TSStatus onSuccess() {
+    if (authorType == AuthorType.CREATE_USER) {
+      return onCreateUserSuccess();
+    } else if (authorType == AuthorType.UPDATE_USER) {
+      return onUpdateUserSuccess();
+    } else if (authorType == AuthorType.DROP_USER) {
+      return onDropUserSuccess();
+    }
+    return null;
+  }
+
+  private TSStatus onCreateUserSuccess() {
+    associatedUsedId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    // the old password is expected to be encrypted during updates, so we also encrypt it here to
+    // keep consistency
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPasswordHistory(
+            associatedUsedId,
+            password,
+            AuthUtils.encryptPassword(password),
+            CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onUpdateUserSuccess() {
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPasswordHistory(
+            associatedUsedId, newPassword, password, CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onDropUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUsedId);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  public TSStatus checkStatementIsValid(String currentUser) {
     switch (authorType) {
       case CREATE_USER:
-        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot create user has same name with admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
-      case UPDATE_USER:
-        // users can change passwords of themselves
-        if (AuthorityChecker.SUPER_USER.equals(userName) || this.userName.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
+        break;
       case DROP_USER:
-        if (AuthorityChecker.SUPER_USER.equals(this.userName) || this.userName.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
           return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
-      case LIST_USER:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
-      case LIST_USER_PRIVILEGE:
-        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(this.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
-            PrivilegeType.MANAGE_USER);
-
-      case LIST_ROLE_PRIVILEGE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        if (!AuthorityChecker.checkRole(userName, roleName)) {
-          return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
-              PrivilegeType.MANAGE_ROLE);
-        } else {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-
-      case LIST_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        if (this.userName != null && userName.equals(this.userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        } else {
-          return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
-              PrivilegeType.MANAGE_ROLE);
-        }
-
       case CREATE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(this.roleName)) {
+        if (AuthorityChecker.SUPER_USER.equals(roleName)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot create role has same name with admin user");
         }
-      case DROP_ROLE:
-      case GRANT_USER_ROLE:
-      case REVOKE_USER_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
-        return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
-            PrivilegeType.MANAGE_ROLE);
-
+        break;
       case REVOKE_USER:
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant/revoke privileges of admin user");
         }
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        List<PartialPath> paths = getNodeNameList();
+        if (paths.stream().anyMatch(Audit::includeByAuditTreeDB)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to " + Audit.TREE_MODEL_AUDIT_DATABASE);
         }
-
-        for (String s : privilegeList) {
-          PrivilegeType privilegeType = PrivilegeType.valueOf(s.toUpperCase());
-          if (privilegeType.isSystemPrivilege()) {
-            if (!AuthorityChecker.checkSystemPermissionGrantOption(userName, privilegeType)) {
-              return AuthorityChecker.getTSStatus(
-                  false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
-            }
-          } else if (privilegeType.isPathPrivilege()) {
-            if (!AuthorityChecker.checkPathPermissionGrantOption(
-                userName, privilegeType, nodeNameList)) {
-              return AuthorityChecker.getTSStatus(
-                  false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
-            }
-          } else {
-            return AuthorityChecker.getTSStatus(
-                false, "Not support Relation statement in tree sql_dialect");
-          }
-        }
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      default:
-        throw new IllegalArgumentException("Unknown authorType: " + authorType);
+        break;
     }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getAssociatedUsedId() {
+    return associatedUsedId;
   }
 }

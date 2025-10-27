@@ -45,7 +45,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -71,11 +71,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install winflexbison3
-          if ("${{ matrix.os }}" -eq "windows-2019") {
-            choco install boost-msvc-14.2
-          } else {
-            choco install boost-msvc-14.3
-          }
+          choco install boost-msvc-14.3
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
       - name: Cache Maven packages
@@ -95,8 +91,6 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
-          elif [[ "${{ matrix.os }}" == "windows-2019" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
           else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi

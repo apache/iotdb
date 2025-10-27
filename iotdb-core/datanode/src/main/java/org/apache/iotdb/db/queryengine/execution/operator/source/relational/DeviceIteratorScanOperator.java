@@ -34,7 +34,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
@@ -134,7 +133,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
-      throw new NoSuchElementException();
+      return null;
     }
     if (!currentDeviceInit) {
       return null;

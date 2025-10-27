@@ -78,4 +78,19 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    return this;
+  }
 }

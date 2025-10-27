@@ -345,7 +345,6 @@ public class WALBuffer extends AbstractWALBuffer {
       info.metaData.add(size, searchIndex, walEntry.getMemTableId());
       info.memTableId2WalDiskUsage.compute(
           walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
-      walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
 
@@ -606,13 +605,8 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // notify all waiting listeners
       if (forceSuccess) {
-        long position = lastFsyncPosition;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
-          if (fsyncListener.getWalEntryHandler() != null) {
-            fsyncListener.getWalEntryHandler().setEntryPosition(walFileVersionId, position);
-            position += fsyncListener.getWalEntryHandler().getSize();
-          }
         }
         lastFsyncPosition = currentWALFileWriter.originalSize();
       }

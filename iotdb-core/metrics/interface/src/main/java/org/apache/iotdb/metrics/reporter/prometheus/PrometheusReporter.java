@@ -39,6 +39,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +51,15 @@ import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
@@ -81,7 +89,7 @@ public class PrometheusReporter implements Reporter {
       return false;
     }
     try {
-      httpServer =
+      HttpServer serverTransport =
           HttpServer.create()
               .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
               .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
@@ -97,8 +105,22 @@ public class PrometheusReporter implements Reporter {
                             }
                             return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                                 .sendString(Mono.just(scrape()));
-                          }))
-              .bindNow();
+                          }));
+      if (METRIC_CONFIG.isEnableSSL()) {
+        SslContext sslContext;
+        try {
+          sslContext =
+              createSslContext(
+                  METRIC_CONFIG.getKeyStorePath(),
+                  METRIC_CONFIG.getKeyStorePassword(),
+                  METRIC_CONFIG.getTrustStorePath(),
+                  METRIC_CONFIG.getTrustStorePassword());
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        serverTransport = serverTransport.secure(spec -> spec.sslContext(sslContext));
+      }
+      httpServer = serverTransport.bindNow();
     } catch (Throwable e) {
       // catch Throwable rather than Exception here because the code above might cause a
       // NoClassDefFoundError
@@ -255,6 +277,41 @@ public class PrometheusReporter implements Reporter {
     HashMap<String, String> result = new HashMap<>(tags);
     result.put(key, value);
     return result;
+  }
+
+  private SslContext createSslContext(
+      String keystorePath,
+      String keystorePassword,
+      String truststorePath,
+      String truststorePassword)
+      throws Exception {
+    SslContextBuilder sslContextBuilder = null;
+    if (keystorePath != null && keystorePassword != null) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(keystorePath)) {
+        keyStore.load(fis, keystorePassword.toCharArray());
+      }
+      KeyManagerFactory kmf =
+          KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(keyStore, keystorePassword.toCharArray());
+      sslContextBuilder = SslContextBuilder.forServer(kmf);
+    }
+
+    if (sslContextBuilder != null && truststorePath != null && truststorePassword != null) {
+      KeyStore trustStore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(truststorePath)) {
+        trustStore.load(fis, truststorePassword.toCharArray());
+      }
+      TrustManagerFactory tmf =
+          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(trustStore);
+      sslContextBuilder.trustManager(tmf);
+    }
+    if (sslContextBuilder == null) {
+      throw new Exception("Keystore or Truststore is null");
+    }
+    sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
+    return sslContextBuilder.build();
   }
 
   @Override

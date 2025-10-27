@@ -3,7 +3,7 @@ name: Daily IT
 on:
   schedule:
     # Run at UTC 19:00 every day (CST 03:00 AM)
-    - cron: '0 19 * * *'
+    - cron: "0 19 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 17 ]
+        java: [8, 17]
     runs-on: [self-hosted, iotdb]
     #      group: self-hosted
     #      labels: iotdb
@@ -29,8 +29,10 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: IT/UT Test
         shell: bash
         run: |
@@ -52,8 +54,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 8, 17 ]
-    runs-on: [ self-hosted, iotdb ]
+        java: [8, 17]
+    runs-on: [self-hosted, iotdb]
     #      group: self-hosted
     #      labels: iotdb
     steps:
@@ -61,8 +63,10 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -71,7 +75,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1\
+          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 -DintegrationTest.dataRegionPerDataNode=1 \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact
@@ -81,3 +85,995 @@ jobs:
           name: table-standalone-log-java${{ matrix.java }}-${{ runner.os }}
           path: integration-test/target/cluster-logs
           retention-days: 3
+  PipeSingle:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
+        exclude:
+          - cluster1: LightWeightStandaloneMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: LightWeightStandaloneMode
+            cluster2: ScalableSingleNodeMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: HighPerformanceMode
+          - cluster1: HighPerformanceMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: HighPerformanceMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: HighPerformanceMode
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT1 \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-single-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  PipeDualTreeAutoBasic:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2DualTreeAutoBasic \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-dual-tree-auto-basic-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  PipeDualTreeAutoEnhanced:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
+        exclude:
+          - cluster1: LightWeightStandaloneMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: LightWeightStandaloneMode
+            cluster2: ScalableSingleNodeMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: HighPerformanceMode
+          - cluster1: HighPerformanceMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: HighPerformanceMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: HighPerformanceMode
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2DualTreeAutoEnhanced \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-dual-tree-auto-enhanced-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  PipeDualTreeManual:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+          ]
+        os: [ubuntu-latest]
+        exclude:
+          - cluster1: LightWeightStandaloneMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: LightWeightStandaloneMode
+            cluster2: ScalableSingleNodeMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: HighPerformanceMode
+          - cluster1: HighPerformanceMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: HighPerformanceMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusBatchMode
+            cluster2: HighPerformanceMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: PipeConsensusStreamMode
+            cluster2: HighPerformanceMode
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2DualTreeManual \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-dual-tree-manual-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  SubscriptionTreeArchVerification:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionTreeArchVerification \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-tree-arch-verification-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  SubscriptionTableArchVerification:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1: [ScalableSingleNodeMode]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionTableArchVerification \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-table-arch-verification-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  SubscriptionTreeRegressionConsumer:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionTreeRegressionConsumer \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-tree-regression-consumer-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  SubscriptionTreeRegressionMisc:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
+        cluster1:
+          [
+            ScalableSingleNodeMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        cluster2: [ScalableSingleNodeMode]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2SubscriptionTreeRegressionMisc \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-tree-regression-misc-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  PipeDualTableManualBasic:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2DualTableManualBasic \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-dual-table-manual-basic-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  PipeDualTableManualEnhanced:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [17]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster:
+          [
+            LightWeightStandaloneMode,
+            ScalableSingleNodeMode,
+            HighPerformanceMode,
+            PipeConsensusBatchMode,
+            PipeConsensusStreamMode,
+          ]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Sleep for a random duration between 0 and 10000 milliseconds
+        run: |
+          sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          retry() {
+            local -i max_attempts=3
+            local -i attempt=1
+            local -i retry_sleep=5
+            local test_output
+
+            while [ $attempt -le $max_attempts ]; do
+              mvn clean verify \
+              -P with-integration-tests \
+              -DskipUTs \
+              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -pl integration-test \
+              -am -PMultiClusterIT2DualTableManualEnhanced \
+              -ntp >> ~/run-tests-$attempt.log && return 0
+              test_output=$(cat ~/run-tests-$attempt.log) 
+
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "$test_output"
+              echo "==================== END: ~/run-tests-$attempt.log ======================"
+
+              if ! mv ~/run-tests-$attempt.log integration-test/target/cluster-logs/ 2>/dev/null; then
+                echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
+              fi
+
+              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
+                  sleep $retry_sleep
+                  attempt=$((attempt + 1))
+                else
+                  echo "Test failed after $max_attempts attempts due to artifact transfer issue."
+                  echo "Treating this as a success because the issue is likely transient."
+                  return 0
+                fi
+              elif [ $? -ne 0 ]; then
+                echo "Test failed with a different error."
+                return 1
+              else
+                echo "Tests passed"
+                return 0
+              fi
+            done
+          }
+          retry
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-dual-table-manual-enhanced-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30

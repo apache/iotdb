@@ -179,6 +179,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(pollTimer)) {
       return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
+    // update timer before fetch remaining ms
+    pollTimer.update();
     return pollTimer.remainingMs();
   }
 
@@ -704,6 +706,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // fetch topics should be unsubscribed
     final List<String> topicNamesToUnsubscribe =
         SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
+
+    // If it is empty, it could be that the consumer has been closed, or there are no completed
+    // topics. In this case, it should immediately return.
+    if (topicNamesToUnsubscribe.isEmpty()) {
+      return;
+    }
 
     unsubscribe(consumerConfig, new HashSet<>(topicNamesToUnsubscribe));
     LOGGER.info(

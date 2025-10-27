@@ -129,8 +129,12 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
 
         if (Objects.isNull(filter)) {
-          if (innerHasNext()) {
-            next = deviceReader.next();
+          while (innerHasNext()) {
+            final IDeviceSchemaInfo device = deviceReader.next();
+            if (device.isAligned() == null) {
+              continue;
+            }
+            next = device;
             return true;
           }
           return false;
@@ -142,7 +146,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         }
 
         while (innerHasNext() && !filter.hasNext()) {
-          filter.addBatch(deviceReader.next());
+          final IDeviceSchemaInfo device = deviceReader.next();
+          if (device.isAligned() == null) {
+            continue;
+          }
+          filter.addBatch(device);
         }
 
         if (!filter.hasNext()) {
