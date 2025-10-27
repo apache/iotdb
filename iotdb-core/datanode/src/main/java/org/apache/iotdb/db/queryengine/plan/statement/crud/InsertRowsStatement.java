@@ -237,4 +237,9 @@ public class InsertRowsStatement extends InsertBaseStatement {
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
+
+  @Override
+  public String toString() {
+    return "InsertRowsStatement{" + "insertRowStatementList=" + insertRowStatementList + '}';
+  }
 }
