@@ -39,6 +39,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualManu
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
