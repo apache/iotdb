@@ -82,7 +82,9 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareG
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessThanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.HmacColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.Like2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -101,6 +103,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Like3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.LpadColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.RpadColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.udf.UserDefineScalarFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
@@ -124,6 +128,11 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Bi
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShiftColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXor2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXorColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToDoubleColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToFloatColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToIntColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToLongColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CRC32Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CeilColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Concat2ColumnTransformer;
@@ -135,17 +144,23 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Da
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DegreesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DoubleToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWith2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWithColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloatToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FormatColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.HmacConstantKeyColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LengthColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LnColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Log10ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LowerColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
@@ -176,6 +191,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -208,12 +225,18 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacMd5Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha1Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
@@ -1118,6 +1141,311 @@ public class ColumnTransformerBuilder
         return new BitwiseRightShiftArithmetic2ColumnTransformer(
             first.getType(), first, this.process(children.get(1), context));
       }
+    } else if (TableBuiltinScalarFunction.TO_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          STRING, first, CodecStrategiesFactory.TO_BASE64, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.FROM_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.FROM_BASE64, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.TO_BASE64URL
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          STRING, first, CodecStrategiesFactory.TO_BASE64URL, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.FROM_BASE64URL
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.FROM_BASE64URL, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.TO_BASE32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          STRING, first, CodecStrategiesFactory.TO_BASE32, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.FROM_BASE32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.FROM_BASE32, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.SHA256.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new GenericCodecColumnTransformer(
+            BLOB, first, CodecStrategiesFactory.SHA256, functionName, first.getType());
+      }
+    } else if (TableBuiltinScalarFunction.SHA512.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.SHA512, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.SHA1.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.SHA1, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.MD5.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.MD5, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.XXHASH64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.XXHASH64, functionName, first.getType());
+
+    } else if (TableBuiltinScalarFunction.MURMUR3
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.MURMUR3, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.TO_HEX.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          STRING, first, CodecStrategiesFactory.TO_HEX, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.FROM_HEX
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.FROM_HEX, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.REVERSE
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isCharType(first.getType())) {
+        return new GenericCodecColumnTransformer(
+            first.getType(),
+            first,
+            CodecStrategiesFactory.REVERSE_CHARS,
+            functionName,
+            first.getType());
+      } else {
+        return new GenericCodecColumnTransformer(
+            first.getType(),
+            first,
+            CodecStrategiesFactory.REVERSE_BYTES,
+            functionName,
+            first.getType());
+      }
+
+    } else if (TableBuiltinScalarFunction.HMAC_MD5
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isStringLiteral(children.get(1))) {
+        String key = ((StringLiteral) children.get(1)).getValue();
+        return new HmacConstantKeyColumnTransformer(
+            BLOB,
+            first,
+            createConstantKeyHmacMd5Strategy(key.getBytes(TSFileConfig.STRING_CHARSET)));
+      } else {
+        return new HmacColumnTransformer(
+            BLOB,
+            first,
+            this.process(children.get(1), context),
+            HmacStrategiesFactory.HMAC_MD5,
+            functionName,
+            first.getType());
+      }
+    } else if (TableBuiltinScalarFunction.HMAC_SHA1
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isStringLiteral(children.get(1))) {
+        String key = ((StringLiteral) children.get(1)).getValue();
+        return new HmacConstantKeyColumnTransformer(
+            BLOB,
+            first,
+            createConstantKeyHmacSha1Strategy(key.getBytes(TSFileConfig.STRING_CHARSET)));
+      } else {
+        return new HmacColumnTransformer(
+            BLOB,
+            first,
+            this.process(children.get(1), context),
+            HmacStrategiesFactory.HMAC_SHA1,
+            functionName,
+            first.getType());
+      }
+    } else if (TableBuiltinScalarFunction.HMAC_SHA256
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isStringLiteral(children.get(1))) {
+        String key = ((StringLiteral) children.get(1)).getValue();
+        return new HmacConstantKeyColumnTransformer(
+            BLOB,
+            first,
+            createConstantKeyHmacSha256Strategy(key.getBytes(TSFileConfig.STRING_CHARSET)));
+      } else {
+        return new HmacColumnTransformer(
+            BLOB,
+            first,
+            this.process(children.get(1), context),
+            HmacStrategiesFactory.HMAC_SHA256,
+            functionName,
+            first.getType());
+      }
+    } else if (TableBuiltinScalarFunction.HMAC_SHA512
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (isStringLiteral(children.get(1))) {
+        String key = ((StringLiteral) children.get(1)).getValue();
+        return new HmacConstantKeyColumnTransformer(
+            BLOB,
+            first,
+            createConstantKeyHmacSha512Strategy(key.getBytes(TSFileConfig.STRING_CHARSET)));
+      } else {
+        return new HmacColumnTransformer(
+            BLOB,
+            first,
+            this.process(children.get(1), context),
+            HmacStrategiesFactory.HMAC_SHA512,
+            functionName,
+            first.getType());
+      }
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new IntToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_BIG_ENDIAN_32);
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToIntColumnTransformer(
+          INT32,
+          first,
+          NumericCodecStrategiesFactory.FROM_BIG_ENDIAN_32,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new LongToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_BIG_ENDIAN_64);
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToLongColumnTransformer(
+          INT64,
+          first,
+          NumericCodecStrategiesFactory.FROM_BIG_ENDIAN_64,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new IntToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_32);
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToIntColumnTransformer(
+          INT32,
+          first,
+          NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_32,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new LongToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_LITTLE_ENDIAN_64);
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToLongColumnTransformer(
+          INT64,
+          first,
+          NumericCodecStrategiesFactory.FROM_LITTLE_ENDIAN_64,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new FloatToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_IEEE754_32_BIG_ENDIAN);
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToFloatColumnTransformer(
+          FLOAT,
+          first,
+          NumericCodecStrategiesFactory.FROM_IEEE754_32_BIG_ENDIAN,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new DoubleToBytesColumnTransformer(
+          BLOB, first, NumericCodecStrategiesFactory.TO_IEEE754_64_BIG_ENDIAN);
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new BytesToDoubleColumnTransformer(
+          DOUBLE,
+          first,
+          NumericCodecStrategiesFactory.FROM_IEEE754_64_BIG_ENDIAN,
+          functionName,
+          first.getType());
+    } else if (TableBuiltinScalarFunction.CRC32.getFunctionName().equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new CRC32Transformer(INT64, first);
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.spooky_hash_v2_32, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      return new GenericCodecColumnTransformer(
+          BLOB, first, CodecStrategiesFactory.spooky_hash_v2_64, functionName, first.getType());
+    } else if (TableBuiltinScalarFunction.LPAD.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new LpadColumnTransformer(
+          BLOB,
+          this.process(children.get(0), context),
+          this.process(children.get(1), context),
+          this.process(children.get(2), context));
+    } else if (TableBuiltinScalarFunction.RPAD.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new RpadColumnTransformer(
+          BLOB,
+          this.process(children.get(0), context),
+          this.process(children.get(1), context),
+          this.process(children.get(2), context));
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
