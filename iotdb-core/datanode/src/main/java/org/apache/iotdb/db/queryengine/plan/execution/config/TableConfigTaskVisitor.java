@@ -404,7 +404,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCountDB(final CountDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new CountDBTask(
-        databaseName -> canShowDB(accessControl, context.getSession().getUserName(), databaseName));
+        databaseName ->
+            canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
   }
 
   public static boolean canShowDB(
