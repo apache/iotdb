@@ -390,10 +390,6 @@ public class TreeDeviceSchemaCacheManager {
    * @param measurementPath the fetched {@link MeasurementPath}
    */
   public void invalidateLastCache(final String database, final MeasurementPath measurementPath) {
-    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
-      return;
-    }
-
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),
