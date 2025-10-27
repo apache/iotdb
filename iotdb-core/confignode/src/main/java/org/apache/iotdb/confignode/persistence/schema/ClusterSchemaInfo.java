@@ -273,6 +273,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
 
       if (alterSchema.isSetNeedLastCache()) {
+        if (!currentSchema.isIsTableModel()) {
+          result.setCode(TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+          result.setMessage("The tree model database does not support alter need last cache now.");
+          return result;
+        }
         currentSchema.setNeedLastCache(alterSchema.isNeedLastCache());
         LOGGER.info(
             "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}",
