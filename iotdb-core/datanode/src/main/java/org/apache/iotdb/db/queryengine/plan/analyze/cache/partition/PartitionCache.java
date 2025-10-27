@@ -1071,7 +1071,7 @@ public class PartitionCache {
   public void invalidDatabase(final String database) {
     databaseCacheLock.writeLock().lock();
     try {
-      database2NeedLastCacheCache.remove(database);
+      databaseCache.remove(database);
     } catch (final Exception e) {
       databaseCacheLock.writeLock().unlock();
     }
