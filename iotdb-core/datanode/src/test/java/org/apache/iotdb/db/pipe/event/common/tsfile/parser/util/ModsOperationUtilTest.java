@@ -398,7 +398,7 @@ public class ModsOperationUtilTest {
   private List<Deletion> createTestMods(long[][] timeRanges) {
     List<Deletion> mods = new ArrayList<>();
     for (long[] range : timeRanges) {
-      Deletion mod = new Deletion(null, range[0], range[1]);
+      Deletion mod = new Deletion(null, 0, range[0], range[1]);
       mods.add(mod);
     }
     return mods;
