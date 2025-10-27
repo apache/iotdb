@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
-import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
 public class HashLeaderBalancer extends AbstractLeaderBalancer {
   @Override
