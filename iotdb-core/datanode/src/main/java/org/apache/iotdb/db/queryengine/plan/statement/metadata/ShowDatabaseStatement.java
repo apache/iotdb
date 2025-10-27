@@ -100,13 +100,13 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
       builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       if (isDetailed) {
-        builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-        builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMinSchemaRegionNum());
-        builder.getColumnBuilder(7).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
-        builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
-        builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
-        builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
-        builder.getColumnBuilder(11).writeBoolean(storageGroupInfo.isNeedLastCache());
+        builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
+        builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
+        builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
+        builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(11).writeBoolean(databaseInfo.isNeedLastCache());
       }
       builder.declarePosition();
     }
