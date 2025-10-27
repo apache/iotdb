@@ -646,7 +646,7 @@ public class IoTDBTableIT {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
