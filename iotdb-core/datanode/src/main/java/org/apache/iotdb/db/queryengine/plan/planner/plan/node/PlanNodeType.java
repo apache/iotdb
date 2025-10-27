@@ -102,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
@@ -261,6 +262,7 @@ public enum PlanNodeType {
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
   LAST_QUERY_SCAN((short) 98),
+  SHOW_DISK_USAGE((short) 99),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -587,6 +589,8 @@ public enum PlanNodeType {
             "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
       case 98:
         return LastQueryScanNode.deserialize(buffer);
+      case 99:
+        return ShowDiskUsageNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:

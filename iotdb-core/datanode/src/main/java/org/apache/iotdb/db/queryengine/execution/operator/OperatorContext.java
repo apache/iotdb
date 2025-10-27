@@ -112,7 +112,7 @@ public class OperatorContext implements Accountable {
     return driverContext.getFragmentInstanceContext();
   }
 
-  public Duration getMaxRunTime() {
+  public static Duration getMaxRunTime() {
     return maxRunTime;
   }
 

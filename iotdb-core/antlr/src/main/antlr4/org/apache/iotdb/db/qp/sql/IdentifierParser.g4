@@ -98,6 +98,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE

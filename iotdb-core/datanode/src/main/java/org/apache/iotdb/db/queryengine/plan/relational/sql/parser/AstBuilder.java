@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -187,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDiskUsageOfTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
@@ -1603,6 +1605,37 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         orderBy,
         offset,
         limit);
+  }
+
+  @Override
+  public Node visitShowDiskUsageStatement(RelationalSqlParser.ShowDiskUsageStatementContext ctx) {
+    QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
+
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new SemanticException("database is not specified");
+    }
+    String database = qualifiedName.getPrefix().get().toString();
+    String table = qualifiedName.getSuffix();
+    Optional<Expression> where =
+        Optional.of(
+            LogicalExpression.and(
+                new ComparisonExpression(
+                    getLocation(ctx),
+                    ComparisonExpression.Operator.EQUAL,
+                    new Identifier(ColumnHeaderConstant.DATABASE.toLowerCase()),
+                    new StringLiteral(database)),
+                new ComparisonExpression(
+                    getLocation(ctx),
+                    ComparisonExpression.Operator.EQUAL,
+                    new Identifier(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL),
+                    new StringLiteral(table))));
+    return new ShowDiskUsageOfTable(
+        getLocation(ctx),
+        InformationSchema.TABLE_DISK_USAGE,
+        where,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override

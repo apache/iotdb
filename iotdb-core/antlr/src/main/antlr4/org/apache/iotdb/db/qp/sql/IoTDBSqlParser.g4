@@ -89,7 +89,7 @@ dclStatement
 utilityStatement
     : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     ;
@@ -1231,6 +1231,10 @@ showQueries
     whereClause?
     orderByClause?
     rowPaginationClause?
+    ;
+
+showDiskUsage
+    : SHOW DISK_USAGE FROM prefixPath
     ;
 
 // Show Current Timestamp

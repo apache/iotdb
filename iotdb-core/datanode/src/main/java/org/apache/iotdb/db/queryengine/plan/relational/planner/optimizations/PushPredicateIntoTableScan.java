@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -56,10 +57,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -441,6 +444,21 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitInformationSchemaTableScan(
+        InformationSchemaTableScanNode node, RewriteContext context) {
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        return node;
+      }
+      switch (node.getQualifiedObjectName().getObjectName()) {
+          // information tables that supports pushdown predicate
+        case InformationSchema.TABLE_DISK_USAGE:
+          return combineFilterAndScan(node, context.inheritedPredicate);
+        default:
+          return node;
+      }
+    }
+
+    @Override
     public PlanNode visitDeviceTableScan(
         DeviceTableScanNode tableScanNode, RewriteContext context) {
 
@@ -454,8 +472,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
-    public PlanNode combineFilterAndScan(DeviceTableScanNode tableScanNode, Expression predicate) {
-      SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
+    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+      SplitExpression splitExpression =
+          tableScanNode instanceof InformationSchemaTableScanNode
+              ? splitPredicate((InformationSchemaTableScanNode) tableScanNode, predicate)
+              : splitPredicate((DeviceTableScanNode) tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
       if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
@@ -468,10 +489,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         // extract global time filter and set it to DeviceTableScanNode
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
-        if (resultPair.left != null) {
-          tableScanNode.setTimePredicate(resultPair.left);
+        Boolean hasValueFilter = resultPair.getRight();
+        if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
+          ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
         }
-        if (Boolean.TRUE.equals(resultPair.right)) {
+        if (Boolean.TRUE.equals(hasValueFilter)) {
           if (pushDownPredicate instanceof LogicalExpression
               && ((LogicalExpression) pushDownPredicate).getTerms().size() == 1) {
             tableScanNode.setPushDownPredicate(
@@ -485,7 +507,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
+      if (tableScanNode instanceof DeviceTableScanNode) {
+        getDeviceEntriesWithDataPartitions(
+            (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      }
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -499,6 +524,40 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return tableScanNode;
+    }
+
+    private SplitExpression splitPredicate(
+        InformationSchemaTableScanNode node, Expression predicate) {
+      Set<String> columnsThatSupportPushDownPredicate =
+          InformationSchema.getColumnsSupportPushDownPredicate(
+              node.getQualifiedObjectName().getObjectName());
+      List<Expression> expressionsCanPushDown = new ArrayList<>();
+      List<Expression> expressionsCannotPushDown = new ArrayList<>();
+      if (predicate instanceof LogicalExpression
+          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
+
+        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
+          if (PredicateCombineIntoTableScanChecker.check(
+              columnsThatSupportPushDownPredicate, expression)) {
+            expressionsCanPushDown.add(expression);
+          } else {
+            expressionsCannotPushDown.add(expression);
+          }
+        }
+
+        return new SplitExpression(
+            Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+      }
+
+      if (PredicateCombineIntoTableScanChecker.check(
+          columnsThatSupportPushDownPredicate, predicate)) {
+        expressionsCanPushDown.add(predicate);
+      } else {
+        expressionsCannotPushDown.add(predicate);
+      }
+
+      return new SplitExpression(
+          Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
     }
 
     private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {

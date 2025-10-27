@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -952,6 +953,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis, showQueriesStatement.getAllowedUsername()) // push Filter down
             .planOffset(showQueriesStatement.getRowOffset())
             .planLimit(showQueriesStatement.getRowLimit());
+    return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    planBuilder = planBuilder.planShowDiskUsage(analysis, showDiskUsageStatement.getPathPattern());
     return planBuilder.getRoot();
   }
 

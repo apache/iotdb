@@ -21,13 +21,18 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
@@ -50,6 +55,7 @@ public class InformationSchema {
   public static final String NODES = "nodes";
   public static final String CONFIG_NODES = "config_nodes";
   public static final String DATA_NODES = "data_nodes";
+  public static final String TABLE_DISK_USAGE = "table_disk_usage";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -362,10 +368,41 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATA_NODES, dataNodesTable);
+
+    final TsTable tableDiskUsageTable = new TsTable(TABLE_DISK_USAGE);
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.DATABASE, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(TABLE_DISK_USAGE, tableDiskUsageTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
     return schemaTables;
+  }
+
+  public static Set<String> getColumnsSupportPushDownPredicate(String tableName) {
+    switch (tableName) {
+      case TABLE_DISK_USAGE:
+        return new HashSet<>(
+            Arrays.asList(
+                ColumnHeaderConstant.DATABASE,
+                ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+                ColumnHeaderConstant.NODE_ID_TABLE_MODEL,
+                ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
+                ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
+      default:
+        return Collections.emptySet();
+    }
   }
 
   private InformationSchema() {

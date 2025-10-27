@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -28,14 +30,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDiskUsageOfTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
@@ -68,6 +73,33 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     @Override
     protected Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
       return visitShowStatement(node, context);
+    }
+
+    @Override
+    protected Node visitShowDiskUsageOfTable(ShowDiskUsageOfTable node, Void context) {
+      return simpleQuery(
+          selectList(
+              new SingleColumn(new Identifier(ColumnHeaderConstant.NODE_ID_TABLE_MODEL)),
+              new SingleColumn(
+                  new FunctionCall(
+                      QualifiedName.of(TableBuiltinAggregationFunction.SUM.getFunctionName()),
+                      Collections.singletonList(
+                          new Identifier(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL))),
+                  new Identifier(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL))),
+          from(INFORMATION_DATABASE, node.getTableName()),
+          node.getWhere(),
+          Optional.of(
+              new GroupBy(
+                  false,
+                  Collections.singletonList(
+                      new SimpleGroupBy(
+                          Collections.singletonList(
+                              new Identifier(ColumnHeaderConstant.NODE_ID_TABLE_MODEL)))))),
+          Optional.empty(),
+          Optional.empty(),
+          node.getOrderBy(),
+          node.getOffset(),
+          node.getLimit());
     }
 
     @Override

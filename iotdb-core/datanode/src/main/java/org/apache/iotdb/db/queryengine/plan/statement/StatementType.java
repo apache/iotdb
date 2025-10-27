@@ -191,4 +191,5 @@ public enum StatementType {
 
   FAST_LAST_QUERY,
   SHOW_CONFIGURATION,
+  SHOW_DISK_USAGE,
 }

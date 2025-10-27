@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 
 import org.apache.tsfile.read.common.Path;
@@ -156,6 +157,7 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
     if (analysis.getTreeStatement() instanceof QueryStatement
         || analysis.getTreeStatement() instanceof ExplainAnalyzeStatement
         || analysis.getTreeStatement() instanceof ShowQueriesStatement
+        || analysis.getTreeStatement() instanceof ShowDiskUsageStatement
         || (analysis.getTreeStatement() instanceof ShowTimeSeriesStatement
             && ((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat())) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());

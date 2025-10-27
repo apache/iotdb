@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -1636,6 +1637,15 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;
+  }
+
+  @Override
+  public TSStatus visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.QUERY),
+        PrivilegeType.SYSTEM,
+        () -> showDiskUsageStatement.getPathPattern().toString());
   }
 
   @Override

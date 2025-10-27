@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -487,6 +488,7 @@ public class Analysis implements IAnalysis {
     return (dataPartition != null && !dataPartition.isEmpty())
         || (schemaPartition != null && !schemaPartition.isEmpty())
         || statement instanceof ShowQueriesStatement
+        || statement instanceof ShowDiskUsageStatement
         || (statement instanceof QueryStatement
             && ((QueryStatement) statement).isAggregationQuery());
   }
@@ -509,7 +511,8 @@ public class Analysis implements IAnalysis {
   public boolean needSetHighestPriority() {
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
-    return StatementType.SHOW_QUERIES.equals(statement.getType());
+    return StatementType.SHOW_QUERIES.equals(statement.getType())
+        || StatementType.SHOW_DISK_USAGE.equals(statement.getType());
   }
 
   @Override

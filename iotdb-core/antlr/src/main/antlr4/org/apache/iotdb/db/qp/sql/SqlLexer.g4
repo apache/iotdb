@@ -302,6 +302,10 @@ DISCARD
     : D I S C A R D
     ;
 
+DISK_USAGE
+    : D I S K '_' U S A G E
+    ;
+
 DROP
     : D R O P
     ;

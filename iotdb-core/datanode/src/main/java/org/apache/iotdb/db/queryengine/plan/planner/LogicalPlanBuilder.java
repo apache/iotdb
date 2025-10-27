@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -1280,6 +1281,34 @@ public class LogicalPlanBuilder {
     this.root =
         new ShowQueriesNode(
             context.getQueryId().genPlanNodeId(), dataNodeLocation, allowedUsername);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowDiskUsage(Analysis analysis, PartialPath pathPattern) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          new ShowDiskUsageNode(
+              context.getQueryId().genPlanNodeId(), dataNodeLocations.get(0), pathPattern);
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  new ShowDiskUsageNode(
+                      context.getQueryId().genPlanNodeId(), dataNodeLocation, pathPattern)));
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showDiskUsageColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     return this;
   }
 
