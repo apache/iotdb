@@ -22,8 +22,8 @@ package org.apache.iotdb.commons.pipe.source;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
-  protected IoTDBPipePattern pipePattern;
+  protected UnionIoTDBPipePattern pipePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -68,15 +68,14 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     super.customize(parameters, configuration);
 
     final PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
-    if (!(pattern instanceof IoTDBPipePattern
-        && (((IoTDBPipePattern) pattern).isPrefix()
-            || ((IoTDBPipePattern) pattern).isFullPath()))) {
+    if (!(pattern instanceof UnionIoTDBPipePattern
+        && (((UnionIoTDBPipePattern) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    pipePattern = (IoTDBPipePattern) pattern;
+    pipePattern = (UnionIoTDBPipePattern) pattern;
   }
 
   @Override
@@ -101,10 +100,10 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   private long getNextIndexAfterSnapshot() {
     long nextIndex;
     if (needTransferSnapshot()) {
-      nextIndex = findSnapshot();
+      nextIndex = findSnapshot(true);
       if (nextIndex == Long.MIN_VALUE) {
         triggerSnapshot();
-        nextIndex = findSnapshot();
+        nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
           throw new PipeException("Cannot get the newest snapshot after triggering one.");
         }
@@ -117,9 +116,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     return nextIndex;
   }
 
-  private long findSnapshot() {
+  private long findSnapshot(final boolean mayClear) {
     final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2Snapshots =
-        getListeningQueue().findAvailableSnapshots();
+        getListeningQueue().findAvailableSnapshots(mayClear);
     final long nextIndex =
         Objects.nonNull(queueTailIndex2Snapshots.getLeft())
                 && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE

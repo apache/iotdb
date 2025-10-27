@@ -722,6 +722,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
           for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
             schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
+            databasesNeededToBeSet.removeIf(
+                database ->
+                    database.startsWith(databaseName)
+                        || databaseName.startsWith(database.getFullPath()));
           }
         } catch (IOException | TException | ClientManagerException e) {
           throw new LoadFileException(e);

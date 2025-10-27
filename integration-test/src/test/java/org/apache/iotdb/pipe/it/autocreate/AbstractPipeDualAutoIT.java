@@ -42,7 +42,6 @@ abstract class AbstractPipeDualAutoIT {
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()

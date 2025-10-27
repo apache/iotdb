@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.pipe.config.constant;
 
 public class SystemConstant {
 
-  public static final String RESTART_KEY = "__system.restart";
+  // This can be arbitrarily changed since it's only a memory key and not stored
+  public static final String RESTART_OR_NEWLY_ADDED_KEY = "__system.restart_or_newly_added";
   public static final boolean RESTART_DEFAULT_VALUE = false;
 
   private SystemConstant() {

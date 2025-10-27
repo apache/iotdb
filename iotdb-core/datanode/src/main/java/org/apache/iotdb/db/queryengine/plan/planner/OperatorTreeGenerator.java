@@ -226,6 +226,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
@@ -608,7 +609,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
     boolean ascending = node.getScanOrder() == ASC;
-    List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
+    List<AggregationDescriptor> aggregationDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList());
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
@@ -629,7 +631,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, true, context.getZoneId());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
     scanOptionsBuilder.withAllSensors(
@@ -681,6 +683,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+
     if (context.isBuildPlanUseTemplate()) {
       Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
       if (node.getDescriptorType() == 1) {
@@ -690,7 +693,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          node.getAggregationDescriptorList(),
+          AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList()),
           context.getTemplatedInfo().getPushDownPredicate(),
           scanOrder,
           context.getTemplatedInfo().getGroupByTimeParameter(),
@@ -701,7 +704,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constructAlignedSeriesAggregationScanOperator(
         node.getPlanNodeId(),
         node.getAlignedPath(),
-        node.getAggregationDescriptorList(),
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList()),
         node.getPushDownPredicate(),
         node.getScanOrder(),
         node.getGroupByTimeParameter(),
@@ -1984,8 +1987,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
-    List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
-    for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+    List<AggregationDescriptor> aggregationDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(node.getAggregationDescriptorList());
+    for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       aggregators.add(
           new Aggregator(
@@ -2443,7 +2447,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new FullOuterTimeJoinOperator(
@@ -2471,7 +2475,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new InnerTimeJoinOperator(
@@ -2525,7 +2529,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
-            ? getOutputColumnTypesOfTimeJoinNode(node)
+            ? getOutputColumnTypesOfTimeJoinNode(node, context)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
     return new LeftOuterTimeJoinOperator(
@@ -3211,7 +3215,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         .collect(Collectors.toList());
   }
 
-  private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(PlanNode node) {
+  private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(
+      PlanNode node, LocalExecutionPlanContext context) {
     // Only templated device situation can invoke this method,
     // the children of TimeJoinNode can only be ScanNode or TimeJoinNode
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -3223,11 +3228,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (child instanceof FullOuterTimeJoinNode
           || child instanceof InnerTimeJoinNode
           || child instanceof LeftOuterTimeJoinNode) {
-        dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
+        dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child, context));
+      } else if (child instanceof SeriesAggregationSourceNode) {
+        dataTypes.addAll(getOutputColumnTypes(child, context.getTypeProvider()));
       } else {
-        LOGGER.error(
-            "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: {}",
-            child.getOutputColumnNames());
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: %s",
+                child.getOutputColumnNames()));
       }
     }
     return dataTypes;
