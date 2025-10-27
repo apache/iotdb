@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
@@ -78,8 +80,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.LoadModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.UnloadModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -127,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -310,6 +317,22 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showModelsModelStatement, context);
   }
 
+  public R visitShowLoadedModels(ShowLoadedModelsStatement showLoadedModelsStatement, C context) {
+    return visitStatement(showLoadedModelsStatement, context);
+  }
+
+  public R visitShowAIDevices(ShowAIDevicesStatement showAIDevicesStatement, C context) {
+    return visitStatement(showAIDevicesStatement, context);
+  }
+
+  public R visitLoadModel(LoadModelStatement loadModelStatement, C context) {
+    return visitStatement(loadModelStatement, context);
+  }
+
+  public R visitUnloadModel(UnloadModelStatement unloadModelStatement, C context) {
+    return visitStatement(unloadModelStatement, context);
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement
@@ -322,8 +345,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(insertStatement, context);
   }
 
+  public R visitInsertBase(InsertBaseStatement insertStatement, C context) {
+    return visitStatement(insertStatement, context);
+  }
+
   public R visitInsertTablet(InsertTabletStatement insertTabletStatement, C context) {
-    return visitStatement(insertTabletStatement, context);
+    return visitInsertBase(insertTabletStatement, context);
   }
 
   public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
@@ -331,21 +358,21 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
-    return visitStatement(insertRowStatement, context);
+    return visitInsertBase(insertRowStatement, context);
   }
 
   public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
-    return visitStatement(insertRowsStatement, context);
+    return visitInsertBase(insertRowsStatement, context);
   }
 
   public R visitInsertMultiTablets(
       InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
-    return visitStatement(insertMultiTabletsStatement, context);
+    return visitInsertBase(insertMultiTabletsStatement, context);
   }
 
   public R visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
-    return visitStatement(insertRowsOfOneDeviceStatement, context);
+    return visitInsertBase(insertRowsOfOneDeviceStatement, context);
   }
 
   public R visitPipeEnrichedStatement(PipeEnrichedStatement pipeEnrichedStatement, C context) {
@@ -433,6 +460,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetConfiguration(SetConfigurationStatement setConfigurationStatement, C context) {
     return visitStatement(setConfigurationStatement, context);
+  }
+
+  public R visitShowConfiguration(
+      ShowConfigurationStatement showConfigurationStatement, C context) {
+    return visitStatement(showConfigurationStatement, context);
   }
 
   public R visitStartRepairData(StartRepairDataStatement startRepairDataStatement, C context) {
@@ -612,6 +644,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(removeConfigNodeStatement, context);
   }
 
+  public R visitRemoveAINode(RemoveAINodeStatement removeAINodeStatement, C context) {
+    return visitStatement(removeAINodeStatement, context);
+  }
+
   public R visitDeactivateTemplate(
       DeactivateTemplateStatement deactivateTemplateStatement, C context) {
     return visitStatement(deactivateTemplateStatement, context);
@@ -689,5 +725,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCreateTraining(CreateTrainingStatement createTrainingStatement, C context) {
     return visitStatement(createTrainingStatement, context);
+  }
+
+  public R visitAuthorityInformation(AuthorityInformationStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 }

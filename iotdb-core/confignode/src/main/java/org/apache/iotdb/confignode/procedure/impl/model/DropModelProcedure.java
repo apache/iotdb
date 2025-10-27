@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.model;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
 import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
@@ -101,33 +102,35 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
   private void dropModelOnAINode(ConfigNodeProcedureEnv env) {
     LOGGER.info("Start to drop model file [{}] on AI Node", modelName);
 
-    List<Integer> nodeIds =
-        env.getConfigManager().getModelManager().getModelDistributions(modelName);
-    for (Integer nodeId : nodeIds) {
-      try (AINodeClient client =
-          AINodeClientManager.getInstance()
-              .borrowClient(
-                  env.getConfigManager()
-                      .getNodeManager()
-                      .getRegisteredAINode(nodeId)
-                      .getLocation()
-                      .getInternalEndPoint())) {
-        TSStatus status = client.deleteModel(modelName);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Failed to drop model [{}] on AINode [{}], status: {}",
-              modelName,
-              nodeId,
-              status.getMessage());
-        }
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to drop model [{}] on AINode [{}], status: {}",
-            modelName,
-            nodeId,
-            e.getMessage());
-      }
-    }
+    List<TAINodeConfiguration> aiNodes =
+        env.getConfigManager().getNodeManager().getRegisteredAINodes();
+    aiNodes.forEach(
+        aiNode -> {
+          int nodeId = aiNode.getLocation().getAiNodeId();
+          try (AINodeClient client =
+              AINodeClientManager.getInstance()
+                  .borrowClient(
+                      env.getConfigManager()
+                          .getNodeManager()
+                          .getRegisteredAINode(nodeId)
+                          .getLocation()
+                          .getInternalEndPoint())) {
+            TSStatus status = client.deleteModel(modelName);
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.warn(
+                  "Failed to drop model [{}] on AINode [{}], status: {}",
+                  modelName,
+                  nodeId,
+                  status.getMessage());
+            }
+          } catch (Exception e) {
+            LOGGER.warn(
+                "Failed to drop model [{}] on AINode [{}], status: {}",
+                modelName,
+                nodeId,
+                e.getMessage());
+          }
+        });
   }
 
   private void dropModelOnConfigNode(ConfigNodeProcedureEnv env) {

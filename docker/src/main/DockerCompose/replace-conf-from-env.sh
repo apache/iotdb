@@ -18,8 +18,18 @@
 # under the License.
 #
 
-conf_path=${IOTDB_HOME}/conf
-target_files="iotdb-system.properties"
+if [[ "$1" == "ainode" ]]; then
+  conf_path=${IOTDB_AINODE_HOME}/conf
+  target_files="iotdb-ainode.properties"
+else
+  conf_path=${IOTDB_HOME}/conf
+  target_files="iotdb-system.properties"
+fi
+
+echo "#################################"
+echo "replace the following configs"
+echo "conf_path=$conf_path"
+echo "target_files=$target_files"
 
 function process_single(){
 	local key_value="$1"
@@ -28,7 +38,7 @@ function process_single(){
 	local line=$(grep -ni "${key}=" ${filename})
 	#echo "line=$line"
 	if [[ -n "${line}" ]]; then
-    echo "update $key $filename"
+    echo "update $key_value $filename"
     local line_no=$(echo $line|cut -d : -f1)
     local content=$(echo $line|cut -d : -f2)
     if [[ "${content:0:1}" != "#" ]]; then
@@ -36,7 +46,7 @@ function process_single(){
     fi
     sed -i "${line_no}a${key_value}" ${filename}
   else
-    echo "append $key $filename"
+    echo "append $key_value $filename"
     line_no=$(wc -l $filename|cut -d ' ' -f1)
     sed -i "${line_no}a${key_value}" ${filename}
 	fi
@@ -56,3 +66,4 @@ function replace_configs(){
 
 replace_configs
 
+echo "#################################"

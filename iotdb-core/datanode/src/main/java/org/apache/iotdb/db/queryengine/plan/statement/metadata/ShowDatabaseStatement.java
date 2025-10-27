@@ -86,18 +86,19 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
                 .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final Map.Entry<String, TDatabaseInfo> entry : databaseInfoMap.entrySet()) {
-      final String storageGroup = entry.getKey();
-      final TDatabaseInfo storageGroupInfo = entry.getValue();
+    for (final Map.Entry<String, TDatabaseInfo> entry :
+        databaseInfoMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
+      final String database = entry.getKey();
+      final TDatabaseInfo databaseInfo = entry.getValue();
 
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
-      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       if (isDetailed) {
         builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
         builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMinSchemaRegionNum());
@@ -110,7 +111,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       builder.declarePosition();
     }
 
-    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader(isDetailed);
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 

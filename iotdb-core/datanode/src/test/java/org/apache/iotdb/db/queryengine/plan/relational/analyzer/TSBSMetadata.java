@@ -410,6 +410,11 @@ public class TSBSMetadata implements Metadata {
       }
 
       @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           PathPatternTree patternTree, String userName) {
         return SCHEMA_PARTITION;
@@ -441,7 +446,10 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

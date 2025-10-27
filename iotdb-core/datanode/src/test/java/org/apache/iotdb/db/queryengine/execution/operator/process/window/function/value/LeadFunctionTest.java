@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -49,8 +49,8 @@ public class LeadFunctionTest {
   public void testLeadFunctionIgnoreNullWithoutDefault() {
     int[] expected = {2, 2, 2, 3, 4, 4, 5, 6, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
-    LeadFunction function = new LeadFunction(0, 2, null, true);
+    TsBlock tsBlock = createTsBlockWithoutDefault(inputs, 2);
+    LeadFunction function = new LeadFunction(Arrays.asList(0, 1), true);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -78,8 +78,8 @@ public class LeadFunctionTest {
   public void testLeadFunctionIgnoreNullWithDefault() {
     int[] expected = {2, 2, 2, 3, 4, 4, 5, 6, 6, 10, 10, 10, 10, 10, 10, 10};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
-    LeadFunction function = new LeadFunction(0, 2, 10, true);
+    TsBlock tsBlock = createTsBlockWithDefault(inputs, 2, 10);
+    LeadFunction function = new LeadFunction(Arrays.asList(0, 1, 2), true);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -103,8 +103,8 @@ public class LeadFunctionTest {
   public void testLeadFunctionNotIgnoreNullWithoutDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
-    LeadFunction function = new LeadFunction(0, 2, null, false);
+    TsBlock tsBlock = createTsBlockWithoutDefault(inputs, 2);
+    LeadFunction function = new LeadFunction(Arrays.asList(0, 1), false);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -132,8 +132,8 @@ public class LeadFunctionTest {
   public void testLeadFunctionNotIgnoreNullWithDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, 10, 10};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
-    LeadFunction function = new LeadFunction(0, 2, 10, false);
+    TsBlock tsBlock = createTsBlockWithDefault(inputs, 2, 10);
+    LeadFunction function = new LeadFunction(Arrays.asList(0, 1, 2), false);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
 
@@ -155,5 +155,44 @@ public class LeadFunctionTest {
         Assert.assertEquals(expected[i], column.getInt(i));
       }
     }
+  }
+
+  private static TsBlock createTsBlockWithDefault(int[] inputs, int offset, int defaultValue) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    for (int input : inputs) {
+      if (input >= 0) {
+        columnBuilders[0].writeInt(input);
+      } else {
+        // Mimic null value
+        columnBuilders[0].appendNull();
+      }
+      columnBuilders[1].writeInt(offset);
+      columnBuilders[2].writeInt(defaultValue);
+      tsBlockBuilder.declarePosition();
+    }
+
+    return tsBlockBuilder.build(
+        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+  }
+
+  private static TsBlock createTsBlockWithoutDefault(int[] inputs, int offset) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    for (int input : inputs) {
+      if (input >= 0) {
+        columnBuilders[0].writeInt(input);
+      } else {
+        // Mimic null value
+        columnBuilders[0].appendNull();
+      }
+      columnBuilders[1].writeInt(offset);
+      tsBlockBuilder.declarePosition();
+    }
+
+    return tsBlockBuilder.build(
+        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

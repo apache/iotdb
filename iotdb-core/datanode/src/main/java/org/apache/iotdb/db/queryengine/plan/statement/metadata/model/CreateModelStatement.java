@@ -19,22 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.model;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
 
 public class CreateModelStatement extends Statement implements IConfigStatement {
 
-  private String modelName;
+  private String modelId;
 
   private String uri;
 
@@ -46,16 +42,16 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     return uri;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   public void setUri(String uri) {
     this.uri = uri;
   }
 
-  public void setModelName(String modelName) {
-    this.modelName = modelName;
+  public void setModelId(String modelId) {
+    this.modelId = modelId;
   }
 
   @Override
@@ -66,16 +62,6 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_MODEL),
-        PrivilegeType.USE_MODEL);
   }
 
   @Override

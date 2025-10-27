@@ -30,6 +30,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 
 import javax.ws.rs.core.Response;
 
@@ -101,10 +103,7 @@ public class QueryDataSetHandler {
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
-            targetDataSetColumn.add(
-                column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
-                    : column.getObject(i));
+            addTypedValueToTarget(targetDataSet.getDataTypes(), k, i, targetDataSetColumn, column);
           }
         }
         if (k != columnNum - 1) {
@@ -114,6 +113,30 @@ public class QueryDataSetHandler {
     }
     targetDataSet.setValues(convertColumnToRow(targetDataSet.getValues()));
     return Response.ok().entity(targetDataSet).build();
+  }
+
+  private static void addTypedValueToTarget(
+      List<String> dataTypes,
+      int colIndex,
+      int rowIndex,
+      List<Object> targetColumnList,
+      Column column) {
+    String dataTypeName = dataTypes != null ? dataTypes.get(colIndex) : null;
+
+    if (TSDataType.TEXT.name().equals(dataTypeName)) {
+      targetColumnList.add(column.getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
+    } else if (TSDataType.DATE.name().equals(dataTypeName)) {
+      int intValue = column.getInt(rowIndex);
+      targetColumnList.add(DateUtils.formatDate(intValue));
+    } else if (TSDataType.BLOB.name().equals(dataTypeName)) {
+      byte[] v = column.getBinary(rowIndex).getValues();
+      targetColumnList.add(BytesUtils.parseBlobByteArrayToString(v));
+    } else {
+      targetColumnList.add(
+          column.getDataType().equals(TSDataType.TEXT)
+              ? column.getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET)
+              : column.getObject(rowIndex));
+    }
   }
 
   private static Response fillOtherDataSet(
@@ -184,10 +207,7 @@ public class QueryDataSetHandler {
           if (column.isNull(i)) {
             targetDataSetColumn.add(null);
           } else {
-            targetDataSetColumn.add(
-                column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
-                    : column.getObject(i));
+            addTypedValueToTarget(targetDataSet.getDataTypes(), k, i, targetDataSetColumn, column);
           }
         }
         if (k != columnNum - 1) {

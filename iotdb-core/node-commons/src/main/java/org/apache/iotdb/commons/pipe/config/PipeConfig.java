@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
+import org.apache.iotdb.commons.enums.PipeRateAverage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +29,6 @@ import org.slf4j.LoggerFactory;
 public class PipeConfig {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-
-  /////////////////////////////// Data Synchronization ///////////////////////////////
-
-  public int getPipeNonForwardingEventsProgressReportInterval() {
-    return COMMON_CONFIG.getPipeNonForwardingEventsProgressReportInterval();
-  }
 
   /////////////////////////////// File ///////////////////////////////
 
@@ -44,14 +38,6 @@ public class PipeConfig {
 
   public String getPipeHardlinkTsFileDirName() {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
-  }
-
-  public String getPipeHardlinkWALDirName() {
-    return COMMON_CONFIG.getPipeHardlinkWALDirName();
-  }
-
-  public boolean getPipeHardLinkWALEnabled() {
-    return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
   public boolean getPipeFileReceiverFsyncEnabled() {
@@ -83,6 +69,40 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTotalFloatingMemoryProportion();
   }
 
+  /////////////////////////////// Estimation ///////////////////////////////
+
+  public boolean isPipeEnableMemoryCheck() {
+    return COMMON_CONFIG.isPipeEnableMemoryChecked();
+  }
+
+  public long getPipeInsertNodeQueueMemory() {
+    return COMMON_CONFIG.getPipeInsertNodeQueueMemory();
+  }
+
+  public long getTsFileParserMemory() {
+    return COMMON_CONFIG.getPipeTsFileParserMemory();
+  }
+
+  public long getSinkBatchMemoryInsertNode() {
+    return COMMON_CONFIG.getPipeSinkBatchMemoryInsertNode();
+  }
+
+  public long getSinkBatchMemoryTsFile() {
+    return COMMON_CONFIG.getPipeSinkBatchMemoryTsFile();
+  }
+
+  public long getSendTsFileReadBuffer() {
+    return COMMON_CONFIG.getPipeSendTsFileReadBuffer();
+  }
+
+  public double getReservedMemoryPercentage() {
+    return COMMON_CONFIG.getPipeReservedMemoryPercentage();
+  }
+
+  public long getPipeMinimumReceiverMemory() {
+    return COMMON_CONFIG.getPipeMinimumReceiverMemory();
+  }
+
   /////////////////////////////// Subtask Connector ///////////////////////////////
 
   public int getPipeRealTimeQueuePollTsFileThreshold() {
@@ -91,6 +111,10 @@ public class PipeConfig {
 
   public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
     return Math.max(COMMON_CONFIG.getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
+  }
+
+  public int getPipeRealTimeQueueMaxWaitingTsFileSize() {
+    return COMMON_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -115,8 +139,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
   }
 
-  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
-    return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
+  public long getPipeMaxWaitFinishTime() {
+    return COMMON_CONFIG.getPipeMaxWaitFinishTime();
   }
 
   /////////////////////////////// Extractor ///////////////////////////////
@@ -129,8 +153,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
   }
 
-  public int getPipeExtractorMatcherCacheSize() {
-    return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
+  public long getPipeSourceMatcherCacheSize() {
+    return COMMON_CONFIG.getPipeSourceMatcherCacheSize();
   }
 
   /////////////////////////////// Connector ///////////////////////////////
@@ -183,6 +207,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
+  public int getPipeAsyncConnectorMaxTsFileClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxTsFileClientNumber();
+  }
+
+  public double getPipeSendTsFileRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeSendTsFileRateLimitBytesPerSecond();
+  }
+
   public double getPipeAllConnectorsRateLimitBytesPerSecond() {
     return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
@@ -195,32 +227,56 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorRequestSliceThresholdBytes();
   }
 
-  public float getPipeLeaderCacheMemoryUsagePercentage() {
-    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
-  }
-
-  public int getPipeMaxAlignedSeriesNumInOneBatch() {
-    return COMMON_CONFIG.getPipeMaxAlignedSeriesNumInOneBatch();
-  }
-
-  public long getPipeListeningQueueTransferSnapshotThreshold() {
-    return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
-  }
-
-  public int getPipeSnapshotExecutionMaxBatchSize() {
-    return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
+  public long getPipeMaxReaderChunkSize() {
+    return COMMON_CONFIG.getPipeMaxReaderChunkSize();
   }
 
   public long getPipeRemainingTimeCommitAutoSwitchSeconds() {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAutoSwitchSeconds();
   }
 
-  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+  public PipeRateAverage getPipeRemainingTimeCommitRateAverageTime() {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
+  }
+
+  public double getPipeRemainingInsertNodeCountEMAAlpha() {
+    return COMMON_CONFIG.getPipeRemainingInsertNodeCountEMAAlpha();
   }
 
   public double getPipeTsFileScanParsingThreshold() {
     return COMMON_CONFIG.getPipeTsFileScanParsingThreshold();
+  }
+
+  public double getPipeDynamicMemoryHistoryWeight() {
+    return COMMON_CONFIG.getPipeDynamicMemoryHistoryWeight();
+  }
+
+  public double getPipeDynamicMemoryAdjustmentThreshold() {
+    return COMMON_CONFIG.getPipeDynamicMemoryAdjustmentThreshold();
+  }
+
+  public double getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio();
+  }
+
+  public double getPipeThresholdAllocationStrategyLowUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyLowUsageThreshold();
+  }
+
+  public double getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold() {
+    return COMMON_CONFIG.getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold();
+  }
+
+  public boolean isTransferTsFileSync() {
+    return COMMON_CONFIG.getPipeTransferTsFileSync();
+  }
+
+  public long getPipeCheckAllSyncClientLiveTimeIntervalMs() {
+    return COMMON_CONFIG.getPipeCheckAllSyncClientLiveTimeIntervalMs();
+  }
+
+  public int getPipeTsFileResourceSegmentLockNum() {
+    return COMMON_CONFIG.getPipeTsFileResourceSegmentLockNum();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -269,55 +325,25 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverActualToEstimatedMemoryRatio();
   }
 
-  /////////////////////////////// Hybrid Mode ///////////////////////////////
-
-  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
-    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
+    return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
-  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
-    return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+  public boolean isPipeReceiverLoadConversionEnabled() {
+    return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }
 
-  public int getPipeMaxAllowedPinnedMemTableCount() {
-    return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
+  public long getPipePeriodicalLogMinIntervalSeconds() {
+    return COMMON_CONFIG.getPipePeriodicalLogMinIntervalSeconds();
   }
 
-  public long getPipeMaxAllowedLinkedTsFileCount() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
-  }
-
-  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
-  }
-
-  public long getPipeStuckRestartIntervalSeconds() {
-    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
-  }
-
-  public long getPipeStuckRestartMinIntervalMs() {
-    return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
-  }
-
-  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
-    return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
-  }
-
-  public long getPipeFlushAfterTerminateCount() {
-    return COMMON_CONFIG.getPipeFlushAfterTerminateCount();
-  }
-
-  public long getPipeFlushAfterLastTerminateSeconds() {
-    return COMMON_CONFIG.getPipeFlushAfterLastTerminateSeconds();
-  }
-
-  public long getPipeStorageEngineFlushTimeIntervalMs() {
-    return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
+  public long getPipeLoggerCacheMaxSizeInBytes() {
+    return COMMON_CONFIG.getPipeLoggerCacheMaxSizeInBytes();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
 
-  public int getPipeMetaReportMaxLogNumPerRound() {
+  public double getPipeMetaReportMaxLogNumPerRound() {
     return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
   }
 
@@ -331,14 +357,6 @@ public class PipeConfig {
 
   public int getPipeTsFilePinMaxLogIntervalRounds() {
     return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
-  }
-
-  public int getPipeWalPinMaxLogNumPerRound() {
-    return COMMON_CONFIG.getPipeWalPinMaxLogNumPerRound();
-  }
-
-  public int getPipeWalPinMaxLogIntervalRounds() {
-    return COMMON_CONFIG.getPipeWalPinMaxLogIntervalRounds();
   }
 
   /////////////////////////////// Memory ///////////////////////////////
@@ -371,6 +389,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeCheckMemoryEnoughIntervalMs();
   }
 
+  public float getPipeLeaderCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -385,6 +407,16 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
+  /////////////////////////////// Meta ///////////////////////////////
+
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
+  }
+
+  public int getPipeSnapshotExecutionMaxBatchSize() {
+    return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
+  }
+
   /////////////////////////////// Ref ///////////////////////////////
 
   public boolean getPipeEventReferenceTrackingEnabled() {
@@ -395,19 +427,19 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeEventReferenceEliminateIntervalSeconds();
   }
 
+  /////////////////////////////// Syntactic sugar ///////////////////////////////
+
+  public boolean getPipeAutoSplitFullEnabled() {
+    return COMMON_CONFIG.getPipeAutoSplitFullEnabled();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
-    LOGGER.info(
-        "PipeNonForwardingEventsProgressReportInterval: {}",
-        getPipeNonForwardingEventsProgressReportInterval());
-
     LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
-    LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
-    LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
     LOGGER.info("PipeFileReceiverFsyncEnabled: {}", getPipeFileReceiverFsyncEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
@@ -419,6 +451,14 @@ public class PipeConfig {
         "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold());
     LOGGER.info("PipeTotalFloatingMemoryProportion: {}", getPipeTotalFloatingMemoryProportion());
+
+    LOGGER.info("IsPipeEnableMemoryCheck: {}", isPipeEnableMemoryCheck());
+    LOGGER.info("PipeTsFileParserMemory: {}", getTsFileParserMemory());
+    LOGGER.info("SinkBatchMemoryInsertNode: {}", getSinkBatchMemoryInsertNode());
+    LOGGER.info("SinkBatchMemoryTsFile: {}", getSinkBatchMemoryTsFile());
+    LOGGER.info("SendTsFileReadBuffer: {}", getSendTsFileReadBuffer());
+    LOGGER.info("PipeReservedMemoryPercentage: {}", getReservedMemoryPercentage());
+    LOGGER.info("PipeMinimumReceiverMemory: {}", getPipeMinimumReceiverMemory());
 
     LOGGER.info(
         "PipeRealTimeQueuePollTsFileThreshold: {}", getPipeRealTimeQueuePollTsFileThreshold());
@@ -439,9 +479,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
-    LOGGER.info(
-        "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
-        getPipeSubtaskExecutorForcedRestartIntervalMs());
+    LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
@@ -449,7 +487,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
         getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
-    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
+    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeSourceMatcherCacheSize());
 
     LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
@@ -463,7 +501,7 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
-    LOGGER.info("PipeMaxAlignedSeriesNumInOneBatch: {}", getPipeMaxAlignedSeriesNumInOneBatch());
+    LOGGER.info("PipeMaxAlignedSeriesChunkSizeInOneBatch: {}", getPipeMaxReaderChunkSize());
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
@@ -473,7 +511,29 @@ public class PipeConfig {
         getPipeRemainingTimeCommitAutoSwitchSeconds());
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
+    LOGGER.info(
+        "PipePipeRemainingInsertEventCountAverage: {}", getPipeRemainingInsertNodeCountEMAAlpha());
     LOGGER.info("PipeTsFileScanParsingThreshold(): {}", getPipeTsFileScanParsingThreshold());
+    LOGGER.info("PipeTransferTsFileSync: {}", isTransferTsFileSync());
+    LOGGER.info(
+        "PipeCheckAllSyncClientLiveTimeIntervalMs: {}",
+        getPipeCheckAllSyncClientLiveTimeIntervalMs());
+    LOGGER.info(
+        "PipeCheckAllSyncClientLiveTimeIntervalMs: {}",
+        getPipeCheckAllSyncClientLiveTimeIntervalMs());
+
+    LOGGER.info("PipeDynamicMemoryHistoryWeight: {}", getPipeDynamicMemoryHistoryWeight());
+    LOGGER.info(
+        "PipeDynamicMemoryAdjustmentThreshold: {}", getPipeDynamicMemoryAdjustmentThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyMaximumMemoryIncrementRatio: {}",
+        getPipeThresholdAllocationStrategyMaximumMemoryIncrementRatio());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyLowUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyLowUsageThreshold());
+    LOGGER.info(
+        "PipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold: {}",
+        getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold());
 
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
@@ -489,7 +549,12 @@ public class PipeConfig {
         getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
+    LOGGER.info(
+        "PipeAsyncConnectorMaxTsFileClientNumber: {}",
+        getPipeAsyncConnectorMaxTsFileClientNumber());
 
+    LOGGER.info(
+        "PipeSendTsFileRateLimitBytesPerSecond: {}", getPipeSendTsFileRateLimitBytesPerSecond());
     LOGGER.info(
         "PipeAllConnectorsRateLimitBytesPerSecond: {}",
         getPipeAllConnectorsRateLimitBytesPerSecond());
@@ -521,34 +586,18 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverActualToEstimatedMemoryRatio: {}",
         getPipeReceiverActualToEstimatedMemoryRatio());
-
     LOGGER.info(
-        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
-        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
+        "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
+        getPipeReceiverReqDecompressedMaxLengthInBytes());
+    LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
     LOGGER.info(
-        "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
-        getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
-    LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
-    LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
-    LOGGER.info(
-        "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
-        getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
-    LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
-    LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
-    LOGGER.info(
-        "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
-        isPipeEpochKeepTsFileAfterStuckRestartEnabled());
-    LOGGER.info("PipeFlushAfterTerminateCount: {}", getPipeFlushAfterTerminateCount());
-    LOGGER.info("PipeFlushAfterLastTerminateSeconds: {}", getPipeFlushAfterLastTerminateSeconds());
-    LOGGER.info(
-        "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
+        "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
+    LOGGER.info("PipeLoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
     LOGGER.info("PipeTsFilePinMaxLogNumPerRound: {}", getPipeTsFilePinMaxLogNumPerRound());
     LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
-    LOGGER.info("PipeWalPinMaxLogNumPerRound: {}", getPipeWalPinMaxLogNumPerRound());
-    LOGGER.info("PipeWalPinMaxLogIntervalRounds: {}", getPipeWalPinMaxLogIntervalRounds());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
@@ -575,6 +624,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeEventReferenceEliminateIntervalSeconds: {}",
         getPipeEventReferenceEliminateIntervalSeconds());
+
+    LOGGER.info("PipeAutoSplitFullEnabled: {}", getPipeAutoSplitFullEnabled());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

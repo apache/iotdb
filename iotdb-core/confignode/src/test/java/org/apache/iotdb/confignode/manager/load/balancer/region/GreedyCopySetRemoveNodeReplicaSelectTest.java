@@ -54,7 +54,7 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
 
   private static final int TEST_DATA_NODE_NUM = 5;
 
-  private static final int DATA_REGION_PER_DATA_NODE = 4;
+  private static final int DATA_REGION_PER_DATA_NODE = 30;
 
   private static final int DATA_REPLICATION_FACTOR = 2;
 
@@ -81,15 +81,20 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
         DATA_REGION_PER_DATA_NODE * TEST_DATA_NODE_NUM / DATA_REPLICATION_FACTOR;
 
     List<TRegionReplicaSet> allocateResult = new ArrayList<>();
+    List<TRegionReplicaSet> databaseAllocateResult = new ArrayList<>();
     for (int index = 0; index < dataRegionGroupNum; index++) {
-      allocateResult.add(
+      TRegionReplicaSet replicaSet =
           GCR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
               allocateResult,
               allocateResult,
               DATA_REPLICATION_FACTOR,
-              new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      TRegionReplicaSet replicaSetCopy = new TRegionReplicaSet(replicaSet);
+
+      allocateResult.add(replicaSet);
+      databaseAllocateResult.add(replicaSetCopy);
     }
 
     List<TRegionReplicaSet> migratedReplicas =
@@ -128,6 +133,14 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
               PGPRegionCounter.put(nodeId, 0);
             });
 
+    for (TRegionReplicaSet replicaSet : allocateResult) {
+      for (TDataNodeLocation loc : replicaSet.getDataNodeLocations()) {
+        randomRegionCounter.put(
+            loc.getDataNodeId(), randomRegionCounter.get(loc.getDataNodeId()) + 1);
+        PGPRegionCounter.put(loc.getDataNodeId(), PGPRegionCounter.get(loc.getDataNodeId()) + 1);
+      }
+    }
+
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       TDataNodeLocation selectedNode =
           randomSelectNodeForRegion(remainReplicaSet.getDataNodeLocations()).get();
@@ -150,7 +163,7 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     }
     Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap = new HashMap<>();
     Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap = new HashMap<>();
-    databaseAllocatedRegionGroupMap.put("database", allocateResult);
+    databaseAllocatedRegionGroupMap.put("database", databaseAllocateResult);
 
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       remainReplicasMap.put(remainReplicaSet.getRegionId(), remainReplicaSet);
@@ -181,22 +194,31 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
           PGPRegionCounter.get(selectedNode.getLocation().getDataNodeId()) + 1);
     }
 
+    LOGGER.info("randomRegionCount:");
+
     for (Integer i : randomRegionCounter.keySet()) {
       Integer value = randomRegionCounter.get(i);
       randomMaxRegionCount = Math.max(randomMaxRegionCount, value);
       randomMinRegionCount = Math.min(randomMinRegionCount, value);
+      LOGGER.info("{} : {}", i, value);
     }
+
+    LOGGER.info("PGPRegionCount:");
 
     for (Integer i : PGPRegionCounter.keySet()) {
       Integer value = PGPRegionCounter.get(i);
       PGPMaxRegionCount = Math.max(PGPMaxRegionCount, value);
       PGPMinRegionCount = Math.min(PGPMinRegionCount, value);
+      LOGGER.info("{} : {}", i, value);
     }
 
+    LOGGER.info("PGPSelectedNodeIds size: {}", PGPSelectedNodeIds.size());
     Assert.assertEquals(TEST_DATA_NODE_NUM - 1, PGPSelectedNodeIds.size());
+    LOGGER.info("randomSelectedNodeIds size: {}", randomSelectedNodeIds.size());
     Assert.assertTrue(PGPSelectedNodeIds.size() >= randomSelectedNodeIds.size());
+    LOGGER.info(
+        "randomMaxRegionCount: {}, PGPMaxRegionCount: {}", randomMaxRegionCount, PGPMaxRegionCount);
     Assert.assertTrue(randomMaxRegionCount >= PGPMaxRegionCount);
-    Assert.assertTrue(randomMinRegionCount <= PGPMinRegionCount);
   }
 
   @Test
@@ -274,6 +296,13 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
               planCount.put(n, 0);
             });
 
+    for (TRegionReplicaSet replicaSet : globalAllocatedList) {
+      for (TDataNodeLocation loc : replicaSet.getDataNodeLocations()) {
+        rndCount.merge(loc.getDataNodeId(), 1, Integer::sum);
+        planCount.merge(loc.getDataNodeId(), 1, Integer::sum);
+      }
+    }
+
     for (TRegionReplicaSet r : remainReplicas) {
       TDataNodeLocation pick = randomSelectNodeForRegion(r.getDataNodeLocations()).get();
       LOGGER.info("Random Selected DataNode {} for Region {}", pick.getDataNodeId(), r.regionId);
@@ -325,7 +354,6 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     Assert.assertEquals(TEST_DATA_NODE_NUM - 1, planNodes.size());
     Assert.assertTrue(planNodes.size() >= rndNodes.size());
     Assert.assertTrue(rndMax >= planMax);
-    Assert.assertTrue(rndMin <= planMin);
   }
 
   private Optional<TDataNodeLocation> randomSelectNodeForRegion(

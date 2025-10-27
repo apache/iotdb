@@ -33,7 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
@@ -100,7 +100,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
 
     // compute dataNodeSeriesScanNum in LastQueryScanNode
     if (analysis.getTreeStatement() instanceof QueryStatement
-        && ((QueryStatement) analysis.getTreeStatement()).isLastQuery()) {
+        && ((QueryStatement) analysis.getTreeStatement()).isLastQuery()
+        && queryContext.needUpdateScanNumForLastQuery()) {
       final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
       dataNodeFIMap
           .values()
@@ -116,8 +117,11 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
   }
 
   private void updateScanNum(PlanNode planNode, Map<Path, AtomicInteger> pathSumMap) {
-    if (planNode instanceof LastSeriesSourceNode) {
-      LastSeriesSourceNode lastSeriesSourceNode = (LastSeriesSourceNode) planNode;
+    if (planNode instanceof LastQueryScanNode) {
+      LastQueryScanNode lastSeriesSourceNode = (LastQueryScanNode) planNode;
+      if (!lastSeriesSourceNode.isDeviceInMultiRegion()) {
+        return;
+      }
       pathSumMap.merge(
           lastSeriesSourceNode.getSeriesPath(),
           lastSeriesSourceNode.getDataNodeSeriesScanNum(),
@@ -157,6 +161,7 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
+    fragment.setIndexInFragmentInstanceList(fragmentInstanceList.size());
     fragmentInstanceList.add(fragmentInstance);
   }
 

@@ -59,10 +59,10 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       deviceIDs = new IDeviceID[getInsertRowNodeList().size()];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
+      for (int i = 0; i < tagColumnIndices.size(); i++) {
+        final Integer columnIndex = tagColumnIndices.get(i);
         deviceIdSegments[i + 1] =
             ((Object[]) getInsertRowNodeList().get(i).getValues()[columnIndex])[rowIdx].toString();
       }

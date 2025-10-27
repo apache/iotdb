@@ -73,7 +73,7 @@ public class TsTable {
   private String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
-  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
+  private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -82,8 +82,7 @@ public class TsTable {
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
   private transient Boolean needLastCache = null;
-
-  private transient int idNums = 0;
+  private transient int tagNums = 0;
   private transient int fieldNum = 0;
 
   public TsTable(final String tableName) {
@@ -111,25 +110,25 @@ public class TsTable {
     }
   }
 
-  public int getIdColumnOrdinal(final String columnName) {
+  public int getTagColumnOrdinal(final String columnName) {
     readWriteLock.readLock().lock();
     try {
-      return idColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
+      return tagColumnIndexMap.getOrDefault(columnName.toLowerCase(), -1);
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
-  public List<TsTableColumnSchema> getIdColumnSchemaList() {
+  public List<TsTableColumnSchema> getTagColumnSchemaList() {
     readWriteLock.readLock().lock();
     try {
-      final List<TsTableColumnSchema> idColumnSchemaList = new ArrayList<>();
+      final List<TsTableColumnSchema> tagColumnSchemaList = new ArrayList<>();
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
         if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
-          idColumnSchemaList.add(columnSchema);
+          tagColumnSchemaList.add(columnSchema);
         }
       }
-      return idColumnSchemaList;
+      return tagColumnSchemaList;
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -150,8 +149,8 @@ public class TsTable {
     try {
       columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        idNums++;
-        idColumnIndexMap.put(columnSchema.getColumnName(), idNums - 1);
+        tagNums++;
+        tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
         fieldNum++;
       }
@@ -228,7 +227,7 @@ public class TsTable {
   public int getTagNum() {
     readWriteLock.readLock().lock();
     try {
-      return idNums;
+      return tagNums;
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -286,6 +285,10 @@ public class TsTable {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  public boolean containsPropWithoutLock(final String propKey) {
+    return props != null && props.containsKey(propKey);
   }
 
   public Optional<String> getPropValue(final String propKey) {

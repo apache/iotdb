@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -417,9 +416,6 @@ public class ProcedureExecutor<Env> {
         if (subprocs != null && subprocs.length == 0) {
           subprocs = null;
         }
-      } catch (ProcedureYieldException e) {
-        LOG.debug("Yield {}", proc);
-        yieldProcedure(proc);
       } catch (InterruptedException e) {
         LOG.warn("Interrupt during execution, suspend or retry it later.", e);
         yieldProcedure(proc);
@@ -807,17 +803,18 @@ public class ProcedureExecutor<Env> {
       // Check if any of the worker is stuck
       int runningCount = 0, stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure.get() == null) {
+        final Procedure<?> proc = worker.activeProcedure.get();
+        if (proc == null) {
           continue;
         }
         runningCount++;
         // WARN the worker is stuck
-        if (worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
+        if (worker.getCurrentRunTime() > DEFAULT_WORKER_STUCK_THRESHOLD) {
           stuckCount++;
           LOG.warn(
               "Worker stuck {}({}), run time {} ms",
               worker,
-              worker.activeProcedure.get().getProcType(),
+              proc.getProcType(),
               worker.getCurrentRunTime());
         }
         LOG.info(

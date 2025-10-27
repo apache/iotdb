@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.ReconstructRegionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -57,7 +55,7 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, ReconstructRegionState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     try {
       switch (state) {
         case RECONSTRUCT_REGION_PREPARE:

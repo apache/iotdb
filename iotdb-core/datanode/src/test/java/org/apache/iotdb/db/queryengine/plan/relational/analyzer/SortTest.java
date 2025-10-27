@@ -106,7 +106,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
     assertEquals(0, deviceTableScanNode.getPushDownLimit());
     assertEquals(0, deviceTableScanNode.getPushDownOffset());
@@ -322,7 +322,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
     assertEquals(0, deviceTableScanNode.getPushDownLimit());
     assertEquals(0, deviceTableScanNode.getPushDownOffset());
@@ -387,7 +387,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
@@ -708,7 +708,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(expectedPushDownLimit, deviceTableScanNode.getPushDownLimit());
     assertEquals(expectedPushDownOffset, deviceTableScanNode.getPushDownOffset());
     assertEquals(isPushLimitToEachDevice, deviceTableScanNode.isPushLimitToEachDevice());

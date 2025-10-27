@@ -39,8 +39,6 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchema
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -100,7 +98,7 @@ public class SetTemplateProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final SetTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -170,9 +168,7 @@ public class SetTemplateProcedure
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_SET);
     } else {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode())));
+      setFailure(new ProcedureException(new IoTDBException(resp.getStatus())));
     }
   }
 
@@ -195,7 +191,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -370,7 +366,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -472,7 +468,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -531,7 +527,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

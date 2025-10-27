@@ -31,8 +31,6 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.UnsetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -86,7 +84,7 @@ public class UnsetTemplateProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final UnsetTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -138,7 +136,7 @@ public class UnsetTemplateProcedure
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -201,7 +199,7 @@ public class UnsetTemplateProcedure
             .getClusterSchemaManager()
             .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

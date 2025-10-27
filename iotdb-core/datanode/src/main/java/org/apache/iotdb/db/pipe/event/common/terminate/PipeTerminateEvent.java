@@ -19,24 +19,23 @@
 
 package org.apache.iotdb.db.pipe.event.common.terminate;
 
-import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The {@link PipeTerminateEvent} is an {@link EnrichedEvent} that controls the termination of pipe,
@@ -46,47 +45,28 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PipeTerminateEvent extends EnrichedEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTerminateEvent.class);
-
-  private static final AtomicLong PROGRESS_REPORT_COUNT = new AtomicLong(0);
-  private static final AtomicLong LAST_PROGRESS_REPORT_TIME = new AtomicLong(0);
-
-  public static void flushDataRegionIfNeeded() {
-    if (PROGRESS_REPORT_COUNT.get() > 0
-        && PROGRESS_REPORT_COUNT.get()
-            > PipeConfig.getInstance().getPipeFlushAfterTerminateCount()) {
-      flushDataRegion();
-      return;
-    }
-
-    if (LAST_PROGRESS_REPORT_TIME.get() > 0
-        && System.currentTimeMillis() - LAST_PROGRESS_REPORT_TIME.get()
-            > PipeConfig.getInstance().getPipeFlushAfterLastTerminateSeconds() * 1000L) {
-      flushDataRegion();
-    }
-  }
-
-  private static void flushDataRegion() {
-    try {
-      StorageEngine.getInstance().operateFlush(new TFlushReq());
-      PROGRESS_REPORT_COUNT.set(0);
-      LAST_PROGRESS_REPORT_TIME.set(0);
-      LOGGER.info("Force flush all data regions because of last progress report time.");
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to flush all data regions, please check the error message: {}",
-          e.getMessage(),
-          e);
-    }
-  }
-
   private final int dataRegionId;
+
+  private final boolean shouldMark;
+
+  // Do not use call run policy to avoid deadlock
+  private static final ExecutorService terminateExecutor =
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+              IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount()),
+          new IoTThreadFactory(ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName()),
+          ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName());
 
   public PipeTerminateEvent(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final int dataRegionId) {
+      final int dataRegionId,
+      final boolean shouldMark) {
     super(
         pipeName,
         creationTime,
@@ -94,10 +74,15 @@ public class PipeTerminateEvent extends EnrichedEvent {
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
+    this.shouldMark = shouldMark;
+
+    addOnCommittedHook(this::markCompleted);
   }
 
   @Override
@@ -122,13 +107,15 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to
     // notify the pipeTask it's completed.
-    return new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+    return new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId, shouldMark);
   }
 
   @Override
@@ -146,19 +133,18 @@ public class PipeTerminateEvent extends EnrichedEvent {
     return true;
   }
 
-  @Override
-  public void reportProgress() {
-    PROGRESS_REPORT_COUNT.incrementAndGet();
-    LAST_PROGRESS_REPORT_TIME.set(System.currentTimeMillis());
-
+  public void markCompleted() {
     // To avoid deadlock
-    CompletableFuture.runAsync(
-        () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
+    if (shouldMark) {
+      terminateExecutor.submit(
+          () -> PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId));
+    }
   }
 
   @Override
   public String toString() {
-    return String.format("PipeTerminateEvent{dataRegionId=%s}", dataRegionId)
+    return String.format(
+            "PipeTerminateEvent{dataRegionId=%s, shouldMark=%s}", dataRegionId, shouldMark)
         + " - "
         + super.toString();
   }

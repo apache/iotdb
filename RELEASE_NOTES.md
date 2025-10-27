@@ -19,6 +19,65 @@
 
 -->
 
+# Apache IoTDB 2.0.4
+
+## Features & Improvements
+- Data Query: Added user-defined table functions (UDTF) and various built-in table functions to the table model.
+- Data Query: Added support for ASOF INNER JOIN on time columns in the table model.
+- Data Query: Added the approximate aggregation function approx_count_distinct to the table model.
+- Stream Processing: Added support for asynchronous loading of TsFile through SQL.
+- System Management: Added support for disaster recovery load balancing strategy in replica selection during scaling down.
+- System Management: Adapted to Windows Server 2025.
+- Scripts and Tools: Categorized and organized script tools, and separated Windows-specific scripts.
+- ...
+
+## Bugs
+- Fixed the memory leak issue in the WAL compression buffer.
+- Fixed the issue where the async connector gets stuck after running for a long time.
+- Fixed the issue where data subscription cannot be terminated after using data export scripts.
+- Fixed the issue where pipe restarts frequently due to insertnode and resource management memory problems under memory pressure.
+- Fixed the NPE issue triggered during memory statistics estimation on the data synchronization receiver end.
+- Fixed the error when configuring ConsumerConstant.NODE_URLS_KEY as a cluster address while using SubscriptionPullConsumer to consume data.
+- Fixed the deadlock issue on DN startup caused by concurrent agent pipe metadata fetching and CN metadata pushing.
+- ...
+
+# Apache IoTDB 2.0.3
+
+## Features & Improvements
+
+- Data Query: Added new aggregate function count_if and scalar functions greatest / least to the table model.
+- Data Query: Significantly improved the performance of full-table count(*) queries in the table model.
+- AI Management: Added timestamps to the results returned by AINode.
+- System Management: Optimized the performance of the table model's metadata module.
+- System Management: Enabled the table model to actively listens and loads TsFile.
+- System Management: Added support for TsBlock deserialization in the Python and Go client query interfaces.
+- Ecosystem Integration: Expanded the table model's ecosystem to integrate with Spark.
+- Scripts and Tools: The import-schema and export-schema scripts now support importing and exporting metadata for the table model.
+- ...
+
+## Bugs
+
+- Fixed the issue where a single write request exceeding the total size of the WAL queue caused write queries to hang.
+- Fixed the issue where the receiver experienced OOM (Out of Memory) after resuming synchronization following a long period of inactivity.
+- Fixed the issue where repeatedly setting TTL for DB and Table led to inserted data being unqueryable and returning an empty list.
+- Fixed the issue where a regular user with create+insert permissions on a table encountered exceptions when loading tsfile.
+- Fixed the issue where passwords were logged when SessionPool getSession timed out.
+- Fixed the issue in the Go client tree model query interface where the absence of a check for the Time column led to an "index out of range [-1]" error when retrieving Time column data.
+- Fixed the issue where distinct hits aggregate pushdown optimization and is used with group by date_bin, causing execution exceptions in aggregate queries.
+- Fixed the issue of whitespace characters at the beginning and end of port and directory address parameters in the configuration file.
+- Fixed the issue where setting the maximum number of concurrent RPC clients less than the number of CPU threads caused DN startup failure.
+- Fixed the issue where using a template, after activation, writing to extended columns, and then creating a pipe, caused the series under the device to double.
+- Fixed the issue where metadata synchronization, creating a pipe after a template, caused the series to double when using show timeseries.
+- Fixed the issue where a regular user with INSERT permissions encountered exceptions when exporting metadata using export-schema.sh.
+- ...
+
+# Apache IoTDB 2.0.2-1
+
+This is a bug-fix version of 2.0.2
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+
 # Apache IoTDB 2.0.2
 
 ## Features & Improvements
@@ -85,6 +144,13 @@
 - Fixed the issue where the query result order was incorrect in the C# client.
 
 ...
+
+# Apache IoTDB 1.3.4-1
+
+This is a bug-fix version of 1.3.4
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
 
 # Apache IoTDB 1.3.4
 

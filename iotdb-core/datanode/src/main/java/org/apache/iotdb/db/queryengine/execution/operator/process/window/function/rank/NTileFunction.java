@@ -24,10 +24,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class NTileFunction extends RankWindowFunction {
-  private final int n;
+  private final int nChannel;
 
-  public NTileFunction(int n) {
-    this.n = n;
+  public NTileFunction(int nChannel) {
+    this.nChannel = nChannel;
   }
 
   @Override
@@ -37,7 +37,12 @@ public class NTileFunction extends RankWindowFunction {
       int index,
       boolean isNewPeerGroup,
       int peerGroupCount) {
-    builder.writeLong(bucket(n, index, partition.getPositionCount()) + 1);
+    if (partition.isNull(nChannel, index)) {
+      builder.appendNull();
+    } else {
+      long n = partition.getLong(nChannel, index);
+      builder.writeLong(bucket(n, index, partition.getPositionCount()) + 1);
+    }
   }
 
   private long bucket(long buckets, int index, int count) {

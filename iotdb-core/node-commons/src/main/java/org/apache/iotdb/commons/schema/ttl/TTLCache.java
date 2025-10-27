@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -181,7 +182,7 @@ public class TTLCache {
    * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
    *     TTL is not set or the database does not exist.
    */
-  public long getDatabaseMaxTTL(String database) {
+  public long getDatabaseMaxTTL(String database) throws IllegalPathException {
     CacheNode node = ttlCacheTree.searchChild(database);
     if (node == null) {
       return NULL_TTL;
@@ -197,6 +198,55 @@ public class TTLCache {
       }
     }
     return maxTTL;
+  }
+
+  public boolean dataInDatabaseMayHaveTTL(String database) throws IllegalPathException {
+    String[] nodeNames = split(database);
+    CacheNode current = ttlCacheTree;
+    for (String nodeName : nodeNames) {
+      if (hasValidTTLOnCurrentLevel(current)) {
+        return true;
+      }
+      if (nodeName.equals("root")) {
+        continue;
+      }
+      current = current.getChild(nodeName);
+      if (current == null) {
+        return false;
+      }
+    }
+
+    if (hasValidTTLOnCurrentLevel(current)) {
+      return true;
+    }
+
+    Queue<CacheNode> queue = new LinkedList<>();
+    queue.add(current);
+    while (!queue.isEmpty()) {
+      current = queue.poll();
+      for (CacheNode child : current.getChildren().values()) {
+        if (child.ttl >= 0 && child.ttl != Long.MAX_VALUE) {
+          return true;
+        }
+        queue.add(child);
+      }
+    }
+    return false;
+  }
+
+  private boolean hasValidTTLOnCurrentLevel(CacheNode current) {
+    if (current.ttl >= 0 && current.ttl != Long.MAX_VALUE) {
+      return true;
+    }
+    CacheNode wildcardChild = current.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    return wildcardChild != null && wildcardChild.ttl >= 0 && wildcardChild.ttl != Long.MAX_VALUE;
+  }
+
+  private static String[] split(String path) throws IllegalPathException {
+    if (!path.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      return path.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
+    }
+    return PathUtils.splitPathToDetachedNodes(path);
   }
 
   /**
@@ -306,8 +356,8 @@ public class TTLCache {
      * @param name the name corresponding to the child node, use '.' to separate each node
      * @return the child node if it exists, otherwise return null
      */
-    public CacheNode searchChild(String name) {
-      String[] nodeNames = name.split("\\.");
+    public CacheNode searchChild(String name) throws IllegalPathException {
+      String[] nodeNames = split(name);
       CacheNode current = this;
       for (String nodeName : nodeNames) {
         if (nodeName.equals("root")) {

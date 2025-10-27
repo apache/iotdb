@@ -21,8 +21,6 @@ package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 
@@ -39,8 +37,7 @@ public class SimpleLockProcedure extends Procedure<TestProcEnv> {
   }
 
   @Override
-  protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+  protected Procedure<TestProcEnv>[] execute(TestProcEnv testProcEnv) throws InterruptedException {
     testProcEnv.executeSeq.append(procName);
     return null;
   }

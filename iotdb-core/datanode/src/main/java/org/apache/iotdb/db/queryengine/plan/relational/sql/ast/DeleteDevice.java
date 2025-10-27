@@ -75,13 +75,12 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   @Override
-  public boolean parseRawExpression(
+  public boolean parseWhere(
       final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    return mayDeleteDevice =
-        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+    return mayDeleteDevice = super.parseWhere(entries, tableInstance, attributeColumns, context);
   }
 
   public boolean isMayDeleteDevice() {

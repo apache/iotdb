@@ -21,7 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
@@ -30,7 +32,9 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -54,6 +58,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -66,8 +71,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   // sort from the oldest to the newest by version (Used by ReadChunkPerformer)
   private List<TsFileResource> tsFileResourcesSortedByAsc;
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
+  private final Map<TsFileResource, Set<String>> deprecatedTableSchemaMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
-  private final Map<TsFileResource, List<ModEntry>> modificationCache = new HashMap<>();
+  private final Map<TsFileResource, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
+      modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private boolean ignoreAllNullRows;
   private long ttlForCurrentDevice;
@@ -92,7 +99,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         CompactionTsFileReader reader =
             new CompactionTsFileReader(
-                tsFileResource.getTsFilePath(), CompactionType.INNER_SEQ_COMPACTION);
+                tsFileResource.getTsFilePath(),
+                CompactionType.INNER_SEQ_COMPACTION,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
@@ -121,7 +130,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
-          FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+          FileReaderManager.getInstance()
+              .get(tsFileResource.getTsFilePath(), tsFileResource.getTsFileID(), true);
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
@@ -156,7 +166,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
-          new CompactionTsFileReader(tsFileResource.getTsFilePath(), type);
+          new CompactionTsFileReader(
+              tsFileResource.getTsFilePath(),
+              type,
+              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
@@ -339,6 +352,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         // which means this tsfile does not contain the current device, then skip it.
         continue;
       }
+      if (isCurrentDeviceDataInDeprecatedTable(resource)) {
+        continue;
+      }
 
       TsFileSequenceReader reader = readerMap.get(resource);
       for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
@@ -403,6 +419,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (!currentDevice.equals(iterator.current())) {
         continue;
       }
+      if (isCurrentDeviceDataInDeprecatedTable(tsFileResource)) {
+        continue;
+      }
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
@@ -436,24 +455,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
 
-    List<ModEntry> modifications =
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource, r -> new ArrayList<>(tsFileResource.getAllModEntries()));
+            tsFileResource, CompactionUtils::buildModEntryPatternTreeMap);
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
 
     // match time column modifications
-    List<ModEntry> modificationForTimeColumn = new ArrayList<>();
-    for (ModEntry modification : modifications) {
-      if (modification.affectsAll(device)) {
-        modificationForTimeColumn.add(modification);
-      }
-    }
-    if (ttlDeletion != null) {
-      modificationForTimeColumn.add(ttlDeletion);
-    }
+    List<ModEntry> modificationForTimeColumn =
+        CompactionUtils.getMatchedModifications(
+            modifications, device, AlignedPath.VECTOR_PLACEHOLDER, ttlDeletion);
 
     // match value column modifications
     List<List<ModEntry>> modificationForValueColumns = new ArrayList<>();
@@ -462,16 +475,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         modificationForValueColumns.add(Collections.emptyList());
         continue;
       }
-      List<ModEntry> modificationList = new ArrayList<>();
-      for (ModEntry modification : modifications) {
-        if (modification.affects(currentDevice.getLeft())
-            && modification.affects(valueChunkMetadata.getMeasurementUid())) {
-          modificationList.add(modification);
-        }
-      }
-      if (ttlDeletion != null) {
-        modificationList.add(ttlDeletion);
-      }
+      List<ModEntry> modificationList =
+          CompactionUtils.getMatchedModifications(
+              modifications, device, valueChunkMetadata.getMeasurementUid(), null);
       modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
@@ -485,6 +491,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {
     return readerMap;
+  }
+
+  public Map<TsFileResource, Set<String>> getDeprecatedTableSchemaMap() {
+    return deprecatedTableSchemaMap;
   }
 
   @Override
@@ -681,20 +691,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               chunkMetadataListMap.get(currentCompactingSeries);
           chunkMetadataListMap.remove(currentCompactingSeries);
 
-          List<ModEntry> modificationsInThisResource =
-              modificationCache.computeIfAbsent(
-                  resource, r -> new ArrayList<>(r.getAllModEntries()));
-          LinkedList<ModEntry> modificationForCurrentSeries = new LinkedList<>();
+          PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+              modificationsInThisResource =
+                  modificationCache.computeIfAbsent(
+                      resource, CompactionUtils::buildModEntryPatternTreeMap);
           // collect the modifications for current series
-          for (ModEntry modification : modificationsInThisResource) {
-            if (modification.affects(device) && modification.affects(currentCompactingSeries)) {
-              modificationForCurrentSeries.add(modification);
-            }
-          }
-          // add ttl deletion for current series
-          if (ttlDeletion != null) {
-            modificationForCurrentSeries.add(ttlDeletion);
-          }
+          List<ModEntry> modificationForCurrentSeries =
+              CompactionUtils.getMatchedModifications(
+                  modificationsInThisResource, device, currentCompactingSeries, ttlDeletion);
 
           // if there are modifications of current series, apply them to the chunk metadata
           if (!modificationForCurrentSeries.isEmpty()) {
@@ -708,5 +712,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       return readerAndChunkMetadataForThisSeries;
     }
+  }
+
+  // skip data of deleted table
+  private boolean isCurrentDeviceDataInDeprecatedTable(TsFileResource resource) {
+    if (ignoreAllNullRows) {
+      return false;
+    }
+    String tableName = currentDevice.getLeft().getTableName();
+    Set<String> deprecatedTablesInCurrentFile = deprecatedTableSchemaMap.get(resource);
+    return deprecatedTablesInCurrentFile != null
+        && deprecatedTablesInCurrentFile.contains(tableName);
   }
 }

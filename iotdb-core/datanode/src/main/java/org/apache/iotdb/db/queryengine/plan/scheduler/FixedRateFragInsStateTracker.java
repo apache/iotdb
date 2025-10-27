@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -45,13 +46,15 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.NO_SUCH_INSTANCE;
+
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
   private static final long SAME_STATE_PRINT_RATE_IN_MS = 10L * 60 * 1000;
 
-  // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
+  // consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
   private final Map<FragmentInstanceId, InstanceStateMetrics> instanceStateMap;
@@ -112,8 +115,8 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     aborted = true;
     if (trackTask != null) {
       boolean cancelResult = trackTask.cancel(true);
-      // TODO: (xingtanzjr) a strange case here is that sometimes
-      // the cancelResult is false but the trackTask is definitely cancelled
+      // a strange case here is that sometimes the cancelResult is false but the trackTask is
+      // definitely cancelled
       if (!cancelResult) {
         logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
       }
@@ -144,8 +147,24 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             updateQueryState(instance.getId(), instanceInfo);
           }
         } catch (ClientManagerException | TException e) {
-          // TODO: do nothing ?
-          logger.warn("error happened while fetching query state", e);
+          // network exception, should retry
+          InstanceStateMetrics metrics =
+              instanceStateMap.computeIfAbsent(
+                  instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
+          if (metrics.reachMaxRetryCount()) {
+            // if reach max retry count, we think that the DN is down, and FI in that node won't
+            // exist
+            FragmentInstanceInfo instanceInfo = new FragmentInstanceInfo(NO_SUCH_INSTANCE);
+            instanceInfo.setMessage(
+                String.format(
+                    "Failed to fetch state, has retried %s times",
+                    InstanceStateMetrics.MAX_STATE_FETCH_RETRY_COUNT));
+            updateQueryState(instance.getId(), instanceInfo);
+          } else {
+            // if not reaching max retry count, add retry count, and wait for next fetching schedule
+            metrics.addRetryCount();
+            logger.warn("error happened while fetching query state", e);
+          }
         }
       }
     }
@@ -153,44 +172,46 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
     // no such instance may be caused by DN restarting
-    if (instanceInfo.getState() == FragmentInstanceState.NO_SUCH_INSTANCE) {
+    if (instanceInfo.getState() == NO_SUCH_INSTANCE) {
       stateMachine.transitionToFailed(
-          new RuntimeException(
+          new IoTDBException(
               String.format(
                   "FragmentInstance[%s] is failed. %s, may be caused by DN restarting.",
-                  instanceId, instanceInfo.getMessage())));
-    }
-    if (instanceInfo.getState().isFailed()) {
-      if (instanceInfo.getFailureInfoList() == null
+                  instanceId, instanceInfo.getMessage()),
+              TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode(),
+              true));
+    } else if (instanceInfo.getState().isFailed()) {
+      if (instanceInfo.getErrorCode().isPresent()) {
+        stateMachine.transitionToFailed(
+            new IoTDBException(
+                instanceInfo.getErrorCode().get().getMessage(),
+                instanceInfo.getErrorCode().get().getCode()));
+      } else if (instanceInfo.getFailureInfoList() == null
           || instanceInfo.getFailureInfoList().isEmpty()) {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 String.format(
                     "FragmentInstance[%s] is failed. %s", instanceId, instanceInfo.getMessage())));
-      } else if (instanceInfo.getErrorCode().isPresent()) {
-        stateMachine.transitionToFailed(
-            new IoTDBException(
-                instanceInfo.getErrorCode().get().getMessage(),
-                instanceInfo.getErrorCode().get().getCode()));
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }
-    }
-    boolean queryFinished = false;
-    List<InstanceStateMetrics> rootInstanceStateMetricsList =
-        instanceStateMap.values().stream()
-            .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
-            .collect(Collectors.toList());
-    if (!rootInstanceStateMetricsList.isEmpty()) {
-      queryFinished =
-          rootInstanceStateMetricsList.stream()
-              .allMatch(
-                  instanceStateMetrics ->
-                      instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
-    }
+    } else {
+      boolean queryFinished = false;
+      List<InstanceStateMetrics> rootInstanceStateMetricsList =
+          instanceStateMap.values().stream()
+              .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
+              .collect(Collectors.toList());
+      if (!rootInstanceStateMetricsList.isEmpty()) {
+        queryFinished =
+            rootInstanceStateMetricsList.stream()
+                .allMatch(
+                    instanceStateMetrics ->
+                        instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+      }
 
-    if (queryFinished) {
-      stateMachine.transitionToFinished();
+      if (queryFinished) {
+        stateMachine.transitionToFinished();
+      }
     }
   }
 
@@ -203,23 +224,39 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   private static class InstanceStateMetrics {
+    private static final long MAX_STATE_FETCH_RETRY_COUNT = 5;
     private final boolean isRootInstance;
     private FragmentInstanceState lastState;
     private long durationToLastPrintInMS;
+    // we only record the continuous retry count
+    private int retryCount;
 
     private InstanceStateMetrics(boolean isRootInstance) {
       this.isRootInstance = isRootInstance;
       this.lastState = null;
       this.durationToLastPrintInMS = 0L;
+      this.retryCount = 0;
     }
 
     private void reset(FragmentInstanceState newState) {
       this.lastState = newState;
       this.durationToLastPrintInMS = 0L;
+      // each successful fetch, we need to reset the retry count
+      this.retryCount = 0;
+    }
+
+    private void addRetryCount() {
+      this.retryCount++;
+    }
+
+    private boolean reachMaxRetryCount() {
+      return retryCount >= MAX_STATE_FETCH_RETRY_COUNT;
     }
 
     private void addDuration(long duration) {
       durationToLastPrintInMS += duration;
+      // each successful fetch, we need to reset the retry count
+      this.retryCount = 0;
     }
   }
 }

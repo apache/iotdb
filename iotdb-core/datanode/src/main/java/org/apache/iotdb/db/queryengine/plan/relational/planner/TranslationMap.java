@@ -53,7 +53,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 
 /**
@@ -261,12 +260,18 @@ public class TranslationMap {
 
             return getSymbolForColumn(node)
                 .map(symbol -> (Expression) symbol.toSymbolReference())
-                .orElseGet(() -> node);
+                .orElse(node);
           }
 
           @Override
           public Expression rewriteFunctionCall(
               FunctionCall node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            // for function in RPR, do this change: FunctionCall -> SymbolReference
+            if (analysis.isPatternNavigationFunction(node)) {
+              return coerceIfNecessary(
+                  node, treeRewriter.rewrite(node.getArguments().get(0), context));
+            }
+
             Optional<SymbolReference> mapped = tryGetMapping(node);
             if (mapped.isPresent()) {
               return mapped.get();

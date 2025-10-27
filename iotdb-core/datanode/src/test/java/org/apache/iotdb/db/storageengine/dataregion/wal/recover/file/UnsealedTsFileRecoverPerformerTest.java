@@ -189,8 +189,8 @@ public class UnsealedTsFileRecoverPerformerTest {
     final TsTable testTable1 = new TsTable("table1");
     testTable1.addColumnSchema(
         new FieldColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
-    DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1);
-    DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1");
+    DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1", null);
     // generate crashed .tsfile
     File file = new File(FILE_NAME);
     Files.createDirectories(file.getParentFile().toPath());

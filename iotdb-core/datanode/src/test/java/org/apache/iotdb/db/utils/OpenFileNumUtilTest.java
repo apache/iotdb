@@ -22,7 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.utils.OpenFileNumUtil.OpenFileNumStatistics;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

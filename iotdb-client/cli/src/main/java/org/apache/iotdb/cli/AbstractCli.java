@@ -32,8 +32,8 @@ import org.apache.iotdb.tool.data.ImportData;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -335,10 +335,12 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0
-        && ((index + 1 >= args.length)
-            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
-      return ArrayUtils.remove(args, index);
+    if (index >= 0) {
+      if (index + 1 >= args.length
+          || args[index + 1].startsWith("-")
+          || (keywordSet.contains(args[index + 1]))) {
+        return ArrayUtils.remove(args, index);
+      }
     }
     return args;
   }
@@ -573,8 +575,6 @@ public abstract class AbstractCli {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       long costTime = System.currentTimeMillis() - startTime;
-      updateSqlDialectAndUsingDatabase(
-          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -632,6 +632,8 @@ public abstract class AbstractCli {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       resetArgs();
     }
     return executeStatus;

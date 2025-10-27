@@ -30,11 +30,13 @@ public:
     static const int THRIFT_DEFAULT_BUFFER_SIZE;
     static const int THRIFT_MAX_FRAME_SIZE;
     static const int CONNECTION_TIMEOUT_IN_MS;
+    static const int DEFAULT_FETCH_SIZE;
 
     explicit ThriftConnection(const TEndPoint& endPoint,
                      int thriftDefaultBufferSize = THRIFT_DEFAULT_BUFFER_SIZE,
                      int thriftMaxFrameSize = THRIFT_MAX_FRAME_SIZE,
-                     int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS);
+                     int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS,
+                     int fetchSize = DEFAULT_FETCH_SIZE);
 
     ~ThriftConnection();
 
@@ -49,18 +51,19 @@ public:
     void close();
 
 private:
-    TEndPoint endPoint;
+    TEndPoint endPoint_;
 
-    int thriftDefaultBufferSize;
-    int thriftMaxFrameSize;
-    int connectionTimeoutInMs;
+    int thriftDefaultBufferSize_;
+    int thriftMaxFrameSize_;
+    int connectionTimeoutInMs_;
+    int fetchSize_;
 
-    std::shared_ptr<apache::thrift::transport::TTransport> transport;
-    std::shared_ptr<IClientRPCServiceClient> client;
-    int64_t sessionId{};
-    int64_t statementId{};
-    std::string zoneId;
-    int timeFactor{};
+    std::shared_ptr<apache::thrift::transport::TTransport> transport_;
+    std::shared_ptr<IClientRPCServiceClient> client_;
+    int64_t sessionId_{};
+    int64_t statementId_{};
+    std::string zoneId_;
+    int timeFactor_{};
 
     void initZoneId();
 };

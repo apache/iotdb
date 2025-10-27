@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
@@ -115,6 +116,7 @@ public class IoTDBDevicePatternPullConsumerDataSetIT extends AbstractSubscriptio
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -132,13 +134,18 @@ public class IoTDBDevicePatternPullConsumerDataSetIT extends AbstractSubscriptio
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     insert_data(System.currentTimeMillis() - 30000L);
     // Consumption data
-    consume_data(consumer, session_dest);
     String sql = "select count(s_0) from " + device;
-    System.out.println("src: " + getCount(session_src, sql));
-    check_count(8, sql, "Consumption data:" + pattern);
-    check_count(8, "select count(s_1) from " + device, "Consumption data: s_1");
-    check_count(0, "select count(s_0) from " + database + ".d_1", "Consumption data:d_1");
-    check_count(0, "select count(s_0) from " + device2, "Consumption data:d_2");
+    consume_data_await(
+        consumer,
+        session_dest,
+        Collections.singletonList(
+            () -> {
+              System.out.println("src: " + getCount(session_src, sql));
+              check_count(8, sql, "Consumption data:" + pattern);
+              check_count(8, "select count(s_1) from " + device, "Consumption data: s_1");
+              check_count(0, "select count(s_0) from " + database + ".d_1", "Consumption data:d_1");
+              check_count(0, "select count(s_0) from " + device2, "Consumption data:d_2");
+            }));
     insert_data(System.currentTimeMillis());
     // Unsubscribe
     consumer.unsubscribe(topicName);
@@ -149,8 +156,14 @@ public class IoTDBDevicePatternPullConsumerDataSetIT extends AbstractSubscriptio
     System.out.println("src: " + getCount(session_src, sql));
     // Consumption data: Progress is not retained after unsubscribing and then re-subscribing. Full
     // synchronization.
-    consume_data(consumer, session_dest);
-    check_count(12, "select count(s_0) from " + device, "consume data again:s_0");
-    check_count(12, "select count(s_1) from " + device, "Consumption data: s_1");
+    consume_data_await(
+        consumer,
+        session_dest,
+        Collections.singletonList(
+            () -> {
+              System.out.println("src: " + getCount(session_src, sql));
+              check_count(12, "select count(s_0) from " + device, "consume data again:s_0");
+              check_count(12, "select count(s_1) from " + device, "Consumption data: s_1");
+            }));
   }
 }

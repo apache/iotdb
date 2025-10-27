@@ -50,7 +50,8 @@ public enum TableExpressionType {
   WHEN_CLAUSE((short) 28),
   CURRENT_DATABASE((short) 29),
   CURRENT_USER((short) 30),
-  ROW((short) 31);
+  ROW((short) 31),
+  EXTRACT((short) 32);
 
   TableExpressionType(short type) {
     this.type = type;

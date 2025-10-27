@@ -23,14 +23,16 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.util.List;
+
 public class NthValueFunction extends ValueWindowFunction {
-  private final int n;
-  private final int channel;
+  private final int valueChannel;
+  private final int nChannel;
   private final boolean ignoreNull;
 
-  public NthValueFunction(int n, int channel, boolean ignoreNull) {
-    this.n = n;
-    this.channel = channel;
+  public NthValueFunction(List<Integer> argumentChannels, boolean ignoreNull) {
+    this.valueChannel = argumentChannels.get(0);
+    this.nChannel = argumentChannels.get(1);
     this.ignoreNull = ignoreNull;
   }
 
@@ -38,18 +40,19 @@ public class NthValueFunction extends ValueWindowFunction {
   public void transform(
       Partition partition, ColumnBuilder builder, int index, int frameStart, int frameEnd) {
     // Empty frame
-    if (frameStart < 0) {
+    if (frameStart < 0 || partition.isNull(nChannel, index)) {
       builder.appendNull();
       return;
     }
 
     int pos;
+    int n = partition.getInt(nChannel, index);
     if (ignoreNull) {
       // Handle nulls
       pos = frameStart;
       int nonNullCount = 0;
       while (pos <= frameEnd) {
-        if (!partition.isNull(channel, pos)) {
+        if (!partition.isNull(valueChannel, pos)) {
           nonNullCount++;
           if (nonNullCount == n) {
             break;
@@ -59,7 +62,7 @@ public class NthValueFunction extends ValueWindowFunction {
       }
 
       if (pos <= frameEnd) {
-        partition.writeTo(builder, channel, pos);
+        partition.writeTo(builder, valueChannel, pos);
       } else {
         builder.appendNull();
       }
@@ -69,8 +72,8 @@ public class NthValueFunction extends ValueWindowFunction {
     // n starts with 1
     pos = frameStart + n - 1;
     if (pos <= frameEnd) {
-      if (!partition.isNull(channel, pos)) {
-        partition.writeTo(builder, channel, pos);
+      if (!partition.isNull(valueChannel, pos)) {
+        partition.writeTo(builder, valueChannel, pos);
       } else {
         builder.appendNull();
       }

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.protocol.rest.table.v1.handler;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.table.v1.model.SQL;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,20 +43,20 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getTable(), "table should not be null");
     Objects.requireNonNull(insertTabletRequest.getColumnNames(), "column_names should not be null");
     Objects.requireNonNull(
-        insertTabletRequest.getColumnCatogories(), "column_catogories should not be null");
+        insertTabletRequest.getColumnCategories(), "column_categories should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
     List<String> errorMessages = new ArrayList<>();
     String table = insertTabletRequest.getTable();
-    if (insertTabletRequest.getColumnCatogories().size() == 0
-        || insertTabletRequest.getColumnCatogories().size()
+    if (insertTabletRequest.getColumnCategories().size() == 0
+        || insertTabletRequest.getColumnCategories().size()
             != insertTabletRequest.getColumnNames().size()) {
-      errorMessages.add("column_names and column_catogories should have the same size");
+      errorMessages.add("column_names and column_categories should have the same size");
     }
-    if (insertTabletRequest.getColumnCatogories().size()
+    if (insertTabletRequest.getColumnCategories().size()
         != insertTabletRequest.getDataTypes().size()) {
-      errorMessages.add("column_catogories and data_types should have the same size");
+      errorMessages.add("column_categories and data_types should have the same size");
     }
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
       errorMessages.add("values and timestamps should have the same size");

@@ -22,15 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -38,22 +37,22 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -74,8 +73,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
-import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
@@ -90,7 +87,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   final MPPQueryContext context;
 
@@ -259,16 +255,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TSFile encryption is enabled, and the Load TSFile function is disabled"));
+              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
       return false;
     }
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
-      return false;
+      LOGGER.info(
+          "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
     return true;
@@ -277,73 +271,27 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean doAsyncLoad(final IAnalysis analysis) {
     final long startTime = System.nanoTime();
     try {
-      final String[] loadActiveListeningDirs =
-          IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
-      String targetFilePath = null;
-      for (int i = 0, size = loadActiveListeningDirs == null ? 0 : loadActiveListeningDirs.length;
-          i < size;
-          i++) {
-        if (loadActiveListeningDirs[i] != null) {
-          targetFilePath = loadActiveListeningDirs[i];
-          break;
-        }
+      final String databaseName;
+      if (Objects.nonNull(databaseForTableData)
+          || (Objects.nonNull(context) && context.getDatabaseName().isPresent())) {
+        databaseName =
+            Objects.nonNull(databaseForTableData)
+                ? databaseForTableData
+                : context.getDatabaseName().get();
+      } else {
+        databaseName = null;
       }
-      if (targetFilePath == null) {
-        LOGGER.warn("Load active listening dir is not set. Will try sync load instead.");
-        return false;
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, databaseName, isDeleteAfterLoad)) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        setRealStatement(analysis);
+        return true;
       }
-
-      try {
-        if (Objects.nonNull(databaseForTableData)) {
-          loadTsFilesAsyncToTargetDir(new File(targetFilePath, databaseForTableData), tsFiles);
-        } else {
-          loadTsFilesAsyncToTargetDir(new File(targetFilePath), tsFiles);
-        }
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to async load tsfiles {} to target dir {}. Will try sync load instead.",
-            tsFiles,
-            targetFilePath,
-            e);
-        return false;
-      }
-
-      analysis.setFinishQueryAfterAnalyze(true);
-      setRealStatement(analysis);
-      return true;
+      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
     }
-  }
-
-  private void loadTsFilesAsyncToTargetDir(final File targetDir, final List<File> files)
-      throws IOException {
-    for (final File file : files) {
-      if (file == null) {
-        continue;
-      }
-
-      loadTsFileAsyncToTargetDir(targetDir, file);
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".resource"));
-      loadTsFileAsyncToTargetDir(targetDir, new File(file.getAbsolutePath() + ".mods"));
-    }
-  }
-
-  private void loadTsFileAsyncToTargetDir(final File targetDir, final File file)
-      throws IOException {
-    if (!file.exists()) {
-      return;
-    }
-    RetryUtils.retryOnException(
-        () -> {
-          if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
-          } else {
-            copyFileWithMD5Check(file, targetDir);
-          }
-          return null;
-        });
   }
 
   private boolean doAnalyzeFileByFile(IAnalysis analysis) {
@@ -405,6 +353,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void analyzeSingleTsFile(final File tsFile, int i) throws Exception {
+    final SessionInfo sessionInfo = context.getSession();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
@@ -443,8 +392,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       if (isTableModelFile) {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                IClientSession.SqlDialect.TABLE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
+        final SessionInfo newSessionInfo =
+            new SessionInfo(
+                sessionInfo.getSessionId(),
+                sessionInfo.getUserEntity(),
+                sessionInfo.getZoneId(),
+                sessionInfo.getDatabaseName().orElse(null),
+                IClientSession.SqlDialect.TREE);
+        context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
@@ -452,6 +417,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
+    } finally {
+      // reset the session info to the original one
+      context.setSession(sessionInfo);
     }
   }
 
@@ -459,7 +427,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     final long startTime = System.nanoTime();
     try {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
           isTableModelTsFile.get(i)
@@ -519,7 +487,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
-      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
       getOrCreateTreeSchemaVerifier().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
@@ -578,7 +549,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
-      TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
@@ -589,7 +563,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
-    getOrCreateTableSchemaCache().clearIdColumnMapper();
+    getOrCreateTableSchemaCache().clearTagColumnMapper();
 
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -711,7 +685,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();

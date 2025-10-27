@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.cq;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

@@ -158,12 +158,16 @@ public class ConvertSchemaPredicateToFilterVisitor
     final boolean isOrdered;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
-      checkArgument(isSymbolReference(node.getRight()));
+      if (!isSymbolReference(node.getRight())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getRight())).getName();
       isOrdered = false;
     } else if (node.getRight() instanceof Literal) {
       value = ((StringLiteral) (node.getRight())).getValue();
-      checkArgument(isSymbolReference(node.getLeft()));
+      if (!isSymbolReference(node.getLeft())) {
+        return null;
+      }
       columnName = ((SymbolReference) (node.getLeft())).getName();
       isOrdered = true;
     } else {

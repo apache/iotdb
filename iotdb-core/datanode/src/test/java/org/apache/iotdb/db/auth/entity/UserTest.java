@@ -33,19 +33,19 @@ public class UserTest {
 
   @Test
   public void testUser() throws IllegalPathException {
-    User user = new User("user", "password");
+    User user = new User("user", "password123456");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
     user.setPathPrivileges(
         new PartialPath("root.ln"), Collections.singleton(PrivilegeType.WRITE_DATA));
     Assert.assertEquals(
-        "User{name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
+        "User{id=-1, name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
             + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user.toString());
     User user1 = new User("user1", "password1");
     user1.deserialize(user.serialize());
     Assert.assertEquals(
-        "User{name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
+        "User{id=-1, name='user', pathPrivilegeList=[root.ln : WRITE_DATA], "
             + "sysPrivilegeSet=[], AnyScopePrivilegeMap=[], objectPrivilegeMap={}, roleList=[], isOpenIdUser=false}",
         user1.toString());
     Assert.assertEquals(user1, user);

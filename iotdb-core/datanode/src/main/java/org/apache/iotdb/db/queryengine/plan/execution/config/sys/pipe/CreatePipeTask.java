@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -71,26 +71,26 @@ public class CreatePipeTask implements IConfigTask {
     // support now() function
     PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_START_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_START_TIME_KEY,
+        PipeSourceConstant.SOURCE_START_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_START_TIME_KEY,
         currentTime);
 
     PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_END_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_END_TIME_KEY,
+        PipeSourceConstant.SOURCE_END_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_END_TIME_KEY,
         currentTime);
 
     PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
+        PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
         currentTime);
 
     PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
         attributes,
-        PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY,
-        PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
+        PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY,
+        PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY,
         currentTime);
   }
 }

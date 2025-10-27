@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -78,7 +79,7 @@ public class FileLoaderUtils {
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       NonAlignedFullPath seriesPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
       boolean isSeq)
@@ -101,7 +102,8 @@ public class FileLoaderUtils {
                         seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                    context.ignoreNotExistsDevice()
+                        || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
                     context);
         if (timeSeriesMetadata != null) {
@@ -128,7 +130,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
 
-        timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
+        timeSeriesMetadata =
+            (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath, globalTimeFilter);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
               new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
@@ -178,7 +181,7 @@ public class FileLoaderUtils {
   public static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
       AlignedFullPath alignedPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
       boolean ignoreAllNullRows)
@@ -195,7 +198,8 @@ public class FileLoaderUtils {
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
-            (AbstractAlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
+            (AbstractAlignedTimeSeriesMetadata)
+                resource.getTimeSeriesMetadata(alignedPath, globalTimeFilter);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(
@@ -254,7 +258,7 @@ public class FileLoaderUtils {
   private static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
       AlignedFullPath alignedPath,
-      QueryContext context,
+      FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows)
       throws IOException {
@@ -276,7 +280,8 @@ public class FileLoaderUtils {
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
-            resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+            context.ignoreNotExistsDevice()
+                || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
             context);
     if (timeColumn != null) {
@@ -305,7 +310,8 @@ public class FileLoaderUtils {
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
-                  resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                  context.ignoreNotExistsDevice()
+                      || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
                   context);
           exist = (exist || (valueColumn != null));

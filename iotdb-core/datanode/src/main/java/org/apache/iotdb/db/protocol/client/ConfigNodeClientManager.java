@@ -27,7 +27,6 @@ public class ConfigNodeClientManager {
     // Empty constructor
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     ConfigNodeClientManagerHolder.INSTANCE =
         new IClientManager.Factory<ConfigRegionId, ConfigNodeClient>()

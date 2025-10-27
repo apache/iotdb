@@ -20,20 +20,31 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.patternRecognition;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 
 public class ExpressionRewriteRuleSet {
@@ -52,11 +63,10 @@ public class ExpressionRewriteRuleSet {
     return ImmutableSet.of(
         projectExpressionRewrite(),
         //        aggregationExpressionRewrite(),
-        filterExpressionRewrite()
+        filterExpressionRewrite(),
         //        joinExpressionRewrite(),
         //        valuesExpressionRewrite(),
-        //        patternRecognitionExpressionRewrite()
-        );
+        patternRecognitionExpressionRewrite());
   }
 
   public Rule<?> projectExpressionRewrite() {
@@ -83,10 +93,9 @@ public class ExpressionRewriteRuleSet {
   //    return new ValuesExpressionRewrite(rewriter);
   //  }
 
-  // TODO add it back after we support PatternRecognitionNode
-  //  public Rule<?> patternRecognitionExpressionRewrite() {
-  //    return new PatternRecognitionExpressionRewrite(rewriter);
-  //  }
+  public Rule<?> patternRecognitionExpressionRewrite() {
+    return new PatternRecognitionExpressionRewrite(rewriter);
+  }
 
   private static final class ProjectExpressionRewrite implements Rule<ProjectNode> {
     private final ExpressionRewriter rewriter;
@@ -307,141 +316,106 @@ public class ExpressionRewriteRuleSet {
   //    }
   //  }
 
-  // TODO add it back after we support PatternRecognitionNode
+  private static final class PatternRecognitionExpressionRewrite
+      implements Rule<PatternRecognitionNode> {
+    private final ExpressionRewriter rewriter;
 
-  //  private static final class PatternRecognitionExpressionRewrite
-  //      implements Rule<PatternRecognitionNode>
-  //  {
-  //    private final ExpressionRewriter rewriter;
-  //
-  //    PatternRecognitionExpressionRewrite(ExpressionRewriter rewriter)
-  //    {
-  //      this.rewriter = rewriter;
-  //    }
-  //
-  //    @Override
-  //    public Pattern<PatternRecognitionNode> getPattern()
-  //    {
-  //      return patternRecognition();
-  //    }
-  //
-  //    @Override
-  //    public Result apply(PatternRecognitionNode node, Captures captures, Context context)
-  //    {
-  //      boolean anyRewritten = false;
-  //
-  //      // rewrite MEASURES expressions
-  //      ImmutableMap.Builder<Symbol, Measure> rewrittenMeasures = ImmutableMap.builder();
-  //      for (Map.Entry<Symbol, Measure> entry : node.getMeasures().entrySet()) {
-  //        ExpressionAndValuePointers pointers = entry.getValue().getExpressionAndValuePointers();
-  //        Optional<ExpressionAndValuePointers> newPointers = rewrite(pointers, context);
-  //        if (newPointers.isPresent()) {
-  //          anyRewritten = true;
-  //          rewrittenMeasures.put(entry.getKey(), new Measure(newPointers.get(),
-  // entry.getValue().getType()));
-  //        }
-  //        else {
-  //          rewrittenMeasures.put(entry);
-  //        }
-  //      }
-  //
-  //      // rewrite DEFINE expressions
-  //      ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> rewrittenDefinitions =
-  // ImmutableMap.builder();
-  //      for (Map.Entry<IrLabel, ExpressionAndValuePointers> entry :
-  // node.getVariableDefinitions().entrySet()) {
-  //        ExpressionAndValuePointers pointers = entry.getValue();
-  //        Optional<ExpressionAndValuePointers> newPointers = rewrite(pointers, context);
-  //        if (newPointers.isPresent()) {
-  //          anyRewritten = true;
-  //          rewrittenDefinitions.put(entry.getKey(), newPointers.get());
-  //        }
-  //        else {
-  //          rewrittenDefinitions.put(entry);
-  //        }
-  //      }
-  //
-  //      if (anyRewritten) {
-  //        return Result.ofPlanNode(new PatternRecognitionNode(
-  //            node.getId(),
-  //            node.getSource(),
-  //            node.getSpecification(),
-  //            node.getHashSymbol(),
-  //            node.getPrePartitionedInputs(),
-  //            node.getPreSortedOrderPrefix(),
-  //            node.getWindowFunctions(),
-  //            rewrittenMeasures.buildOrThrow(),
-  //            node.getCommonBaseFrame(),
-  //            node.getRowsPerMatch(),
-  //            node.getSkipToLabels(),
-  //            node.getSkipToPosition(),
-  //            node.isInitial(),
-  //            node.getPattern(),
-  //            rewrittenDefinitions.buildOrThrow()));
-  //      }
-  //
-  //      return Result.empty();
-  //    }
-  //
-  //    // return Optional containing the rewritten ExpressionAndValuePointers, or Optional.empty()
-  // in case when no rewrite applies
-  //    private Optional<ExpressionAndValuePointers> rewrite(ExpressionAndValuePointers pointers,
-  // Context context)
-  //    {
-  //      boolean rewritten = false;
-  //
-  //      // rewrite top-level expression
-  //      Expression newExpression = rewriter.rewrite(pointers.getExpression(), context);
-  //      if (!pointers.getExpression().equals(newExpression)) {
-  //        rewritten = true;
-  //      }
-  //
-  //      // prune unused symbols
-  //      ImmutableList.Builder<ExpressionAndValuePointers.Assignment> newAssignments =
-  // ImmutableList.builder();
-  //
-  //      Set<Symbol> newSymbols = SymbolsExtractor.extractUnique(newExpression);
-  //      for (ExpressionAndValuePointers.Assignment assignment : pointers.getAssignments()) {
-  //        if (newSymbols.contains(assignment.symbol())) {
-  //          ValuePointer newPointer = switch (assignment.valuePointer()) {
-  //            case ClassifierValuePointer pointer -> pointer;
-  //            case MatchNumberValuePointer pointer -> pointer;
-  //            case ScalarValuePointer pointer -> pointer;
-  //            case AggregationValuePointer pointer -> {
-  //              ImmutableList.Builder<Expression> newArguments = ImmutableList.builder();
-  //              for (Expression argument : pointer.getArguments()) {
-  //                Expression newArgument = rewriter.rewrite(argument, context);
-  //                if (!newArgument.equals(argument)) {
-  //                  rewritten = true;
-  //                }
-  //                newArguments.add(newArgument);
-  //              }
-  //              yield new AggregationValuePointer(
-  //                  pointer.getFunction(),
-  //                  pointer.getSetDescriptor(),
-  //                  newArguments.build(),
-  //                  pointer.getClassifierSymbol(),
-  //                  pointer.getMatchNumberSymbol());
-  //            }
-  //          };
-  //
-  //          newAssignments.add(new ExpressionAndValuePointers.Assignment(assignment.symbol(),
-  // newPointer));
-  //        }
-  //      }
-  //
-  //      if (rewritten) {
-  //        return Optional.of(new ExpressionAndValuePointers(newExpression,
-  // newAssignments.build()));
-  //      }
-  //
-  //      return Optional.empty();
-  //    }
-  //
-  //    @Override
-  //    public String toString()
-  //    {
-  //      return format("%s(%s)", getClass().getSimpleName(), rewriter);
-  //    }
-  //  }
+    PatternRecognitionExpressionRewrite(ExpressionRewriter rewriter) {
+      this.rewriter = rewriter;
+    }
+
+    @Override
+    public Pattern<PatternRecognitionNode> getPattern() {
+      return patternRecognition();
+    }
+
+    @Override
+    public Result apply(PatternRecognitionNode node, Captures captures, Context context) {
+      boolean anyRewritten = false;
+
+      // rewrite MEASURES expressions
+      ImmutableMap.Builder<Symbol, Measure> rewrittenMeasures = ImmutableMap.builder();
+      for (Map.Entry<Symbol, Measure> entry : node.getMeasures().entrySet()) {
+        ExpressionAndValuePointers pointers = entry.getValue().getExpressionAndValuePointers();
+        Optional<ExpressionAndValuePointers> newPointers = rewrite(pointers, context);
+        if (newPointers.isPresent()) {
+          anyRewritten = true;
+          rewrittenMeasures.put(
+              entry.getKey(), new Measure(newPointers.get(), entry.getValue().getType()));
+        } else {
+          rewrittenMeasures.put(entry);
+        }
+      }
+
+      // rewrite DEFINE expressions
+      ImmutableMap.Builder<IrLabel, ExpressionAndValuePointers> rewrittenDefinitions =
+          ImmutableMap.builder();
+      for (Map.Entry<IrLabel, ExpressionAndValuePointers> entry :
+          node.getVariableDefinitions().entrySet()) {
+        ExpressionAndValuePointers pointers = entry.getValue();
+        Optional<ExpressionAndValuePointers> newPointers = rewrite(pointers, context);
+        if (newPointers.isPresent()) {
+          anyRewritten = true;
+          rewrittenDefinitions.put(entry.getKey(), newPointers.get());
+        } else {
+          rewrittenDefinitions.put(entry);
+        }
+      }
+
+      if (anyRewritten) {
+        return Result.ofPlanNode(
+            new PatternRecognitionNode(
+                node.getPlanNodeId(),
+                node.getChild(),
+                node.getPartitionBy(),
+                node.getOrderingScheme(),
+                node.getHashSymbol(),
+                rewrittenMeasures.buildOrThrow(),
+                node.getRowsPerMatch(),
+                node.getSkipToLabels(),
+                node.getSkipToPosition(),
+                node.getPattern(),
+                rewrittenDefinitions.buildOrThrow()));
+      }
+
+      return Result.empty();
+    }
+
+    // return Optional containing the rewritten ExpressionAndValuePointers, or Optional.empty() in
+    // case when no rewrite applies
+    private Optional<ExpressionAndValuePointers> rewrite(
+        ExpressionAndValuePointers pointers, Context context) {
+      boolean rewritten = false;
+
+      // rewrite top-level expression
+      Expression newExpression = rewriter.rewrite(pointers.getExpression(), context);
+      if (!pointers.getExpression().equals(newExpression)) {
+        rewritten = true;
+      }
+
+      // prune unused symbols
+      ImmutableList.Builder<ExpressionAndValuePointers.Assignment> newAssignments =
+          ImmutableList.builder();
+
+      Set<Symbol> newSymbols = SymbolsExtractor.extractUnique(newExpression);
+      for (ExpressionAndValuePointers.Assignment assignment : pointers.getAssignments()) {
+        if (newSymbols.contains(assignment.getSymbol())) {
+          newAssignments.add(
+              new ExpressionAndValuePointers.Assignment(
+                  assignment.getSymbol(), assignment.getValuePointer()));
+        }
+      }
+
+      if (rewritten) {
+        return Optional.of(new ExpressionAndValuePointers(newExpression, newAssignments.build()));
+      }
+
+      return Optional.empty();
+    }
+
+    @Override
+    public String toString() {
+      return format("%s(%s)", getClass().getSimpleName(), rewriter);
+    }
+  }
 }

@@ -33,17 +33,4 @@ public class DatabaseNotSetException extends MetadataException {
         String.format("%s for current seriesPath: [%s]", DATABASE_NOT_SET, path),
         TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
   }
-
-  public DatabaseNotSetException(String path, boolean isUserException) {
-    super(
-        String.format("%s for current seriesPath: [%s]", DATABASE_NOT_SET, path),
-        TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-        isUserException);
-  }
-
-  public DatabaseNotSetException(String path, String reason) {
-    super(
-        String.format(
-            "%s for current seriesPath: [%s], because %s", DATABASE_NOT_SET, path, reason));
-  }
 }

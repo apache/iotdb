@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /***
@@ -132,8 +133,8 @@ public class IoTDBRootPatternPullConsumeTsfileIT extends AbstractSubscriptionTre
     //        insert_data(1706659200000L); //2024-01-31 08:00:00+08:00
     insert_data(System.currentTimeMillis());
     // Consumption data
-    List<Integer> results = consume_tsfile_withFileCount(consumer, device);
-    assertEquals(results.get(0), 10, "Number of consumption data rows");
+    consume_tsfile_await(
+        consumer, Collections.singletonList(device), Collections.singletonList(10));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "show subscriptions after unsubscribe");
@@ -143,10 +144,7 @@ public class IoTDBRootPatternPullConsumeTsfileIT extends AbstractSubscriptionTre
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
-    results = consume_tsfile_withFileCount(consumer, device);
-    assertEquals(
-        results.get(0),
-        15,
-        "After unsubscribing and resubscribing, progress is not retained. Full synchronization.");
+    consume_tsfile_await(
+        consumer, Collections.singletonList(device), Collections.singletonList(15));
   }
 }

@@ -77,4 +77,6 @@ public interface ITemplateManager {
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
+
+  List<Template> getAllRelatedTemplates(PathPatternTree scope);
 }

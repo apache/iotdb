@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.load.config;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 
@@ -45,6 +45,7 @@ public class LoadTsFileConfigurator {
         validateOnSuccessParam(value);
         break;
       case DATABASE_NAME_KEY:
+      case DATABASE_KEY:
       case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
       case CONVERT_ON_TYPE_MISMATCH_KEY:
@@ -61,9 +62,20 @@ public class LoadTsFileConfigurator {
     }
   }
 
+  public static void validateSynonymParameters(final Map<String, String> parameters) {
+    if (parameters.containsKey(DATABASE_KEY) && parameters.containsKey(DATABASE_NAME_KEY)) {
+      throw new SemanticException(
+          "The parameter key '"
+              + DATABASE_KEY
+              + "' and '"
+              + DATABASE_NAME_KEY
+              + "' cannot co-exist.");
+    }
+  }
+
   public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+      IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {
@@ -90,9 +102,13 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String DATABASE_NAME_KEY = "database-name";
+  public static final String DATABASE_KEY = "database";
 
   public static @Nullable String parseDatabaseName(final Map<String, String> loadAttributes) {
-    final String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    String databaseName = loadAttributes.get(DATABASE_NAME_KEY);
+    if (Objects.isNull(databaseName)) {
+      databaseName = loadAttributes.get(DATABASE_KEY);
+    }
     return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
   }
 

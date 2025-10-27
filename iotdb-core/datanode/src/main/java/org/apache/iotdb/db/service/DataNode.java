@@ -28,6 +28,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -63,6 +67,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -81,6 +87,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -114,10 +121,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.ratis.util.ExitUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLHandshakeException;
 
 import java.io.File;
 import java.io.IOException;
@@ -134,7 +144,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.commons.utils.StatusUtils.retrieveExitStatusCode;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
+import static org.apache.iotdb.db.utils.DateTimeUtils.initTimestampPrecision;
 
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
@@ -178,7 +190,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeHolder.INSTANCE = this;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
@@ -194,6 +205,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    // let IoTDB handle the exception instead of ratis
+    ExitUtils.disableSystemExit();
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
@@ -203,6 +216,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   @Override
   protected void start() {
+    logger.info("Starting DataNode...");
     boolean isFirstStart;
     try {
       // Check if this DataNode is start for the first time and do other pre-checks
@@ -228,6 +242,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
+        saveSecretKey();
+        saveHardwareCode();
       } else {
         /* Check encrypt magic string */
         try {
@@ -237,6 +253,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         }
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
+        loadSecretKey();
+        loadHardwareCode();
       }
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
@@ -255,6 +273,30 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
+
+      // Start the Audit Service when necessary
+      if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+        DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
+        AuditLogFields fields =
+            new AuditLogFields(
+                -1,
+                null,
+                null,
+                AuditEventType.CHANGE_AUDIT_OPTION,
+                AuditLogOperation.CONTROL,
+                PrivilegeType.AUDIT,
+                true,
+                null,
+                null);
+        String logMessage =
+            String.format(
+                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s",
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
+                CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
+                thisNode);
+        DNAuditLogger.getInstance().log(fields, () -> logMessage);
+      }
 
       if (isUsingPipeConsensus()) {
         long dataRegionStartTime = System.currentTimeMillis();
@@ -275,11 +317,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         dataRegionConsensusStarted = true;
       }
 
-    } catch (StartupException | IOException e) {
+    } catch (Throwable e) {
+      int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
       stop();
-      System.exit(-1);
+      System.exit(exitStatusCode);
     }
+    logger.info("DataNode started");
   }
 
   @Override
@@ -332,6 +376,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         break;
       } catch (TException | ClientManagerException e) {
         logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
+        if (e.getCause() != null && e.getCause().getCause() != null) {
+          Throwable cause = e.getCause().getCause();
+          if (cause instanceof SSLHandshakeException) {
+            throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+          } else if (cause.getMessage() != null && cause.getMessage().contains("IOException")) {
+            throw new StartupException("Cannot connect to ConfigNode-leader.");
+          }
+        }
         retry--;
       }
 
@@ -386,6 +438,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
     }
+
+    // init
+    initTimestampPrecision();
     long endTime = System.currentTimeMillis();
     logger.info(
         "Successfully pull system configurations from ConfigNode-leader, which takes {} ms",
@@ -407,7 +462,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    *
    * <p>6. All TTL information
    */
-  private void storeRuntimeConfigurations(
+  protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
@@ -437,8 +492,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     String clusterId = runtimeConfiguration.getClusterId();
     storeClusterID(clusterId);
 
-    /* Store table info*/
+    /* Store table info */
     DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());
+
+    /* Store audit log configuration */
+    CommonDescriptor.getInstance().loadAuditConfig(runtimeConfiguration.auditConfig);
+
+    /* Store superuser name */
+    AuthorityChecker.setSuperUser(runtimeConfiguration.getSuperUserName());
   }
 
   /**
@@ -510,6 +571,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
       throw new StartupException("Cannot register to the cluster.");
     }
+  }
+
+  protected void saveSecretKey() {
+    // Do nothing
+  }
+
+  protected void saveHardwareCode() {
+    // Do nothing
+  }
+
+  protected void loadSecretKey() throws IOException {
+    // Do nothing
+  }
+
+  protected void loadHardwareCode() throws IOException {
+    // Do nothing
   }
 
   private void makeRegionsCorrect(List<TRegionReplicaSet> correctRegions) {
@@ -684,7 +761,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       setUp();
     } catch (StartupException e) {
       logger.error("Meet error while starting up.", e);
-      throw new StartupException("Error in activating IoTDB DataNode.");
+      throw e;
     }
     logger.info("IoTDB DataNode has started.");
 
@@ -781,8 +858,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    registerInternalRPCService();
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -791,12 +868,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+        .setRpcImplClassName(getClientRPCServiceImplClassName());
     if (config.isEnableRpcService()) {
       registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();
+  }
+
+  protected void registerInternalRPCService() throws StartupException {
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
+  }
+
+  // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
+  protected String getClientRPCServiceImplClassName() {
+    return ClientRPCServiceImpl.class.getName();
   }
 
   private void setUpMetricService() throws StartupException {

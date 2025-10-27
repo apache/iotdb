@@ -60,6 +60,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public class UncorrelatedSubqueryTest {
 
@@ -579,9 +580,8 @@ public class UncorrelatedSubqueryTest {
     PlanMatchPattern tableScan2 = tableScan("testdb.table2", ImmutableList.of(), ImmutableSet.of());
 
     Expression filterPredicate =
-        new NotExpression(
-            new ComparisonExpression(
-                GREATER_THAN, new SymbolReference("count"), new LongLiteral("0")));
+        new ComparisonExpression(
+            LESS_THAN_OR_EQUAL, new SymbolReference("count"), new LongLiteral("0"));
     // Verify full LogicalPlan
     /*
     *   └──OutputNode
@@ -590,7 +590,8 @@ public class UncorrelatedSubqueryTest {
     *         |
     *         ├──ProjectNode
     *         │   └──FilterNode
-    *         |      └──TableScanNode
+    *         │      └──Aggregation
+    *         |          └──TableScanNode
 
     */
     assertPlan(

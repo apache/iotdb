@@ -70,18 +70,18 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
 
     // File 1 skipped
     // File 2
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(0, tsBlock.getPositionCount());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     tsBlock = seriesScanUtil.nextPage();
@@ -98,21 +98,21 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
 
     // File 1 skipped (10 points)
     // File 2 skipped (6 points)
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(0, tsBlock.getPositionCount());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     // File 3 Chunk 1 skipped (10 points)
     // File 3 Chunk 2 (6 points should skip 4 points)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     tsBlock = seriesScanUtil.nextPage();
@@ -124,11 +124,11 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
     // remaining 3 points selected
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(3, tsBlock.getPositionCount());
@@ -138,8 +138,8 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
-    Assert.assertFalse(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, false);
   }
 
   @Test
@@ -148,36 +148,36 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
 
     // File 1 skipped (10 points)
     // File 2 skipped (6 points)
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(0, tsBlock.getPositionCount());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 3
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
 
     // File 3 - Chunk 1 skipped (10 points)
     // File 3 - Chunk 2 skipped (6 points)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(0, tsBlock.getPositionCount());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
-    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, false);
 
     // File 4
-    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
 
     // File 4 - Chunk 1 - Page 1 skipped (10 points)
     // File 4 - Chunk 1 - Page 2  (6 points should skip 3 points)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(3, tsBlock.getPositionCount());
@@ -188,7 +188,7 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     // File 4 - Chunk 1 - Page 2 (remaining 2 points)
-    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     tsBlock = seriesScanUtil.nextPage();

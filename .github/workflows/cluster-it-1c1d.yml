@@ -4,19 +4,19 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
-      - 'rc/*'
+      - "rel/*"
+      - "rc/*"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
-      - 'rc/*'
+      - "rel/*"
+      - "rc/*"
     paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "docs/**"
+      - "site/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -43,8 +43,10 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -63,10 +65,10 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         shell: bash
         run: sudo sysctl -w net.core.somaxconn=65535
-#      - name: Adjust Mac kernel somaxconn
-#        if: ${{ runner.os == 'macOS' }}
-#        shell: bash
-#        run: sudo sysctl -w kern.ipc.somaxconn=65535
+      #      - name: Adjust Mac kernel somaxconn
+      #        if: ${{ runner.os == 'macOS' }}
+      #        shell: bash
+      #        run: sudo sysctl -w kern.ipc.somaxconn=65535
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -85,4 +87,3 @@ jobs:
           name: standalone-log-java${{ matrix.java }}-${{ runner.os }}
           path: integration-test/target/cluster-logs
           retention-days: 1
-

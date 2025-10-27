@@ -287,11 +287,12 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   public String toString() {
     return String.format(
-        "RelationalDeleteDataNode-%s[ Deletion: %s, Region: %s, ProgressIndex: %s]",
+        "RelationalDeleteDataNode-%s[ Deletion: %s, Region: %s, ProgressIndex: %s, SearchIndex: %d]",
         getPlanNodeId(),
         modEntries,
         regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId(),
-        progressIndex == null ? "Not Assigned" : progressIndex);
+        progressIndex == null ? "Not Assigned" : progressIndex,
+        searchIndex);
   }
 
   @Override
@@ -328,7 +329,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
             .map(RelationalDeleteDataNode::getModEntries)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
-    return new RelationalDeleteDataNode(
-        this.getPlanNodeId(), allTableDeletionEntries, databaseName);
+    return new RelationalDeleteDataNode(this.getPlanNodeId(), allTableDeletionEntries, databaseName)
+        .setSearchIndex(getSearchIndex());
   }
 }

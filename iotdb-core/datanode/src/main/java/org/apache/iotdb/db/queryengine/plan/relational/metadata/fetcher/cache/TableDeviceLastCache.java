@@ -82,8 +82,12 @@ public class TableDeviceLastCache {
 
   private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
       Optional.of(new Pair<>(OptionalLong.empty(), null));
+
+  /** This means that the tv pair has been put, and the value is null */
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  /** This means that the tv pair has been declared, and is ready for the next put. */
   private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
 
@@ -134,13 +138,24 @@ public class TableDeviceLastCache {
 
   int tryUpdate(
       final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
+    return tryUpdate(measurements, timeValuePairs, false);
+  }
+
+  int tryUpdate(
+      final @Nonnull String[] measurements,
+      final @Nonnull TimeValuePair[] timeValuePairs,
+      final boolean invalidateNull) {
     final AtomicInteger diff = new AtomicInteger(0);
     long lastTime = Long.MIN_VALUE;
 
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
+        if (invalidateNull) {
+          measurement2CachedLastMap.remove(measurements[i]);
+        }
         continue;
       }
+
       final int finalI = i;
       if (lastTime < timeValuePairs[i].getTimestamp()) {
         lastTime = timeValuePairs[i].getTimestamp();

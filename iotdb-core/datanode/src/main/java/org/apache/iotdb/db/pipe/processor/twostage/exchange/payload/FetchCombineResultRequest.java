@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -70,7 +70,7 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
     this.creationTime = creationTime;
     this.combineIdList = combineIdList;
 
-    this.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
+    this.version = IoTDBSinkRequestVersion.VERSION_2.getVersion();
     this.type = RequestType.FETCH_COMBINE_RESULT.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -99,7 +99,6 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
 
     version = transferReq.version;
     type = transferReq.type;
-    body = transferReq.body;
 
     return this;
   }

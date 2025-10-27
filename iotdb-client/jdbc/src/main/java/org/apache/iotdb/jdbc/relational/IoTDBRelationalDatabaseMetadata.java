@@ -436,9 +436,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
-          valueInRow.add(schemaPattern);
-        } else if (i == 1) {
           valueInRow.add("");
+        } else if (i == 1) {
+          valueInRow.add(schemaPattern);
         } else if (i == 2) {
           valueInRow.add(tableNamePattern);
         } else if (i == 3) {
@@ -491,10 +491,12 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 20) {
           valueInRow.add("");
         } else if (i == 21) {
-          valueInRow.add("");
+          valueInRow.add(0);
         } else if (i == 22) {
           valueInRow.add("");
         } else if (i == 23) {
+          valueInRow.add("");
+        } else {
           valueInRow.add("");
         }
       }

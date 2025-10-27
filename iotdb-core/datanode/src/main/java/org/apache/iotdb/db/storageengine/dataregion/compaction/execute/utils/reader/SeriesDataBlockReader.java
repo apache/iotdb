@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class SeriesDataBlockReader implements IDataBlockReader {
@@ -134,7 +135,14 @@ public class SeriesDataBlockReader implements IDataBlockReader {
     /*
      * consume next file finally
      */
-    while (seriesScanUtil.hasNextFile()) {
+    while (true) {
+      Optional<Boolean> b = seriesScanUtil.hasNextFile();
+      if (!b.isPresent()) {
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (readChunkData()) {
         hasCachedBatchData = true;
         return true;
@@ -158,7 +166,15 @@ public class SeriesDataBlockReader implements IDataBlockReader {
   }
 
   private boolean readChunkData() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
+    while (true) {
+      Optional<Boolean> b = seriesScanUtil.hasNextChunk();
+      if (!b.isPresent()) {
+        // This reader is used for compaction, just keep traversing
+        continue;
+      }
+      if (!b.get()) {
+        break;
+      }
       if (readPageData()) {
         return true;
       }

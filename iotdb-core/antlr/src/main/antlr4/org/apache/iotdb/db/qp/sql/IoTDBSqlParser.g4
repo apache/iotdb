@@ -63,10 +63,11 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
     // AINode
-    | showAINodes | createModel | dropModel | showModels | callInference
+    | showAINodes | createModel | dropModel | showModels | showLoadedModels | showAIDevices
+    | callInference | loadModel | unloadModel
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -80,7 +81,7 @@ dmlStatement
     ;
 
 dclStatement
-    : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
+    : createUser | createRole | alterUser | renameUser | grantUser | grantRole | grantRoleToUser | alterUserAccountUnlock
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
     ;
@@ -542,11 +543,11 @@ reconstructRegion
     ;
 
 extendRegion
-    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    : EXTEND REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* TO targetDataNodeId=INTEGER_LITERAL
     ;
 
 removeRegion
-    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    : REMOVE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM targetDataNodeId=INTEGER_LITERAL
     ;
 
 verifyConnection
@@ -561,6 +562,11 @@ removeDataNode
 // ---- Remove ConfigNode
 removeConfigNode
     : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
+    ;
+
+// ---- Remove AINode
+removeAINode
+    : REMOVE AINODE (aiNodeId=INTEGER_LITERAL)?
     ;
 
 // Pipe Task =========================================================================================
@@ -699,8 +705,8 @@ dropSubscription
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier uriClause
-    | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? FROM MODEL existingModelId=identifier ON DATASET LR_BRACKET trainingData RR_BRACKET
     ;
 
 trainingData
@@ -734,6 +740,14 @@ hparamValue
     | windowFunction
     ;
 
+loadModel
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=STRING_LITERAL
+    ;
+
+unloadModel
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=STRING_LITERAL
+    ;
+
 // ---- Drop Model
 dropModel
     : DROP MODEL modelId=identifier
@@ -743,6 +757,15 @@ dropModel
 showModels
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
+    ;
+
+showLoadedModels
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=STRING_LITERAL
+    ;
+
+showAIDevices
+    : SHOW AI_DEVICES
     ;
 
 // Create Logical View
@@ -1024,7 +1047,7 @@ deleteStatement
 
 // Create User
 createUser
-    : CREATE USER userName=identifier password=STRING_LITERAL
+    : CREATE USER userName=usernameWithRoot password=STRING_LITERAL
     ;
 
 // Create Role
@@ -1037,9 +1060,19 @@ alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
     ;
 
+// Rename user
+renameUser
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
+    ;
+
+// ---- Alter User Account Unlock
+alterUserAccountUnlock
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
 // Grant User Privileges
 grantUser
-    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=usernameWithRoot (grantOpt)?
     ;
 
 // Grant Role Privileges
@@ -1054,12 +1087,12 @@ grantOpt
 
 // Grant User Role
 grantRoleToUser
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=usernameWithRoot
     ;
 
 // Revoke Role Privileges
@@ -1069,12 +1102,12 @@ revokeRole
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 // Drop Role
@@ -1110,6 +1143,8 @@ privilegeValue
     : ALL
     | READ
     | WRITE
+    | SYSTEM
+    | SECURITY
     | PRIVILEGE_VALUE
     ;
 
@@ -1118,6 +1153,9 @@ usernameWithRoot
     | identifier
     ;
 
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT host=STRING_LITERAL)?
+    ;
 
 /**
  * 5. Utility Statements

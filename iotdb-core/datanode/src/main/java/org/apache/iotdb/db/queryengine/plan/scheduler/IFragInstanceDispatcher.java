@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 
 import java.util.List;
 import java.util.concurrent.Future;
@@ -28,10 +29,11 @@ public interface IFragInstanceDispatcher {
   /**
    * Dispatch all Fragment instances asynchronously
    *
+   * @param root the root SubPlan
    * @param instances Fragment instance list
-   * @return Boolean.
+   * @return Future<FragInstanceDispatchResult>
    */
-  Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances);
+  Future<FragInstanceDispatchResult> dispatch(SubPlan root, List<FragmentInstance> instances);
 
   void abort();
 }

@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /***
@@ -152,10 +153,7 @@ public class IoTDBDevicePatternPullConsumeTsfileIT extends AbstractSubscriptionT
     devices.add(device);
     devices.add(device2);
     devices.add(device3);
-    List<Integer> results = consume_tsfile(consumer, devices);
-    assertEquals(results.get(0), 10);
-    assertEquals(results.get(1), 0);
-    assertEquals(results.get(2), 0);
+    consume_tsfile_await(consumer, devices, Arrays.asList(10, 0, 0));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after unsubscribe");
@@ -165,12 +163,6 @@ public class IoTDBDevicePatternPullConsumeTsfileIT extends AbstractSubscriptionT
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after unsubscribing and resubscribing. Full
     // synchronization.
-    results = consume_tsfile(consumer, devices);
-    assertEquals(
-        results.get(0),
-        15,
-        "After unsubscribing and resubscribing, progress is not retained. Full synchronization.");
-    assertEquals(results.get(1), 0, "Cancel subscription and subscribe again," + device2);
-    assertEquals(results.get(2), 0, "Unsubscribe and subscribe again," + device3);
+    consume_tsfile_await(consumer, devices, Arrays.asList(15, 0, 0));
   }
 }

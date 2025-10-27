@@ -190,7 +190,7 @@ public class IoTDBOrderByWithAlignByDeviceTableViewIT {
           "create view weather(city STRING TAG, precipitation INT64 FIELD, temperature DOUBLE FIELD) as root.weather.**");
 
       statement.execute(
-          "create view optimize(plant_id STRING TAG, device_id STRING TAG, temperature DOUBLE FIELD, status BOOLEAN FIELD, hardware STRING FIELD) as root.ln.**");
+          "create view optimize(plant_id STRING TAG, device_id STRING TAG, temperature DOUBLE FIELD, status BOOLEAN FIELD, hardware TEXT FIELD) as root.ln.**");
 
     } catch (Exception e) {
       e.printStackTrace();

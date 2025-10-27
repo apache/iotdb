@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -82,6 +83,15 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
   }
 
   @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(sender);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver1);
+    IoTDBSubscriptionITConstant.FORCE_SCALABLE_SINGLE_NODE_MODE.accept(receiver2);
+  }
+
+  @Override
   @After
   public void tearDown() throws Exception {
     try {
@@ -107,6 +117,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test

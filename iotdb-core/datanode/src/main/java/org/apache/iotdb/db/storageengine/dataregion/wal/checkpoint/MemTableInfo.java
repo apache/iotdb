@@ -47,8 +47,7 @@ public class MemTableInfo implements WALEntryValue {
 
   // memTable
   private IMemTable memTable;
-  // memTable pin count
-  private int pinCount;
+
   // memTable is flushed or not
   private boolean flushed;
   // data region id
@@ -114,22 +113,6 @@ public class MemTableInfo implements WALEntryValue {
 
   public IMemTable getMemTable() {
     return memTable;
-  }
-
-  public void pin() {
-    this.pinCount++;
-  }
-
-  public void unpin() {
-    this.pinCount--;
-  }
-
-  public boolean isPinned() {
-    return pinCount > 0;
-  }
-
-  public int getPinCount() {
-    return pinCount;
   }
 
   public boolean isFlushed() {

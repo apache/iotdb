@@ -209,10 +209,8 @@ public class MaxAccumulator implements TableAccumulator {
         updateIntMaxValue((int) statistics[0].getMaxValue());
         break;
       case INT64:
-        updateLongMaxValue((long) statistics[0].getMaxValue());
-        break;
       case TIMESTAMP:
-        updateLongMaxValue(statistics[0].getEndTime());
+        updateLongMaxValue((long) statistics[0].getMaxValue());
         break;
       case FLOAT:
         updateFloatMaxValue((float) statistics[0].getMaxValue());

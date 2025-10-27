@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -40,6 +41,8 @@ import java.util.Set;
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
+
+  private EncryptParameter encryptParameter;
 
   public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
@@ -159,6 +162,12 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     memChunk.serializeToWAL(buffer);
+  }
+
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    memChunk.setEncryptParameter(encryptParameter);
   }
 
   protected static AlignedWritableMemChunkGroup deserialize(

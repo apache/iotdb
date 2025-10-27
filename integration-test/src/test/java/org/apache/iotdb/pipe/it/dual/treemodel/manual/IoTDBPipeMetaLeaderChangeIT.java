@@ -101,10 +101,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("create database root.ln%s", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
     }
 
     try {
@@ -115,14 +112,11 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("create database root.ln%s", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases", "count,", Collections.singleton("20,"));
+        receiverEnv, "count databases root.ln*", "count,", Collections.singleton("20,"));
   }
 
   @Test
@@ -160,13 +154,12 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
     }
 
     for (int i = 0; i < 10; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           senderEnv,
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i))) {
-        return;
-      }
+              i),
+          null);
     }
 
     final int index;
@@ -180,22 +173,18 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
 
     // Include "alter" in historical transfer for new leader as possible
     // in order to test the "withMerge" creation in receiver side
-    if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+    TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
         senderEnv,
         senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
-        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)")) {
-      return;
-    }
+        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)");
 
     for (int i = 10; i < 20; ++i) {
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
           String.format(
               "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i))) {
-        return;
-      }
+              i));
     }
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -206,6 +195,9 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
             "root.ln.wf01.GPS.status0,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("20,"));
+        receiverEnv,
+        "count timeSeries root.ln.**",
+        "count(timeseries),",
+        Collections.singleton("20,"));
   }
 }

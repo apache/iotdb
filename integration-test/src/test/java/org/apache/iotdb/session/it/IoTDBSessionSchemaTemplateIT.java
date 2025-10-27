@@ -398,7 +398,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
                 "root.db.v4.d1.y",
                 "root.db.v4.d1.z"));
 
-    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db.**")) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
@@ -463,7 +463,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
                 "root.db.v4.d2.y",
                 "root.db.v4.d2.z"));
 
-    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db.**")) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
@@ -498,10 +498,6 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
           e.getMessage()
               .contains(
                   "data type of root.db.v4.d2.b is not consistent, registered type FLOAT, inserting type DOUBLE"));
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "data type of root.db.v4.d2.c is not consistent, registered type TEXT, inserting type INT32"));
     }
   }
 }

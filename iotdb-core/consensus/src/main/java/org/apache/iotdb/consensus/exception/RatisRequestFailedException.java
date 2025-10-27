@@ -29,4 +29,13 @@ public class RatisRequestFailedException extends ConsensusException {
             + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
         cause);
   }
+
+  public RatisRequestFailedException(String message, Exception cause) {
+    super(
+        "Ratis request failed: "
+            + message
+            + ". "
+            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
+        cause);
+  }
 }

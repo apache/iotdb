@@ -40,6 +40,7 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -106,7 +107,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactionWriter.startMeasurement(
         TsFileConstant.TIME_COLUMN_ID,
-        new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+        new AlignedChunkWriterImpl(
+            measurementSchemas.remove(0),
+            measurementSchemas,
+            EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
         subTaskId);
     compactFiles();
     compactionWriter.endMeasurement(subTaskId);

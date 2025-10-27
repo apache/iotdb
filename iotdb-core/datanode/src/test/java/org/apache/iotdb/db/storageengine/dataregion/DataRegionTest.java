@@ -134,9 +134,9 @@ public class DataRegionTest {
     config.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName());
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
   }
 
   @After

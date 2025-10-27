@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.buffer;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -97,7 +97,7 @@ public class BloomFilterCacheTest {
         TsFileID tsFileID = new TsFileID(filePath);
         BloomFilter bloomFilter =
             bloomFilterCache.get(new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID));
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileID, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
         reader.close();
@@ -116,7 +116,7 @@ public class BloomFilterCacheTest {
       BloomFilterCache.BloomFilterCacheKey key =
           new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
       BloomFilter bloomFilter = bloomFilterCache.get(key);
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, tsFileID, true);
       BloomFilter bloomFilter1 = reader.readBloomFilter();
       Assert.assertEquals(bloomFilter1, bloomFilter);
       bloomFilterCache.remove(key);
@@ -137,7 +137,7 @@ public class BloomFilterCacheTest {
         BloomFilterCache.BloomFilterCacheKey key =
             new BloomFilterCache.BloomFilterCacheKey(path, tsFileID);
         BloomFilter bloomFilter = bloomFilterCache.get(key);
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
+        TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, tsFileID, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
         reader.close();

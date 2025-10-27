@@ -65,4 +65,9 @@ public interface TableFunctionDataProcessor {
       List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
     // do nothing
   }
+
+  /** This method is mainly used to release the resources used in the UDF. */
+  default void beforeDestroy() {
+    // do nothing
+  }
 }

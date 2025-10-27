@@ -96,7 +96,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
@@ -124,13 +123,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -196,8 +198,10 @@ public enum PlanNodeType {
   NODE_MANAGEMENT_MEMORY_MERGE((short) 42),
   DELETE_DATA((short) 44),
   DELETE_TIME_SERIES((short) 45),
-  LAST_QUERY_SCAN((short) 46),
-  ALIGNED_LAST_QUERY_SCAN((short) 47),
+  @Deprecated
+  DEPRECATED_LAST_QUERY_SCAN((short) 46),
+  @Deprecated
+  DEPRECATED_ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY((short) 48),
   LAST_QUERY_MERGE((short) 49),
   LAST_QUERY_COLLECT((short) 50),
@@ -256,6 +260,8 @@ public enum PlanNodeType {
 
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
+  LAST_QUERY_SCAN((short) 98),
+
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
   TABLE_DEVICE_FETCH((short) 904),
@@ -300,6 +306,10 @@ public enum PlanNodeType {
   TABLE_FUNCTION_NODE((short) 1028),
   TABLE_FUNCTION_PROCESSOR_NODE((short) 1029),
   TABLE_GROUP_NODE((short) 1030),
+  TABLE_PATTERN_RECOGNITION_NODE((short) 1031),
+  TABLE_WINDOW_FUNCTION((short) 1032),
+  TABLE_INTO_NODE((short) 1033),
+  TABLE_UNION_NODE((short) 1034),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -471,9 +481,8 @@ public enum PlanNodeType {
       case 45:
         return DeleteTimeSeriesNode.deserialize(buffer);
       case 46:
-        return LastQueryScanNode.deserialize(buffer);
       case 47:
-        return AlignedLastQueryScanNode.deserialize(buffer);
+        throw new UnsupportedOperationException("This LastQueryScanNode is deprecated");
       case 48:
         return LastQueryNode.deserialize(buffer);
       case 49:
@@ -576,6 +585,8 @@ public enum PlanNodeType {
       case 97:
         throw new UnsupportedOperationException(
             "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
+      case 98:
+        return LastQueryScanNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
@@ -677,6 +688,15 @@ public enum PlanNodeType {
         return TableFunctionProcessorNode.deserialize(buffer);
       case 1030:
         return GroupNode.deserialize(buffer);
+      case 1031:
+        return PatternRecognitionNode.deserialize(buffer);
+      case 1032:
+        return WindowNode.deserialize(buffer);
+      case 1033:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode.deserialize(
+            buffer);
+      case 1034:
+        return UnionNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

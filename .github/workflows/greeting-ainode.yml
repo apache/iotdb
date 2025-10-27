@@ -1,0 +1,52 @@
+name: AINode Code Style Check
+
+on:
+  push:
+    branches:
+      - master
+      - "rc/*"
+    paths:
+      - 'iotdb-core/ainode/**'
+  pull_request:
+    branches:
+      - master
+      - "rc/*"
+    paths:
+      - 'iotdb-core/ainode/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+
+jobs:
+  check-style:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip3 install black==25.1.0 isort==6.0.1
+      - name: Check code formatting (Black)
+        run: |
+          cd iotdb-core/ainode
+          black --check .
+        continue-on-error: false
+
+      - name: Check import order (Isort)
+        run: |
+          cd iotdb-core/ainode
+          isort --check-only --profile black .
+        continue-on-error: false

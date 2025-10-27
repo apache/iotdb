@@ -29,6 +29,13 @@ struct TSystemConfigurationResp {
   4: optional TCQConfig cqConfig
 }
 
+struct TAuditConfig {
+  1: required bool enableAuditLog
+  2: optional string auditableOperationType
+  3: optional string auditableOperationLevel
+  4: optional string auditableOperationResult
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -37,11 +44,12 @@ struct TGlobalConfig {
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
-  8: optional string timestampPrecision
-  9: optional string schemaEngineMode
-  10: optional i32 tagAttributeTotalSize
-  11: optional bool isEnterprise
-  12: optional i64 timePartitionOrigin
+  8: required bool enableGrantOption
+  9: optional string timestampPrecision
+  10: optional string schemaEngineMode
+  11: optional i32 tagAttributeTotalSize
+  12: optional bool isEnterprise
+  13: optional i64 timePartitionOrigin
 }
 
 struct TRatisConfig {
@@ -93,6 +101,8 @@ struct TRatisConfig {
 
   33: required i64 schemaRegionPeriodicSnapshotInterval
   34: required i64 dataRegionPeriodicSnapshotInterval
+
+  35: required i32 ratisTransferLeaderTimeoutMs;
 }
 
 struct TCQConfig {
@@ -107,6 +117,9 @@ struct TRuntimeConfiguration {
   5: required list<binary> allPipeInformation
   6: optional string clusterId
   7: optional binary tableInfo
+  8: required TAuditConfig auditConfig
+  9: required string superUserName
+  10: optional bool enableSeparationOfAdminPowers
 }
 
 struct TDataNodeRegisterReq {
@@ -231,6 +244,7 @@ struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
   3: optional binary scopePatternTree
+  4: optional bool needAuditDB
 }
 
 struct TSchemaNodeManagementResp {
@@ -321,13 +335,13 @@ struct TReconstructRegionReq {
 }
 
 struct TExtendRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
     3: required common.Model model
 }
 
 struct TRemoveRegionReq {
-    1: required i32 regionId
+    1: required list<i32> regionId
     2: required i32 dataNodeId
     3: required common.Model model
 }
@@ -342,6 +356,8 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
+  9: required i64 executedByUserID
+  10: required string newUsername
 }
 
 struct TAuthorizerRelationalReq {
@@ -353,6 +369,8 @@ struct TAuthorizerRelationalReq {
    6: required string table
    7: required set<i32> permissions
    8: required bool grantOpt
+   9: required i64 executedByUserID
+   10: required string newUsername
 }
 
 struct TAuthorizerResp {
@@ -360,6 +378,14 @@ struct TAuthorizerResp {
   2: optional string tag
   3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
+  5: optional list<TListUserInfo> usersInfo
+}
+
+struct TListUserInfo{
+ 1: required i64 userId
+ 2: required string username
+ 3: required i32 maxSessionPerUser
+ 4: required i32 minSessionPerUser
 }
 
 struct TUserResp {
@@ -367,6 +393,7 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: required i64 userId
 }
 
 struct TRoleResp {
@@ -603,6 +630,18 @@ struct TShowVariablesResp {
   2: optional TClusterParameters clusterParameters
 }
 
+// Show confignodes
+struct TDataNodeInfo4InformationSchema {
+  1: required i32 dataNodeId
+  2: required i32 dataRegionNum
+  3: required i32 schemaRegionNum
+  4: required string rpcAddress
+  5: required i32 rpcPort
+  6: required i32 mppPort
+  7: required i32 dataConsensusPort
+  8: required i32 schemaConsensusPort
+}
+
 // Show datanodes
 struct TDataNodeInfo {
   1: required i32 dataNodeId
@@ -614,11 +653,16 @@ struct TDataNodeInfo {
   7: optional i32 cpuCoreNum
 }
 
-struct TAINodeInfo{
+struct TAINodeInfo {
   1: required i32 aiNodeId
   2: required string status
   3: required string internalAddress
   4: required i32 internalPort
+}
+
+struct TShowDataNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
 }
 
 struct TShowDataNodesResp {
@@ -645,6 +689,18 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
+// Show confignodes for information schema
+struct TConfigNodeInfo4InformationSchema {
+  1: required i32 configNodeId
+  2: required i32 consensusPort
+  5: required string roleType
+}
+
+struct TShowConfigNodes4InformationSchemaResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo4InformationSchema> configNodesInfoList
+}
+
 // Show Database
 struct TDatabaseInfo {
   1: required string name
@@ -666,6 +722,7 @@ struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
   3: optional bool isTableModel
+  4: optional bool canSeeAuditDB
 }
 
 struct TShowDatabaseResp {
@@ -694,6 +751,7 @@ struct TRegionInfo {
   10: optional i64 createTime
   11: optional string internalAddress
   12: optional i64 tsFileSize
+  13: optional i64 rawDataSize
 }
 
 struct TShowRegionResp {
@@ -842,6 +900,7 @@ struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
   3: optional bool isTableModel
+  4: optional string userName
 }
 
 struct TShowPipeResp {
@@ -866,6 +925,7 @@ struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional bool mayDeleteAudit
 }
 
 struct TDeleteLogicalViewReq {
@@ -1036,7 +1096,34 @@ struct TShowModelReq {
 
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<binary> modelInfoList
+  2: optional list<string> modelIdList
+  3: optional map<string, string> modelTypeMap
+  4: optional map<string, string> categoryMap
+  5: optional map<string, string> stateMap
+}
+
+struct TShowLoadedModelReq {
+    1: required list<string> deviceIdList
+}
+
+struct TShowLoadedModelResp {
+  1: required common.TSStatus status
+  2: required map<string, map<string, i32>> deviceLoadedModelsMap
+}
+
+struct TShowAIDevicesResp {
+    1: required common.TSStatus status
+    2: required list<string> deviceIdList
+}
+
+struct TLoadModelReq {
+  1: required string existingModelId
+  2: required list<string> deviceIdList
+}
+
+struct TUnloadModelReq {
+  1: required string modelId
+  2: required list<string> deviceIdList
 }
 
 struct TGetModelInfoReq {
@@ -1059,9 +1146,7 @@ struct TUpdateModelInfoReq {
 }
 
 struct TDataSchemaForTable{
-    1: required list<string> databaseList
-    2: required list<string> tableList
-    3: required string curDatabase
+    1: required string targetSql
 }
 
 struct TDataSchemaForTree{
@@ -1070,14 +1155,12 @@ struct TDataSchemaForTree{
 
 struct TCreateTrainingReq {
     1: required string modelId
-    2: required string modelType
-    3: required bool isTableModel
+    2: required bool isTableModel
+    3: required string existingModelId
     4: optional TDataSchemaForTable dataSchemaForTable
     5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional bool useAllData
-    7: optional map<string, string> parameters
-    8: optional string existingModelId
-    9: optional list<list<i64>> timeRanges
+    6: optional map<string, string> parameters
+    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
@@ -1146,7 +1229,7 @@ struct TAINodeRestartResp{
 }
 
 struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
+  1: optional common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================
@@ -1486,6 +1569,8 @@ service IConfigNodeRPCService {
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
+  TPermissionInfoResp getUser(string userName);
+
 
 
   // ======================================================
@@ -1672,6 +1757,9 @@ service IConfigNodeRPCService {
   /** Show content of configuration file */
   common.TShowConfigurationResp showConfiguration(1: i32 nodeId)
 
+  /** Show applied configurations by TsBlock */
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations(1: i32 nodeId)
+
   /** Check and repair unsorted tsfile by compaction */
   common.TSStatus startRepairData()
 
@@ -1700,7 +1788,7 @@ service IConfigNodeRPCService {
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
-  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+  common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
   /** Get all DataNodeLocations of Readable DataNodes */
   TGetDataNodeLocationsResp getReadableDataNodeLocations()
@@ -1718,8 +1806,14 @@ service IConfigNodeRPCService {
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
+  /** Show cluster DataNodes' information for information schema */
+  TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema()
+
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
+
+  /** Show cluster ConfigNodes' information for information schema */
+  TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
@@ -1950,6 +2044,30 @@ service IConfigNodeRPCService {
    */
   TShowModelResp showModel(TShowModelReq req)
 
+  /**
+   * Return the loaded model table
+   */
+  TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req)
+
+  /**
+   * Return the available ai devices
+   */
+  TShowAIDevicesResp showAIDevices()
+
+  /**
+   * Load an existing model to specific devices
+   *
+   * @return SUCCESS_STATUS if the model loading task was submitted successfully
+   */
+  common.TSStatus loadModel(TLoadModelReq req)
+
+  /**
+   * Unload an existing model to specific devices
+   *
+   * @return SUCCESS_STATUS if the model unloading task was submitted successfully
+   */
+  common.TSStatus unloadModel(TUnloadModelReq req)
+
    /**
    * Return the model info by model_id
    */
@@ -1979,6 +2097,9 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Push heartbeat in shutdown */
+  common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)
 
   // ======================================================
   // Table Or View

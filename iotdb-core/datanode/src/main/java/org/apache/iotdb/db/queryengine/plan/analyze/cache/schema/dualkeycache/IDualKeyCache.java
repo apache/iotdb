@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
 import javax.annotation.concurrent.GuardedBy;
 
+import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -36,6 +38,9 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** Get the cache value with given first key and second key. */
   V get(final FK firstKey, final SK secondKey);
+
+  <R> boolean batchApply(
+      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction);
 
   /**
    * Update the existing value. The updater shall return the difference caused by the update,

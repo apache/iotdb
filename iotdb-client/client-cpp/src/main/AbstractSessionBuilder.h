@@ -30,11 +30,15 @@ public:
     std::string password = "root";
     std::string zoneId = "";
     int fetchSize = 10000;
+    int connectTimeoutMs = 3 * 1000;
+    int maxRetries = 3;
+    int retryDelayMs = 500;
     std::string sqlDialect = "tree";
     std::string database = "";
     bool enableAutoFetch = true;
     bool enableRedirections = true;
     bool enableRPCCompression = false;
+    std::vector<std::string> nodeUrls;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H

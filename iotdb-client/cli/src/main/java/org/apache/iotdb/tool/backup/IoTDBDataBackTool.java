@@ -897,7 +897,7 @@ public class IoTDBDataBackTool {
         LOGGER.info("Start to read config file {}", url);
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.error("Read config file {} error", url, e);
       }
     }
     return properties;
@@ -1079,7 +1079,7 @@ public class IoTDBDataBackTool {
       fileOutputStream.close();
 
     } catch (IOException e) {
-      e.printStackTrace();
+      LOGGER.error("properties file update error.", e);
     }
   }
 

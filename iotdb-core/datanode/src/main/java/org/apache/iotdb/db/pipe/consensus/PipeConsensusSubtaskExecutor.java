@@ -19,14 +19,41 @@
 package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
-public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
-
+public class PipeConsensusSubtaskExecutor extends PipeSinkSubtaskExecutor {
   public PipeConsensusSubtaskExecutor() {
     super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL);
+        DataRegion.getAcquireDirectBufferMemCost() == 0
+            ? Runtime.getRuntime().availableProcessors()
+            :
+            // The number of data regions for a datanode is limited by offHeapMemory. At the same
+            // time,
+            // in order to ensure multicore performance, the number of data regions usually does not
+            // exceed the number of cores. To prevent the thread from exploding, we take the min of
+            // both.
+            (int)
+                Math.min(
+                    // NOTE1: The number of data regions is limited by the number of cores.
+                    Runtime.getRuntime().availableProcessors(),
+                    // NOTE2: The number of data regions is also limited by the offHeapMemory. In
+                    // fact,
+                    // schema regions also take up off-heap memory. So in fact, the soft cap of
+                    // data region will be smaller than what is calculated here, but that's okay, we
+                    // can
+                    // set the core size quota of the Executor pool a little bit higher slightly
+                    Math.max(
+                            IoTDBDescriptor.getInstance()
+                                .getMemoryConfig()
+                                .getDirectBufferMemoryManager()
+                                .getTotalMemorySizeInBytes(),
+                            IoTDBDescriptor.getInstance()
+                                .getMemoryConfig()
+                                .getOffHeapMemoryManager()
+                                .getTotalMemorySizeInBytes())
+                        / DataRegion.getAcquireDirectBufferMemCost()),
+        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL.getName());
   }
 }

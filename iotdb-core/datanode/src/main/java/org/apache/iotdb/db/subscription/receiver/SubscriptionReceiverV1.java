@@ -84,6 +84,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -162,7 +163,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.info(
           "Subscription: remove consumer config {} when handling exit",
           consumerConfigThreadLocal.get());
+      // we should not close the consumer here because it might reuse the previous consumption
+      // progress to continue consuming
       // closeConsumer(consumerConfig);
+      // when handling exit, unsubscribe from topics that have already been completed as much as
+      // possible to release some resources (such as the underlying pipe) in a timely manner
+      unsubscribeCompleteTopics(consumerConfig);
       consumerConfigThreadLocal.remove();
     }
   }
@@ -173,6 +179,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(pollTimer)) {
       return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
+    // update timer before fetch remaining ms
+    pollTimer.update();
     return pollTimer.remainingMs();
   }
 
@@ -308,8 +316,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       throw new SubscriptionException(exceptionMessage);
     }
 
+    // fetch topics should be unsubscribed
+    final List<String> topicNamesToUnsubscribe =
+        SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
+    // here we did not immediately unsubscribe from topics in order to allow the client to perceive
+    // completed topics
+
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
-        RpcUtils.SUCCESS_STATUS, topics, endPoints);
+        RpcUtils.SUCCESS_STATUS, topics, endPoints, topicNamesToUnsubscribe);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
@@ -678,6 +692,32 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
+  }
+
+  private void unsubscribeCompleteTopics(final ConsumerConfig consumerConfig) {
+    // fetch subscribed topics
+    final Map<String, TopicConfig> topics =
+        SubscriptionAgent.topic()
+            .getTopicConfigs(
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+
+    // fetch topics should be unsubscribed
+    final List<String> topicNamesToUnsubscribe =
+        SubscriptionAgent.broker().fetchTopicNamesToUnsubscribe(consumerConfig, topics.keySet());
+
+    // If it is empty, it could be that the consumer has been closed, or there are no completed
+    // topics. In this case, it should immediately return.
+    if (topicNamesToUnsubscribe.isEmpty()) {
+      return;
+    }
+
+    unsubscribe(consumerConfig, new HashSet<>(topicNamesToUnsubscribe));
+    LOGGER.info(
+        "Subscription: consumer {} unsubscribe {} (completed topics) successfully",
+        consumerConfig,
+        topicNamesToUnsubscribe);
   }
 
   //////////////////////////// consumer operations ////////////////////////////

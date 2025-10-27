@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorS
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
@@ -113,12 +115,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter.formatGroupBy;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter.formatOrderBy;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.RowPatternFormatter.formatPattern;
 
 public final class SqlFormatter {
 
@@ -180,6 +184,13 @@ public final class SqlFormatter {
     protected Void visitExpression(Expression node, Integer indent) {
       checkArgument(indent == 0, "visitExpression should only be called at root");
       builder.append(formatExpression(node));
+      return null;
+    }
+
+    @Override
+    protected Void visitRowPattern(RowPattern node, Integer indent) {
+      checkArgument(indent == 0, "visitRowPattern should only be called at root");
+      builder.append(formatPattern(node));
       return null;
     }
 
@@ -412,14 +423,136 @@ public final class SqlFormatter {
 
     @Override
     protected Void visitAliasedRelation(AliasedRelation node, Integer indent) {
-      builder.append("( ");
-      process(node, indent + 1);
-      append(indent, ")");
+      processRelationSuffix(node.getRelation(), indent);
 
       builder.append(' ').append(formatName(node.getAlias()));
       appendAliasColumns(builder, node.getColumnNames());
 
       return null;
+    }
+
+    @Override
+    protected Void visitPatternRecognitionRelation(
+        PatternRecognitionRelation node, Integer indent) {
+      processRelationSuffix(node.getInput(), indent);
+
+      builder.append(" MATCH_RECOGNIZE (\n");
+      if (!node.getPartitionBy().isEmpty()) {
+        append(indent + 1, "PARTITION BY ")
+            .append(
+                node.getPartitionBy().stream()
+                    .map(ExpressionFormatter::formatExpression)
+                    .collect(joining(", ")))
+            .append("\n");
+      }
+      if (node.getOrderBy().isPresent()) {
+        process(node.getOrderBy().get(), indent + 1);
+      }
+      if (!node.getMeasures().isEmpty()) {
+        append(indent + 1, "MEASURES");
+        formatDefinitionList(
+            node.getMeasures().stream()
+                .map(
+                    measure ->
+                        formatExpression(measure.getExpression())
+                            + " AS "
+                            + formatExpression(measure.getName()))
+                .collect(toImmutableList()),
+            indent + 2);
+      }
+      if (node.getRowsPerMatch().isPresent()) {
+        String rowsPerMatch;
+        switch (node.getRowsPerMatch().get()) {
+          case ONE:
+            rowsPerMatch = "ONE ROW PER MATCH";
+            break;
+          case ALL_SHOW_EMPTY:
+            rowsPerMatch = "ALL ROWS PER MATCH SHOW EMPTY MATCHES";
+            break;
+          case ALL_OMIT_EMPTY:
+            rowsPerMatch = "ALL ROWS PER MATCH OMIT EMPTY MATCHES";
+            break;
+          case ALL_WITH_UNMATCHED:
+            rowsPerMatch = "ALL ROWS PER MATCH WITH UNMATCHED ROWS";
+            break;
+          default:
+            // RowsPerMatch of type WINDOW cannot occur in MATCH_RECOGNIZE clause
+            throw new IllegalStateException(
+                "unexpected rowsPerMatch: " + node.getRowsPerMatch().get());
+        }
+        append(indent + 1, rowsPerMatch).append("\n");
+      }
+      if (node.getAfterMatchSkipTo().isPresent()) {
+        String skipTo;
+        switch (node.getAfterMatchSkipTo().get().getPosition()) {
+          case PAST_LAST:
+            skipTo = "AFTER MATCH SKIP PAST LAST ROW";
+            break;
+          case NEXT:
+            skipTo = "AFTER MATCH SKIP TO NEXT ROW";
+            break;
+          case LAST:
+            checkState(
+                node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
+                "missing identifier in AFTER MATCH SKIP TO LAST");
+            skipTo =
+                "AFTER MATCH SKIP TO LAST "
+                    + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
+            break;
+          case FIRST:
+            checkState(
+                node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
+                "missing identifier in AFTER MATCH SKIP TO FIRST");
+            skipTo =
+                "AFTER MATCH SKIP TO FIRST "
+                    + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
+            break;
+          default:
+            throw new IllegalStateException(
+                "unexpected skipTo: " + node.getAfterMatchSkipTo().get());
+        }
+        append(indent + 1, skipTo).append("\n");
+      }
+      append(indent + 1, "PATTERN (").append(formatPattern(node.getPattern())).append(")\n");
+      if (!node.getSubsets().isEmpty()) {
+        append(indent + 1, "SUBSET");
+        formatDefinitionList(
+            node.getSubsets().stream()
+                .map(
+                    subset ->
+                        formatExpression(subset.getName())
+                            + " = "
+                            + subset.getIdentifiers().stream()
+                                .map(ExpressionFormatter::formatExpression)
+                                .collect(joining(", ", "(", ")")))
+                .collect(toImmutableList()),
+            indent + 2);
+      }
+      append(indent + 1, "DEFINE");
+      formatDefinitionList(
+          node.getVariableDefinitions().stream()
+              .map(
+                  variable ->
+                      formatExpression(variable.getName())
+                          + " AS "
+                          + formatExpression(variable.getExpression()))
+              .collect(toImmutableList()),
+          indent + 2);
+
+      builder.append(")");
+
+      return null;
+    }
+
+    private void processRelationSuffix(Relation relation, Integer indent) {
+      if ((relation instanceof AliasedRelation)
+          || (relation instanceof PatternRecognitionRelation)) {
+        builder.append("( ");
+        process(relation, indent + 1);
+        append(indent, ")");
+      } else {
+        process(relation, indent);
+      }
     }
 
     @Override

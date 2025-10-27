@@ -257,10 +257,10 @@
     <logger level="info" name="QUERY_DEBUG">
         <appender-ref ref="QUERY_DEBUG"/>
     </logger>
-    <logger level="info" name="SLOW_SQL">
+    <logger level="info" name="SLOW_SQL" additivity="false">
         <appender-ref ref="SLOW_SQL"/>
     </logger>
-    <logger level="info" name="SAMPLED_QUERIES">
+    <logger level="info" name="SAMPLED_QUERIES" additivity="false">
         <appender-ref ref="SAMPLED_QUERIES"/>
     </logger>
     <logger level="info" name="QUERY_FREQUENCY">
@@ -279,7 +279,7 @@
     <logger level="info" name="org.apache.iotdb.commons.pipe">
         <appender-ref ref="PIPE"/>
     </logger>
-    <logger level="info" name="EXPLAIN_ANALYZE">
+    <logger level="info" name="EXPLAIN_ANALYZE" additivity="false">
         <appender-ref ref="EXPLAIN_ANALYZE"/>
     </logger>
 </configuration>

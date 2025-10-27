@@ -41,6 +41,8 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /***
@@ -130,9 +132,8 @@ public class IoTDBDBTsfilePullConsumerIT extends AbstractSubscriptionTreeRegress
     //        insert_data(1706659200000L); //2024-01-31 08:00:00+08:00
     insert_data(System.currentTimeMillis());
     // Consumption data
-    List<Integer> results = consume_tsfile_withFileCount(consumer, device);
-    assertEquals(results.get(0), 10);
-    assertEquals(results.get(1), 2, "number of received files");
+    consume_tsfile_with_file_count_await(
+        consumer, Collections.singletonList(device), Arrays.asList(10, 2));
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after unsubscription");
@@ -142,14 +143,7 @@ public class IoTDBDBTsfilePullConsumerIT extends AbstractSubscriptionTreeRegress
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
-    results = consume_tsfile_withFileCount(consumer, device);
-    assertEquals(
-        results.get(0),
-        15,
-        "Unsubscribe and resubscribe, progress is not retained. Full synchronization.");
-    assertEquals(
-        results.get(1),
-        3,
-        "Number of received files: After unsubscribing and resubscribing, progress is not retained. Full synchronization.");
+    consume_tsfile_with_file_count_await(
+        consumer, Collections.singletonList(device), Arrays.asList(15, 3));
   }
 }

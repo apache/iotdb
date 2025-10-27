@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -249,7 +250,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         throws PageException, IllegalPathException, IOException, WriteProcessException {
       FirstBatchCompactionAlignedChunkWriter firstBatchCompactionAlignedChunkWriter =
           new FirstBatchCompactionAlignedChunkWriter(
-              this.measurementSchemas.remove(0), this.measurementSchemas);
+              this.measurementSchemas.remove(0),
+              this.measurementSchemas,
+              EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter()));
 
       firstBatchCompactionAlignedChunkWriter.registerBeforeFlushChunkWriterCallback(
           chunkWriter -> {
@@ -359,7 +362,8 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           new FollowingBatchCompactionAlignedChunkWriter(
               measurementSchemas.remove(0),
               measurementSchemas,
-              batchCompactionPlan.getCompactChunkPlan(0));
+              batchCompactionPlan.getCompactChunkPlan(0),
+              EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter()));
       flushController =
           new FollowedBatchedCompactionFlushController(
               batchCompactionPlan, followingBatchCompactionAlignedChunkWriter);

@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
@@ -334,14 +333,6 @@ public class MTreeBelowSGCachedImpl {
             }
           }
 
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "Time series under this device is aligned, please use createAlignedTimeSeries or change device.",
-                device.getFullPath());
-          }
-
           final IDeviceMNode<ICachedMNode> entityMNode;
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
@@ -438,14 +429,6 @@ public class MTreeBelowSGCachedImpl {
               throw new AliasAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
             }
-          }
-
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && !device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",
-                devicePath.getFullPath());
           }
 
           final IDeviceMNode<ICachedMNode> entityMNode;

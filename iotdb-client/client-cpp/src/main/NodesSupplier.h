@@ -65,6 +65,7 @@ private:
 class NodesSupplier : public INodesSupplier {
 public:
     static const std::string SHOW_DATA_NODES_COMMAND;
+    static const std::string RUNNING_STATUS;
     static const std::string STATUS_COLUMN_NAME;
     static const std::string IP_COLUMN_NAME;
     static const std::string PORT_COLUMN_NAME;
@@ -101,25 +102,25 @@ public:
     ~NodesSupplier() override;
 
 private:
-    std::string userName;
-    std::string password;
-    int32_t thriftDefaultBufferSize;
-    int32_t thriftMaxFrameSize;
-    int32_t connectionTimeoutInMs;
-    bool useSSL;
-    bool enableRPCCompression;
+    std::string userName_;
+    std::string password_;
+    int32_t thriftDefaultBufferSize_;
+    int32_t thriftMaxFrameSize_;
+    int32_t connectionTimeoutInMs_;
+    bool useSSL_;
+    bool enableRPCCompression_;
     std::string version;
-    std::string zoneId;
+    std::string zoneId_;
 
-    std::mutex mutex;
-    std::vector<TEndPoint> endpoints;
-    NodeSelectionPolicy selectionPolicy;
+    std::mutex mutex_;
+    std::vector<TEndPoint> endpoints_;
+    NodeSelectionPolicy selectionPolicy_;
 
-    std::atomic<bool> isRunning{false};
-    std::thread refreshThread;
-    std::condition_variable refreshCondition;
+    std::atomic<bool> isRunning_{false};
+    std::thread refreshThread_;
+    std::condition_variable refreshCondition_;
 
-    std::shared_ptr<ThriftConnection> client;
+    std::shared_ptr<ThriftConnection> client_;
 
     void deduplicateEndpoints();
 

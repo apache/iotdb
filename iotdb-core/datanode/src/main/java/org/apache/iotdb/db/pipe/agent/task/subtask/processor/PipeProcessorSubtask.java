@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -149,16 +149,25 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
             try (final PipeTsFileInsertionEvent tsFileInsertionEvent =
                 (PipeTsFileInsertionEvent) event) {
-              for (final TabletInsertionEvent tabletInsertionEvent :
-                  tsFileInsertionEvent.toTabletInsertionEvents()) {
-                pipeProcessor.process(tabletInsertionEvent, outputEventCollector);
+              final AtomicReference<Exception> ex = new AtomicReference<>();
+              tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
+                  event1 -> {
+                    try {
+                      pipeProcessor.process(event1, outputEventCollector);
+                    } catch (Exception e) {
+                      ex.set(e);
+                    }
+                  },
+                  "PipeProcessorSubtask::executeOnce");
+              if (ex.get() != null) {
+                throw ex.get();
               }
             }
           } else {
             pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           }
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
-          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          PipeDataNodeSinglePipeMetrics.getInstance()
               .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {

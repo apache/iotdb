@@ -650,10 +650,12 @@ public class InsertNodeMemoryEstimator {
       return 0L;
     }
 
-    return RamUsageEstimator.shallowSizeOf(binaries)
-        + Arrays.stream(binaries)
-            .mapToLong(InsertNodeMemoryEstimator::sizeOfBinary)
-            .reduce(0L, Long::sum);
+    long size = 0L;
+    for (Binary binary : binaries) {
+      size += InsertNodeMemoryEstimator.sizeOfBinary(binary);
+    }
+
+    return size + RamUsageEstimator.shallowSizeOf(binaries);
   }
 
   public static long sizeOfValues(
@@ -669,6 +671,10 @@ public class InsertNodeMemoryEstimator {
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
     for (int i = 0; i < values.length; i++) {
+      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+        size += NUM_BYTES_OBJECT_HEADER;
+        continue;
+      }
       switch (measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:

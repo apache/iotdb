@@ -73,6 +73,11 @@ public class RemoveAINodePlan extends ConfigPhysicalPlan {
     return Objects.hash(super.hashCode(), aiNodeLocation);
   }
 
+  @Override
+  public String toString() {
+    return "RemoveAINodePlan{" + "aiNodeLocation=" + aiNodeLocation + '}';
+  }
+
   public TAINodeLocation getAINodeLocation() {
     return aiNodeLocation;
   }

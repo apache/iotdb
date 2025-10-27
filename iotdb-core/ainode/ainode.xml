@@ -76,14 +76,5 @@
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
-        <fileSet>
-            <directory>${project.basedir}/../../scripts/tools</directory>
-            <outputDirectory>tools</outputDirectory>
-            <includes>
-                <include>*ainode.*</include>
-                <include>**/*ainode.*</include>
-            </includes>
-            <fileMode>0755</fileMode>
-        </fileSet>
     </fileSets>
 </assembly>

@@ -22,8 +22,10 @@ package org.apache.iotdb.db.it.aggregation.maxby;
 import org.apache.iotdb.it.env.EnvFactory;
 
 import org.junit.BeforeClass;
+import org.junit.Test;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 public class IoTDBMaxByAlignedSeriesIT extends IoTDBMaxByIT {
   protected static final String[] ALIGNED_DATASET =
@@ -60,6 +62,7 @@ public class IoTDBMaxByAlignedSeriesIT extends IoTDBMaxByIT {
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(12, 8, 8, 8, 8, false, \"4\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(13, 4, 4, 4, 4, false, \"4\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(13, 8, 8, 8, 8, false, \"4\")",
+        "insert into root.sg.d1(time,s1,s2) values(1,1,1);",
       };
 
   @BeforeClass
@@ -67,5 +70,22 @@ public class IoTDBMaxByAlignedSeriesIT extends IoTDBMaxByIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(ALIGNED_DATASET);
+  }
+
+  @Test
+  public void maxMinByTimeTest() {
+    String[] expectedHeader =
+        new String[] {"Device", "max_by(Time, s1 + 1)", "min_by(Time, s1 + 1)"};
+    String[] retArray = new String[] {"root.sg.d1,1,1,"};
+    resultSetEqualTest(
+        "select max_by(time, s1+1), min_by(time, s1+1)  from root.sg.*  align by device",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Device", "max_by(Time, s1)", "min_by(Time, s1)"};
+    resultSetEqualTest(
+        "select max_by(time, s1), min_by(time, s1) from root.sg.* where s1>0  align by device",
+        expectedHeader,
+        retArray);
   }
 }

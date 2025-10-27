@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -50,8 +50,8 @@ public class LocalSinkChannel implements ISinkChannel {
   @SuppressWarnings("squid:S3077")
   private volatile ListenableFuture<Void> blocked;
 
-  private boolean aborted = false;
-  private boolean closed = false;
+  private volatile boolean aborted = false;
+  private volatile boolean closed = false;
 
   private boolean invokedOnFinished = false;
 
@@ -182,14 +182,14 @@ public class LocalSinkChannel implements ISinkChannel {
   }
 
   @Override
-  public void abort() {
+  public boolean abort() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartAbortLocalSinkChannel]");
     }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
-          return;
+          return false;
         }
         aborted = true;
         Optional<Throwable> t = sinkListener.onAborted(this);
@@ -203,17 +203,18 @@ public class LocalSinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndAbortLocalSinkChannel]");
     }
+    return true;
   }
 
   @Override
-  public void close() {
+  public boolean close() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartCloseLocalSinkChannel]");
     }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
-          return;
+          return false;
         }
         closed = true;
         queue.close();
@@ -226,6 +227,7 @@ public class LocalSinkChannel implements ISinkChannel {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndCloseLocalSinkChannel]");
     }
+    return true;
   }
 
   public SharedTsBlockQueue getSharedTsBlockQueue() {

@@ -175,8 +175,13 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue false
    */
-  public TableSessionPoolBuilder enableCompression(boolean enableCompression) {
-    this.enableCompression = enableCompression;
+  public TableSessionPoolBuilder enableIoTDBRpcCompression(boolean enableCompression) {
+    this.isIoTDBRpcCompressionEnabled = enableCompression;
+    return this;
+  }
+
+  public TableSessionPoolBuilder enableThriftCompression(boolean enableCompression) {
+    this.isThriftRpcCompactionEnabled = enableCompression;
     return this;
   }
 
@@ -255,24 +260,24 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the trust store path for SSL connections.
    *
-   * @param keyStore the trust store path.
+   * @param trustStore the trust store path.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionPoolBuilder trustStore(String keyStore) {
-    this.trustStore = keyStore;
+  public TableSessionPoolBuilder trustStore(String trustStore) {
+    this.trustStore = trustStore;
     return this;
   }
 
   /**
    * Sets the trust store password for SSL connections.
    *
-   * @param keyStorePwd the trust store password.
+   * @param trustStorePwd the trust store password.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue null
    */
-  public TableSessionPoolBuilder trustStorePwd(String keyStorePwd) {
-    this.trustStorePwd = keyStorePwd;
+  public TableSessionPoolBuilder trustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
     return this;
   }
 

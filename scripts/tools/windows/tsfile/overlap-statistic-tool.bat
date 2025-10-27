@@ -45,8 +45,8 @@ goto :eof
 
 @REM -----------------------------------------------------------------------------
 :okClasspath
-
-"%JAVA_HOME%\bin\java" -Xmx16G -cp "%CLASSPATH%" %MAIN_CLASS% %*
+set JAVA_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -Xmx16G -cp "%CLASSPATH%" %MAIN_CLASS% %*
 
 goto finally
 

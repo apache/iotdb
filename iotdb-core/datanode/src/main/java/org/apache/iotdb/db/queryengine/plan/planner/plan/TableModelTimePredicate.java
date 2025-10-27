@@ -27,7 +27,9 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class TableModelTimePredicate implements TimePredicate {
 
@@ -44,8 +46,8 @@ public class TableModelTimePredicate implements TimePredicate {
   }
 
   @Override
-  public Filter convertPredicateToTimeFilter() {
-    return PredicateUtils.convertPredicateToTimeFilter(timePredicate);
+  public Filter convertPredicateToTimeFilter(ZoneId zoneId, TimeUnit currPrecision) {
+    return PredicateUtils.convertPredicateToTimeFilter(timePredicate, zoneId, currPrecision);
   }
 
   @Override

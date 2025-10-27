@@ -148,5 +148,8 @@ public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscripti
     consume_data(consumer, session_dest);
     check_count(8, "select count(s_0) from " + device, "Consume data again:" + pattern);
     check_count(8, "select count(s_1) from " + device, "Consumption data: s_1");
+    while (!consumer.allTopicMessagesHaveBeenConsumed()) {
+      Thread.sleep(1000);
+    }
   }
 }

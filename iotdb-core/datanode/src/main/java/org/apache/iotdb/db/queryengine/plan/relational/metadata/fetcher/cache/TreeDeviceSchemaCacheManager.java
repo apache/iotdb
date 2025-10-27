@@ -129,14 +129,14 @@ public class TreeDeviceSchemaCacheManager {
    * @param devicePath full path of the device
    * @return empty if cache miss or the device path is not a template activated path
    */
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
+  public ClusterSchemaTree getMatchedTemplateSchema(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceTemplateSchema)) {
       return tree;
     }
     final TreeDeviceTemplateSchema treeSchema = (TreeDeviceTemplateSchema) schema;
-    Template template = templateManager.getTemplate(treeSchema.getTemplateId());
+    final Template template = templateManager.getTemplate(treeSchema.getTemplateId());
     tree.appendTemplateDevice(devicePath, template.isDirectAligned(), template.getId(), template);
     tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
     return tree;
@@ -148,7 +148,7 @@ public class TreeDeviceSchemaCacheManager {
    * @param fullPath full path
    * @return empty if cache miss
    */
-  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(final PartialPath fullPath) {
+  public ClusterSchemaTree getMatchedNormalSchema(final PartialPath fullPath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema =
         tableDeviceSchemaCache.getDeviceSchema(
@@ -284,60 +284,7 @@ public class TreeDeviceSchemaCacheManager {
         continue;
       }
       final IMeasurementSchema schema = templateSchema.get(measurements[i]);
-      computation.computeMeasurement(
-          i,
-          new IMeasurementSchemaInfo() {
-            @Override
-            public String getName() {
-              return schema.getMeasurementName();
-            }
-
-            @Override
-            public IMeasurementSchema getSchema() {
-              if (isLogicalView()) {
-                return new LogicalViewSchema(
-                    schema.getMeasurementName(), ((LogicalViewSchema) schema).getExpression());
-              } else {
-                return this.getSchemaAsMeasurementSchema();
-              }
-            }
-
-            @Override
-            public MeasurementSchema getSchemaAsMeasurementSchema() {
-              return new MeasurementSchema(
-                  schema.getMeasurementName(),
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor());
-            }
-
-            @Override
-            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-              throw new RuntimeException(
-                  new UnsupportedOperationException(
-                      "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
-            }
-
-            @Override
-            public Map<String, String> getTagMap() {
-              return null;
-            }
-
-            @Override
-            public Map<String, String> getAttributeMap() {
-              return null;
-            }
-
-            @Override
-            public String getAlias() {
-              return null;
-            }
-
-            @Override
-            public boolean isLogicalView() {
-              return schema.isLogicalView();
-            }
-          });
+      computation.computeMeasurement(i, new WrappedSchemaInfo(schema));
     }
     return indexOfMissingMeasurements;
   }
@@ -375,7 +322,7 @@ public class TreeDeviceSchemaCacheManager {
 
   /**
    * Update the {@link TableDeviceLastCache} in writing for tree model. If a measurement is with all
-   * {@code null}s or is an id/attribute column, its {@link TimeValuePair[]} shall be {@code null}.
+   * {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be {@code null}.
    * For correctness, this will put the {@link TableDeviceCacheEntry} lazily and only update the
    * existing {@link TableDeviceLastCache}s of measurements.
    *
@@ -391,6 +338,10 @@ public class TreeDeviceSchemaCacheManager {
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
@@ -400,10 +351,10 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>Note: The query shall put the {@link TableDeviceLastCache} twice:
    *
-   * <p>- First time set the "isCommit" to {@code false} before the query accesses data. It is just
-   * to allow the writing to update the cache, then avoid that the query put a stale value to cache
-   * and break the consistency. WARNING: The writing may temporarily put a stale value in cache if a
-   * stale value is written, but it won't affect the eventual consistency.
+   * <p>- First time call this before the query accesses data. It is just to allow the writing to
+   * update the cache, then avoid that the query put a stale value to cache and break the
+   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
+   * is written, but it won't affect the eventual consistency.
    *
    * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
@@ -411,25 +362,43 @@ public class TreeDeviceSchemaCacheManager {
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
    *
-   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency. In this case
-   * and the "isInvalidate" shall be {@code true}.
-   *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
-   * @param isInvalidate {@code true} if invalidate the first pushed cache, or {@code null} for the
-   *     first fetch.
    */
-  public void updateLastCache(
-      final String database, final MeasurementPath measurementPath, final boolean isInvalidate) {
+  public void declareLastCache(final String database, final MeasurementPath measurementPath) {
     if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
       return;
     }
+
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
-        isInvalidate ? new TimeValuePair[] {null} : null,
+        null,
+        measurementPath.isUnderAlignedEntity(),
+        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        true);
+  }
+
+  /**
+   * Update the {@link TableDeviceLastCache} on query in tree model.
+   *
+   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
+   * in the first time, to avoid the stale writing damaging the eventual consistency.
+   *
+   * @param database the device's database, WITH "root"
+   * @param measurementPath the fetched {@link MeasurementPath}
+   */
+  public void invalidateLastCache(final String database, final MeasurementPath measurementPath) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
+    tableDeviceSchemaCache.updateLastCache(
+        database,
+        measurementPath.getIDeviceID(),
+        new String[] {measurementPath.getMeasurement()},
+        new TimeValuePair[] {null},
         measurementPath.isUnderAlignedEntity(),
         new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
         true);
@@ -449,5 +418,64 @@ public class TreeDeviceSchemaCacheManager {
 
   public void cleanUp() {
     tableDeviceSchemaCache.invalidateAll();
+  }
+
+  private static class WrappedSchemaInfo implements IMeasurementSchemaInfo {
+    private final IMeasurementSchema schema;
+
+    public WrappedSchemaInfo(final IMeasurementSchema schema) {
+      this.schema = schema;
+    }
+
+    @Override
+    public String getName() {
+      return schema.getMeasurementName();
+    }
+
+    @Override
+    public IMeasurementSchema getSchema() {
+      if (isLogicalView()) {
+        return new LogicalViewSchema(
+            schema.getMeasurementName(), ((LogicalViewSchema) schema).getExpression());
+      } else {
+        return this.getSchemaAsMeasurementSchema();
+      }
+    }
+
+    @Override
+    public MeasurementSchema getSchemaAsMeasurementSchema() {
+      return new MeasurementSchema(
+          schema.getMeasurementName(),
+          schema.getType(),
+          schema.getEncodingType(),
+          schema.getCompressor());
+    }
+
+    @Override
+    public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+      throw new RuntimeException(
+          new UnsupportedOperationException(
+              "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+    }
+
+    @Override
+    public Map<String, String> getTagMap() {
+      return null;
+    }
+
+    @Override
+    public Map<String, String> getAttributeMap() {
+      return null;
+    }
+
+    @Override
+    public String getAlias() {
+      return null;
+    }
+
+    @Override
+    public boolean isLogicalView() {
+      return schema.isLogicalView();
+    }
   }
 }

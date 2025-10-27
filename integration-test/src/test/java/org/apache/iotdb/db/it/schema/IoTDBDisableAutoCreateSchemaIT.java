@@ -60,10 +60,10 @@ public class IoTDBDisableAutoCreateSchemaIT {
         Assert.assertTrue(e.getMessage().contains("because enable_auto_create_schema is FALSE."));
       }
       try {
-        ResultSet databaseResultSet = statement.executeQuery("count databases");
+        ResultSet databaseResultSet = statement.executeQuery("count databases root.db");
         databaseResultSet.next();
         Assert.assertEquals(0, databaseResultSet.getInt("count"));
-        ResultSet timeseriesResultSet = statement.executeQuery("count timeseries");
+        ResultSet timeseriesResultSet = statement.executeQuery("count timeseries root.db.**");
         timeseriesResultSet.next();
         Assert.assertEquals(0, timeseriesResultSet.getInt("count(timeseries)"));
       } catch (SQLException e) {

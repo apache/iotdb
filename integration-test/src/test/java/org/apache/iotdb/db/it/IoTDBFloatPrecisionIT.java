@@ -108,7 +108,7 @@ public class IoTDBFloatPrecisionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.vehicle.**")) {
         assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
@@ -137,7 +137,7 @@ public class IoTDBFloatPrecisionIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.vehicle.**")) {
         cnt = 0;
         while (resultSet.next()) {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
