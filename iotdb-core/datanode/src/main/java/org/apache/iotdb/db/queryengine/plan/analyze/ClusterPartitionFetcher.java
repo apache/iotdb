@@ -314,6 +314,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public void invalidateDatabase(final String database) {
+    partitionCache.invalidDatabase(database);
+  }
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(
       final String database, final List<IDeviceID> deviceIDs, final String userName) {
     return getOrCreateSchemaPartition(database, deviceIDs, true, userName);

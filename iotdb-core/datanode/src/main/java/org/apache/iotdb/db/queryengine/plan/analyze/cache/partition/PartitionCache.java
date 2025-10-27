@@ -1068,6 +1068,31 @@ public class PartitionCache {
     }
   }
 
+  public void invalidDatabase(final String database) {
+    databaseCacheLock.writeLock().lock();
+    try {
+      database2NeedLastCacheCache.remove(database);
+    } catch (final Exception e) {
+      databaseCacheLock.writeLock().unlock();
+    }
+
+    dataPartitionCacheLock.writeLock().lock();
+    try {
+      dataPartitionCache.invalidate(database);
+    } catch (final Exception e) {
+      dataPartitionCacheLock.writeLock().unlock();
+    }
+
+    schemaPartitionCacheLock.writeLock().lock();
+    try {
+      schemaPartitionCache.invalidate(database);
+    } catch (final Exception e) {
+      schemaPartitionCacheLock.writeLock().unlock();
+    }
+
+    invalidReplicaSetCache();
+  }
+
   @Override
   public String toString() {
     return "PartitionCache{"

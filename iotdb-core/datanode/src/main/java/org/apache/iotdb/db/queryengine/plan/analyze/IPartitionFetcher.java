@@ -103,6 +103,8 @@ public interface IPartitionFetcher {
   /** Invalid all partition cache */
   void invalidAllCache();
 
+  void invalidateDatabase(final String database);
+
   // ======================== Table Model Schema Partition Interface ========================
 
   /**
