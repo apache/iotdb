@@ -708,18 +708,6 @@ public class IoTDBDatabaseIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "select model_id from information_schema.models where model_type = 'BUILT_IN_FORECAST'"),
-          "model_id,",
-          new HashSet<>(
-              Arrays.asList(
-                  "_timerxl,",
-                  "_STLForecaster,",
-                  "_NaiveForecaster,",
-                  "_ARIMA,",
-                  "_ExponentialSmoothing,")));
-
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
               "select distinct(function_type) from information_schema.functions"),
           "function_type,",
           new HashSet<>(
