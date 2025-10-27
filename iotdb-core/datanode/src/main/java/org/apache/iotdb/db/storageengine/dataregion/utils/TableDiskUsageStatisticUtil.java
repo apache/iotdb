@@ -29,6 +29,7 @@ import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -37,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 
 public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableDiskUsageStatisticUtil.class);
   private final Map<String, Integer> tableIndexMap;
   private final long[] resultArr;
 

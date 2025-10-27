@@ -23,20 +23,26 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TreeDiskUsageStatisticUtil;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class ShowDiskUsageOperator implements SourceOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDiskUsageOperator.class);
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
@@ -131,12 +137,12 @@ public class ShowDiskUsageOperator implements SourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
@@ -146,6 +152,11 @@ public class ShowDiskUsageOperator implements SourceOperator {
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + TreeDiskUsageStatisticUtil.SHALLOW_SIZE
+        + RamUsageEstimator.sizeOfObject(timePartitionIterator)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pathPattern)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
   }
 }

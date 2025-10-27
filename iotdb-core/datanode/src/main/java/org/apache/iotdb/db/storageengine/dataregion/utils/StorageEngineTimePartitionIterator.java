@@ -22,10 +22,16 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Iterator;
 import java.util.Optional;
 
-public class StorageEngineTimePartitionIterator {
+public class StorageEngineTimePartitionIterator implements Accountable {
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(StorageEngineTimePartitionIterator.class);
+
   private final Iterator<DataRegion> dataRegionIterator;
   private final Optional<DataRegionFilterFunc> dataRegionFilter;
   private final Optional<TimePartitionFilterFunc> timePartitionFilter;
@@ -79,6 +85,11 @@ public class StorageEngineTimePartitionIterator {
 
   public long currentTimePartition() {
     return currentTimePartition;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE;
   }
 
   @FunctionalInterface

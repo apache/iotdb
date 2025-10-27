@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
@@ -30,21 +31,38 @@ import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 
 public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
 
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TreeDiskUsageStatisticUtil.class);
+
   private final PartialPath pathPattern;
-  private final boolean isPrefixPathPattern;
+  private final boolean isMatchedDeviceSequential;
   private long result;
 
   public TreeDiskUsageStatisticUtil(
       TsFileManager tsFileManager, long timePartition, PartialPath pathPattern) {
     super(tsFileManager, timePartition);
     this.pathPattern = pathPattern;
-    this.isPrefixPathPattern = pathPattern.isPrefixPath();
     this.result = 0;
+    String[] nodes = pathPattern.getNodes();
+    boolean hasWildcardInPath = false;
+    for (int i = 0; i < nodes.length; i++) {
+      if (nodes[i].equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+          || nodes[i].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        hasWildcardInPath = true;
+        continue;
+      }
+      if (hasWildcardInPath) {
+        this.isMatchedDeviceSequential = false;
+        return;
+      }
+    }
+    this.isMatchedDeviceSequential = true;
   }
 
   @Override
@@ -85,7 +103,7 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
                 nodeOfFirstMatchedDevice,
                 nextNotMatchedDevice,
                 nodeOfNextNotMatchedDevice);
-        if (isPrefixPathPattern) {
+        if (isMatchedDeviceSequential) {
           break;
         }
       }

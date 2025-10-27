@@ -79,7 +79,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
@@ -99,6 +98,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -136,7 +136,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
-  public static Iterator<TsBlock> getSupplier(
+  public static IInformationSchemaContentSupplier getSupplier(
       final String tableName,
       final List<TSDataType> dataTypes,
       final UserEntity userEntity,
@@ -178,7 +178,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
         case InformationSchema.TABLE_DISK_USAGE:
-          return new TableDiskUsageSupplier2(dataTypes, userEntity, pushDownFilter);
+          return new TableDiskUsageSupplier(dataTypes, userEntity, pushDownFilter);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -186,6 +186,8 @@ public class InformationSchemaContentSupplierFactory {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
+
+  public interface IInformationSchemaContentSupplier extends Iterator<TsBlock>, Closeable {}
 
   private static class QueriesSupplier extends TsBlockSupplier {
     private final long currTime = System.currentTimeMillis();
@@ -1236,163 +1238,7 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private static class TableDiskUsageSupplier implements Iterator<TsBlock> {
-    private final List<TSDataType> dataTypes;
-    private final Map<String, List<TTableInfo>> databaseTableInfoMap;
-    private final Filter pushDownFilter;
-    private final Iterator<DataRegion> dataRegionIterator;
-
-    private DataRegion currentDataRegion;
-    private Iterator<Long> timePartitionsIterator;
-    private long currentTimePartition;
-    private List<String> currentTablesToScan;
-    private TableDiskUsageStatisticUtil statisticUtil;
-
-    private TableDiskUsageSupplier(
-        final List<TSDataType> dataTypes, final UserEntity userEntity, Filter pushDownFilter)
-        throws TException, ClientManagerException {
-      this.dataTypes = dataTypes;
-      this.pushDownFilter = pushDownFilter;
-      AuthorityChecker.getAccessControl().checkUserGlobalSysPrivilege(userEntity);
-      try (final ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        this.databaseTableInfoMap = client.showTables4InformationSchema().getDatabaseTableInfoMap();
-      }
-      this.dataRegionIterator = StorageEngine.getInstance().getAllDataRegions().iterator();
-    }
-
-    @Override
-    public boolean hasNext() {
-      if (statisticUtil != null) {
-        return true;
-      }
-      try {
-        while (true) {
-          if (timePartitionsIterator != null && timePartitionsIterator.hasNext()) {
-            currentTimePartition = timePartitionsIterator.next();
-            currentTablesToScan = getTablesToScan(currentTimePartition);
-            if (!currentTablesToScan.isEmpty()) {
-              statisticUtil =
-                  new TableDiskUsageStatisticUtil(
-                      currentDataRegion.getTsFileManager(),
-                      currentTimePartition,
-                      currentTablesToScan);
-              return true;
-            }
-          } else if (!nextDataRegion()) {
-            return false;
-          } // should not have else branch
-        }
-      } catch (Throwable t) {
-        closeStatisticUtil();
-        throw t;
-      }
-    }
-
-    private boolean nextDataRegion() {
-      while (dataRegionIterator.hasNext()) {
-        currentDataRegion = dataRegionIterator.next();
-        if (currentDataRegion == null) {
-          continue;
-        }
-
-        List<TTableInfo> tTableInfos =
-            databaseTableInfoMap.get(currentDataRegion.getDatabaseName());
-        if (tTableInfos == null || tTableInfos.isEmpty()) {
-          continue;
-        }
-
-        timePartitionsIterator = currentDataRegion.getTimePartitions().iterator();
-        if (timePartitionsIterator.hasNext()) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    private List<String> getTablesToScan(long timePartition) {
-      String databaseName = currentDataRegion.getDatabaseName();
-      List<TTableInfo> tTableInfos = databaseTableInfoMap.get(databaseName);
-      if (tTableInfos == null || tTableInfos.isEmpty()) {
-        return Collections.emptyList();
-      }
-
-      if (pushDownFilter == null) {
-        return tTableInfos.stream().map(TTableInfo::getTableName).collect(Collectors.toList());
-      }
-
-      List<String> tablesToScan = new ArrayList<>(tTableInfos.size());
-      for (TTableInfo tTableInfo : tTableInfos) {
-        Object[] row = new Object[5];
-        row[0] = new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
-        row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
-        row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-        row[3] = Integer.parseInt(currentDataRegion.getDataRegionId());
-        row[4] = timePartition;
-        if (pushDownFilter.satisfyRow(0, row)) {
-          tablesToScan.add(tTableInfo.getTableName());
-        }
-      }
-      return tablesToScan;
-    }
-
-    @Override
-    public TsBlock next() {
-      try {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-
-        long maxRuntime = OperatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-        long start = System.nanoTime();
-
-        if (statisticUtil.hasNextFile()) {
-          do {
-            statisticUtil.calculateNextFile();
-          } while (System.nanoTime() - start < maxRuntime && statisticUtil.hasNextFile());
-          if (statisticUtil.hasNextFile()) {
-            return null;
-          }
-        }
-
-        TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-        long[] resultArr = statisticUtil.getResult();
-
-        for (int i = 0; i < currentTablesToScan.size(); i++) {
-          builder.getTimeColumnBuilder().writeLong(0);
-          ColumnBuilder[] columns = builder.getValueColumnBuilders();
-
-          columns[0].writeBinary(
-              new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
-          columns[1].writeBinary(
-              new Binary(currentTablesToScan.get(i), TSFileConfig.STRING_CHARSET));
-          columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-          columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionId()));
-          columns[4].writeLong(currentTimePartition);
-          columns[5].writeLong(resultArr[i]);
-          builder.declarePosition();
-        }
-        closeStatisticUtil();
-        return builder.build();
-      } catch (Throwable t) {
-        closeStatisticUtil();
-        throw t;
-      }
-    }
-
-    private void closeStatisticUtil() {
-      if (statisticUtil == null) {
-        return;
-      }
-      try {
-        statisticUtil.close();
-        statisticUtil = null;
-      } catch (IOException ignored) {
-      }
-    }
-  }
-
-  private static class TableDiskUsageSupplier2 implements Iterator<TsBlock> {
+  private static class TableDiskUsageSupplier implements IInformationSchemaContentSupplier {
     private final List<TSDataType> dataTypes;
     private final Map<String, List<TTableInfo>> databaseTableInfoMap;
     private final Filter pushDownFilter;
@@ -1404,7 +1250,7 @@ public class InformationSchemaContentSupplierFactory {
 
     private final StorageEngineTimePartitionIterator timePartitionIterator;
 
-    private TableDiskUsageSupplier2(
+    private TableDiskUsageSupplier(
         final List<TSDataType> dataTypes, final UserEntity userEntity, Filter pushDownFilter)
         throws TException, ClientManagerException {
       this.dataTypes = dataTypes;
@@ -1437,7 +1283,6 @@ public class InformationSchemaContentSupplierFactory {
       if (statisticUtil != null) {
         return true;
       }
-
       try {
         if (timePartitionIterator.next()) {
           currentDataRegion = timePartitionIterator.currentDataRegion();
@@ -1482,46 +1327,45 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public TsBlock next() {
-      try {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-
-        long maxRuntime = OperatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-        long start = System.nanoTime();
-
-        if (statisticUtil.hasNextFile()) {
-          do {
-            statisticUtil.calculateNextFile();
-          } while (System.nanoTime() - start < maxRuntime && statisticUtil.hasNextFile());
-          if (statisticUtil.hasNextFile()) {
-            return null;
-          }
-        }
-
-        TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-        long[] resultArr = statisticUtil.getResult();
-
-        for (int i = 0; i < currentTablesToScan.size(); i++) {
-          builder.getTimeColumnBuilder().writeLong(0);
-          ColumnBuilder[] columns = builder.getValueColumnBuilders();
-
-          columns[0].writeBinary(
-              new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
-          columns[1].writeBinary(
-              new Binary(currentTablesToScan.get(i), TSFileConfig.STRING_CHARSET));
-          columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-          columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionId()));
-          columns[4].writeLong(currentTimePartition);
-          columns[5].writeLong(resultArr[i]);
-          builder.declarePosition();
-        }
-        closeStatisticUtil();
-        return builder.build();
-      } catch (Throwable t) {
-        closeStatisticUtil();
-        throw t;
+      if (!hasNext()) {
+        throw new NoSuchElementException();
       }
+
+      long maxRuntime = OperatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      long start = System.nanoTime();
+
+      if (statisticUtil.hasNextFile()) {
+        do {
+          statisticUtil.calculateNextFile();
+        } while (System.nanoTime() - start < maxRuntime && statisticUtil.hasNextFile());
+        if (statisticUtil.hasNextFile()) {
+          return null;
+        }
+      }
+
+      TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+      long[] resultArr = statisticUtil.getResult();
+
+      for (int i = 0; i < currentTablesToScan.size(); i++) {
+        builder.getTimeColumnBuilder().writeLong(0);
+        ColumnBuilder[] columns = builder.getValueColumnBuilders();
+
+        columns[0].writeBinary(
+            new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
+        columns[1].writeBinary(new Binary(currentTablesToScan.get(i), TSFileConfig.STRING_CHARSET));
+        columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+        columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionId()));
+        columns[4].writeLong(currentTimePartition);
+        columns[5].writeLong(resultArr[i]);
+        builder.declarePosition();
+      }
+      closeStatisticUtil();
+      return builder.build();
+    }
+
+    @Override
+    public void close() throws IOException {
+      closeStatisticUtil();
     }
 
     private void closeStatisticUtil() {
@@ -1536,7 +1380,7 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private abstract static class TsBlockSupplier implements Iterator<TsBlock> {
+  private abstract static class TsBlockSupplier implements IInformationSchemaContentSupplier {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
@@ -1565,5 +1409,10 @@ public class InformationSchemaContentSupplierFactory {
     }
 
     protected abstract void constructLine();
+
+    @Override
+    public void close() throws IOException {
+      // do nothing
+    }
   }
 }
