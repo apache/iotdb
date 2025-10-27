@@ -129,7 +129,7 @@ public class UDTFForecast implements UDTF {
             .collect(
                 Collectors.toMap(
                     arr -> arr[0].trim(), arr -> arr[1].trim(), (v1, v2) -> v2 // 如果 key 重复，保留后一个
-                    ));
+                ));
     this.inputRows = new LinkedList<>();
     List<TSDataType> tsDataTypeList = new ArrayList<>(this.types.size() - 1);
     for (int i = 0; i < this.types.size(); i++) {
