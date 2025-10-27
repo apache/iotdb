@@ -630,6 +630,9 @@ public class TestMetadata implements Metadata {
       public void invalidAllCache() {}
 
       @Override
+      public void invalidateDatabase(String database) {}
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           String database, List<IDeviceID> deviceIDList, String userName) {
         return TREE_VIEW_DB.equals(database) ? TREE_SCHEMA_PARTITION : TABLE_SCHEMA_PARTITION;

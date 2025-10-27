@@ -307,6 +307,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   public void invalidAllCache() {}
 
   @Override
+  public void invalidateDatabase(String database) {}
+
+  @Override
   public SchemaPartition getOrCreateSchemaPartition(
       String database, List<IDeviceID> deviceIDList, String userName) {
     return null;
