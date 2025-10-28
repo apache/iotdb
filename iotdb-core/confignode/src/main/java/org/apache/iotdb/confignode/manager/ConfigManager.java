@@ -2238,7 +2238,19 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) {
-    return null;
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.alterEncodingCompressor(
+          req.getQueryId(),
+          PathPatternTree.deserialize(req.pathPatternTree),
+          req.getEncoding(),
+          req.getCompressor(),
+          req.isIfExists(),
+          req.isIsGeneratedByPipe(),
+          req.isMayAlterAudit());
+    } else {
+      return status;
+    }
   }
 
   @Override

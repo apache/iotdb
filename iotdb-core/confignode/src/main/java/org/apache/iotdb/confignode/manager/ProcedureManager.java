@@ -322,9 +322,7 @@ public class ProcedureManager {
       AlterEncodingCompressorProcedure alterEncodingCompressorProcedure;
       for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(runningProcedure);
-        if (type == null
-            || !type.equals(ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE)
-                && !type.equals(ProcedureType.PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE)) {
+        if (type == null || !type.equals(ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE)) {
           continue;
         }
         alterEncodingCompressorProcedure = ((AlterEncodingCompressorProcedure) runningProcedure);
