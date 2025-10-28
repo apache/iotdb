@@ -548,4 +548,28 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       values = columnsToKeep.stream().map(i -> values[i]).toArray();
     }
   }
+
+  @Override
+  public String getPipeLoggingString() {
+    return "InsertRowNode{"
+        + "deviceID="
+        + deviceID
+        + ", time="
+        + time
+        + ", valueLength="
+        + (Objects.nonNull(values) ? values.length : 0)
+        + '}';
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowNode{"
+        + "deviceID="
+        + deviceID
+        + ", time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
+  }
 }

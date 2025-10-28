@@ -200,4 +200,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
+
+  @Override
+  public String toString() {
+    return "InsertMultiTabletsStatement{"
+        + "insertTabletStatementList="
+        + insertTabletStatementList
+        + '}';
+  }
 }

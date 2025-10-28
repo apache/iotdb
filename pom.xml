@@ -66,9 +66,12 @@
         <cglib.version>3.3.0</cglib.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
+        <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
+        <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
         <ctest.skip.tests>false</ctest.skip.tests>
         <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
         <dropwizard.metrics.version>4.2.19</dropwizard.metrics.version>
@@ -170,7 +173,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.2.0-251022-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.2.0-251027-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -554,9 +557,19 @@
                 <version>${jakarta.validation-api.version}</version>
             </dependency>
             <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-pool2</artifactId>
                 <version>${commons-pool2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>

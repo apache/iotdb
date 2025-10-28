@@ -640,4 +640,21 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       nullBitMaps = columnsToKeep.stream().map(i -> nullBitMaps[i]).toArray(BitMap[]::new);
     }
   }
+
+  @Override
+  public String toString() {
+    return "InsertTabletStatement{"
+        + "deviceIDs="
+        + Arrays.toString(deviceIDs)
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", rowCount="
+        + rowCount
+        + ", timeRange=["
+        + (Objects.nonNull(times) && times.length > 0
+            ? times[0] + ", " + times[times.length - 1]
+            : "")
+        + "]"
+        + '}';
+  }
 }

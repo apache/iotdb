@@ -830,7 +830,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             LOGGER::warn,
             "Receiver id = %s: Failure status encountered while executing statement %s: %s",
             receiverId.get(),
-            statement,
+            statement.getPipeLoggingString(),
             result);
         return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
@@ -839,7 +839,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           LOGGER::warn,
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
-          statement,
+          statement.getPipeLoggingString(),
           e);
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
