@@ -259,12 +259,12 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     File userSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
 
     try {
-      org.apache.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
+      org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
       if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
         LOGGER.error("Failed to load user folder snapshot and rollback.");
         // rollback if failed to copy
         FileUtils.deleteFileOrDirectory(userFolder);
-        org.apache.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
+        org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
       }
     } finally {
       FileUtils.deleteFileOrDirectory(userTmpFolder);

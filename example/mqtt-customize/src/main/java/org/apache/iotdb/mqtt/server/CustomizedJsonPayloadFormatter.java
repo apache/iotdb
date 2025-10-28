@@ -24,7 +24,7 @@ import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 import org.apache.iotdb.db.protocol.mqtt.TreeMessage;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;

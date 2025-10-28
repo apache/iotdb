@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
+import org.apache.iotdb.commons.external.collections4.BidiMap;
+import org.apache.iotdb.commons.external.collections4.bidimap.DualTreeBidiMap;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.collections4.BidiMap;
-import org.apache.commons.collections4.bidimap.DualTreeBidiMap;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;

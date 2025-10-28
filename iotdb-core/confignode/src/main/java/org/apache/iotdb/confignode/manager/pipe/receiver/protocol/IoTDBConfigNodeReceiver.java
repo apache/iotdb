@@ -654,7 +654,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case DeleteTriggerInTable:
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(shouldMarkAsPipeRequest.get()));
       case SetTTL:
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
             ? configManager
@@ -664,7 +664,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 .getTTLManager()
                 .setTTL((SetTTLPlan) plan, shouldMarkAsPipeRequest.get());
       case PipeCreateTableOrView:
-        return executeIdempotentCreateTableOrView((PipeCreateTableOrViewPlan) plan, queryId);
+        return executeIdempotentCreateTableOrView(
+            (PipeCreateTableOrViewPlan) plan, queryId, shouldMarkAsPipeRequest.get());
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -941,7 +942,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeIdempotentCreateTableOrView(
-      final PipeCreateTableOrViewPlan plan, final String queryId) throws ConsensusException {
+      final PipeCreateTableOrViewPlan plan,
+      final String queryId,
+      final boolean shouldMarkAsPipeRequest)
+      throws ConsensusException {
     final String database = plan.getDatabase();
     final TsTable table = plan.getTable();
     final boolean isView = TreeViewSchema.isTreeViewTable(table);
@@ -957,8 +961,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ? ProcedureType.CREATE_TABLE_VIEW_PROCEDURE
                     : ProcedureType.CREATE_TABLE_PROCEDURE,
                 isView
-                    ? new CreateTableViewProcedure(database, table, true, true)
-                    : new CreateTableProcedure(database, table, true));
+                    ? new CreateTableViewProcedure(database, table, true, shouldMarkAsPipeRequest)
+                    : new CreateTableProcedure(database, table, shouldMarkAsPipeRequest));
     // Note that the view and its column won't be auto created
     // Skip it to avoid affecting the existing base table
     if (!isView && result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {

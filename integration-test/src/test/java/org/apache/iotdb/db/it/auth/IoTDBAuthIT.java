@@ -1678,4 +1678,42 @@ public class IoTDBAuthIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testAudit() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("grant read_data on root.__audit to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("grant read_data on root.__audit to role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

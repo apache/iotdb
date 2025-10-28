@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Assert;

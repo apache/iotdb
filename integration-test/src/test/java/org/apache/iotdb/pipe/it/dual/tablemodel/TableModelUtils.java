@@ -118,6 +118,39 @@ public class TableModelUtils {
   public static void insertData(
       final String dataBaseName,
       final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int startInclusive,
+      final int endExclusive,
+      final BaseEnv baseEnv) {
+    List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
+    for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; ++deviceIndex) {
+      for (int i = startInclusive; i < endExclusive; ++i) {
+        list.add(
+            String.format(
+                "insert into %s (s0, s3, s2, s1, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+                tableName,
+                deviceIndex,
+                deviceIndex,
+                deviceIndex,
+                deviceIndex,
+                i,
+                i,
+                i,
+                i,
+                i,
+                i,
+                getDateStr(i),
+                i,
+                i));
+      }
+    }
+    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+  }
+
+  public static void insertData(
+      final String dataBaseName,
+      final String tableName,
       final int start,
       final int end,
       final BaseEnv baseEnv,
