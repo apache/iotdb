@@ -70,7 +70,6 @@
         <commons-jexl3.version>3.3</commons-jexl3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
         <ctest.skip.tests>false</ctest.skip.tests>
-        <disruptor.version>3.4.4</disruptor.version>
         <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
         <dropwizard.metrics.version>4.2.19</dropwizard.metrics.version>
         <eclipse-collections.version>11.1.0</eclipse-collections.version>
@@ -433,11 +432,6 @@
                 <groupId>com.h2database</groupId>
                 <artifactId>h2-mvstore</artifactId>
                 <version>${h2.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.lmax</groupId>
-                <artifactId>disruptor</artifactId>
-                <version>${disruptor.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>

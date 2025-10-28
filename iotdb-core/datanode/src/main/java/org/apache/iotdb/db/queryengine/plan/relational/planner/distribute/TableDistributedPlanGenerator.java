@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -1057,8 +1058,67 @@ public class TableDistributedPlanGenerator
       // child
     }
 
+    //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
+
+      if (childrenNodes.get(0) instanceof UnionNode
+          && node.getAggregations().values().stream()
+              .noneMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
+        UnionNode unionNode = (UnionNode) childrenNodes.get(0);
+        List<PlanNode> children = unionNode.getChildren();
+
+        //  1. add the project Node above the children of the union node
+        List<PlanNode> newProjectNodes = new ArrayList<>();
+
+        Map<Symbol, Collection<Symbol>> symbolMapping = unionNode.getSymbolMapping().asMap();
+        for (int i = 0; i < children.size(); i++) {
+          Assignments.Builder assignmentsBuilder = Assignments.builder();
+          for (Map.Entry<Symbol, Collection<Symbol>> symbolEntry : symbolMapping.entrySet()) {
+            List<Symbol> symbolList = (ImmutableList<Symbol>) symbolEntry.getValue();
+            assignmentsBuilder.put(symbolEntry.getKey(), symbolList.get(i).toSymbolReference());
+          }
+          newProjectNodes.add(
+              new ProjectNode(
+                  queryId.genPlanNodeId(), children.get(i), assignmentsBuilder.build()));
+        }
+
+        // 2. split the aggregation into partial and final
+        Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
+        AggregationNode intermediate = splitResult.right;
+
+        // 3. add the aggregation node above the project node
+        List<PlanNode> aggregationNodes =
+            newProjectNodes.stream()
+                .map(
+                    child -> {
+                      PlanNodeId planNodeId = queryId.genPlanNodeId();
+                      AggregationNode aggregationNode =
+                          new AggregationNode(
+                              planNodeId,
+                              child,
+                              intermediate.getAggregations(),
+                              intermediate.getGroupingSets(),
+                              intermediate.getPreGroupedSymbols(),
+                              intermediate.getStep(),
+                              intermediate.getHashSymbol(),
+                              intermediate.getGroupIdSymbol());
+                      if (node.isStreamable() && childOrdering != null) {
+                        nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
+                      }
+                      return aggregationNode;
+                    })
+                .collect(Collectors.toList());
+
+        // 4. Add a Collect Node under the final Aggregation Node, and add the partial Aggregation
+        // nodes as its children
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), aggregationNodes.get(0).getOutputSymbols());
+        collectNode.setChildren(aggregationNodes);
+        splitResult.left.setChild(collectNode);
+        return Collections.singletonList(splitResult.left);
+      }
+
       return Collections.singletonList(node);
     }
 
@@ -1072,7 +1132,6 @@ public class TableDistributedPlanGenerator
               nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
       return Collections.singletonList(node);
     }
-
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
 
@@ -1782,6 +1841,7 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitUnion(UnionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
+
     List<List<PlanNode>> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))

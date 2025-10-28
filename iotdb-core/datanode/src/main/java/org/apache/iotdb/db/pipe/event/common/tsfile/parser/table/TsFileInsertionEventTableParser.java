@@ -28,9 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -49,6 +51,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final long endTime;
   private final TablePattern tablePattern;
   private final String userName;
+  private final boolean isWithMod;
 
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
@@ -64,11 +67,20 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final String userName,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
     super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
+    this.isWithMod = isWithMod;
     try {
+      currentModifications =
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+              : PatternTreeMapFactory.getModsPatternTreeMap();
+      allocatedMemoryBlockForModifications =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
               PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
@@ -106,9 +118,20 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final String userName,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, userName, sourceEvent);
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        userName,
+        sourceEvent,
+        isWithMod);
   }
 
   @Override
@@ -136,6 +159,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               allocatedMemoryBlockForChunk,
                               allocatedMemoryBlockForChunkMeta,
                               allocatedMemoryBlockForTableSchemas,
+                              currentModifications,
                               startTime,
                               endTime);
                     }

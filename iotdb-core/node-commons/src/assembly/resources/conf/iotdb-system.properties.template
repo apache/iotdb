@@ -930,7 +930,7 @@ enable_auto_create_schema=true
 # Default: 1
 # When illegal: report an error and change nothing during hot-reload; use the default value in
 # start-up
-default_storage_group_level=1
+default_database_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
 

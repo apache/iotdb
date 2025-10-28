@@ -26,12 +26,9 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 
 import java.util.function.Consumer;
 
@@ -68,9 +65,8 @@ public class DisruptorQueue {
                 32,
                 Math.toIntExact(
                     allocatedMemoryBlock.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes)),
-            THREAD_FACTORY,
-            ProducerType.MULTI,
-            new BlockingWaitStrategy());
+            THREAD_FACTORY);
+
     disruptor.handleEventsWith(
         (container, sequence, endOfBatch) -> {
           final PipeRealtimeEvent realtimeEvent = container.getEvent();
@@ -103,7 +99,7 @@ public class DisruptorQueue {
 
   private static class EventContainer {
 
-    private PipeRealtimeEvent event;
+    private volatile PipeRealtimeEvent event;
 
     private EventContainer() {}
 
