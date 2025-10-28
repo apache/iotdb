@@ -1195,7 +1195,8 @@ public class SessionCacheLeaderTest {
           SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
           SessionConfig.DEFAULT_MAX_FRAME_SIZE,
           enableRedirection,
-          SessionConfig.DEFAULT_VERSION);
+          SessionConfig.DEFAULT_VERSION,
+          SessionConfig.DEFAULT_ENDPOINT_SELECTION_STRATEGY);
       this.enableAutoFetch = false;
     }
 
