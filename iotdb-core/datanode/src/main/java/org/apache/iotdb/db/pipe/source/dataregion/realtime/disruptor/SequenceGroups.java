@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
 /**
  * Utility for atomic management of sequence arrays
  *
@@ -31,12 +29,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * used to track consumer progress.
  */
 final class SequenceGroups {
-
-  /** Field updater for atomic array replacement */
-  private static final AtomicReferenceFieldUpdater<MultiProducerSequencer, Sequence[]>
-      SEQUENCE_UPDATER =
-          AtomicReferenceFieldUpdater.newUpdater(
-              MultiProducerSequencer.class, Sequence[].class, "gatingSequences");
 
   /**
    * Atomically add sequences to the gating sequence array
@@ -51,27 +43,23 @@ final class SequenceGroups {
       final MultiProducerSequencer sequencer,
       final Sequence cursor,
       final Sequence... sequencesToAdd) {
-    long cursorSequence;
-    Sequence[] updatedSequences;
     Sequence[] currentSequences;
-
+    Sequence[] updatedSequences;
+    long cursorSequence;
     do {
-      currentSequences = sequencer.gatingSequences;
+      currentSequences = sequencer.getGatingSequences();
       updatedSequences = new Sequence[currentSequences.length + sequencesToAdd.length];
       System.arraycopy(currentSequences, 0, updatedSequences, 0, currentSequences.length);
-
       cursorSequence = cursor.get();
-
-      int index = currentSequences.length;
-      for (Sequence sequence : sequencesToAdd) {
-        sequence.set(cursorSequence);
-        updatedSequences[index++] = sequence;
+      int idx = currentSequences.length;
+      for (Sequence seq : sequencesToAdd) {
+        seq.set(cursorSequence);
+        updatedSequences[idx++] = seq;
       }
-    } while (!SEQUENCE_UPDATER.compareAndSet(sequencer, currentSequences, updatedSequences));
-
+    } while (!sequencer.compareAndSetGatingSequences(currentSequences, updatedSequences));
     cursorSequence = cursor.get();
-    for (Sequence sequence : sequencesToAdd) {
-      sequence.set(cursorSequence);
+    for (Sequence seq : sequencesToAdd) {
+      seq.set(cursorSequence);
     }
   }
 }
