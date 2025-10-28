@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -480,8 +481,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public String getPipeLoggingString() {
     return "InsertRowNode{"
-        + "deviceID="
-        + deviceID
+        + "devicePath="
+        + devicePath
         + ", time="
         + time
         + ", valueLength="
