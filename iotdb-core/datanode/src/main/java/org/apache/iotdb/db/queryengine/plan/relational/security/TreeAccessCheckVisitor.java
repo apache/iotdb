@@ -1422,8 +1422,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitAlterEncodingCompressor(
-      AlterEncodingCompressorStatement alterEncodingCompressorStatement,
-      TreeAccessCheckContext context) {
+      final AlterEncodingCompressorStatement alterEncodingCompressorStatement,
+      final TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
     final boolean audit =
         !checkHasGlobalAuth(
