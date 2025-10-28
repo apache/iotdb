@@ -338,7 +338,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < columns.length; ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
-        if (Objects.isNull(primitiveType)) {
+        if (Objects.isNull(primitiveType)
+            || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
           tablet.bitMaps[i].mark(rowIndex);
           final TSDataType type = tablet.getSchemas().get(i).getType();
           if (type == TSDataType.TEXT || type == TSDataType.BLOB || type == TSDataType.STRING) {
@@ -536,7 +537,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                 Statistics statistics = null;
                 try {
                   statistics =
-                      findNonAlignedChunkStatistics(
+                      findAlignedChunkStatistics(
                           tsFileSequenceReader.getIChunkMetadataList(
                               CompactionPathUtils.getPath(
                                   currentDevice, chunkHeader.getMeasurementID())),
