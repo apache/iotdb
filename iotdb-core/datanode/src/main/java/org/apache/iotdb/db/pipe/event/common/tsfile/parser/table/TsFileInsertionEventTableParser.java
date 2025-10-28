@@ -163,11 +163,18 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               startTime,
                               endTime);
                     }
-                    if (!tabletIterator.hasNext()) {
+                    final boolean hasNext = tabletIterator.hasNext();
+                    if (hasNext && !parseStartTimeRecorded) {
+                      // Record start time on first hasNext() that returns true
+                      recordParseStartTime();
+                    } else if (!hasNext && parseStartTimeRecorded && !parseEndTimeRecorded) {
+                      // Record end time on last hasNext() that returns false
+                      recordParseEndTime();
                       close();
-                      return false;
+                    } else if (!hasNext) {
+                      close();
                     }
-                    return true;
+                    return hasNext;
                   } catch (Exception e) {
                     close();
                     throw new PipeException("Error while parsing tsfile insertion event", e);
@@ -194,6 +201,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                   }
 
                   final Tablet tablet = tabletIterator.next();
+                  // Record tablet metrics
+                  recordTabletMetrics(tablet);
 
                   final TabletInsertionEvent next;
                   if (!hasNext()) {
