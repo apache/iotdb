@@ -2125,8 +2125,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "cache_eviction_memory_computation_threshold",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "cache_eviction_memory_computation_threshold"))));
+                  String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
