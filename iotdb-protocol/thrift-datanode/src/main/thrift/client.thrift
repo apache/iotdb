@@ -527,7 +527,7 @@ enum TSConnectionType {
 struct TSConnectionInfo {
   1: required string userName
   2: required i64 logInTime
-  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
+  3: required string connectionId // ip:port for thrift-based service
   4: required TSConnectionType type
 }
 

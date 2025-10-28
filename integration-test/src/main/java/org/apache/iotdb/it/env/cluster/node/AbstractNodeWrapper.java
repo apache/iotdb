@@ -88,8 +88,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS;
@@ -188,8 +186,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     immutableCommonProperties.setProperty(UDF_LIB_DIR, MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty(TRIGGER_LIB_DIR, MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty(PIPE_LIB_DIR, MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty(MQTT_HOST, MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty(MQTT_PORT, MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty(REST_SERVICE_PORT, MppBaseConfig.NULL_VALUE);
     immutableCommonProperties.setProperty(INFLUXDB_RPC_PORT, MppBaseConfig.NULL_VALUE);
     this.jvmConfig = initVMConfig();

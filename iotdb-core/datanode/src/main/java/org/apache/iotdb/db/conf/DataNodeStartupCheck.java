@@ -45,7 +45,6 @@ public class DataNodeStartupCheck extends StartupChecks {
   private void checkDataNodePortUnique() throws StartupException {
     Set<Integer> portSet = new HashSet<>();
     portSet.add(config.getInternalPort());
-    portSet.add(config.getMqttPort());
     portSet.add(config.getRpcPort());
     portSet.add(config.getMppDataExchangePort());
     portSet.add(config.getDataRegionConsensusPort());

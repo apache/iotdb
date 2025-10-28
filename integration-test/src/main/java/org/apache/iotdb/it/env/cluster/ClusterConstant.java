@@ -162,9 +162,6 @@ public class ClusterConstant {
   public static final String SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
   public static final String DATA_REPLICATION_FACTOR = "data_replication_factor";
 
-  public static final String MQTT_HOST = "mqtt_host";
-  public static final String MQTT_PORT = "mqtt_port";
-  public static final String MQTT_DATA_PATH = "mqtt_data_path";
   public static final String UDF_LIB_DIR = "udf_lib_dir";
   public static final String TRIGGER_LIB_DIR = "trigger_lib_dir";
   public static final String PIPE_LIB_DIR = "pipe_lib_dir";

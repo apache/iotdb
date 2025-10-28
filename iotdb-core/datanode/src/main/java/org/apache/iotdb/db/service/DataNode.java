@@ -1274,9 +1274,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (config.isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
     }

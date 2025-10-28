@@ -476,11 +476,6 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public int getMqttPort() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public String getIP() {
     return ip_addr;
   }

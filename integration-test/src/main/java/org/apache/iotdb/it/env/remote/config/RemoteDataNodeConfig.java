@@ -60,16 +60,6 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setEnableMQTTService(boolean enableMQTTService) {
-    return this;
-  }
-
-  @Override
-  public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    return this;
-  }
-
-  @Override
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     return this;
   }

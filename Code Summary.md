@@ -49,7 +49,6 @@ Next, it performs following activities and registers the essential services:
   * **StorageEngine**
   * **RPCService**
   * **MetricsService**
-  * **MQTTService**
   * **SyncServerManager**
   * **UpgradeSevice**
   * **MergeManager**

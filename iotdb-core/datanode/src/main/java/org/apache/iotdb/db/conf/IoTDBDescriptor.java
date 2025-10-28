@@ -876,9 +876,6 @@ public class IoTDBDescriptor {
                 "max_measurement_num_of_internal_request",
                 String.valueOf(conf.getMaxMeasurementNumOfInternalRequest()))));
 
-    // mqtt
-    loadMqttProps(properties);
-
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(
             properties.getProperty(
@@ -1873,48 +1870,6 @@ public class IoTDBDescriptor {
     }
   }
 
-  // Mqtt related
-  private void loadMqttProps(TrimProperties properties) {
-    conf.setMqttDir(properties.getProperty("mqtt_root_dir", conf.getMqttDir()));
-
-    if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
-      conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME).trim());
-    } else {
-      LOGGER.info("MQTT host is not configured, will use dn_rpc_address.");
-      conf.setMqttHost(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
-    }
-
-    if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
-      conf.setMqttPort(
-          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME).trim()));
-    }
-
-    if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-      conf.setMqttHandlerPoolSize(
-          Integer.parseInt(
-              properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME).trim()));
-    }
-
-    if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-      conf.setMqttPayloadFormatter(
-          properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME).trim());
-    }
-
-    if (properties.getProperty(IoTDBConstant.MQTT_DATA_PATH) != null) {
-      conf.setMqttDataPath(properties.getProperty(IoTDBConstant.MQTT_DATA_PATH).trim());
-    }
-
-    if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-      conf.setEnableMQTTService(
-          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT).trim()));
-    }
-
-    if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
-      conf.setMqttMaxMessageSize(
-          Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE).trim()));
-    }
-  }
-
   // timed flush memtable
   private void loadTimedService(TrimProperties properties) throws IOException {
     conf.setEnableTimedFlushSeqMemtable(
@@ -2542,11 +2497,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_http_pool_max_per_route",
                 Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))));
-    conf.setTriggerForwardMQTTPoolSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "trigger_forward_mqtt_pool_size",
-                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
   }
 
   private void loadPipeProps(TrimProperties properties) {

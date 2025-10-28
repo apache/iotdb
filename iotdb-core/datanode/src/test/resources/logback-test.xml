@@ -54,9 +54,7 @@
     <logger name="org.apache.iotdb.commons.service.RegisterManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.DataNode" level="WARN"/>
     <logger name="org.apache.iotdb.db.service.ExternalRPCService" level="INFO"/>
-    <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.storageengine.compaction.cross.rewrite.task" level="ERROR"/>
-    <logger name="io.moquette.broker.metrics.MQTTMessageLogger" level="ERROR"/>
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
     <logger name="org.apache.iotdb.db.storageengine.dataregion.DataRegion" level="INFO"/>
     <root level="ERROR">

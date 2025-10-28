@@ -62,7 +62,7 @@ public abstract class IClientSession {
 
   abstract TSConnectionType getConnectionType();
 
-  /** ip:port for thrift-based service and client id for mqtt-based service. */
+  /** ip:port for thrift-based service. */
   abstract String getConnectionId();
 
   public void setClientVersion(ClientVersion clientVersion) {
@@ -144,7 +144,6 @@ public abstract class IClientSession {
    * statementIds that this client opens.<br>
    * For JDBC clients, each Statement instance has a statement id.<br>
    * For an IoTDBSession connection, each connection has a statement id.<br>
-   * mqtt clients have no statement id.
    */
   public abstract Iterable<Long> getStatementIds();
 

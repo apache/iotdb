@@ -38,10 +38,6 @@ public interface DataNodeConfig {
 
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 
-  DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
-
-  DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
-
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 
   DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);

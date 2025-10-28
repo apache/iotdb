@@ -2044,42 +2044,6 @@ procedure_completed_clean_interval=30
 procedure_completed_evict_ttl=60
 
 ####################
-### MQTT Broker Configuration
-####################
-
-# whether to enable the mqtt service.
-# effectiveMode: restart
-# Datatype: boolean
-enable_mqtt_service=false
-
-# the mqtt service binding host.
-# effectiveMode: restart
-# Datatype: String
-mqtt_host=127.0.0.1
-
-# the mqtt service binding port.
-# effectiveMode: restart
-# Datatype: int
-mqtt_port=1883
-
-# the handler pool size for handing the mqtt messages.
-# effectiveMode: restart
-# Datatype: int
-mqtt_handler_pool_size=1
-
-# the mqtt message payload formatter.
-# effectiveMode: restart
-# Options: [json, line]
-# The built-in json only supports tree models, and the line only supports table models.
-# Datatype: String
-mqtt_payload_formatter=json
-
-# max length of mqtt message in byte
-# effectiveMode: restart
-# Datatype: int
-mqtt_max_message_size=1048576
-
-####################
 ### IoTDB-AI Configuration
 ####################
 

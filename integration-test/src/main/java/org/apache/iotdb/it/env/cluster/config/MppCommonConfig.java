@@ -310,18 +310,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
-    setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
-    return this;
-  }
-
-  @Override
   public CommonConfig setSchemaEngineMode(String schemaEngineMode) {
     setProperty("schema_engine_mode", schemaEngineMode);
     return this;

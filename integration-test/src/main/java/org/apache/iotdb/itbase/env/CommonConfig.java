@@ -100,10 +100,6 @@ public interface CommonConfig {
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
 
-  CommonConfig setEnableMQTTService(boolean enableMQTTService);
-
-  CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
-
   CommonConfig setSchemaEngineMode(String schemaEngineMode);
 
   CommonConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit);

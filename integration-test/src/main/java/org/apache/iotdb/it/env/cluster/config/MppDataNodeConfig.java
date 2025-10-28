@@ -97,18 +97,6 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setEnableMQTTService(boolean enableMQTTService) {
-    setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
-    return this;
-  }
-
-  @Override
-  public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
-    return this;
-  }
-
-  @Override
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     setProperty("last_cache_operation_on_load", strategyName);
     return this;

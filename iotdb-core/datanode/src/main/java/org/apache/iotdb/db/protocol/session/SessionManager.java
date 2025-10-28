@@ -78,7 +78,6 @@ public class SessionManager implements SessionManagerMBean {
 
   private final ThreadLocal<Long> currSessionIdleTime = new ThreadLocal<>();
 
-  // sessions does not contain MqttSessions..
   private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
   // used for sessions.
   private final Object placeHolder = new Object();
@@ -413,12 +412,6 @@ public class SessionManager implements SessionManagerMBean {
     currSessionIdleTime.remove();
   }
 
-  public void removeCurrSessionForMqtt(MqttClientSession mqttClientSession) {
-    if (mqttClientSession != null) {
-      sessions.remove(mqttClientSession);
-    }
-  }
-
   /**
    * this method can be only used in client-thread model. Do not use this method in message-thread
    * model based service.
@@ -434,14 +427,6 @@ public class SessionManager implements SessionManagerMBean {
     this.currSessionIdleTime.set(System.nanoTime());
     sessions.put(session, placeHolder);
     return true;
-  }
-
-  /**
-   * this method can be only used in mqtt model. Do not use this method in client-thread model based
-   * service.
-   */
-  public void registerSessionForMqtt(IClientSession session) {
-    sessions.put(session, placeHolder);
   }
 
   /** must be called after registerSession()) will mark the session login. */

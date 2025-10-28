@@ -103,27 +103,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Whether to enable the mqtt service. */
-  private boolean enableMQTTService = false;
-
-  /** The mqtt service binding host. */
-  private String mqttHost = "127.0.0.1";
-
-  /** The mqtt service binding port. */
-  private int mqttPort = 1883;
-
-  /** The handler pool size for handing the mqtt messages. */
-  private int mqttHandlerPoolSize = Math.max(1, Runtime.getRuntime().availableProcessors() >> 1);
-
-  /** The mqtt message payload formatter. */
-  private String mqttPayloadFormatter = "json";
-
-  /** The mqtt save data path */
-  private String mqttDataPath = "data/";
-
-  /** Max mqtt message size. Unit: byte */
-  private int mqttMaxMessageSize = 1048576;
-
   /** Rpc binding address. */
   private String rpcAddress = "0.0.0.0";
 
@@ -282,10 +261,6 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
   private int pipeTaskThreadCount = 5;
-
-  /** External lib directory for MQTT, stores user-uploaded JAR files */
-  private String mqttDir =
-      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
   /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
   private String[][] tierDataDirs = {
@@ -965,9 +940,6 @@ public class IoTDBConfig {
   /** Trigger HTTP forward pool max connection for per route */
   private int triggerForwardHTTPPOOLMaxPerRoute = 20;
 
-  /** Trigger MQTT forward pool size */
-  private int triggerForwardMQTTPoolSize = 4;
-
   /** How many times will we retry to find an instance of stateful trigger */
   private int retryNumToFindStatefulTrigger = 3;
 
@@ -1343,7 +1315,6 @@ public class IoTDBConfig {
       iotConsensusV2ReceiverFileDirs[i] = addDataHomeDir(iotConsensusV2ReceiverFileDirs[i]);
     }
     iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
-    mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
     sortTmpDir = addDataHomeDir(sortTmpDir);
@@ -1670,14 +1641,6 @@ public class IoTDBConfig {
 
   public void updatePipeTemporaryLibDir() {
     this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
-  }
-
-  public String getMqttDir() {
-    return mqttDir;
-  }
-
-  public void setMqttDir(String mqttDir) {
-    this.mqttDir = mqttDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2488,62 +2451,6 @@ public class IoTDBConfig {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
   }
 
-  public boolean isEnableMQTTService() {
-    return enableMQTTService;
-  }
-
-  public void setEnableMQTTService(boolean enableMQTTService) {
-    this.enableMQTTService = enableMQTTService;
-  }
-
-  public String getMqttHost() {
-    return mqttHost;
-  }
-
-  public void setMqttHost(String mqttHost) {
-    this.mqttHost = mqttHost;
-  }
-
-  public int getMqttPort() {
-    return mqttPort;
-  }
-
-  public void setMqttPort(int mqttPort) {
-    this.mqttPort = mqttPort;
-  }
-
-  public int getMqttHandlerPoolSize() {
-    return mqttHandlerPoolSize;
-  }
-
-  public void setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
-    this.mqttHandlerPoolSize = mqttHandlerPoolSize;
-  }
-
-  public String getMqttPayloadFormatter() {
-    return mqttPayloadFormatter;
-  }
-
-  public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    this.mqttPayloadFormatter = mqttPayloadFormatter;
-  }
-
-  public String getMqttDataPath() {
-    return mqttDataPath;
-  }
-
-  public void setMqttDataPath(String mqttDataPath) {
-    this.mqttDataPath = mqttDataPath;
-  }
-
-  public int getMqttMaxMessageSize() {
-    return mqttMaxMessageSize;
-  }
-
-  public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
-    this.mqttMaxMessageSize = mqttMaxMessageSize;
-  }
-
   public int getTagAttributeFlushInterval() {
     return tagAttributeFlushInterval;
   }
@@ -3223,14 +3130,6 @@ public class IoTDBConfig {
 
   public void setTriggerForwardHTTPPOOLMaxPerRoute(int triggerForwardHTTPPOOLMaxPerRoute) {
     this.triggerForwardHTTPPOOLMaxPerRoute = triggerForwardHTTPPOOLMaxPerRoute;
-  }
-
-  public int getTriggerForwardMQTTPoolSize() {
-    return triggerForwardMQTTPoolSize;
-  }
-
-  public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
-    this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
   }
 
   public int getRetryNumToFindStatefulTrigger() {

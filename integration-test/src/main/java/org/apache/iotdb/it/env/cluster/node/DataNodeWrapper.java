@@ -58,9 +58,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_DATA_PATH;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEIVER_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
@@ -77,7 +74,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final String internalAddress;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
-  private final int mqttPort;
   private final int restServicePort;
   private final int pipeAirGapReceiverPort;
 
@@ -101,7 +97,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
-    this.mqttPort = portList[5];
+    // deprecated: this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
     this.restServicePort = portList[10] + 6000;
     this.defaultNodePropertiesFile =
@@ -113,11 +109,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     reloadMutableFields();
 
     // Initialize immutable properties
-    // Override mqtt properties of super class
-    immutableCommonProperties.setProperty(MQTT_HOST, super.getIp());
-    immutableCommonProperties.setProperty(MQTT_PORT, String.valueOf(this.mqttPort));
-    immutableCommonProperties.setProperty(
-        MQTT_DATA_PATH, getNodePath() + File.separator + "mqttData");
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
@@ -290,10 +281,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getSchemaRegionConsensusPort() {
     return schemaRegionConsensusPort;
-  }
-
-  public int getMqttPort() {
-    return mqttPort;
   }
 
   public int getPipeAirGapReceiverPort() {

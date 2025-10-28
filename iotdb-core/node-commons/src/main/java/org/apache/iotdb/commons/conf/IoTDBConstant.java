@@ -270,18 +270,8 @@ public class IoTDBConstant {
   public static final String TMP_FOLDER_NAME = "tmp";
   public static final String DELETION_FOLDER_NAME = "deletion";
 
-  public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
-
-  // mqtt
-  public static final String ENABLE_MQTT = "enable_mqtt_service";
-  public static final String MQTT_HOST_NAME = "mqtt_host";
-  public static final String MQTT_PORT_NAME = "mqtt_port";
-  public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
-  public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
-  public static final String MQTT_DATA_PATH = "mqtt_data_path";
-  public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;

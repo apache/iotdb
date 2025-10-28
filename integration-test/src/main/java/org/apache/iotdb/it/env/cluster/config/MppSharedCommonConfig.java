@@ -310,20 +310,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
-    cnConfig.setEnableMQTTService(enableMQTTService);
-    dnConfig.setEnableMQTTService(enableMQTTService);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    cnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
-    dnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
-    return this;
-  }
-
-  @Override
   public CommonConfig setSchemaEngineMode(String schemaEngineMode) {
     cnConfig.setSchemaEngineMode(schemaEngineMode);
     dnConfig.setSchemaEngineMode(schemaEngineMode);

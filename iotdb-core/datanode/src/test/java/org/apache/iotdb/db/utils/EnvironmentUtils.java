@@ -136,9 +136,6 @@ public class EnvironmentUtils {
     SchemaEngine.getInstance().clear();
     FlushManager.getInstance().stop();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
-    // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
-    // unit tests.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
     if (memoryConfig.isMetaDataCacheEnable()) {
@@ -240,8 +237,6 @@ public class EnvironmentUtils {
     cleanDir(config.getExtPipeDir());
     // delete ext
     cleanDir(config.getExtDir());
-    // delete mqtt dir
-    cleanDir(config.getMqttDir());
     // delete wal
     for (String walDir : commonConfig.getWalDirs()) {
       cleanDir(walDir);
