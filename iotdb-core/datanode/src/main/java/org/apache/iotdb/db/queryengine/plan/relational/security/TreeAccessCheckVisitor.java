@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -1423,12 +1425,22 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       AlterEncodingCompressorStatement alterEncodingCompressorStatement,
       TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
+    final boolean audit =
+        !checkHasGlobalAuth(
+            context, PrivilegeType.AUDIT, alterEncodingCompressorStatement.getPaths()::toString);
+    if (audit) {
+      alterEncodingCompressorStatement.setWithAudit(true);
+    }
     if (alterEncodingCompressorStatement.ifPermitted()) {
       try {
+        final PathPatternTree authTree =
+            getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA);
+        if (audit) {
+          authTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+        }
         alterEncodingCompressorStatement.setPatternTree(
             PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                alterEncodingCompressorStatement.getPatternTree(),
-                getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA)));
+                alterEncodingCompressorStatement.getPatternTree(), authTree));
         return StatusUtils.OK;
       } catch (final AuthException e) {
         recordObjectAuthenticationAuditLog(
@@ -1441,19 +1453,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         return new TSStatus(e.getCode().getStatusCode());
       }
     }
-    // audit db is read-only
-    for (PartialPath path : alterEncodingCompressorStatement.getPaths()) {
-      if (includeByAuditTreeDB(path)
-          && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
-        recordObjectAuthenticationAuditLog(
-            context.setResult(false),
-            () ->
-                alterEncodingCompressorStatement.getPaths().stream()
-                    .distinct()
-                    .collect(Collectors.toList())
-                    .toString());
-        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    // Check audit privilege
+    if (!audit) {
+      for (final PartialPath path : alterEncodingCompressorStatement.getPaths()) {
+        if (includeByAuditTreeDB(path)) {
+          return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+              .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+        }
       }
     }
     return checkTimeSeriesPermission(

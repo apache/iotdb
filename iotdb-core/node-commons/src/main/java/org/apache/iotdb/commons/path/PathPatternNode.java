@@ -251,6 +251,11 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> impleme
     }
   }
 
+  void clear() {
+    valueSet.clear();
+    children.clear();
+  }
+
   public static <V, T extends PathPatternNode.Serializer<V>> PathPatternNode<V, T> deserializeNode(
       final ByteBuffer buffer, final T serializer, final Consumer<String> nodeNameProcessor) {
     final PathPatternNode<V, T> node =

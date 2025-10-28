@@ -40,6 +40,7 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
   private final CompressionType compressor;
   private final boolean ifExists;
   private final boolean ifPermitted;
+  private boolean withAudit = false;
 
   public AlterEncodingCompressorStatement(
       final PathPatternTree pathPatternTree,
@@ -77,6 +78,14 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
 
   public boolean ifPermitted() {
     return ifPermitted;
+  }
+
+  public void setWithAudit(final boolean withAudit) {
+    this.withAudit = withAudit;
+  }
+
+  public boolean isWithAudit() {
+    return withAudit;
   }
 
   @Override
