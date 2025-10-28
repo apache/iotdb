@@ -66,4 +66,8 @@ public abstract class Statement extends StatementNode {
         AuthorityChecker.SUPER_USER.equals(userName),
         "Only the admin user can perform this operation");
   }
+
+  public String getPipeLoggingString() {
+    return toString();
+  }
 }
