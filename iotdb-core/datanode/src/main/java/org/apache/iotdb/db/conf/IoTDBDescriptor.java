@@ -1097,14 +1097,13 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
-      conf.setCacheEvictionMemoryComputationThreshold(
-              Integer.parseInt(
-                      properties.getProperty(
-                              "cache_eviction_memory_computation_threshold",
-                              String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
+    conf.setCacheEvictionMemoryComputationThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "cache_eviction_memory_computation_threshold",
+                String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
-
-      conf.setSchemaThreadCount(
+    conf.setSchemaThreadCount(
         Integer.parseInt(
             properties.getProperty(
                 "schema_thread_count", Integer.toString(conf.getSchemaThreadCount()))));
