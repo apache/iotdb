@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationPr
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -139,6 +140,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case NOTIFY_REGION_MIGRATION_PROCEDURE:
         procedure = new NotifyRegionMigrationProcedure();
+        break;
+      case ALTER_ENCODING_COMPRESSOR_PROCEDURE:
+        procedure = new AlterEncodingCompressorProcedure(false);
         break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
@@ -343,6 +347,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_RENAME_VIEW_PROCEDURE:
         procedure = new RenameViewProcedure(true);
         break;
+      case PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE:
+        procedure = new AlterEncodingCompressorProcedure(true);
+        break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
         break;
@@ -425,6 +432,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_REGION_PEER_PROCEDURE;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
       return ProcedureType.CREATE_REGION_GROUPS;
+    } else if (procedure instanceof AlterEncodingCompressorProcedure) {
+      return ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
     } else if (procedure instanceof ReconstructRegionProcedure) {
