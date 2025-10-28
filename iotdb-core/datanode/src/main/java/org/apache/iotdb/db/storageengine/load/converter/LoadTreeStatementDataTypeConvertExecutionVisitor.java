@@ -92,7 +92,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionScanDataContainer container =
             new TsFileInsertionScanDataContainer(
-                file, new IoTDBPipePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+                file,
+                new IoTDBPipePattern(null),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                true)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned :
               container.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
