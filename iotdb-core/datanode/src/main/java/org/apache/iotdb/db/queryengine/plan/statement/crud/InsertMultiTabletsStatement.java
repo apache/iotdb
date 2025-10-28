@@ -160,4 +160,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
                     .reduce(0L, Long::sum)
             : 0);
   }
+
+  @Override
+  public String toString() {
+    return "InsertMultiTabletsStatement{"
+        + "insertTabletStatementList="
+        + insertTabletStatementList
+        + '}';
+  }
 }

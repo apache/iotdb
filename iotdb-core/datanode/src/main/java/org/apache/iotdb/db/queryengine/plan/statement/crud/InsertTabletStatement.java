@@ -489,4 +489,21 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         + InsertNodeMemoryEstimator.sizeOfBitMapArray(bitMaps)
         + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas);
   }
+
+  @Override
+  public String toString() {
+    return "InsertTabletStatement{"
+        + "devicePath="
+        + devicePath
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", rowCount="
+        + rowCount
+        + ", timeRange=["
+        + (Objects.nonNull(times) && times.length > 0
+            ? times[0] + ", " + times[times.length - 1]
+            : "")
+        + "]"
+        + '}';
+  }
 }
