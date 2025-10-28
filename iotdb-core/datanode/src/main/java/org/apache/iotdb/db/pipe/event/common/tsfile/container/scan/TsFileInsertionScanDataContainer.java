@@ -173,7 +173,15 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
                 @Override
                 public boolean hasNext() {
-                  return Objects.nonNull(chunkReader);
+                  final boolean hasNext = Objects.nonNull(chunkReader);
+                  if (hasNext && !parseStartTimeRecorded) {
+                    // Record start time on first hasNext() that returns true
+                    recordParseStartTime();
+                  } else if (!hasNext && parseStartTimeRecorded && !parseEndTimeRecorded) {
+                    // Record end time on last hasNext() that returns false
+                    recordParseEndTime();
+                  }
+                  return hasNext;
                 }
 
                 @Override
@@ -191,6 +199,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                   // information.
                   final boolean isAligned = currentIsAligned;
                   final Tablet tablet = getNextTablet();
+                  // Record tablet metrics
+                  recordTabletMetrics(tablet);
                   final boolean hasNext = hasNext();
                   try {
                     return new PipeRawTabletInsertionEvent(
