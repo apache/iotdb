@@ -32,11 +32,6 @@ public abstract class SingleTreePattern extends TreePattern {
   }
 
   @Override
-  public boolean isSingle() {
-    return true;
-  }
-
-  @Override
   public String getPattern() {
     return pattern;
   }

@@ -64,8 +64,6 @@ public abstract class TreePattern {
 
   //////////////////////////// Interface ////////////////////////////
 
-  public abstract boolean isSingle();
-
   public abstract String getPattern();
 
   public abstract boolean isRoot();
@@ -164,10 +162,96 @@ public abstract class TreePattern {
       // No exclusion defined, return the inclusion pattern directly
       return inclusionPattern;
     } else {
+      // If both inclusion and exclusion patterns support IoTDB operations,
+      // use the specialized ExclusionIoTDBTreePattern
+      if (inclusionPattern instanceof IoTDBPatternOperations
+          && exclusionPattern instanceof IoTDBPatternOperations) {
+        return new ExclusionIoTDBTreePattern(
+            isTreeModelDataAllowedToBeCaptured,
+            (IoTDBPatternOperations) inclusionPattern,
+            (IoTDBPatternOperations) exclusionPattern);
+      }
       // Both are defined, wrap them in an ExclusionTreePattern
       return new ExclusionTreePattern(
           isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
     }
+  }
+
+  /**
+   * The main entry point for parsing a pattern string. This method can handle simple patterns
+   * ("root.a"), union patterns ("root.a,root.b"), and exclusion patterns ("INCLUSION(root.a),
+   * EXCLUSION(root.b)").
+   */
+  public static TreePattern parsePatternFromString(
+      final String patternString,
+      final boolean isTreeModelDataAllowedToBeCaptured,
+      final Function<String, TreePattern> basePatternSupplier) {
+    final String trimmedPattern = (patternString == null) ? "" : patternString.trim();
+    if (trimmedPattern.isEmpty()) {
+      return basePatternSupplier.apply("");
+    }
+
+    // 1. Check if it's an Exclusion pattern
+    if (trimmedPattern.startsWith("INCLUSION(") && trimmedPattern.endsWith(")")) {
+      // Find the closing parenthesis for "INCLUSION(...)"
+      final int inclusionEndIndex =
+          findMatchingParenthesis(trimmedPattern, "INCLUSION(".length() - 1);
+      if (inclusionEndIndex == -1) {
+        // Malformed, treat as a normal pattern
+        return buildUnionPattern(
+            isTreeModelDataAllowedToBeCaptured,
+            parseMultiplePatterns(trimmedPattern, basePatternSupplier));
+      }
+
+      // Look for the ", EXCLUSION(" part
+      final String remaining = trimmedPattern.substring(inclusionEndIndex + 1).trim();
+      if (!remaining.startsWith(", EXCLUSION(")) {
+        // Malformed, treat as a normal pattern
+        return buildUnionPattern(
+            isTreeModelDataAllowedToBeCaptured,
+            parseMultiplePatterns(trimmedPattern, basePatternSupplier));
+      }
+
+      try {
+        // Extract the string inside INCLUSION(...)
+        final String inclusionSubstring =
+            trimmedPattern.substring("INCLUSION(".length(), inclusionEndIndex);
+
+        // Extract the string inside EXCLUSION(...)
+        final String exclusionSubstring =
+            trimmedPattern.substring(
+                inclusionEndIndex + ", EXCLUSION(".length() + 1, trimmedPattern.length() - 1);
+
+        // 2. Parse recursively
+        final TreePattern inclusionPattern =
+            parsePatternFromString(
+                inclusionSubstring, isTreeModelDataAllowedToBeCaptured, basePatternSupplier);
+        final TreePattern exclusionPattern =
+            parsePatternFromString(
+                exclusionSubstring, isTreeModelDataAllowedToBeCaptured, basePatternSupplier);
+
+        // 3. Build ExclusionTreePattern
+        if (inclusionPattern instanceof IoTDBPatternOperations
+            && exclusionPattern instanceof IoTDBPatternOperations) {
+          return new ExclusionIoTDBTreePattern(
+              isTreeModelDataAllowedToBeCaptured,
+              (IoTDBPatternOperations) inclusionPattern,
+              (IoTDBPatternOperations) exclusionPattern);
+        }
+        return new ExclusionTreePattern(
+            isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
+      } catch (final Exception e) {
+        // Error during parsing (e.g., index out of bounds), treat as a normal pattern
+        return buildUnionPattern(
+            isTreeModelDataAllowedToBeCaptured,
+            parseMultiplePatterns(trimmedPattern, basePatternSupplier));
+      }
+    }
+
+    // 4. Not an Exclusion pattern, treat as a normal pattern
+    return buildUnionPattern(
+        isTreeModelDataAllowedToBeCaptured,
+        parseMultiplePatterns(trimmedPattern, basePatternSupplier));
   }
 
   /**
@@ -269,7 +353,7 @@ public abstract class TreePattern {
     }
   }
 
-  public static List<TreePattern> parseMultiplePatterns(
+  private static List<TreePattern> parseMultiplePatterns(
       final String pattern, final Function<String, TreePattern> patternSupplier) {
     if (pattern.isEmpty()) {
       return Collections.singletonList(patternSupplier.apply(pattern));
@@ -307,7 +391,7 @@ public abstract class TreePattern {
    * are IoTDBTreePattern, it returns an IoTDBUnionTreePattern. Otherwise, it returns a general
    * UnionTreePattern.
    */
-  public static TreePattern buildUnionPattern(
+  private static TreePattern buildUnionPattern(
       final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
     // Check if all instances in the list are of type IoTDBTreePattern
     boolean allIoTDB = true;
@@ -328,6 +412,28 @@ public abstract class TreePattern {
       // If there's a mix of pattern types, use the general UnionTreePattern
       return new UnionTreePattern(isTreeModelDataAllowedToBeCaptured, patterns);
     }
+  }
+
+  /** Helper method to find the matching closing parenthesis, respecting backticks. */
+  private static int findMatchingParenthesis(final String text, final int openParenIndex) {
+    int depth = 1;
+    boolean inBackticks = false;
+
+    for (int i = openParenIndex + 1; i < text.length(); i++) {
+      final char c = text.charAt(i);
+
+      if (c == '`') {
+        inBackticks = !inBackticks;
+      } else if (c == '(' && !inBackticks) {
+        depth++;
+      } else if (c == ')' && !inBackticks) {
+        depth--;
+        if (depth == 0) {
+          return i; // Found the matching closing parenthesis
+        }
+      }
+    }
+    return -1; // Not found
   }
 
   public static boolean isTreeModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {

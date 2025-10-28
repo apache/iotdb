@@ -39,11 +39,6 @@ public class UnionTreePattern extends TreePattern {
   }
 
   @Override
-  public boolean isSingle() {
-    return patterns.size() == 1;
-  }
-
-  @Override
   public String getPattern() {
     return patterns.stream().map(TreePattern::getPattern).collect(Collectors.joining(","));
   }

@@ -42,20 +42,6 @@ public class ExclusionTreePattern extends TreePattern {
     this.exclusionPattern = exclusionPattern;
   }
 
-  public TreePattern getInclusionPattern() {
-    return inclusionPattern;
-  }
-
-  public TreePattern getExclusionPattern() {
-    return exclusionPattern;
-  }
-
-  @Override
-  public boolean isSingle() {
-    // This is a composite pattern
-    return false;
-  }
-
   @Override
   public String getPattern() {
     return "INCLUSION("
