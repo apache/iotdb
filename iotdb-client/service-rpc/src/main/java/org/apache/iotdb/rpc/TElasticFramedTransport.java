@@ -25,6 +25,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
 import java.io.EOFException;
@@ -135,6 +136,14 @@ public class TElasticFramedTransport extends TTransport {
           && e.getCause().getCause() != null
           && e.getCause().getCause() instanceof EOFException) {
         throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      }
+      if (e.getCause() instanceof SSLException
+          && e.getMessage().contains("Unsupported or unrecognized SSL message")) {
+        throw new TTransportException(
+            TTransportException.CORRUPTED_DATA,
+            "You may be sending "
+                + "non-SSL requests to the SSL-enabled Thrift-RPC port, please confirm that you are "
+                + "using the right configuration");
       }
       throw e;
     }
