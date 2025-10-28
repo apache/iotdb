@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -30,7 +33,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import java.util.List;
 import java.util.Objects;
 
-public class AlterEncodingCompressorStatement extends Statement {
+public class AlterEncodingCompressorStatement extends Statement implements IConfigStatement {
 
   private PathPatternTree patternTree;
   private final TSEncoding encoding;
@@ -100,5 +103,15 @@ public class AlterEncodingCompressorStatement extends Statement {
   @Override
   public int hashCode() {
     return Objects.hash(patternTree, encoding, compressor, ifExists, ifPermitted);
+  }
+
+  @Override
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
+    return visitor.visitAlterEncodingCompressor(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 }

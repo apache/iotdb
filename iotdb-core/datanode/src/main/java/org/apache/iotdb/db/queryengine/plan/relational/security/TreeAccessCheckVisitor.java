@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -1419,33 +1420,44 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitAlterEncodingCompressor(
-      AlterEncodingCompressorStatement statement, TreeAccessCheckContext context) {
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement,
+      TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
+    if (alterEncodingCompressorStatement.ifPermitted()) {
+      try {
+        alterEncodingCompressorStatement.setPatternTree(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                alterEncodingCompressorStatement.getPatternTree(),
+                getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA)));
+        return StatusUtils.OK;
+      } catch (final AuthException e) {
+        recordObjectAuthenticationAuditLog(
+            context.setResult(false),
+            () ->
+                alterEncodingCompressorStatement.getPaths().stream()
+                    .distinct()
+                    .collect(Collectors.toList())
+                    .toString());
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+    }
     // audit db is read-only
-    for (PartialPath path : statement.getPaths()) {
+    for (PartialPath path : alterEncodingCompressorStatement.getPaths()) {
       if (includeByAuditTreeDB(path)
           && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
         recordObjectAuthenticationAuditLog(
             context.setResult(false),
-            () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+            () ->
+                alterEncodingCompressorStatement.getPaths().stream()
+                    .distinct()
+                    .collect(Collectors.toList())
+                    .toString());
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
       }
     }
-    if (statement.ifPermitted()) {
-      try {
-        statement.setPatternTree(
-            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                statement.getPatternTree(),
-                getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA)));
-      } catch (final AuthException e) {
-        recordObjectAuthenticationAuditLog(
-            context.setResult(false),
-            () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-    }
-    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
+    return checkTimeSeriesPermission(
+        context, alterEncodingCompressorStatement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

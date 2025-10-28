@@ -198,8 +198,8 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitAlterEncodingCompressor(
-      AlterEncodingCompressorStatement deleteTimeSeriesStatement, C context) {
-    return visitStatement(deleteTimeSeriesStatement, context);
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement, C context) {
+    return visitStatement(alterEncodingCompressorStatement, context);
   }
 
   public R visitDeleteTimeSeries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
