@@ -26,15 +26,18 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -75,29 +78,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent);
-  }
-
-  public TsFileInsertionEventQueryParser(
-      final String pipeName,
-      final long creationTime,
-      final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent)
-      throws IOException {
-    this(
-        pipeName,
-        creationTime,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        sourceEvent,
-        null);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -109,11 +90,44 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final Map<IDeviceID, Boolean> deviceIsAlignedMap)
+      final boolean isWithMod)
+      throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null,
+        isWithMod);
+  }
+
+  public TsFileInsertionEventQueryParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap,
+      final boolean isWithMod)
       throws IOException {
     super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
+      currentModifications =
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+              : PatternTreeMapFactory.getModsPatternTreeMap();
+      allocatedMemoryBlockForModifications =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
@@ -157,6 +171,60 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       }
       allocatedMemoryBlock =
           PipeDataNodeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+
+      final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
+          deviceMeasurementsMap.entrySet().iterator();
+      while (isWithMod && iterator.hasNext()) {
+        final Map.Entry<IDeviceID, List<String>> entry = iterator.next();
+        final IDeviceID deviceId = entry.getKey();
+        final List<String> measurements = entry.getValue();
+
+        // Check if deviceId is deleted
+        if (deviceId == null) {
+          LOGGER.warn("Found null deviceId, removing entry");
+          iterator.remove();
+          continue;
+        }
+
+        // Check if measurements list is deleted or empty
+        if (measurements == null || measurements.isEmpty()) {
+          iterator.remove();
+          continue;
+        }
+
+        if (!currentModifications.isEmpty()) {
+          // Safely filter measurements, remove non-existent measurements
+          measurements.removeIf(
+              measurement -> {
+                if (measurement == null) {
+                  return true;
+                }
+
+                try {
+                  TimeseriesMetadata meta =
+                      tsFileSequenceReader.readTimeseriesMetadata(deviceId, measurement, true);
+                  return ModsOperationUtil.isAllDeletedByMods(
+                      deviceId,
+                      measurement,
+                      meta.getStatistics().getStartTime(),
+                      meta.getStatistics().getEndTime(),
+                      currentModifications);
+                } catch (IOException e) {
+                  LOGGER.warn(
+                      "Failed to read metadata for deviceId: {}, measurement: {}, removing",
+                      deviceId,
+                      measurement,
+                      e);
+                  return true;
+                }
+              });
+        }
+
+        // If measurements list is empty after filtering, remove the entire entry
+        if (measurements.isEmpty()) {
+          iterator.remove();
+        }
+      }
 
       // Filter again to get the final deviceMeasurementsMap that exactly matches the pattern.
       deviceMeasurementsMapIterator =
@@ -303,7 +371,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               entry.getKey(),
                               entry.getValue(),
                               timeFilterExpression,
-                              allocatedMemoryBlockForTablet);
+                              allocatedMemoryBlockForTablet,
+                              currentModifications);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(

@@ -24,13 +24,15 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeMPPDataExchangeServiceClient.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -55,8 +58,17 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     super(
         property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+        commonConfig.isEnableInternalSSL()
+            ? TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd())
+            : TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;

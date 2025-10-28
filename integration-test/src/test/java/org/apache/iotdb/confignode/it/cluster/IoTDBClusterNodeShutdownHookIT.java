@@ -47,7 +47,7 @@ public class IoTDBClusterNodeShutdownHookIT {
 
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  private static final int testConfigNodeNum = 2;
+  private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
 
   @BeforeClass

@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.auth.user.BasicUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -98,11 +100,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  /** Checks if a user has admin privileges */
-  protected abstract boolean isAdmin(String username);
-
-  private void checkAdmin(String username, String errmsg) throws AuthException {
-    if (isAdmin(username)) {
+  private void checkAdmin(long userId, String errmsg) throws AuthException {
+    if (userId == IoTDBConstant.SUPER_USER_ID) {
       throw new AuthException(TSStatusCode.NO_PERMISSION, errmsg);
     }
   }
@@ -111,7 +110,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getEntity(username);
     if (user == null || password == null) {
-      return false;
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("The user %s does not exist.", username));
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
@@ -125,7 +125,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
       return true;
     }
-    return false;
+    throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
   }
 
   @Override
@@ -178,7 +178,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    checkAdmin(username, "Default administrator cannot be deleted");
+    checkAdmin(userManager.getUserId(username), "Default administrator cannot be deleted");
     if (!userManager.deleteEntity(username)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
@@ -187,19 +187,25 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator already has all privileges");
+    checkAdmin(
+        userManager.getUserId(username),
+        "Invalid operation, administrator already has all privileges");
     userManager.grantPrivilegeToEntity(username, union);
   }
 
   @Override
   public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
-    checkAdmin(username, "Invalid operation, administrator must have all privileges");
+    checkAdmin(
+        userManager.getUserId(username),
+        "Invalid operation, administrator must have all privileges");
     userManager.revokePrivilegeFromEntity(username, union);
   }
 
   @Override
   public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
-    checkAdmin(userName, "Invalid operation, administrator cannot revoke privileges");
+    checkAdmin(
+        userManager.getUserId(userName),
+        "Invalid operation, administrator cannot revoke privileges");
     User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
@@ -263,7 +269,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void grantRoleToUser(String roleName, String userName) throws AuthException {
-    checkAdmin(userName, "Invalid operation, cannot grant role to administrator");
+    checkAdmin(
+        userManager.getUserId(userName), "Invalid operation, cannot grant role to administrator");
     Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
@@ -280,7 +287,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void revokeRoleFromUser(String roleName, String userName) throws AuthException {
-    if (isAdmin(userName)) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
     }
@@ -320,6 +327,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
+  @Override
+  public void renameUser(String username, String newUsername) throws AuthException {
+    userManager.renameUser(username, newUsername);
+  }
+
   private void forceUpdateUserPassword(String userName, String newPassword) throws AuthException {
     if (!userManager.updateUserPassword(userName, newPassword, true)) {
       throw new AuthException(
@@ -329,7 +341,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
-    if (isAdmin(userName)) {
+    if (userManager.getUserId(userName) == IoTDBConstant.SUPER_USER_ID) {
       return true;
     }
     User user = userManager.getEntity(userName);
@@ -454,6 +466,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public List<TListUserInfo> listAllUsersInfo() {
+    return userManager.listAllEntitiesInfo();
+  }
+
+  @Override
   public List<String> listAllRoles() {
     return roleManager.listAllEntities();
   }
@@ -466,6 +483,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public User getUser(String username) throws AuthException {
     return userManager.getEntity(username);
+  }
+
+  @Override
+  public User getUser(long userId) throws AuthException {
+    return userManager.getEntity(userId);
   }
 
   @Override

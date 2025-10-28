@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -415,13 +416,22 @@ public class CompactionUtils {
   public static List<ModEntry> getMatchedModifications(
       PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
       IDeviceID deviceID,
-      String measurement)
+      String measurement,
+      ModEntry ttlDeletion)
       throws IllegalPathException {
-    if (patternTreeMap == null) {
-      return Collections.emptyList();
+    if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
+      return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
     PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
     List<ModEntry> modEntries = patternTreeMap.getOverlapped(path);
+    if (ttlDeletion != null) {
+      if (!(modEntries instanceof ArrayList)) {
+        List<ModEntry> newModEntries = new ArrayList<>(modEntries.size() + 1);
+        newModEntries.addAll(modEntries);
+        modEntries = newModEntries;
+      }
+      modEntries.add(ttlDeletion);
+    }
     if (path.getIDeviceID().isTableModel()) {
       modEntries =
           modEntries.stream()

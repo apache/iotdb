@@ -71,6 +71,7 @@ public class DeleteTimeSeriesProcedure
 
   private PathPatternTree patternTree;
   private transient ByteBuffer patternTreeBytes;
+  private boolean mayDeleteAudit;
 
   private transient String requestMessage;
 
@@ -86,10 +87,14 @@ public class DeleteTimeSeriesProcedure
   }
 
   public DeleteTimeSeriesProcedure(
-      final String queryId, final PathPatternTree patternTree, final boolean isGeneratedByPipe) {
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      boolean mayDeleteAudit) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(patternTree);
+    this.mayDeleteAudit = mayDeleteAudit;
   }
 
   @Override
@@ -141,7 +146,7 @@ public class DeleteTimeSeriesProcedure
   // Return the total num of timeSeries in schemaEngine black list
   private long constructBlackList(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
@@ -233,7 +238,7 @@ public class DeleteTimeSeriesProcedure
     }
 
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
-        env.getConfigManager().getRelatedDataRegionGroup(patternTree);
+        env.getConfigManager().getRelatedDataRegionGroup(patternTree, mayDeleteAudit);
 
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
@@ -260,7 +265,7 @@ public class DeleteTimeSeriesProcedure
         new DeleteTimeSeriesRegionTaskExecutor<>(
             "delete time series in schema engine",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
@@ -359,6 +364,7 @@ public class DeleteTimeSeriesProcedure
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
+    ReadWriteIOUtils.write(mayDeleteAudit, stream);
   }
 
   @Override
@@ -369,6 +375,9 @@ public class DeleteTimeSeriesProcedure
     if (getCurrentState() == DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE
         || getCurrentState() == DeleteTimeSeriesState.DELETE_DATA) {
       LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+    }
+    if (byteBuffer.hasRemaining()) {
+      mayDeleteAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
     }
   }
 

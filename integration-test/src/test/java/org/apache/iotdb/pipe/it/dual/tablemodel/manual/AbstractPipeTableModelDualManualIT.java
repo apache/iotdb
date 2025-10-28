@@ -42,7 +42,6 @@ public abstract class AbstractPipeTableModelDualManualIT {
   }
 
   protected void setupConfig() {
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()

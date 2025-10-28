@@ -130,10 +130,11 @@ public class InferenceOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean childDone = childBlocked.isDone();
     boolean executionDone = forecastExecutionDone();
-    if (executionDone && childBlocked.isDone()) {
+    if (executionDone && childDone) {
       return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
+    } else if (childDone) {
       return inferenceExecutionFuture;
     } else if (executionDone) {
       return childBlocked;

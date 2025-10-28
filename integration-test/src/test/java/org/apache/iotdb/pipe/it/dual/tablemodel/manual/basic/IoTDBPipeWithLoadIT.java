@@ -59,7 +59,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -100,7 +99,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -119,10 +117,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Generate TsFile
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       TableModelUtils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =

@@ -48,6 +48,7 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       Filter globalTimeFilter,
       TSDataType tsDataType,
       List<TVList> tvLists,
+      List<Integer> tvListRowCounts,
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
@@ -57,6 +58,7 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         globalTimeFilter,
         tsDataType,
         tvLists,
+        tvListRowCounts,
         deletionList,
         floatPrecision,
         encoding,
@@ -70,6 +72,20 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
                     a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
                 : (a, b) ->
                     a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < tvListIterators.size(); i++) {
+      TVList.TVListIterator iterator = tvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -165,5 +181,13 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         break;
       }
     }
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.tvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

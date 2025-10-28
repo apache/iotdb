@@ -231,7 +231,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = new LinkedHashMap<>();
 
-    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+    for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = getDeviceID(i);
       if (times[i] >= upperBoundOfTimePartition || !currDeviceId.equals(nextDeviceId)) {
         final PartitionSplitInfo splitInfo =
@@ -253,7 +253,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         deviceIDSplitInfoMap.computeIfAbsent(currDeviceId, deviceID1 -> new PartitionSplitInfo());
     // the final range
     splitInfo.ranges.add(startLoc); // included
-    splitInfo.ranges.add(times.length); // excluded
+    splitInfo.ranges.add(rowCount); // excluded
     splitInfo.timePartitionSlots.add(timePartitionSlot);
 
     return deviceIDSplitInfoMap;

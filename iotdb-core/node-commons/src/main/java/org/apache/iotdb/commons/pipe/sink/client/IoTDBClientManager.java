@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
-  protected final String username;
+  protected final UserEntity userEntity;
   protected final String password;
 
   protected final boolean validateTsFile;
@@ -63,7 +64,7 @@ public abstract class IoTDBClientManager {
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -73,7 +74,7 @@ public abstract class IoTDBClientManager {
 
     this.useLeaderCache = useLeaderCache;
 
-    this.username = username;
+    this.userEntity = userEntity;
     this.password = password;
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
     this.loadTsFileStrategy = loadTsFileStrategy;

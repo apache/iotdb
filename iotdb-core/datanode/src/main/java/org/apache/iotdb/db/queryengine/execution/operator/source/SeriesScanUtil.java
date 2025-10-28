@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLo
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.NoDataPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -134,7 +135,10 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
           + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
-          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
+
+  protected TimeRange satisfiedTimeRange;
 
   public SeriesScanUtil(
       IFullPath seriesPath,
@@ -214,6 +218,20 @@ public class SeriesScanUtil implements Accountable {
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
     curUnseqFileIndex = 0;
+
+    if (satisfiedTimeRange == null) {
+      long startTime = Long.MAX_VALUE;
+      long endTime = Long.MIN_VALUE;
+      if (scanOptions.getGlobalTimeFilter() == null) {
+        satisfiedTimeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+        return;
+      }
+      for (TimeRange timeRange : context.getGlobalTimeFilterTimeRanges()) {
+        startTime = Math.min(startTime, timeRange.getMin());
+        endTime = Math.max(endTime, timeRange.getMax());
+      }
+      satisfiedTimeRange = new TimeRange(startTime, endTime);
+    }
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -681,6 +699,13 @@ public class SeriesScanUtil implements Accountable {
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
     for (Statistics<? extends Serializable> statistics : statisticsList) {
+      long orderTime = orderUtils.getOrderTime(statistics);
+      boolean canSkip =
+          (orderUtils.getAscending() && orderTime > satisfiedTimeRange.getMax())
+              || (!orderUtils.getAscending() && orderTime < satisfiedTimeRange.getMin());
+      if (canSkip) {
+        break;
+      }
       IVersionPageReader versionPageReader =
           new LazyMemVersionPageReader(
               context,
@@ -1458,6 +1483,7 @@ public class SeriesScanUtil implements Accountable {
     protected final boolean isSeq;
     protected final boolean isAligned;
     private boolean inited = false;
+    private boolean hasData = true;
 
     LazyMemVersionPageReader(
         QueryContext context,
@@ -1477,11 +1503,14 @@ public class SeriesScanUtil implements Accountable {
     }
 
     public IPointReader getPointReader() {
+      if (!hasData) {
+        return NoDataPointReader.getInstance();
+      }
       return memPointIterator;
     }
 
     public boolean hasNextBatch() {
-      return memPointIterator.hasNextBatch();
+      return hasData && memPointIterator.hasNextBatch();
     }
 
     public void setCurrentPageTimeRangeToMemPointIterator() {
@@ -1490,10 +1519,34 @@ public class SeriesScanUtil implements Accountable {
       }
       if (statistics.getStartTime() > statistics.getEndTime()) {
         // empty
+        hasData = false;
         return;
       }
-      this.memPointIterator.setCurrentPageTimeRange(
-          new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+      Filter globalTimeFilter = ((FragmentInstanceContext) context).getGlobalTimeFilter();
+      if (globalTimeFilter == null) {
+        this.memPointIterator.setCurrentPageTimeRange(
+            new TimeRange(statistics.getStartTime(), statistics.getEndTime()));
+        return;
+      }
+
+      long startTime = statistics.getStartTime();
+      long endTime = statistics.getEndTime();
+      long minStart = Long.MAX_VALUE;
+      long maxEnd = Long.MIN_VALUE;
+      for (TimeRange timeRange :
+          ((FragmentInstanceContext) context).getGlobalTimeFilterTimeRanges()) {
+        if (timeRange.overlaps(new TimeRange(startTime, endTime))) {
+          minStart = Math.min(minStart, Math.max(timeRange.getMin(), startTime));
+          maxEnd = Math.max(maxEnd, Math.min(timeRange.getMax(), endTime));
+        }
+      }
+
+      if (minStart > maxEnd) {
+        hasData = false;
+        return;
+      }
+
+      this.memPointIterator.setCurrentPageTimeRange(new TimeRange(minStart, maxEnd));
     }
 
     public TsBlock nextBatch() {
@@ -1629,7 +1682,7 @@ public class SeriesScanUtil implements Accountable {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
-      return range.getStartTime();
+      return Math.max(satisfiedTimeRange.getMin(), range.getStartTime());
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1758,7 +1811,7 @@ public class SeriesScanUtil implements Accountable {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
-      return range.getEndTime();
+      return Math.min(satisfiedTimeRange.getMax(), range.getEndTime());
     }
 
     @SuppressWarnings("squid:S3740")

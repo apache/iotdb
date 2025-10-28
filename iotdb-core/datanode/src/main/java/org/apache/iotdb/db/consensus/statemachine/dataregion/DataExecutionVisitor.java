@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
-import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
@@ -162,7 +162,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
       }
       return firstStatus;
-    } catch (TableNotExistsRuntimeException | TableLostRuntimeException e) {
+    } catch (SemanticException | TableLostRuntimeException e) {
       LOGGER.error("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }

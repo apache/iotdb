@@ -65,10 +65,6 @@
             <artifactId>libthrift</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>osgi.cmpn</artifactId>
         </dependency>
@@ -98,7 +94,7 @@
     <build>
         <resources>
             <resource>
-                <targetPath>${project.build.directory}/feature</targetPath>
+                <targetPath>feature</targetPath>
                 <filtering>true</filtering>
                 <directory>src/main/feature</directory>
             </resource>
@@ -133,7 +129,7 @@
                         <configuration>
                             <artifacts>
                                 <artifact>
-                                    <file>target/feature/feature.xml</file>
+                                    <file>src/main/feature/feature.xml</file>
                                     <classifier>features</classifier>
                                     <type>xml</type>
                                 </artifact>

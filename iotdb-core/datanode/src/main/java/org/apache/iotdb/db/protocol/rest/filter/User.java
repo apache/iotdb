@@ -18,8 +18,13 @@
 package org.apache.iotdb.db.protocol.rest.filter;
 
 public class User {
+  private long userId = -1;
   private String username;
   private String password;
+
+  public long getUserId() {
+    return userId;
+  }
 
   public String getPassword() {
     return password;
@@ -35,5 +40,9 @@ public class User {
 
   public void setUsername(String username) {
     this.username = username;
+  }
+
+  public void setUserId(long userId) {
+    this.userId = userId;
   }
 }

@@ -60,6 +60,9 @@ public class BasicAuthorityCache implements IAuthorCache {
 
   @Override
   public void putUserCache(String userName, User user) {
+    if (user.getUserId() == AuthorityChecker.SUPER_USER_ID) {
+      AuthorityChecker.setSuperUser(user.getName());
+    }
     userCache.put(userName, user);
   }
 

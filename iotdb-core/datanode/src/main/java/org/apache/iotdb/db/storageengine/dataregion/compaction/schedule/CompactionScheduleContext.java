@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -29,7 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
@@ -59,10 +62,21 @@ public class CompactionScheduleContext {
 
   private final Set<Long> timePartitionsDelayInsertionSelection;
 
+  private EncryptParameter encryptParameter;
+
+  @TestOnly
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
     this.timePartitionsDelayInsertionSelection = new HashSet<>();
     this.deviceIdCache = new HashMap<>();
+    this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+  }
+
+  public CompactionScheduleContext(EncryptParameter encryptParameter) {
+    this.partitionFileDeviceInfoCache = new HashMap<>();
+    this.timePartitionsDelayInsertionSelection = new HashSet<>();
+    this.deviceIdCache = new HashMap<>();
+    this.encryptParameter = encryptParameter;
   }
 
   public void delayInsertionSelection(long timePartitionId) {
@@ -185,7 +199,7 @@ public class CompactionScheduleContext {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getInnerSeqCompactionPerformer()
-        .createInstance();
+        .createInstance(encryptParameter);
   }
 
   public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
@@ -193,12 +207,15 @@ public class CompactionScheduleContext {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getInnerUnseqCompactionPerformer()
-            .createInstance();
+            .createInstance(encryptParameter);
     return unseqCompactionPerformer;
   }
 
   public ICrossCompactionPerformer getCrossCompactionPerformer() {
-    return IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getCrossCompactionPerformer()
+        .createInstance(encryptParameter);
   }
 
   public IDeviceID.Deserializer getCachedDeviceIdDeserializer() {

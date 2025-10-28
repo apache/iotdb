@@ -54,6 +54,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
       Ordering scanOrder,
       Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
@@ -66,6 +67,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
         scanOrder,
         globalTimeFilter,
         timeColumnDeletion,
@@ -87,6 +89,20 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
                     a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
                 : (a, b) ->
                     a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < alignedTvListIterators.size(); i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -115,11 +131,20 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             .isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
+        // check valueColumnsDeletionList
+        if (valueColumnsDeletionList != null
+            && isPointDeleted(
+                currentTime,
+                valueColumnsDeletionList.get(columnIndex),
+                valueColumnDeleteCursor.get(columnIndex),
+                scanOrder)) {
+          iteratorIndices[columnIndex] = -1;
+          bitMap.mark(columnIndex);
+        }
       }
       hasNext = true;
 
       // duplicated timestamps
-      boolean[] valueDeleted = new boolean[tsDataTypeList.size()];
       while (!heap.isEmpty() && heap.peek().left == currentTime) {
         Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
@@ -127,10 +152,14 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
         for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
           // if current column null, it needs update
           int iteratorIndex = currentIteratorIndex(columnIndex);
-          if (iteratorIndex == -1
-              || alignedTvListIterators
-                  .get(iteratorIndex)
-                  .isNullValue(rowIndices[columnIndex], columnIndex)) {
+          if (iteratorIndex == -1) {
+            // -1 means all point of this timestamp was deleted by Deletion and no further
+            // processing is required.
+            continue;
+          }
+          if (alignedTvListIterators
+              .get(iteratorIndex)
+              .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
             rowIndices[columnIndex] =
                 alignedTvListIterators.get(element.right).getSelectedIndex(columnIndex);
@@ -276,5 +305,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.alignedTvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

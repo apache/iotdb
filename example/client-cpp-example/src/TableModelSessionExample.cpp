@@ -22,7 +22,7 @@
 
 using namespace std;
 
-TableSession *session;
+shared_ptr<TableSession> session;
 
 void insertRelationalTablet() {
 
@@ -202,8 +202,6 @@ int main() {
 
         cout << "session close\n" << endl;
         session->close();
-
-        delete session;
 
         cout << "finished!\n" << endl;
     } catch (IoTDBConnectionException &e) {

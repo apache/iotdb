@@ -21,13 +21,13 @@ package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
 
-  private Random random = new Random(System.currentTimeMillis());
+  private final SecureRandom random = new SecureRandom();
 
   @Override
   public int nextFolderIndex() throws DiskSpaceInsufficientException {

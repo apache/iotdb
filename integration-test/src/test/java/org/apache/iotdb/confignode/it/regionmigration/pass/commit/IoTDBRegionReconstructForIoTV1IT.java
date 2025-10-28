@@ -151,7 +151,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                 EnvFactory.getEnv()
                     .getConnection(
                         EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
-                        CommonDescriptor.getInstance().getConfig().getAdminName(),
+                        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
                         CommonDescriptor.getInstance().getConfig().getAdminPassword(),
                         BaseEnv.TREE_SQL_DIALECT);
             Statement flushStatement = flushConn.createStatement()) {

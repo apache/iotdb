@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogical
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -157,6 +158,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
 
+  SettableFuture<ConfigTaskResult> showAppliedConfigurations(
+      ShowConfigurationStatement showConfigurationStatement);
+
   SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
@@ -219,7 +223,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
+  SettableFuture<ConfigTaskResult> showPipes(
+      ShowPipesStatement showPipesStatement, String userName);
 
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
@@ -245,7 +250,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
+  TSStatus alterLogicalViewByPipe(
+      AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
@@ -422,6 +428,14 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropModel(String modelId);
 
   SettableFuture<ConfigTaskResult> showModels(String modelId);
+
+  SettableFuture<ConfigTaskResult> showLoadedModels(List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> showAIDevices();
+
+  SettableFuture<ConfigTaskResult> loadModel(String existingModelId, List<String> deviceIdList);
+
+  SettableFuture<ConfigTaskResult> unloadModel(String existingModelId, List<String> deviceIdList);
 
   SettableFuture<ConfigTaskResult> createTraining(
       String modelId,

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -101,7 +102,9 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.LongType;
@@ -111,6 +114,7 @@ import org.apache.tsfile.utils.Pair;
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -140,6 +144,7 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
     extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
+  private final MPPQueryContext queryContext;
   private final QueryId queryId;
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -152,6 +157,7 @@ public class TableDistributedPlanGenerator
       final Analysis analysis,
       final SymbolAllocator symbolAllocator,
       final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+    this.queryContext = queryContext;
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -634,15 +640,6 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitPatternRecognition(PatternRecognitionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    if (node.getPartitionBy().isEmpty()) {
-      Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();
-      orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(node.getPlanNodeId(), scheme));
-    }
-
-    if (node.getChildren().isEmpty()) {
-      return Collections.singletonList(node);
-    }
-
     boolean canSplitPushDown = (node.getChild() instanceof GroupNode);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
@@ -719,6 +716,7 @@ public class TableDistributedPlanGenerator
                   regionReplicaSet, regionDeviceCount.getOrDefault(regionReplicaSet, 0) + 1));
       if (regionReplicaSets.size() != 1) {
         crossRegionDevices.add(deviceEntry);
+        context.deviceCrossRegion = true;
         continue;
       }
       final DeviceTableScanNode deviceTableScanNode =
@@ -760,7 +758,15 @@ public class TableDistributedPlanGenerator
           new MergeSortNode(
               queryId.genPlanNodeId(), context.expectedOrderingScheme, node.getOutputSymbols());
       for (PlanNode node1 : constructDeviceTableScanByRegionReplicaSet(node, context)) {
-        mergeSortNode.addChild(node1);
+        if (canSortEliminated(
+            mergeSortNode.getOrderingScheme(), nodeOrderingMap.get(node1.getPlanNodeId()))) {
+          mergeSortNode.addChild(node1);
+        } else {
+          SortNode subSortNode =
+              new SortNode(
+                  queryId.genPlanNodeId(), node1, mergeSortNode.getOrderingScheme(), false, false);
+          mergeSortNode.addChild(subSortNode);
+        }
       }
       nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
       result.add(mergeSortNode);
@@ -795,6 +801,9 @@ public class TableDistributedPlanGenerator
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
               cachedSeriesSlotWithRegions);
+      if (regionReplicaSets.size() > 1) {
+        context.deviceCrossRegion = true;
+      }
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
@@ -883,6 +892,9 @@ public class TableDistributedPlanGenerator
               node.getTimeFilter(),
               cachedSeriesSlotWithRegions);
 
+      if (regionReplicaSets.size() > 1) {
+        context.deviceCrossRegion = true;
+      }
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
         Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair =
@@ -1035,13 +1047,78 @@ public class TableDistributedPlanGenerator
                   "Should never reach here. Child ordering: %s. PreGroupedSymbols: %s",
                   childOrdering.getOrderBy(), node.getPreGroupedSymbols()));
         }
+      } else if (context.deviceCrossRegion) {
+        // Child has no Ordering and the device cross region, the grouped property of child is not
+        // ensured, so we need to clear the attribute of AggNode
+        node.setPreGroupedSymbols(ImmutableList.of());
+        context.deviceCrossRegion = false;
       }
-      // Child has no Ordering, do nothing here because the logical optimizer
-      // 'TransformAggregationToStreamable' will ensure the grouped property of child
+      // Child has no Ordering and the device doesn't cross region, do nothing here because the
+      // logical optimizer 'TransformAggregationToStreamable' will ensure the grouped property of
+      // child
     }
 
+    //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
+
+      if (childrenNodes.get(0) instanceof UnionNode
+          && node.getAggregations().values().stream()
+              .noneMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
+        UnionNode unionNode = (UnionNode) childrenNodes.get(0);
+        List<PlanNode> children = unionNode.getChildren();
+
+        //  1. add the project Node above the children of the union node
+        List<PlanNode> newProjectNodes = new ArrayList<>();
+
+        Map<Symbol, Collection<Symbol>> symbolMapping = unionNode.getSymbolMapping().asMap();
+        for (int i = 0; i < children.size(); i++) {
+          Assignments.Builder assignmentsBuilder = Assignments.builder();
+          for (Map.Entry<Symbol, Collection<Symbol>> symbolEntry : symbolMapping.entrySet()) {
+            List<Symbol> symbolList = (ImmutableList<Symbol>) symbolEntry.getValue();
+            assignmentsBuilder.put(symbolEntry.getKey(), symbolList.get(i).toSymbolReference());
+          }
+          newProjectNodes.add(
+              new ProjectNode(
+                  queryId.genPlanNodeId(), children.get(i), assignmentsBuilder.build()));
+        }
+
+        // 2. split the aggregation into partial and final
+        Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
+        AggregationNode intermediate = splitResult.right;
+
+        // 3. add the aggregation node above the project node
+        List<PlanNode> aggregationNodes =
+            newProjectNodes.stream()
+                .map(
+                    child -> {
+                      PlanNodeId planNodeId = queryId.genPlanNodeId();
+                      AggregationNode aggregationNode =
+                          new AggregationNode(
+                              planNodeId,
+                              child,
+                              intermediate.getAggregations(),
+                              intermediate.getGroupingSets(),
+                              intermediate.getPreGroupedSymbols(),
+                              intermediate.getStep(),
+                              intermediate.getHashSymbol(),
+                              intermediate.getGroupIdSymbol());
+                      if (node.isStreamable() && childOrdering != null) {
+                        nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
+                      }
+                      return aggregationNode;
+                    })
+                .collect(Collectors.toList());
+
+        // 4. Add a Collect Node under the final Aggregation Node, and add the partial Aggregation
+        // nodes as its children
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), aggregationNodes.get(0).getOutputSymbols());
+        collectNode.setChildren(aggregationNodes);
+        splitResult.left.setChild(collectNode);
+        return Collections.singletonList(splitResult.left);
+      }
+
       return Collections.singletonList(node);
     }
 
@@ -1055,7 +1132,6 @@ public class TableDistributedPlanGenerator
               nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
       return Collections.singletonList(node);
     }
-
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
 
@@ -1133,6 +1209,8 @@ public class TableDistributedPlanGenerator
                 cachedSeriesSlotWithRegions);
         if (regionReplicaSets.size() > 1) {
           needSplit = true;
+          context.deviceCrossRegion = true;
+          queryContext.setNeedUpdateScanNumForLastQuery(node.mayUseLastCache());
         }
         regionReplicaSetsList.add(regionReplicaSets);
       }
@@ -1763,7 +1841,37 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitUnion(UnionNode node, PlanContext context) {
     context.clearExpectedOrderingScheme();
-    return visitMultiChildProcess(node, context);
+
+    List<List<PlanNode>> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(toImmutableList());
+
+    List<PlanNode> newUnionChildren =
+        children.stream().flatMap(Collection::stream).collect(toImmutableList());
+
+    // after rewrite, we need to reconstruct SymbolMapping
+    ListMultimap<Symbol, Symbol> oldSymbolMapping = node.getSymbolMapping();
+    ImmutableListMultimap.Builder<Symbol, Symbol> newSymbolMapping =
+        ImmutableListMultimap.builder();
+    for (Symbol symbol : oldSymbolMapping.keySet()) {
+      List<Symbol> oldSymbols = oldSymbolMapping.get(symbol);
+      for (int i = 0; i < oldSymbols.size(); i++) {
+        Symbol target = oldSymbols.get(i);
+        int duplicateSize = children.get(i).size();
+        // add the same Symbol for all children spilt from one original node
+        while (duplicateSize > 0) {
+          newSymbolMapping.put(symbol, target);
+          duplicateSize--;
+        }
+      }
+    }
+    return Collections.singletonList(
+        new UnionNode(
+            node.getPlanNodeId(),
+            newUnionChildren,
+            newSymbolMapping.build(),
+            node.getOutputSymbols()));
   }
 
   public static class PlanContext {
@@ -1773,6 +1881,7 @@ public class TableDistributedPlanGenerator
     boolean pushDownGrouping = false;
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
+    boolean deviceCrossRegion;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();

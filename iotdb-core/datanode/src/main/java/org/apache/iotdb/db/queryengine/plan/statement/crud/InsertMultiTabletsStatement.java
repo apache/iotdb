@@ -60,6 +60,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
@@ -198,5 +199,13 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertMultiTabletsStatement{"
+        + "insertTabletStatementList="
+        + insertTabletStatementList
+        + '}';
   }
 }

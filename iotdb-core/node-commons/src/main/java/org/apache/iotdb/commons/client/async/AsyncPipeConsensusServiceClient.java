@@ -24,13 +24,15 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +45,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncPipeConsensusServiceClient.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private static final AtomicInteger idGenerator = new AtomicInteger(0);
   private final int id = idGenerator.incrementAndGet();
@@ -60,8 +63,17 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
     super(
         property.getProtocolFactory(),
         tAsyncClientManager,
-        TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+        commonConfig.isEnableInternalSSL()
+            ? TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(),
+                endpoint.getPort(),
+                property.getConnectionTimeoutMs(),
+                commonConfig.getKeyStorePath(),
+                commonConfig.getKeyStorePwd(),
+                commonConfig.getTrustStorePath(),
+                commonConfig.getTrustStorePwd())
+            : TNonblockingTransportWrapper.wrap(
+                endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;

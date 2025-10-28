@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -193,7 +194,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
-    return new AlignedChunkWriterImpl(timeSchema, schemaList);
+    return new AlignedChunkWriterImpl(
+        timeSchema, schemaList, EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
   }
 
   public void execute() throws IOException, PageException {
