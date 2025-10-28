@@ -250,14 +250,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitDeleteStorageGroup(
+  public IConfigTask visitDeleteDatabase(
       DeleteDatabaseStatement statement, MPPQueryContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(
-      ShowDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitShowDatabase(ShowDatabaseStatement statement, MPPQueryContext context) {
     return new ShowDatabaseTask(statement);
   }
 

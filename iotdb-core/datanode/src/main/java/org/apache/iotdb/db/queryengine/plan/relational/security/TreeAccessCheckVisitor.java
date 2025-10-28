@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -168,6 +169,7 @@ import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATAB
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.getAuthorizedPathTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
 
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
@@ -935,7 +937,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowStorageGroup(
+  public TSStatus visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -973,7 +975,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteStorageGroup(
+  public TSStatus visitDeleteDatabase(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.DDL)
@@ -1411,6 +1413,37 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitAlterEncodingCompressor(
+      AlterEncodingCompressorStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
+    // audit db is read-only
+    for (PartialPath path : statement.getPaths()) {
+      if (includeByAuditTreeDB(path)
+          && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+        recordObjectAuthenticationAuditLog(
+            context.setResult(false),
+            () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+        return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+      }
+    }
+    if (statement.ifPermitted()) {
+      try {
+        statement.setPatternTree(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                statement.getPatternTree(),
+                getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA)));
+      } catch (final AuthException e) {
+        recordObjectAuthenticationAuditLog(
+            context.setResult(false),
+            () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+        return new TSStatus(e.getCode().getStatusCode());
+      }
     }
     return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
   }

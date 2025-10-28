@@ -177,6 +177,10 @@ alterClause
     | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
+alterEncodingCompressor
+    : ALTER TIMESERIES fullPath alterClause (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET attributePair (COMMA attributePair)*
+    ;
+
 aliasClause
     : ALIAS operator_eq alias
     ;

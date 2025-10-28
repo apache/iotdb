@@ -660,6 +660,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  @Override
+  public Statement visitAlterEncodingCompressor(IoTDBSqlParser.AlterEncodingCompressorContext ctx) {
+    return null;
+  }
+
   // Drop Timeseries ======================================================================
 
   @Override
