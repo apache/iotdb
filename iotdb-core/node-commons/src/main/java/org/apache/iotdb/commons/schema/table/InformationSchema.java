@@ -24,12 +24,11 @@ import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +36,8 @@ import java.util.Set;
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
+  private static final Map<String, Set<String>> columnsThatSupportPushDownPredicate =
+      new HashMap<>();
 
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
@@ -386,23 +387,23 @@ public class InformationSchema {
     schemaTables.put(TABLE_DISK_USAGE, tableDiskUsageTable);
   }
 
+  static {
+    columnsThatSupportPushDownPredicate.put(
+        TABLE_DISK_USAGE,
+        ImmutableSet.of(
+            ColumnHeaderConstant.DATABASE,
+            ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.NODE_ID_TABLE_MODEL,
+            ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
+            ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
+  }
+
   public static Map<String, TsTable> getSchemaTables() {
     return schemaTables;
   }
 
   public static Set<String> getColumnsSupportPushDownPredicate(String tableName) {
-    switch (tableName) {
-      case TABLE_DISK_USAGE:
-        return new HashSet<>(
-            Arrays.asList(
-                ColumnHeaderConstant.DATABASE,
-                ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
-                ColumnHeaderConstant.NODE_ID_TABLE_MODEL,
-                ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
-                ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
-      default:
-        return Collections.emptySet();
-    }
+    return columnsThatSupportPushDownPredicate.getOrDefault(tableName, Collections.emptySet());
   }
 
   private InformationSchema() {
