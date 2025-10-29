@@ -354,23 +354,36 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           ((PipeAlterEncodingCompressorPlan) plan).setMayAlterAudit(false);
         }
-        final PathPatternTree pathPatternTree =
-            PathPatternTree.deserialize(
-                ByteBuffer.wrap(
-                    configManager
-                        .fetchAuthizedPatternTree(username, PrivilegeType.WRITE_SCHEMA.ordinal())
-                        .getPathPatternTree()));
-        if (((PipeAlterEncodingCompressorPlan) plan).isMayAlterAudit()) {
-          pathPatternTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+        if (skipIfNoPrivileges.get()) {
+          final PathPatternTree pathPatternTree =
+              PathPatternTree.deserialize(
+                  ByteBuffer.wrap(
+                      configManager
+                          .fetchAuthizedPatternTree(username, PrivilegeType.WRITE_SCHEMA.ordinal())
+                          .getPathPatternTree()));
+          if (((PipeAlterEncodingCompressorPlan) plan).isMayAlterAudit()) {
+            pathPatternTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+          }
+          ((PipeAlterEncodingCompressorPlan) plan)
+              .setPatternTreeBytes(
+                  PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                          PathPatternTree.deserialize(
+                              ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
+                          pathPatternTree)
+                      .serialize());
+          return StatusUtils.OK;
+        } else {
+          return configManager
+              .checkUserPrivileges(
+                  username,
+                  new PrivilegeUnion(
+                      new ArrayList<>(
+                          PathPatternTree.deserialize(
+                                  ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
+                              .getAllPathPatterns()),
+                      PrivilegeType.WRITE_SCHEMA))
+              .getStatus();
         }
-        ((PipeAlterEncodingCompressorPlan) plan)
-            .setPatternTreeBytes(
-                PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                        PathPatternTree.deserialize(
-                            ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
-                        pathPatternTree)
-                    .serialize());
-        return StatusUtils.OK;
       case PipeDeleteLogicalView:
         return configManager
             .checkUserPrivileges(

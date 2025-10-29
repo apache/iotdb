@@ -95,7 +95,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final AtomicBoolean validateTsFile = new AtomicBoolean(true);
 
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
-  protected final AtomicBoolean skipIf = new AtomicBoolean(false);
+  protected final AtomicBoolean skipIfNoPrivileges = new AtomicBoolean(false);
 
   @Override
   public IoTDBSinkRequestVersion getVersion() {
@@ -348,7 +348,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 .getOrDefault(
                     PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
 
-    skipIf.set(
+    skipIfNoPrivileges.set(
         Boolean.parseBoolean(
             req.getParams()
                 .getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false")));
