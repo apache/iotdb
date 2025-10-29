@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -961,18 +962,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
       throws MetadataException {
+    boolean exist = false;
     for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
-      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
-        try {
-          deleteSingleTimeseriesInBlackList(path);
-          writeToMLog(
-              SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
-                  Collections.singletonList(path)));
-        } catch (final IOException e) {
-          throw new MetadataException(e);
-        }
-      }
+      exist |=
+          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
     }
+    if (!exist) {
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
+    }
+    writeToMLog(node);
   }
 
   @Override
