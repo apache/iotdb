@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.invalidateCache;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.preparePatternTreeBytesData;
 
 public class AlterEncodingCompressorProcedure
@@ -105,6 +106,7 @@ public class AlterEncodingCompressorProcedure
           break;
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
