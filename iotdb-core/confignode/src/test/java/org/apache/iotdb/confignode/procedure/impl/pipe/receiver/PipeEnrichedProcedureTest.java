@@ -117,7 +117,7 @@ public class PipeEnrichedProcedureTest {
     patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
-        new DeleteTimeSeriesProcedure(queryId, patternTree, true);
+        new DeleteTimeSeriesProcedure(queryId, patternTree, true, false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

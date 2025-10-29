@@ -27,10 +27,10 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 
 public class ExportDataTree extends AbstractExportData {
@@ -174,14 +175,16 @@ public class ExportDataTree extends AbstractExportData {
           List<String> timeseries = new ArrayList<>();
           if (headers.contains("Device")) {
             deviceName = iterator.getString(2);
-            if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
+            if (deviceName.startsWith(SYSTEM_DATABASE + ".")
+                || deviceName.startsWith(AUDIT_DATABASE + ".")) {
               continue;
             }
             for (String header : headersTemp) {
               timeseries.add(deviceName + "." + header);
             }
           } else {
-            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")) {
+            if (headers.get(1).startsWith(SYSTEM_DATABASE + ".")
+                || headers.get(1).startsWith(AUDIT_DATABASE + ".")) {
               continue;
             }
             timeseries.addAll(headers);

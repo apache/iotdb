@@ -54,7 +54,6 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -96,13 +95,11 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       // the subsequent data processing
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"),
-          null)) {
-        return;
-      }
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -130,7 +127,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (0, 1)",
@@ -140,9 +137,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.vehicle.d0(time, s1) values (20001, 5)",
               "insert into root.vehicle.d0(time, s1) values (45000, 6)",
               "flush"),
-          null)) {
-        return;
-      }
+          null);
 
       final Set<String> expectedResSet = new HashSet<>();
 

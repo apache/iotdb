@@ -37,14 +37,13 @@ import java.util.Objects;
 public class ModelInferenceDescriptor {
 
   private final TEndPoint targetAINode;
-  private final ModelInformation modelInformation;
+  private ModelInformation modelInformation;
   private List<String> outputColumnNames;
   private InferenceWindowParameter inferenceWindowParameter;
   private Map<String, String> inferenceAttributes;
 
-  public ModelInferenceDescriptor(TEndPoint targetAINode, ModelInformation modelInformation) {
+  public ModelInferenceDescriptor(TEndPoint targetAINode) {
     this.targetAINode = targetAINode;
-    this.modelInformation = modelInformation;
   }
 
   private ModelInferenceDescriptor(ByteBuffer buffer) {

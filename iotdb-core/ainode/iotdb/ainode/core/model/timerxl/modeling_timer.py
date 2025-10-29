@@ -148,7 +148,7 @@ class TimerAttention(nn.Module):
         past_key_value: Optional[Cache] = None,
         output_attentions: bool = False,
         **kwargs,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Cache]]:
         bsz, q_len, _ = hidden_states.size()
 
         query_states = self.q_proj(hidden_states)
@@ -167,7 +167,7 @@ class TimerAttention(nn.Module):
 
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
-            kv_seq_len += past_key_value.get_usable_length(kv_seq_len, self.layer_idx)
+            kv_seq_len += past_key_value.get_seq_length(self.layer_idx)
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
             query_states, key_states, cos, sin, position_ids
@@ -230,15 +230,13 @@ class TimerDecoderLayer(nn.Module):
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Tuple[torch.Tensor]] = None,
+        past_key_value: Optional[Cache] = None,
         output_attentions: Optional[bool] = False,
-        use_cache: Optional[bool] = False,
         **kwargs,
     ) -> Tuple[
         torch.FloatTensor,
-        torch.FloatTensor,
-        Optional[torch.FloatTensor],
-        Optional[torch.FloatTensor],
+        Optional[torch.Tensor],
+        Optional[Cache],
     ]:
         residual = hidden_states
 
@@ -249,7 +247,6 @@ class TimerDecoderLayer(nn.Module):
             position_ids=position_ids,
             past_key_value=past_key_value,
             output_attentions=output_attentions,
-            use_cache=use_cache,
         )
         hidden_states = residual + hidden_states
         hidden_states = self.norm1(hidden_states)
@@ -263,8 +260,6 @@ class TimerDecoderLayer(nn.Module):
         if not output_attentions:
             self_attn_weights = None
 
-        if not use_cache:
-            present_key_value = None
         return hidden_states, self_attn_weights, present_key_value
 
 
@@ -272,7 +267,7 @@ class TimerPreTrainedModel(PreTrainedModel):
     config_class = TimerConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _no_split_modules = ["TimeMoeDecoderLayer"]
+    _no_split_modules = ["TimeDecoderLayer"]
     _skip_keys_device_placement = "past_key_values"
     _supports_flash_attn_2 = True
     _supports_sdpa = False
@@ -308,9 +303,10 @@ class TimerModel(TimerPreTrainedModel):
         input_ids: torch.FloatTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        past_key_values: Optional[
+            Union[Cache, tuple[tuple[torch.Tensor, torch.Tensor]]]
+        ] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
@@ -326,7 +322,6 @@ class TimerModel(TimerPreTrainedModel):
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        use_cache = use_cache if use_cache is not None else self.config.use_cache
 
         return_dict = (
             return_dict if return_dict is not None else self.config.use_return_dict
@@ -350,17 +345,24 @@ class TimerModel(TimerPreTrainedModel):
             inputs_embeds = self.embed_layer(input_ids)
             seq_length = inputs_embeds.shape[1]
 
-        if self.gradient_checkpointing and self.training:
-            if use_cache:
-                use_cache = False
-
         past_key_values_length = 0
+        use_legacy_cache = False
 
-        if use_cache:
+        if past_key_values is not None:
             use_legacy_cache = not isinstance(past_key_values, Cache)
+            # Converts the legacy cache which is tuple into an equivalent Cache. Used for backward compatibility.
             if use_legacy_cache:
                 past_key_values = DynamicCache.from_legacy_cache(past_key_values)
-            past_key_values_length = past_key_values.get_usable_length(seq_length)
+            past_key_values_length = past_key_values.get_seq_length()
+
+        # When training + checkpoints, caching is usually disabled (just do not transfer)
+        if (
+            self.gradient_checkpointing
+            and self.training
+            and isinstance(past_key_values, Cache)
+        ):
+            past_key_values = None
+            past_key_values_length = 0
 
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
@@ -403,7 +405,6 @@ class TimerModel(TimerPreTrainedModel):
                     position_ids,
                     past_key_values,
                     output_attentions,
-                    use_cache,
                 )
             else:
                 layer_outputs = decoder_layer(
@@ -412,7 +413,6 @@ class TimerModel(TimerPreTrainedModel):
                     position_ids=position_ids,
                     past_key_value=past_key_values,
                     output_attentions=output_attentions,
-                    use_cache=use_cache,
                 )
 
             hidden_states = layer_outputs[0]
@@ -420,7 +420,7 @@ class TimerModel(TimerPreTrainedModel):
             if output_attentions:
                 all_self_attns += (layer_outputs[1],)
 
-            if use_cache:
+            if isinstance(past_key_values, Cache):
                 next_decoder_cache = layer_outputs[2]
 
         hidden_states = self.norm(hidden_states)
@@ -429,7 +429,7 @@ class TimerModel(TimerPreTrainedModel):
             all_hidden_states += (hidden_states,)
 
         next_cache = None
-        if use_cache:
+        if isinstance(past_key_values, Cache):
             next_cache = (
                 next_decoder_cache.to_legacy_cache()
                 if use_legacy_cache
@@ -477,11 +477,12 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
         input_ids: torch.FloatTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        past_key_values: Optional[
+            Union[Cache, tuple[tuple[torch.Tensor, torch.Tensor]]]
+        ] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.FloatTensor] = None,
         loss_masks: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
@@ -514,7 +515,6 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
             position_ids=position_ids,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
@@ -556,7 +556,7 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
                 predictions = predictions * std + mean
         if not return_dict:
             output = (predictions,) + outputs[1:]
-            return (loss) + output if loss is not None else output
+            return (loss,) + output if loss is not None else output
 
         return MoeCausalLMOutputWithPast(
             loss=loss,
@@ -595,16 +595,9 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
         # Omit tokens covered by past_key_values
         if past_key_values is not None:
             if isinstance(past_key_values, Cache):
-                cache_length = past_key_values.get_seq_length()
-                if isinstance(past_key_values, DynamicCache):
-                    past_length = past_key_values.seen_tokens
-                else:
-                    past_length = cache_length
-
-                max_cache_length = past_key_values.get_max_length()
+                past_length = past_key_values.get_seq_length()
             else:
-                cache_length = past_length = past_key_values[0][0].shape[2]
-                max_cache_length = None
+                past_length = past_key_values[0][0].shape[2]
 
             # Keep only the unprocessed tokens:
             # 1 - If the length of the attention_mask exceeds the length of input_ids, then we are in a setting where
@@ -619,15 +612,6 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
             elif past_length < (input_ids.shape[1] // self.config.input_token_len):
                 input_ids = input_ids[:, past_length * self.config.input_token_len :]
             # 3 - Otherwise (past_length >= (input_ids.shape[1] // self.config.input_token_len)), let's assume input_ids only has unprocessed tokens.
-
-            # If we are about to go beyond the maximum cache length, we need to crop the input attention mask.
-            if (
-                max_cache_length is not None
-                and attention_mask is not None
-                and cache_length + (input_ids.shape[1] // self.config.input_token_len)
-                > max_cache_length
-            ):
-                attention_mask = attention_mask[:, -max_cache_length:]
 
         position_ids = kwargs.get("position_ids", None)
         if attention_mask is not None and position_ids is None:
@@ -649,7 +633,6 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
             {
                 "position_ids": position_ids,
                 "past_key_values": past_key_values,
-                "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
                 "revin": revin,
             }

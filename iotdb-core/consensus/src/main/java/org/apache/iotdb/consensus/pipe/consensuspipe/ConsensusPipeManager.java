@@ -26,8 +26,8 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.tsfile.external.commons.lang3.tuple.ImmutableTriple;
+import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 
 import java.util.Map;
 
@@ -114,7 +114,8 @@ public class ConsensusPipeManager {
             .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
             .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
             .put(
-                EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getAdminName())
+                EXTRACTOR_IOTDB_USER_KEY,
+                CommonDescriptor.getInstance().getConfig().getDefaultAdminName())
             .build(),
         ImmutableMap.<String, String>builder()
             .put(PROCESSOR_KEY, config.getProcessorPluginName())

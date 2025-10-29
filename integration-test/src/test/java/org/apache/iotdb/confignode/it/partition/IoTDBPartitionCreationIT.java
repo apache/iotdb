@@ -405,6 +405,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
@@ -470,6 +473,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {

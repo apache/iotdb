@@ -400,8 +400,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             databaseFullPath);
         return idx;
       } catch (final Exception e) {
-        e.printStackTrace();
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin", e);
       }
     } else {
       return 0;

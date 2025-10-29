@@ -89,8 +89,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case CreateUserWithRawPassword:
         return visitCreateRawUser((AuthorTreePlan) plan, context);
       case UpdateUser:
+      case UpdateUserV2:
         return visitUpdateUser((AuthorTreePlan) plan, context);
       case DropUser:
+      case DropUserV2:
         return visitDropUser((AuthorTreePlan) plan, context);
       case GrantUser:
         return visitGrantUser((AuthorTreePlan) plan, context);
@@ -105,8 +107,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case RCreateRole:
         return visitRCreateRole((AuthorRelationalPlan) plan, context);
       case RUpdateUser:
+      case RUpdateUserV2:
         return visitRUpdateUser((AuthorRelationalPlan) plan, context);
       case RDropUser:
+      case RDropUserV2:
         return visitRDropUserPlan((AuthorRelationalPlan) plan, context);
       case RDropRole:
         return visitRDropRolePlan((AuthorRelationalPlan) plan, context);

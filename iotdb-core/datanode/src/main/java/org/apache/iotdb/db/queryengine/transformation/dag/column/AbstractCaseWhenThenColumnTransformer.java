@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 

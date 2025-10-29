@@ -310,7 +310,10 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteTimeSeries(
-      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+      String queryId,
+      PathPatternTree patternTree,
+      boolean isGeneratedByPipe,
+      boolean mayDeleteAudit) {
     DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -338,7 +341,8 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        procedure =
+            new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -1801,7 +1805,7 @@ public class ProcedureManager {
    * @param procedure The specific procedure
    * @return TSStatus the running result of this procedure
    */
-  private TSStatus waitingProcedureFinished(Procedure<?> procedure) {
+  protected TSStatus waitingProcedureFinished(Procedure<?> procedure) {
     if (procedure == null) {
       LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);

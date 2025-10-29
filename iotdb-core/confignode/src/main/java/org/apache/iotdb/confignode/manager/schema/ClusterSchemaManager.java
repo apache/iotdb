@@ -176,7 +176,8 @@ public class ClusterSchemaManager {
     try {
       clusterSchemaInfo.isDatabaseNameValid(
           schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
-      if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+      if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
+          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -483,7 +484,8 @@ public class ClusterSchemaManager {
 
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
-          || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -492,7 +494,8 @@ public class ClusterSchemaManager {
     final AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan =
         new AdjustMaxRegionGroupNumPlan();
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+      if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
         // filter the system database
         continue;
       }
@@ -822,6 +825,7 @@ public class ClusterSchemaManager {
     TSStatus errorResp = null;
     final boolean isSystemDatabase =
         databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
+    final boolean isAuditDatabase = databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =
@@ -869,7 +873,7 @@ public class ClusterSchemaManager {
                   "Failed to create database. The timePartitionInterval should be positive.");
     }
 
-    if (isSystemDatabase) {
+    if (isSystemDatabase || isAuditDatabase) {
       databaseSchema.setMinSchemaRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
       databaseSchema.setMinSchemaRegionGroupNum(
@@ -881,7 +885,7 @@ public class ClusterSchemaManager {
                   "Failed to create database. The schemaRegionGroupNum should be positive.");
     }
 
-    if (isSystemDatabase) {
+    if (isSystemDatabase || isAuditDatabase) {
       databaseSchema.setMinDataRegionGroupNum(1);
     } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
       databaseSchema.setMinDataRegionGroupNum(

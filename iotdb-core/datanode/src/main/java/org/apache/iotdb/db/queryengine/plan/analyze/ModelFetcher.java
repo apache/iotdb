@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.db.exception.ainode.ModelNotFoundException;
@@ -61,17 +60,7 @@ public class ModelFetcher implements IModelFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
       if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (getModelInfoResp.modelInfo != null && getModelInfoResp.isSetAiNodeAddress()) {
-          analysis.setModelInferenceDescriptor(
-              new ModelInferenceDescriptor(
-                  getModelInfoResp.aiNodeAddress,
-                  ModelInformation.deserialize(getModelInfoResp.modelInfo)));
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        } else {
-          TSStatus status = new TSStatus(TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
-          status.setMessage(String.format("model [%s] is not available", modelName));
-          return status;
-        }
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
       }
@@ -86,15 +75,7 @@ public class ModelFetcher implements IModelFetcher {
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelName));
       if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (getModelInfoResp.modelInfo != null && getModelInfoResp.isSetAiNodeAddress()) {
-          return new ModelInferenceDescriptor(
-              getModelInfoResp.aiNodeAddress,
-              ModelInformation.deserialize(getModelInfoResp.modelInfo));
-        } else {
-          throw new IoTDBRuntimeException(
-              String.format("model [%s] is not available", modelName),
-              TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
-        }
+        return new ModelInferenceDescriptor(getModelInfoResp.aiNodeAddress);
       } else {
         throw new ModelNotFoundException(getModelInfoResp.getStatus().getMessage());
       }

@@ -20,14 +20,13 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public class TVColumns {
   private boolean isConstant;
-  private TimeColumn timeColumn;
+  private Column timeColumn;
   private Column valueColumn;
 
-  public TVColumns(TimeColumn timeColumn, Column valueColumn) {
+  public TVColumns(Column timeColumn, Column valueColumn) {
     this.timeColumn = timeColumn;
     this.valueColumn = valueColumn;
     isConstant = false;
@@ -54,7 +53,7 @@ public class TVColumns {
     if (isConstant) {
       throw new UnsupportedOperationException();
     }
-    return timeColumn.getEndTime();
+    return timeColumn.getLong(timeColumn.getPositionCount() - 1);
   }
 
   public Column getValueColumn() {

@@ -581,7 +581,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+    setProperty("default_database_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 
@@ -624,6 +624,30 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     setProperty("datanode_memory_proportion", datanodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    setProperty("enable_audit_log", String.valueOf(enableAuditLog));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    setProperty("auditable_operation_type", auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    setProperty("auditable_operation_level", auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    setProperty("auditable_operation_result", auditableOperationResult);
     return this;
   }
 

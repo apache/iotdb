@@ -48,29 +48,41 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchRawSchemaInMeasurementLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
-    return fetchSchema(patternTree, withTemplate, context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
+    return fetchSchema(patternTree, withTemplate, context, canSeeAuditDB);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -36,6 +37,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,6 +59,7 @@ public class ShowConfigurationTask implements IConfigTask {
       Map<String, String> lastAppliedProperties,
       boolean showAllConfigurations,
       boolean withDescription,
+      Collection<PrivilegeType> missingPrivileges,
       SettableFuture<ConfigTaskResult> future)
       throws IOException {
     List<ColumnHeader> columnHeaders =
@@ -72,6 +75,9 @@ public class ShowConfigurationTask implements IConfigTask {
         String name = item.name;
         String value = lastAppliedProperties.get(name);
         if (!showAllConfigurations && value == null) {
+          continue;
+        }
+        if (missingPrivileges.contains(item.privilege)) {
           continue;
         }
         builder.getTimeColumnBuilder().writeLong(0L);

@@ -27,10 +27,7 @@ from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import MissingConfigError
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.rpc.client import ClientManager
-from iotdb.thrift.common.ttypes import (
-    TAINodeLocation,
-    TEndPoint,
-)
+from iotdb.thrift.common.ttypes import TAINodeLocation, TEndPoint
 
 logger = Logger()
 

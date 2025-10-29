@@ -99,7 +99,6 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
-      int clientTimeout,
       TTransportFactory transportFactory) {
     super(
         processor,
@@ -115,7 +114,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         keyStorePwd,
         null,
         null,
-        clientTimeout,
+        0,
         transportFactory);
   }
 

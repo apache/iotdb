@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -61,6 +62,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   IWritableMemChunk getWritableMemChunk(String measurement);
 
   long getMaxTime();
+
+  void setEncryptParameter(EncryptParameter encryptParameter);
 
   void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

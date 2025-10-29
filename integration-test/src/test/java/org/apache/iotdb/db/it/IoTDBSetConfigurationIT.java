@@ -153,7 +153,7 @@ public class IoTDBSetConfigurationIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // legal value
-      statement.execute("set configuration \"default_storage_group_level\"=\"3\"");
+      statement.execute("set configuration \"default_database_level\"=\"3\"");
       statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
       ResultSet databases = statement.executeQuery("show databases root.a.**");
       databases.next();
@@ -171,19 +171,19 @@ public class IoTDBSetConfigurationIT {
 
       // illegal value
       try {
-        statement.execute("set configuration \"default_storage_group_level\"=\"-1\"");
+        statement.execute("set configuration \"default_database_level\"=\"-1\"");
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
+        assertTrue(e.getMessage().contains("Illegal defaultDatabaseLevel: -1, should >= 1"));
       }
 
       // Failed updates will not change the files.
       // Failed updates will not change the files.
       assertFalse(
           checkConfigFileContains(
-              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=-1"));
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_database_level=-1"));
       assertTrue(
           checkConfigFileContains(
-              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=3"));
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_database_level=3"));
     }
 
     // can start with an illegal value

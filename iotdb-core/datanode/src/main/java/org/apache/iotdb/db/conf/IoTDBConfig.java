@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.audit.AuditLogOperation;
-import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -51,6 +49,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -64,9 +63,11 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -89,7 +90,7 @@ public class IoTDBConfig {
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
-  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+  public static final Pattern DATABASE_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
   // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
   private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
@@ -192,6 +193,14 @@ public class IoTDBConfig {
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
+
+  /** Maximum number of pending device schema requests */
+  private volatile int deviceSchemaRequestCacheMaxSize = 500;
+
+  /** Wait time in milliseconds for device schema request cache */
+  private volatile int deviceSchemaRequestCacheWaitTimeMs = 20;
+
+  private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
@@ -515,6 +524,18 @@ public class IoTDBConfig {
    */
   private long maxExpiredTime = 2_592_000_000L;
 
+  /** The maximum number of consecutive failed login attempts for a specific user@address */
+  private int failedLoginAttempts = -1;
+
+  /**
+   * The maximum number of consecutive failed login attempts for a specific user (global) Note: Must
+   * be enabled if failed_login_attempts is enabled
+   */
+  private int failedLoginAttemptsPerUser = -1;
+
+  /** The lock time duration (in minutes) after reaching failed login attempts threshold */
+  private int passwordLockTimeMinutes = 10;
+
   /**
    * The expired device ratio. If the number of expired device in one tsfile exceeds this value,
    * then expired data of this tsfile will be cleaned by compaction.
@@ -611,7 +632,7 @@ public class IoTDBConfig {
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /** Database level when creating schema automatically is enabled */
-  private int defaultStorageGroupLevel = 1;
+  private int defaultDatabaseLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
@@ -959,6 +980,12 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  /**
+   * Threshold for cache size in mayEvict. When cache size exceeds this threshold, the system will
+   * compute total memory in each eviction iteration to ensure accurate memory management.
+   */
+  private int cacheEvictionMemoryComputationThreshold = 20;
+
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
   /** GRASS Service */
@@ -1036,20 +1063,6 @@ public class IoTDBConfig {
 
   private int ratisTransferLeaderTimeoutMs = 30 * 1000; // 30s
 
-  /** whether to enable the audit log * */
-  private boolean enableAuditLog = false;
-
-  /** Output location of audit logs * */
-  private List<AuditLogStorage> auditLogStorage =
-      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
-
-  /** Indicates the category collection of audit logs * */
-  private List<AuditLogOperation> auditLogOperation =
-      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
-
-  /** whether the local write api records audit logs * */
-  private boolean enableAuditLogForNativeInsertApi = true;
-
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -1108,6 +1121,8 @@ public class IoTDBConfig {
 
   private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
+  private int loadTsFileSpiltPartitionMaxSize = 10;
+
   private String[] loadActiveListeningDirs =
       new String[] {
         IoTDBConstant.EXT_FOLDER_NAME
@@ -1141,6 +1156,8 @@ public class IoTDBConfig {
   private String loadDiskSelectStrategyForIoTV2AndPipe =
       LoadDiskSelectorType.INHERIT_LOAD.getValue();
 
+  private boolean skipFailedTableSchemaCheck = false;
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -1169,6 +1186,10 @@ public class IoTDBConfig {
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   private boolean includeNullValueInWriteThroughputMetric = false;
+
+  private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
+      new ConcurrentHashMap<>(
+          Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
 
   IoTDBConfig() {}
 
@@ -1922,6 +1943,39 @@ public class IoTDBConfig {
     this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
+  public long getDataNodeTableSchemaCacheSize() {
+    return dataNodeTableSchemaCacheSize;
+  }
+
+  public void setDataNodeTableSchemaCacheSize(long dataNodeTableSchemaCacheSize) {
+    if (dataNodeTableSchemaCacheSize < 0) {
+      return;
+    }
+    this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
+  }
+
+  public int getDeviceSchemaRequestCacheMaxSize() {
+    return deviceSchemaRequestCacheMaxSize;
+  }
+
+  public void setDeviceSchemaRequestCacheMaxSize(int deviceSchemaRequestCacheMaxSize) {
+    if (deviceSchemaRequestCacheMaxSize < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheMaxSize = deviceSchemaRequestCacheMaxSize;
+  }
+
+  public int getDeviceSchemaRequestCacheWaitTimeMs() {
+    return deviceSchemaRequestCacheWaitTimeMs;
+  }
+
+  public void setDeviceSchemaRequestCacheWaitTimeMs(int deviceSchemaRequestCacheWaitTimeMs) {
+    if (deviceSchemaRequestCacheWaitTimeMs < 0) {
+      return;
+    }
+    this.deviceSchemaRequestCacheWaitTimeMs = deviceSchemaRequestCacheWaitTimeMs;
+  }
+
   public long getWalMemTableSnapshotThreshold() {
     return walMemTableSnapshotThreshold;
   }
@@ -2225,24 +2279,23 @@ public class IoTDBConfig {
     this.nanStringInferType = nanStringInferType;
   }
 
-  public int getDefaultStorageGroupLevel() {
-    return defaultStorageGroupLevel;
+  public int getDefaultDatabaseLevel() {
+    return defaultDatabaseLevel;
   }
 
-  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
-    if (defaultStorageGroupLevel < 1) {
+  void setDefaultDatabaseLevel(int defaultDatabaseLevel, boolean startUp) {
+    if (defaultDatabaseLevel < 1) {
       if (startUp) {
         logger.warn(
-            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
-            defaultStorageGroupLevel);
-        defaultStorageGroupLevel = 1;
+            "Illegal defaultDatabaseLevel: {}, should >= 1, use default value 1",
+            defaultDatabaseLevel);
+        defaultDatabaseLevel = 1;
       } else {
         throw new IllegalArgumentException(
-            String.format(
-                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+            String.format("Illegal defaultDatabaseLevel: %d, should >= 1", defaultDatabaseLevel));
       }
     }
-    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
+    this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
   public TSEncoding getDefaultBooleanEncoding() {
@@ -3222,6 +3275,15 @@ public class IoTDBConfig {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
   }
 
+  public int getCacheEvictionMemoryComputationThreshold() {
+    return cacheEvictionMemoryComputationThreshold;
+  }
+
+  public void setCacheEvictionMemoryComputationThreshold(
+      int cacheEvictionMemoryComputationThreshold) {
+    this.cacheEvictionMemoryComputationThreshold = cacheEvictionMemoryComputationThreshold;
+  }
+
   public int getDataNodeTableCacheSemaphorePermitNum() {
     return dataNodeTableCacheSemaphorePermitNum;
   }
@@ -3377,14 +3439,14 @@ public class IoTDBConfig {
           continue;
         }
         String configType = configField.getGenericType().getTypeName();
-        if (configType.contains("java.lang.String[][]")) {
+        if (configType.contains(IoTDBConstant.STRING_2D_ARRAY_CLASS_NAME)) {
           String[][] configList = (String[][]) configField.get(this);
           StringBuilder builder = new StringBuilder();
           for (String[] strings : configList) {
             builder.append(Arrays.asList(strings)).append(";");
           }
           configContent = builder.toString();
-        } else if (configType.contains("java.lang.String[]")) {
+        } else if (configType.contains(IoTDBConstant.STRING_ARRAY_CLASS_NAME)) {
           String[] configList = (String[]) configField.get(this);
           configContent = Arrays.asList(configList).toString();
         } else {
@@ -3397,7 +3459,7 @@ public class IoTDBConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        e.printStackTrace();
+        logger.warn("Failed to get field {}", configField, e);
       }
     }
     return configMessage.toString();
@@ -3709,38 +3771,6 @@ public class IoTDBConfig {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
-  public boolean isEnableAuditLog() {
-    return enableAuditLog;
-  }
-
-  public void setEnableAuditLog(boolean enableAuditLog) {
-    this.enableAuditLog = enableAuditLog;
-  }
-
-  public List<AuditLogStorage> getAuditLogStorage() {
-    return auditLogStorage;
-  }
-
-  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
-    this.auditLogStorage = auditLogStorage;
-  }
-
-  public List<AuditLogOperation> getAuditLogOperation() {
-    return auditLogOperation;
-  }
-
-  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
-    this.auditLogOperation = auditLogOperation;
-  }
-
-  public boolean isEnableAuditLogForNativeInsertApi() {
-    return enableAuditLogForNativeInsertApi;
-  }
-
-  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
-    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
-  }
-
   public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
     this.modeMapSizeThreshold = modeMapSizeThreshold;
   }
@@ -3918,6 +3948,18 @@ public class IoTDBConfig {
     this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
+  public boolean isSkipFailedTableSchemaCheck() {
+    return skipFailedTableSchemaCheck;
+  }
+
+  public void setSkipFailedTableSchemaCheck(boolean skipFailedTableSchemaCheck) {
+    if (this.skipFailedTableSchemaCheck == skipFailedTableSchemaCheck) {
+      return;
+    }
+    this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
+    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
+  }
+
   public long getLoadActiveListeningCheckIntervalSeconds() {
     return loadActiveListeningCheckIntervalSeconds;
   }
@@ -3995,6 +4037,27 @@ public class IoTDBConfig {
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
     this.pipeReceiverFileDirs = pipeReceiverFileDirs;
+  }
+
+  public int getLoadTsFileSpiltPartitionMaxSize() {
+    return loadTsFileSpiltPartitionMaxSize;
+  }
+
+  public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    if (loadTsFileSpiltPartitionMaxSize <= 0) {
+      throw new IllegalArgumentException(
+          "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0");
+    }
+
+    if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {
+      return;
+    }
+
+    logger.info(
+        "Set loadTsFileSpiltPartitionMaxSize from {} to {}",
+        this.loadTsFileSpiltPartitionMaxSize,
+        loadTsFileSpiltPartitionMaxSize);
+    this.loadTsFileSpiltPartitionMaxSize = loadTsFileSpiltPartitionMaxSize;
   }
 
   public String[] getPipeReceiverFileDirs() {
@@ -4172,5 +4235,33 @@ public class IoTDBConfig {
   public void setIncludeNullValueInWriteThroughputMetric(
       boolean includeNullValueInWriteThroughputMetric) {
     this.includeNullValueInWriteThroughputMetric = includeNullValueInWriteThroughputMetric;
+  }
+
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+  }
+
+  public void setFailedLoginAttempts(int failedLoginAttempts) {
+    this.failedLoginAttempts = failedLoginAttempts;
+  }
+
+  public int getFailedLoginAttemptsPerUser() {
+    return failedLoginAttemptsPerUser;
+  }
+
+  public void setFailedLoginAttemptsPerUser(int failedLoginAttemptsPerUser) {
+    this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
+  }
+
+  public int getPasswordLockTimeMinutes() {
+    return passwordLockTimeMinutes;
+  }
+
+  public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
+    this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
+    return tsFileDBToEncryptMap;
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.control;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.UnClosedTsFileReader;
@@ -148,10 +149,18 @@ public class FileReaderManager {
       TsFileSequenceReader tsFileReader = null;
       // check if the file is old version
       if (!isClosed) {
-        tsFileReader = new UnClosedTsFileReader(filePath, ioSizeRecorder);
+        tsFileReader =
+            new UnClosedTsFileReader(
+                filePath,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath),
+                ioSizeRecorder);
       } else {
         // already do the version check in TsFileSequenceReader's constructor
-        tsFileReader = new TsFileSequenceReader(filePath, ioSizeRecorder);
+        tsFileReader =
+            new TsFileSequenceReader(
+                filePath,
+                ioSizeRecorder,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(filePath));
       }
       readerMap.put(tsFileID, tsFileReader);
       return tsFileReader;

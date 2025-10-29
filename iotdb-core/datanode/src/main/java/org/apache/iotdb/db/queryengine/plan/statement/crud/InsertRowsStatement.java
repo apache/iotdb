@@ -56,6 +56,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
     statementType = StatementType.BATCH_INSERT_ROWS;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
@@ -235,5 +236,10 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowsStatement{" + "insertRowStatementList=" + insertRowStatementList + '}';
   }
 }

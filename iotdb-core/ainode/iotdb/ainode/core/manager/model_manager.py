@@ -21,10 +21,7 @@ from torch import nn
 from yaml import YAMLError
 
 from iotdb.ainode.core.constant import TSStatusCode
-from iotdb.ainode.core.exception import (
-    BadConfigValueError,
-    InvalidUriError,
-)
+from iotdb.ainode.core.exception import BadConfigValueError, InvalidUriError
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_enums import BuiltInModelType, ModelStates
 from iotdb.ainode.core.model.model_info import ModelInfo
@@ -147,6 +144,9 @@ class ModelManager:
     def register_built_in_model(self, model_info: ModelInfo):
         self.model_storage.register_built_in_model(model_info)
 
+    def get_model_info(self, model_id: str) -> ModelInfo:
+        return self.model_storage.get_model_info(model_id)
+
     def update_model_state(self, model_id: str, state: ModelStates):
         self.model_storage.update_model_state(model_id, state)
 
@@ -155,3 +155,15 @@ class ModelManager:
         Get the type of the model with the given model_id.
         """
         return self.model_storage.get_built_in_model_type(model_id)
+
+    def is_built_in_or_fine_tuned(self, model_id: str) -> bool:
+        """
+        Check if the model_id corresponds to a built-in or fine-tuned model.
+
+        Args:
+            model_id (str): The ID of the model.
+
+        Returns:
+            bool: True if the model is built-in or fine_tuned, False otherwise.
+        """
+        return self.model_storage.is_built_in_or_fine_tuned(model_id)

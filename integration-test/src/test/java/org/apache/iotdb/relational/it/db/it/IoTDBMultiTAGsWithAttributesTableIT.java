@@ -167,6 +167,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         "delete from table6 where time >= 1"
       };
 
+  private static final String[] sql7 =
+      new String[] {
+        "create table t1(device_id STRING TAG, code STRING TAG, s1 float)",
+        "create table t2(device_id STRING TAG, s2 float)"
+      };
+
   String[] expectedHeader;
   String[] retArray;
   static String sql;
@@ -191,7 +197,7 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5, sql6)) {
+      for (String[] sqlList : Arrays.asList(sql1, sql2, sql3, sql4, sql5, sql6, sql7)) {
         for (String sql : sqlList) {
           statement.execute(sql);
         }
@@ -2879,6 +2885,37 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void implicitTimeTest() {
+    expectedHeader = new String[] {"code", "_col1", "device_id", "_col3"};
+    retArray = new String[] {};
+    tableResultSetEqualTest(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2, t2.time) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select t1.code,date_bin(15m, t2.time),t2.device_id,last(t2.s2, time) from t1, t2 "
+            + "where t1.device_id = t2.device_id group by t1.code,date_bin(15m, t2.time),t2.device_id",
+        "Column 'time' is ambiguous",
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"null,"};
+    tableResultSetEqualTest("select last(1) from t1", expectedHeader, retArray, DATABASE_NAME);
+
+    tableResultSetEqualTest("select last(1,time) from t1", expectedHeader, retArray, DATABASE_NAME);
   }
 
   public static void repeatTest(

@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,7 +157,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull final PipeProcessorSubtask pipeProcessorSubtask) {
+  public void register(final PipeProcessorSubtask pipeProcessorSubtask) {
     final String taskID = pipeProcessorSubtask.getTaskID();
     processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
     if (Objects.nonNull(metricService)) {

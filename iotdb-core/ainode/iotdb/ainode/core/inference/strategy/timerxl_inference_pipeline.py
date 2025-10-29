@@ -39,13 +39,13 @@ class TimerXLInferencePipeline(AbstractInferencePipeline):
             raise InferenceModelInternalError(
                 f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
             )
-        # TODO: Disassemble and adapt with TimerXL's ts_generation_mixin.py
+        # Considering that we are currently using the generate function interface, it seems that no pre-processing is required
         return inputs
 
     def post_decode(self):
-        # TODO: Disassemble and adapt with TimerXL's ts_generation_mixin.py
+        # Considering that we are currently using the generate function interface, it seems that no post-processing is required
         pass
 
     def post_inference(self):
-        # TODO: Disassemble and adapt with TimerXL's ts_generation_mixin.py
+        # Considering that we are currently using the generate function interface, it seems that no post-processing is required
         pass

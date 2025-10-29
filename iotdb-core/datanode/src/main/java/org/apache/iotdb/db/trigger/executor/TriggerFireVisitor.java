@@ -67,6 +67,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
+
 public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEvent> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
@@ -291,6 +293,10 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
       InsertNode node, TriggerEvent event) {
     PartialPath device = node.getTargetPath();
+    // audit write should never be triggerred
+    if (includeByAuditTreeDB(device)) {
+      return Collections.emptyMap();
+    }
     List<String> measurements = new ArrayList<>();
     for (String measurement : node.getMeasurements()) {
       if (measurement != null) {

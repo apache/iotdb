@@ -212,13 +212,12 @@ public class IoTDBSessionComplexIT {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
           if (!e.getMessage()
-              .contains(
-                  "803: No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+              .contains("803: No permissions for this operation, please add privilege SYSTEM")) {
             fail(e.getMessage());
           }
         }
 
-        grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+        grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
         try {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
@@ -231,7 +230,7 @@ public class IoTDBSessionComplexIT {
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
       revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-      revokeUserSeriesPrivilege("test", PrivilegeType.MANAGE_DATABASE, "root.**");
+      revokeUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
 
       for (long time = 0; time < 100; time++) {
         session.insertRecord(deviceId, time, measurements, types, 1L, 2L, 3L);
@@ -672,7 +671,7 @@ public class IoTDBSessionComplexIT {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
@@ -680,7 +679,7 @@ public class IoTDBSessionComplexIT {
         insertTablet(authSession, "root.sg1.d1");
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
@@ -688,12 +687,12 @@ public class IoTDBSessionComplexIT {
         insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
-            .contains("No permissions for this operation, please add privilege MANAGE_DATABASE")) {
+            .contains("No permissions for this operation, please add privilege SYSTEM")) {
           fail(e.getMessage());
         }
       }
 
-      grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+      grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
       try {
         insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
         insertTablet(authSession, "root.sg1.d1");

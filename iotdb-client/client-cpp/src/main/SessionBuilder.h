@@ -79,12 +79,12 @@ public:
         return this;
     }
 
-    Session* build() {
+   std::shared_ptr<Session> build() {
         sqlDialect = "tree";
-        Session* newSession = new Session(this);
+        auto newSession = std::make_shared<Session>(this);
         newSession->open(false);
         return newSession;
-    }
+   }
 };
 
 #endif // IOTDB_SESSION_BUILDER_H

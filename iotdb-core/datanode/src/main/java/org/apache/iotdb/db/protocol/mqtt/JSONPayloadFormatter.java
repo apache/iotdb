@@ -27,8 +27,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

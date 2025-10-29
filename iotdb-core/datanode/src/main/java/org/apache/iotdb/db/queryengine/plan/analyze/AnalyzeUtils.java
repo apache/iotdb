@@ -347,9 +347,6 @@ public class AnalyzeUtils {
     node.setDatabaseName(databaseName);
 
     final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
-    if (table == null) {
-      throw new SemanticException("Table " + tableName + " not found");
-    }
 
     DataNodeTreeViewSchemaUtils.checkTableInWrite(databaseName, table);
     // Maybe set by pipe transfer

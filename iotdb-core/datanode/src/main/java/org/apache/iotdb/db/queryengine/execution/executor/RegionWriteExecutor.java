@@ -100,7 +100,7 @@ public class RegionWriteExecutor {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static final String METADATA_ERROR_MSG = "Metadata error: ";
+  private static final String METADATA_ERROR_MSG = "Metadata error: {}";
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -422,7 +422,7 @@ public class RegionWriteExecutor {
             return super.visitCreateTimeSeries(node, context);
           } else {
             final MetadataException metadataException = failingMeasurementMap.get(0);
-            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+            LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
             return RegionExecutionResult.create(
                 false,
                 metadataException.getMessage(),
@@ -477,7 +477,7 @@ public class RegionWriteExecutor {
           } else {
             final MetadataException metadataException =
                 failingMeasurementMap.values().iterator().next();
-            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+            LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
             return RegionExecutionResult.create(
                 false,
                 metadataException.getMessage(),
@@ -584,7 +584,7 @@ public class RegionWriteExecutor {
 
         for (final Map.Entry<Integer, MetadataException> failingMeasurement :
             failingMeasurementMap.entrySet()) {
-          LOGGER.warn(METADATA_ERROR_MSG, failingMeasurement.getValue());
+          LOGGER.info(METADATA_ERROR_MSG, failingMeasurement.getValue().getMessage());
           failingStatus.add(
               RpcUtils.getStatus(
                   failingMeasurement.getValue().getErrorCode(),
@@ -669,7 +669,7 @@ public class RegionWriteExecutor {
               final int errorCode = metadataException.getErrorCode();
               if (errorCode != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
                   || errorCode != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
-                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+                LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
               }
               failingStatus.add(
                   RpcUtils.getStatus(
@@ -764,7 +764,7 @@ public class RegionWriteExecutor {
                             ((MeasurementAlreadyExistException) metadataException)
                                 .getMeasurementPath())));
               } else {
-                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+                LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
                 failingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(), metadataException.getMessage()));
@@ -1063,7 +1063,7 @@ public class RegionWriteExecutor {
           // if there are some exceptions, handle each exception and return first of them.
           if (!failingMetadataException.isEmpty()) {
             final MetadataException metadataException = failingMetadataException.get(0);
-            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+            LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
             return RegionExecutionResult.create(
                 false,
                 metadataException.getMessage(),

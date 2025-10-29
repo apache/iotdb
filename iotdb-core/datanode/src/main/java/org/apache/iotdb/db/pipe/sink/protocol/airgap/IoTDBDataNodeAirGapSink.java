@@ -60,7 +60,9 @@ public abstract class IoTDBDataNodeAirGapSink extends IoTDBAirGapSink {
         Boolean.toString(shouldReceiverConvertOnTypeMismatch));
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, userId);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, cliHostname);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,

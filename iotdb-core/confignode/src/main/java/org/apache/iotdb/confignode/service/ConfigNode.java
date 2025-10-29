@@ -201,7 +201,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             startUpSleep("restart ConfigNode failed! ");
           }
         }
+        loadSecretKey();
+        loadHardwareCode();
         return;
+      } else {
+        saveSecretKey();
+        saveHardwareCode();
       }
 
       /* Initial startup of Seed-ConfigNode */
@@ -213,6 +218,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
+        // Generate the builtin admin users after initConsensusManager
+        initBuiltinUsers();
 
         // Persistence system parameters after the consensusGroup is built,
         // or the consensusGroup will not be initialized successfully otherwise.
@@ -278,6 +285,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       exitStatusCode = StatusUtils.retrieveExitStatusCode(e);
       stop();
     }
+  }
+
+  protected void initBuiltinUsers() {
+    // nothing to do
   }
 
   void processPid() {
@@ -411,6 +422,22 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     LOGGER.error(
         "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
     stop();
+  }
+
+  protected void saveSecretKey() {
+    // Do nothing
+  }
+
+  protected void saveHardwareCode() {
+    // Do nothing
+  }
+
+  protected void loadSecretKey() throws IOException {
+    // Do nothing
+  }
+
+  protected void loadHardwareCode() throws IOException {
+    // Do nothing
   }
 
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {

@@ -55,7 +55,7 @@ public class IoTDBMiscIT {
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.comprssion_ratio_file.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
-      // one global file and two data region file (including one system region)
+      // one global file and two data region file (including one AUDIT region)
       assertEquals(3, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("drop database root.comprssion_ratio_file");

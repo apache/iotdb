@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
@@ -76,7 +77,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -109,7 +112,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -130,7 +135,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -167,7 +174,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // check status
@@ -203,7 +212,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -247,7 +258,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -281,7 +294,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // check status
@@ -315,7 +330,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // check status
@@ -351,7 +368,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // check status
@@ -384,7 +403,9 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
+              .pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
       // Check status
@@ -435,7 +456,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAlterPipeSourceAndSink() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    boolean insertResult = true;
 
     final Consumer<String> handleFailure =
         o -> {
@@ -457,11 +477,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
       fail(e.getMessage());
     }
 
-    insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    insertResult = insertResult && TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
     // Check data on receiver
     TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
@@ -475,12 +492,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
-    insertResult = TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-    insertResult =
-        insertResult && TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
-    if (!insertResult) {
-      return;
-    }
+    TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+
+    TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         TableModelUtils.getQuerySql("test"),

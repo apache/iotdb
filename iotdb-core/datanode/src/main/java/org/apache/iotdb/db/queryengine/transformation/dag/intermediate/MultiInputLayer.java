@@ -42,7 +42,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,8 +142,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         if (layerReaders[i].isConstantPointReader()) {
           inputTVColumnsList[i] = new TVColumns(columns[0]);
         } else {
-          inputTVColumnsList[i] = new TVColumns((TimeColumn) columns[1], columns[0]);
-          timeHeap.add(((TimeColumn) columns[1]).getStartTime());
+          inputTVColumnsList[i] = new TVColumns(columns[1], columns[0]);
+          timeHeap.add(columns[1].getLong(0));
         }
 
         currentConsumedIndexes[i] = 0;
@@ -354,10 +353,10 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       private long currentEndTime = Long.MAX_VALUE;
 
       private final RowListForwardIterator beginIterator = rowRecordList.constructIterator();
-      private TimeColumn cachedBeginTimeColumn;
+      private Column cachedBeginTimeColumn;
       private int cachedBeginConsumed;
 
-      private TimeColumn cachedEndTimeColumn;
+      private Column cachedEndTimeColumn;
       private int cachedEndConsumed;
 
       @Override
@@ -370,7 +369,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
             }
 
             Column[] columns = udfInputDataSet.currentBlock();
-            TimeColumn times = (TimeColumn) columns[columns.length - 1];
+            Column times = columns[columns.length - 1];
 
             rowRecordList.put(columns);
 
@@ -379,11 +378,12 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
-            nextWindowTimeBegin = cachedEndTimeColumn.getStartTime();
+            nextWindowTimeBegin = cachedEndTimeColumn.getLong(0);
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
           if (hasAtLeastOneRow) {
-            currentEndTime = cachedEndTimeColumn.getEndTime();
+            currentEndTime =
+                cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1);
           }
           isFirstIteration = false;
         }
@@ -407,10 +407,10 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
           // Generate data
           Column[] columns = udfInputDataSet.currentBlock();
-          TimeColumn times = (TimeColumn) columns[columns.length - 1];
+          Column times = columns[columns.length - 1];
           // Put data into container
           rowRecordList.put(columns);
-          currentEndTime = times.getEndTime();
+          currentEndTime = times.getLong(times.getPositionCount() - 1);
           // Increase nextIndexEnd
           nextIndexEnd += cachedEndTimeColumn.getPositionCount() - cachedEndConsumed;
           // Update cache
@@ -446,7 +446,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
 
               cachedBeginConsumed = 0;
               Column[] columns = beginIterator.currentBlock();
-              cachedBeginTimeColumn = (TimeColumn) columns[columns.length - 1];
+              cachedBeginTimeColumn = columns[columns.length - 1];
             } else {
               // No more data
               // Set nextIndexBegin to list's size
@@ -456,7 +456,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         }
 
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < cachedEndTimeColumn.getEndTime()) {
+            && nextWindowTimeEnd
+                < cachedEndTimeColumn.getLong(cachedEndTimeColumn.getPositionCount() - 1)) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }
@@ -514,7 +515,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 0;
 
-      private TimeColumn cachedTimes;
+      private Column cachedTimes;
       private int cachedConsumed;
 
       @Override
@@ -557,7 +558,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
 
           if (!findWindow) {
-            if (cachedTimes.getEndTime() < displayWindowEnd) {
+            if (cachedTimes.getLong(cachedTimes.getPositionCount() - 1) < displayWindowEnd) {
               YieldableState state = yieldAndCache();
               if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -586,12 +587,12 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           }
         }
         // Initialize essential information
-        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getStartTime());
+        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getLong(0));
         hasAtLeastOneRow = rowRecordList.size() != 0;
         isFirstIteration = false;
 
         // Set initial nextIndexBegin
-        long currentEndTime = cachedTimes.getEndTime();
+        long currentEndTime = cachedTimes.getLong(cachedTimes.getPositionCount() - 1);
         // Find corresponding block
         while (currentEndTime < nextWindowTimeBegin) {
           // Consume all data
@@ -625,7 +626,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           return state;
         }
         Column[] columns = udfInputDataSet.currentBlock();
-        TimeColumn times = (TimeColumn) columns[columns.length - 1];
+        Column times = columns[columns.length - 1];
 
         rowRecordList.put(columns);
 

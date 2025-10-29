@@ -105,8 +105,8 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -1230,11 +1230,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planShowQueries(Analysis analysis) {
+  public LogicalPlanBuilder planShowQueries(Analysis analysis, String allowedUsername) {
     List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
-          planSingleShowQueries(dataNodeLocations.get(0))
+          planSingleShowQueries(dataNodeLocations.get(0), allowedUsername)
               .planFilterAndTransform(
                   analysis.getWhereExpression(),
                   analysis.getSourceExpressions(),
@@ -1254,7 +1254,7 @@ public class LogicalPlanBuilder {
       dataNodeLocations.forEach(
           dataNodeLocation ->
               mergeSortNode.addChild(
-                  this.planSingleShowQueries(dataNodeLocation)
+                  this.planSingleShowQueries(dataNodeLocation, allowedUsername)
                       .planFilterAndTransform(
                           analysis.getWhereExpression(),
                           analysis.getSourceExpressions(),
@@ -1275,8 +1275,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
-    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+  private LogicalPlanBuilder planSingleShowQueries(
+      TDataNodeLocation dataNodeLocation, String allowedUsername) {
+    this.root =
+        new ShowQueriesNode(
+            context.getQueryId().genPlanNodeId(), dataNodeLocation, allowedUsername);
     return this;
   }
 

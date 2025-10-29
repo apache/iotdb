@@ -27,7 +27,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
@@ -140,7 +139,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
         timeColumnBuilder.writeLong(i);
         valueColumnBuilder.writeBinary(empty);
       }
-      TimeColumn timeColumn = (TimeColumn) timeColumnBuilder.build();
+      Column timeColumn = timeColumnBuilder.build();
       Column valueColumn = valueColumnBuilder.build();
       newESTVList.putColumn(timeColumn, valueColumn);
     }

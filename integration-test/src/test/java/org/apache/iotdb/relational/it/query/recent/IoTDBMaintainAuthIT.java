@@ -31,7 +31,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableQueryNoVerifyResultTest;
@@ -113,8 +112,12 @@ public class IoTDBMaintainAuthIT {
     tableQueryNoVerifyResultTest("SHOW CURRENT_USER", expectedHeader, USER_2, PASSWORD);
 
     // case 5: show version
-    expectedHeader = new String[] {"Version", "BuildInfo"};
-    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_2, PASSWORD);
+    tableAssertTestFail(
+        "SHOW VERSION",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
+        USER_2,
+        PASSWORD);
 
     // case 6: show current_timestamp
     expectedHeader = new String[] {"CurrentTimestamp"};
@@ -125,7 +128,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "SHOW VARIABLES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -134,7 +137,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "SHOW CLUSTER_ID",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -143,7 +146,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "FLUSH",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -152,7 +155,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "CLEAR CACHE",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -161,7 +164,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "SET CONFIGURATION query_timeout_threshold='100000'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -175,8 +178,7 @@ public class IoTDBMaintainAuthIT {
     // user2
     tableAssertTestFail(
         "kill query '20250206_093300_00001_1'",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+        TSStatusCode.NO_SUCH_QUERY.getStatusCode() + ": No such query",
         USER_2,
         PASSWORD);
 
@@ -194,7 +196,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "SET SYSTEM TO RUNNING",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -203,7 +205,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "START REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -212,7 +214,7 @@ public class IoTDBMaintainAuthIT {
     tableAssertTestFail(
         "STOP REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, only root user is allowed",
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -220,13 +222,15 @@ public class IoTDBMaintainAuthIT {
     // user1
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
-        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_1,
         PASSWORD);
     // user2
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
-        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
 
@@ -241,13 +245,15 @@ public class IoTDBMaintainAuthIT {
     // user1
     tableAssertTestFail(
         "drop function udsf",
-        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_1,
         PASSWORD);
     // user2
     tableAssertTestFail(
         "drop function udsf",
-        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
         USER_2,
         PASSWORD);
   }

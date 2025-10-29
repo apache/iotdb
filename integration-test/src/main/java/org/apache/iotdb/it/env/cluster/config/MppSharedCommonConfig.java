@@ -656,4 +656,32 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    dnConfig.setEnableAuditLog(enableAuditLog);
+    cnConfig.setEnableAuditLog(enableAuditLog);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    dnConfig.setAuditableOperationType(auditableOperationType);
+    cnConfig.setAuditableOperationType(auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    dnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    cnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    dnConfig.setAuditableOperationResult(auditableOperationResult);
+    cnConfig.setAuditableOperationResult(auditableOperationResult);
+    return this;
+  }
 }
