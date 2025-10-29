@@ -26,8 +26,11 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AlterEncodingCompressorState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class AlterEncodingCompressorProcedure
@@ -99,7 +102,24 @@ public class AlterEncodingCompressorProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE.getTypeCode()
             : ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE.getTypeCode());
-    // TODO
+    super.serialize(stream);
+    ReadWriteIOUtils.write(queryId, stream);
+    patternTree.serialize(stream);
+    ReadWriteIOUtils.write(ifExists, stream);
+    ReadWriteIOUtils.write(encoding, stream);
+    ReadWriteIOUtils.write(compressor, stream);
+    ReadWriteIOUtils.write(mayAlterAudit, stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    queryId = ReadWriteIOUtils.readString(byteBuffer);
+    patternTree = PathPatternTree.deserialize(byteBuffer);
+    ifExists = ReadWriteIOUtils.readBoolean(byteBuffer);
+    encoding = ReadWriteIOUtils.readByte(byteBuffer);
+    compressor = ReadWriteIOUtils.readByte(byteBuffer);
+    mayAlterAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
   }
 
   @Override
