@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
@@ -121,7 +122,8 @@ public class DeleteTimeSeriesProcedure
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
+          setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
           LOGGER.info("Delete data of timeSeries {}", requestMessage);
@@ -196,7 +198,11 @@ public class DeleteTimeSeriesProcedure
         : 0;
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+  public static void invalidateCache(
+      final ConfigNodeProcedureEnv env,
+      final ByteBuffer patternTreeBytes,
+      final String requestMessage,
+      final Consumer<ProcedureException> setFailure) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
@@ -210,13 +216,11 @@ public class DeleteTimeSeriesProcedure
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
-        setFailure(
+        setFailure.accept(
             new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
         return;
       }
     }
-
-    setNextState(DeleteTimeSeriesState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
