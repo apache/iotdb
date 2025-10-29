@@ -20,27 +20,38 @@
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AlterEncodingCompressorState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.preparePatternTreeBytesData;
+
 public class AlterEncodingCompressorProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterEncodingCompressorState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlterEncodingCompressorState.class);
   private String queryId;
   private PathPatternTree patternTree;
   private boolean ifExists;
   private byte encoding;
   private byte compressor;
   private boolean mayAlterAudit;
+
+  private transient ByteBuffer patternTreeBytes;
+  private transient String requestMessage;
 
   public AlterEncodingCompressorProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -56,7 +67,7 @@ public class AlterEncodingCompressorProcedure
       final boolean mayAlterAudit) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
-    this.patternTree = pathPatternTree;
+    setPatternTree(pathPatternTree);
     this.ifExists = ifExists;
     this.encoding = encoding;
     this.compressor = compressor;
@@ -67,19 +78,54 @@ public class AlterEncodingCompressorProcedure
     return queryId;
   }
 
+  @TestOnly
+  public PathPatternTree getPatternTree() {
+    return patternTree;
+  }
+
+  public void setPatternTree(final PathPatternTree patternTree) {
+    this.patternTree = patternTree;
+    requestMessage = patternTree.getAllPathPatterns().toString();
+    patternTreeBytes = preparePatternTreeBytesData(patternTree);
+  }
+
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv env,
-      final AlterEncodingCompressorState alterEncodingCompressorState)
+      final ConfigNodeProcedureEnv env, final AlterEncodingCompressorState state)
       throws InterruptedException {
-    return null;
+    final long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case ALTER_SCHEMA_REGION:
+          LOGGER.info(
+              "Alter encoding {} & compressor {} in schema region for timeSeries {}",
+              TSEncoding.deserialize(encoding),
+              CompressionType.deserialize(compressor),
+              requestMessage);
+          break;
+        case CLEAR_CACHE:
+          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
+          return Flow.NO_MORE_STATE;
+        default:
+          setFailure(new ProcedureException("Unrecognized state " + state));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          "AlterEncodingCompressor-[{}] costs {}ms",
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
   }
 
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv env,
       final AlterEncodingCompressorState alterEncodingCompressorState)
-      throws IOException, InterruptedException, ProcedureException {}
+      throws IOException, InterruptedException, ProcedureException {
+    // Not supported now
+  }
 
   @Override
   protected AlterEncodingCompressorState getState(final int stateId) {
@@ -115,7 +161,7 @@ public class AlterEncodingCompressorProcedure
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
-    patternTree = PathPatternTree.deserialize(byteBuffer);
+    setPatternTree(PathPatternTree.deserialize(byteBuffer));
     ifExists = ReadWriteIOUtils.readBoolean(byteBuffer);
     encoding = ReadWriteIOUtils.readByte(byteBuffer);
     compressor = ReadWriteIOUtils.readByte(byteBuffer);
