@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -194,8 +194,11 @@ public class AlterEncodingCompressorProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeleteTimeSeriesPlan(patternTreeBytes))
-                      : new PipeDeleteTimeSeriesPlan(patternTreeBytes));
+                      ? new PipeEnrichedPlan(
+                          new PipeAlterEncodingCompressorPlan(
+                              patternTreeBytes, encoding, compressor, mayAlterAudit))
+                      : new PipeAlterEncodingCompressorPlan(
+                          patternTreeBytes, encoding, compressor, mayAlterAudit));
     } catch (final ConsensusException e) {
       LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
