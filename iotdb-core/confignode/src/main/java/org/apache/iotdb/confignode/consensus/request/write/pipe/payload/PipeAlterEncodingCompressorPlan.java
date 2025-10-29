@@ -54,6 +54,10 @@ public class PipeAlterEncodingCompressorPlan extends ConfigPhysicalPlan {
     this.mayAlterAudit = mayAlterAudit;
   }
 
+  public void setPatternTreeBytes(ByteBuffer patternTreeBytes) {
+    this.patternTreeBytes = patternTreeBytes;
+  }
+
   public ByteBuffer getPatternTreeBytes() {
     patternTreeBytes.rewind();
     return patternTreeBytes;
@@ -65,6 +69,10 @@ public class PipeAlterEncodingCompressorPlan extends ConfigPhysicalPlan {
 
   public byte getCompressor() {
     return compressor;
+  }
+
+  public void setMayAlterAudit(final boolean mayAlterAudit) {
+    this.mayAlterAudit = mayAlterAudit;
   }
 
   public boolean isMayAlterAudit() {
