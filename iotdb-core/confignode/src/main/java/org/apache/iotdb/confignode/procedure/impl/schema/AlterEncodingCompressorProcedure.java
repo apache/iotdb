@@ -19,14 +19,26 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AlterEncodingCompressorState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -36,6 +48,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.invalidateCache;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.preparePatternTreeBytesData;
@@ -102,6 +115,7 @@ public class AlterEncodingCompressorProcedure
               SerializeUtils.deserializeEncodingNullable(encoding),
               SerializeUtils.deserializeCompressorNullable(compressor),
               requestMessage);
+          alterEncodingCompressorInSchemaRegion(env);
           break;
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
@@ -117,6 +131,57 @@ public class AlterEncodingCompressorProcedure
           "AlterEncodingCompressor-[{}] costs {}ms",
           state,
           (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private void alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
+    final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
+        new DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq>(
+            env,
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit),
+            false,
+            CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TAlterEncodingCompressorReq(consensusGroupIdList, patternTreeBytes, ifExists)
+                    .setCompressor(compressor)
+                    .setEncoding(encoding))) {
+
+          @Override
+          protected void onAllReplicasetFailure(
+              final TConsensusGroupId consensusGroupId,
+              final Set<TDataNodeLocation> dataNodeLocationSet) {
+            setFailure(
+                new ProcedureException(
+                    new MetadataException(
+                        String.format(
+                            "Alter time series %s in schema regions failed because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                            requestMessage,
+                            consensusGroupId.type,
+                            consensusGroupId.id,
+                            dataNodeLocationSet))));
+            interruptTask();
+          }
+        };
+    alterEncodingCompressorTask.execute();
+  }
+
+  private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(new PipeDeleteTimeSeriesPlan(patternTreeBytes))
+                      : new PipeDeleteTimeSeriesPlan(patternTreeBytes));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
     }
   }
 
