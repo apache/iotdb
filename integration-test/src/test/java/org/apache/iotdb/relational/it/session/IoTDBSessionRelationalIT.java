@@ -1470,12 +1470,12 @@ public class IoTDBSessionRelationalIT {
           case TEXT:
             if (from == TSDataType.DATE) {
               assertEquals(
-                      new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
-                      rec.getFields().get(2).getBinaryV());
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
             } else {
               assertEquals(
-                      new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
-                      rec.getFields().get(2).getBinaryV());
+                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
+                  rec.getFields().get(2).getBinaryV());
             }
             break;
           default:
