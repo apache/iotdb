@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,6 +44,14 @@ public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatte
       final IoTDBPatternOperations inclusionPattern,
       final IoTDBPatternOperations exclusionPattern) {
     super(isTreeModelDataAllowedToBeCaptured);
+    this.inclusionPattern = inclusionPattern;
+    this.exclusionPattern = exclusionPattern;
+  }
+
+  public ExclusionIoTDBTreePattern(
+      final IoTDBPatternOperations inclusionPattern,
+      final IoTDBPatternOperations exclusionPattern) {
+    super(true);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
   }
@@ -117,33 +126,60 @@ public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatte
 
   @Override
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
-    // NOTE: This is a simple set-difference, which is semantically correct
-    // ONLY IF partialPath does NOT contain wildcards.
-    // A true intersection of (A AND NOT B) with C (where C has wildcards)
-    // is far more complex and may not be representable as a List<PartialPath>.
-    final List<PartialPath> inclusionPaths = inclusionPattern.getIntersection(partialPath);
-    if (inclusionPaths.isEmpty()) {
-      return inclusionPaths;
-    }
-    final List<PartialPath> exclusionPaths = exclusionPattern.getIntersection(partialPath);
-    if (exclusionPaths.isEmpty()) {
-      return inclusionPaths;
+    // 1. Calculate Intersection(Input, Inclusion)
+    final List<PartialPath> inclusionIntersections = inclusionPattern.getIntersection(partialPath);
+    if (inclusionIntersections.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    // Return (inclusionPaths - exclusionPaths)
-    return inclusionPaths.stream()
-        .filter(p -> !exclusionPaths.contains(p))
+    // 2. Calculate Intersection(Input, Exclusion)
+    final List<PartialPath> exclusionIntersections = exclusionPattern.getIntersection(partialPath);
+    if (exclusionIntersections.isEmpty()) {
+      // Optimization: No exclusion intersection, return inclusion intersection directly
+      return inclusionIntersections;
+    }
+
+    // 3. Perform the "Subtraction"
+    // Filter out paths from inclusionIntersections that are fully covered by any path
+    // in exclusionIntersections.
+    return inclusionIntersections.stream()
+        .filter(
+            incPath ->
+                exclusionIntersections.stream().noneMatch(excPath -> excPath.include(incPath)))
         .collect(Collectors.toList());
   }
 
   @Override
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
-    // A true set difference (A.intersect(B) - C.intersect(B))
-    // would require a PathPatternTree.subtract() method, which does not exist.
-    // This operation is unsupported.
-    // TODO
-    throw new UnsupportedOperationException(
-        "getIntersection(PathPatternTree) is not supported for ExclusionIoTDBTreePattern.");
+    // 1. Calculate Intersection(Input, Inclusion)
+    final PathPatternTree inclusionIntersectionTree = inclusionPattern.getIntersection(patternTree);
+    if (inclusionIntersectionTree.isEmpty()) {
+      return inclusionIntersectionTree; // Return empty tree
+    }
+
+    // 2. Calculate Intersection(Input, Exclusion)
+    final PathPatternTree exclusionIntersectionTree = exclusionPattern.getIntersection(patternTree);
+    if (exclusionIntersectionTree.isEmpty()) {
+      // Optimization: No exclusion intersection, return inclusion intersection directly
+      return inclusionIntersectionTree;
+    }
+
+    // 3. Perform the "Subtraction"
+    final List<PartialPath> inclusionPaths = inclusionIntersectionTree.getAllPathPatterns();
+    final List<PartialPath> exclusionPaths = exclusionIntersectionTree.getAllPathPatterns();
+
+    final PathPatternTree finalResultTree = new PathPatternTree();
+    for (final PartialPath incPath : inclusionPaths) {
+      // Check if the current inclusion path is covered by *any* exclusion path pattern
+      boolean excluded = exclusionPaths.stream().anyMatch(excPath -> excPath.include(incPath));
+
+      if (!excluded) {
+        finalResultTree.appendPathPattern(incPath); // Add non-excluded path to the result tree
+      }
+    }
+
+    finalResultTree.constructTree();
+    return finalResultTree;
   }
 
   @Override
