@@ -86,6 +86,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
         Boolean.toString(shouldMarkAsPipeRequest));
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, Boolean.toString(skipIfNoPrivileges));
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
