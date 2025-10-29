@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -27,8 +28,6 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AlterEncodingCompressorState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,8 +99,8 @@ public class AlterEncodingCompressorProcedure
         case ALTER_SCHEMA_REGION:
           LOGGER.info(
               "Alter encoding {} & compressor {} in schema region for timeSeries {}",
-              TSEncoding.deserialize(encoding),
-              CompressionType.deserialize(compressor),
+              SerializeUtils.deserializeEncodingNullable(encoding),
+              SerializeUtils.deserializeCompressorNullable(compressor),
               requestMessage);
           break;
         case CLEAR_CACHE:

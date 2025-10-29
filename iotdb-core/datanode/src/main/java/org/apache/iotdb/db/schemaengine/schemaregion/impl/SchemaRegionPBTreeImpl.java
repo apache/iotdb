@@ -941,6 +941,17 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
+  public void alterEncodingCompressor(
+      final PathPatternTree patternTree,
+      final boolean ifExists,
+      final TSEncoding encoding,
+      final CompressionType compressionType)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "PBTree does not support altering encoding and compressor yet.");
+  }
+
+  @Override
   public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
       ReleaseFlushMonitor.getInstance().waitIfReleasing();

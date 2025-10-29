@@ -75,6 +75,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
@@ -2792,17 +2793,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TAlterEncodingCompressorReq(
             queryId,
             ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-            alterEncodingCompressorStatement.getEncoding().serialize(),
-            alterEncodingCompressorStatement.getCompressor().serialize(),
+            SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getEncoding()),
+            SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getCompressor()),
             alterEncodingCompressorStatement.ifExists(),
             alterEncodingCompressorStatement.isWithAudit());
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
           tsStatus = client.alterEncodingCompressor(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // time out mainly caused by slow execution, wait until

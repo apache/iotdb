@@ -58,6 +58,8 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
@@ -207,6 +209,13 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
+
+  void alterEncodingCompressor(
+      final PathPatternTree patternTree,
+      final boolean ifExists,
+      final TSEncoding encoding,
+      final CompressionType compressionType)
+      throws MetadataException;
 
   // endregion
 

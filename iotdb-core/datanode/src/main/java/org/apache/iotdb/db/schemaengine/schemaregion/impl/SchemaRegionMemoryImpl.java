@@ -941,15 +941,37 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+  public void deleteTimeseriesInBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
               SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
                   Collections.singletonList(path)));
-        } catch (IOException e) {
+        } catch (final IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void alterEncodingCompressor(
+      final PathPatternTree patternTree,
+      final boolean ifExists,
+      final TSEncoding encoding,
+      final CompressionType compressionType)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(
+              SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
+                  Collections.singletonList(path)));
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
