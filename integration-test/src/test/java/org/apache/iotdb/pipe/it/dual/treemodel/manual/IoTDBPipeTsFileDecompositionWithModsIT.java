@@ -112,7 +112,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
           .append(",")
           .append(3.0f)
           .append(")");
-      if (i % 100 != 0) {
+      if (i % 50 != 0) {
         insertBuilder.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder.toString());
@@ -254,7 +254,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
           .append(",")
           .append(3.0f)
           .append(")");
-      if (i % 100 != 0) {
+      if (i % 50 != 0) {
         insertBuilder.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder.toString());
@@ -369,7 +369,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     StringBuilder insertBuilder1 = new StringBuilder(s1);
     for (int i = 1; i <= 20000; i++) {
       insertBuilder1.append("(").append(i).append(",").append(1.0f).append(")");
-      if (i % 1000 != 0) {
+      if (i % 50 != 0) {
         insertBuilder1.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder1.toString());
@@ -386,7 +386,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     StringBuilder insertBuilder2 = new StringBuilder(s2);
     for (int i = 10001; i <= 30000; i++) {
       insertBuilder2.append("(").append(i).append(",").append(2.0f).append(")");
-      if (i % 1000 != 0) {
+      if (i % 50 != 0) {
         insertBuilder2.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder2.toString());
@@ -403,7 +403,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     StringBuilder insertBuilder3 = new StringBuilder(s3);
     for (int i = 20001; i <= 40000; i++) {
       insertBuilder3.append("(").append(i).append(",").append(3.0f).append(")");
-      if (i % 1000 != 0) {
+      if (i % 50 != 0) {
         insertBuilder3.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder3.toString());
@@ -420,7 +420,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     StringBuilder insertBuilder4 = new StringBuilder(s4);
     for (int i = 30001; i <= 50000; i++) {
       insertBuilder4.append("(").append(i).append(",").append(4.0f).append(")");
-      if (i % 1000 != 0) {
+      if (i % 50 != 0) {
         insertBuilder4.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder4.toString());
@@ -437,7 +437,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTree
     StringBuilder insertBuilder5 = new StringBuilder(s5);
     for (int i = 40001; i <= 60000; i++) {
       insertBuilder5.append("(").append(i).append(",").append(5.0f).append(")");
-      if (i % 1000 != 0) {
+      if (i % 50 != 0) {
         insertBuilder5.append(",");
       } else {
         TestUtils.executeNonQueryWithRetry(senderEnv, insertBuilder5.toString());
