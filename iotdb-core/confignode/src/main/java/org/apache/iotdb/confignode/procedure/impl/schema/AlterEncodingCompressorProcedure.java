@@ -21,8 +21,10 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AlterEncodingCompressorState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,8 +50,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.invalidateCache;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure.preparePatternTreeBytesData;
@@ -120,6 +125,7 @@ public class AlterEncodingCompressorProcedure
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
           invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -135,6 +141,20 @@ public class AlterEncodingCompressorProcedure
   }
 
   private void alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
+
+    if (relatedSchemaRegionGroup.isEmpty()) {
+      setFailure(
+          new ProcedureException(
+              new PathNotExistException(
+                  patternTree.getAllPathPatterns().stream()
+                      .map(PartialPath::getFullPath)
+                      .collect(Collectors.toList()),
+                  false)));
+      return;
+    }
+
     final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
         new DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq>(
             env,
@@ -163,6 +183,7 @@ public class AlterEncodingCompressorProcedure
           }
         };
     alterEncodingCompressorTask.execute();
+    setNextState(AlterEncodingCompressorState.CLEAR_CACHE);
   }
 
   private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
