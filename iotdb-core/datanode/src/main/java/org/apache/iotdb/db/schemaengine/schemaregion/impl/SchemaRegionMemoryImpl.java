@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -958,13 +959,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void alterEncodingCompressor(
-      final PathPatternTree patternTree,
-      final boolean ifExists,
-      final TSEncoding encoding,
-      final CompressionType compressionType)
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
       throws MetadataException {
-    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
       for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
@@ -2075,6 +2072,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         dropTableAttribute(dropTableAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        alterEncodingCompressor(alterEncodingCompressorNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -34,7 +37,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class AlterEncodingCompressorNode extends PlanNode {
+public class AlterEncodingCompressorNode extends PlanNode implements ISchemaRegionPlan {
+
+  public static final AlterEncodingCompressorNode MOCK_INSTANCE =
+      new AlterEncodingCompressorNode(new PlanNodeId(""), null, false, null, null);
 
   private final PathPatternTree patternTree;
   private final boolean ifExists;
@@ -120,5 +126,15 @@ public class AlterEncodingCompressorNode extends PlanNode {
         SerializeUtils.deserializeCompressorNullable(ReadWriteIOUtils.readByte(byteBuffer));
     final PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlterEncodingCompressorNode(planNodeId, patternTree, ifExists, encoding, compressor);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.ALTER_ENCODING_COMPRESSOR;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitAlterEncodingCompressor(this, context);
   }
 }

@@ -2786,7 +2786,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       alterEncodingCompressorStatement.getPatternTree().serialize(dataOutputStream);
-    } catch (IOException ignored) {
+    } catch (final IOException ignored) {
       // memory operation, won't happen
     }
     final TAlterEncodingCompressorReq req =

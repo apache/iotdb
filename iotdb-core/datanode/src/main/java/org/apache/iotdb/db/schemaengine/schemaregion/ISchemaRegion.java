@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -58,8 +59,6 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
@@ -210,12 +209,7 @@ public interface ISchemaRegion {
    */
   void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
 
-  void alterEncodingCompressor(
-      final PathPatternTree patternTree,
-      final boolean ifExists,
-      final TSEncoding encoding,
-      final CompressionType compressionType)
-      throws MetadataException;
+  void alterEncodingCompressor(final AlterEncodingCompressorNode node) throws MetadataException;
 
   // endregion
 
