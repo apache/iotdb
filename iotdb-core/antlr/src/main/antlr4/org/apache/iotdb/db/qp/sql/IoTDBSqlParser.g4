@@ -39,7 +39,7 @@ ddlStatement
     // Database
     : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
     // Timeseries & Path
-    | createTimeseries | dropTimeseries | alterTimeseries
+    | createTimeseries | dropTimeseries | alterTimeseries | alterEncodingCompressor
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
     // Device Template
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
@@ -178,7 +178,7 @@ alterClause
     ;
 
 alterEncodingCompressor
-    : ALTER TIMESERIES fullPath alterClause (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET attributePair (COMMA attributePair)*
+    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET attributePair (COMMA attributePair)*
     ;
 
 aliasClause

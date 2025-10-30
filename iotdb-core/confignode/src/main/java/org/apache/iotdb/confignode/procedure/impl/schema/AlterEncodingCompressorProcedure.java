@@ -51,6 +51,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -147,13 +148,15 @@ public class AlterEncodingCompressorProcedure
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
-      setFailure(
-          new ProcedureException(
-              new PathNotExistException(
-                  patternTree.getAllPathPatterns().stream()
-                      .map(PartialPath::getFullPath)
-                      .collect(Collectors.toList()),
-                  false)));
+      if (!ifExists) {
+        setFailure(
+            new ProcedureException(
+                new PathNotExistException(
+                    patternTree.getAllPathPatterns().stream()
+                        .map(PartialPath::getFullPath)
+                        .collect(Collectors.toList()),
+                    false)));
+      }
       return;
     }
 
@@ -168,6 +171,8 @@ public class AlterEncodingCompressorProcedure
                     .setCompressor(compressor)
                     .setEncoding(encoding))) {
 
+          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
+
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -175,6 +180,7 @@ public class AlterEncodingCompressorProcedure
               final TSStatus response) {
             final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
             if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              failureMap.remove(dataNodeLocation);
               return failedRegionList;
             }
 
@@ -191,6 +197,11 @@ public class AlterEncodingCompressorProcedure
                 && ifExists)) {
               failedRegionList.addAll(consensusGroupIdList);
             }
+            if (!failedRegionList.isEmpty()) {
+              failureMap.put(dataNodeLocation, response);
+            } else {
+              failureMap.remove(dataNodeLocation);
+            }
             return failedRegionList;
           }
 
@@ -202,11 +213,8 @@ public class AlterEncodingCompressorProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter time series %s in schema regions failed because failed to execute in all replicaset of %s %s. Failure nodes: %s",
-                            requestMessage,
-                            consensusGroupId.type,
-                            consensusGroupId.id,
-                            dataNodeLocationSet))));
+                            "Alter encoding compressor %s in schema regions failed. Failures: %s",
+                            requestMessage, failureMap))));
             interruptTask();
           }
         };

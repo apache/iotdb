@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -143,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -296,6 +298,9 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -457,13 +462,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
     createTimeSeriesStatement.setEncoding(
         ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
-    if (props != null
-        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
-      String encodingString =
-          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+    if (props != null && props.containsKey(COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString = props.get(COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
         createTimeSeriesStatement.setEncoding(TSEncoding.valueOf(encodingString));
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+        props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
       }
@@ -520,13 +523,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
-      String encodingString =
-          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+    if (props.containsKey(COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString = props.get(COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
         encoding = TSEncoding.valueOf(encodingString);
         createAlignedTimeSeriesStatement.addEncoding(encoding);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+        props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
       }
@@ -662,6 +664,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitAlterEncodingCompressor(IoTDBSqlParser.AlterEncodingCompressorContext ctx) {
+    final PathPatternTree tree = new PathPatternTree();
+    ctx.prefixPath().forEach(path -> tree.appendPathPattern(parsePrefixPath(path)));
+    tree.constructTree();
+    TSEncoding encoding = null;
+    CompressionType compressor = null;
+    for (final IoTDBSqlParser.AttributePairContext pair : ctx.attributePair()) {
+      final String key = parseAttributeKey(pair.key);
+      final String value = parseAttributeValue(pair.value);
+      switch (key) {
+        case COLUMN_TIMESERIES_ENCODING:
+          try {
+            encoding = TSEncoding.valueOf(value);
+          } catch (Exception e) {
+            throw new SemanticException(String.format("Unsupported encoding: %s", value));
+          }
+          break;
+        case COLUMN_TIMESERIES_COMPRESSOR:
+        case COLUMN_TIMESERIES_COMPRESSION:
+          try {
+            compressor = CompressionType.valueOf(value);
+          } catch (Exception e) {
+            throw new SemanticException(String.format("Unsupported compressor: %s", value));
+          }
+          break;
+        default:
+          throw new SemanticException(String.format("property %s is unsupported yet.", key));
+      }
+      return new AlterEncodingCompressorStatement(
+          tree,
+          encoding,
+          compressor,
+          Objects.nonNull(ctx.EXISTS()),
+          Objects.nonNull(ctx.PERMITTED()));
+    }
+
     return null;
   }
 
@@ -3848,13 +3885,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
-    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
-      String encodingString =
-          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+    if (props.containsKey(COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString = props.get(COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
       try {
         encoding = TSEncoding.valueOf(encodingString);
         encodings.add(encoding);
-        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+        props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
       }
