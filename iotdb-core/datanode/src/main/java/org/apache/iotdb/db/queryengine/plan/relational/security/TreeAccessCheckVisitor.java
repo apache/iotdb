@@ -1426,7 +1426,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       final TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
     final boolean audit =
-        !checkHasGlobalAuth(
+        checkHasGlobalAuth(
             context, PrivilegeType.AUDIT, alterEncodingCompressorStatement.getPaths()::toString);
     if (audit) {
       alterEncodingCompressorStatement.setWithAudit(true);
@@ -1458,7 +1458,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       for (final PartialPath path : alterEncodingCompressorStatement.getPaths()) {
         if (includeByAuditTreeDB(path)) {
           return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-              .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+              .setMessage(
+                  String.format(
+                      "'AUDIT' permission is needed to alter the encoding and compressor of database %s",
+                      TREE_MODEL_AUDIT_DATABASE));
         }
       }
     }

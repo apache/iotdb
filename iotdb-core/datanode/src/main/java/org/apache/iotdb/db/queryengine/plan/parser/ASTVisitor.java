@@ -287,6 +287,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -670,8 +671,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     TSEncoding encoding = null;
     CompressionType compressor = null;
     for (final IoTDBSqlParser.AttributePairContext pair : ctx.attributePair()) {
-      final String key = parseAttributeKey(pair.key);
-      final String value = parseAttributeValue(pair.value);
+      final String key = parseAttributeKey(pair.key).toLowerCase(Locale.ENGLISH);
+      final String value = parseAttributeValue(pair.value).toUpperCase(Locale.ENGLISH);
       switch (key) {
         case COLUMN_TIMESERIES_ENCODING:
           try {
@@ -691,15 +692,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         default:
           throw new SemanticException(String.format("property %s is unsupported yet.", key));
       }
-      return new AlterEncodingCompressorStatement(
-          tree,
-          encoding,
-          compressor,
-          Objects.nonNull(ctx.EXISTS()),
-          Objects.nonNull(ctx.PERMITTED()));
     }
 
-    return null;
+    return new AlterEncodingCompressorStatement(
+        tree,
+        encoding,
+        compressor,
+        Objects.nonNull(ctx.EXISTS()),
+        Objects.nonNull(ctx.PERMITTED()));
   }
 
   // Drop Timeseries ======================================================================
