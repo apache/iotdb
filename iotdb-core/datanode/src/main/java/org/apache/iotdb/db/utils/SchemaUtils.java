@@ -419,8 +419,6 @@ public class SchemaUtils {
       AbstractAlignedChunkMetadata alignedChunkMetadata, TSDataType targetDataType) {
     List<IChunkMetadata> newValueChunkMetadataList = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
-      newChunkMetadata.setTsDataType(targetDataType);
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       switch (valueChunkMetadata.getDataType()) {
         case INT32:
@@ -440,28 +438,40 @@ public class SchemaUtils {
                 new Binary(
                     valueChunkMetadata.getStatistics().getLastValue().toString(),
                     StandardCharsets.UTF_8);
-            binaryValues[2] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMinValue().toString(),
-                    StandardCharsets.UTF_8);
-            binaryValues[3] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                    StandardCharsets.UTF_8);
-            long[] longValues = new long[2];
+            if (valueChunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+              binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+              binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+            } else {
+              binaryValues[2] =
+                  new Binary(
+                      valueChunkMetadata.getStatistics().getMinValue().toString(),
+                      StandardCharsets.UTF_8);
+              binaryValues[3] =
+                  new Binary(
+                      valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                      StandardCharsets.UTF_8);
+            }
+            long[] longValues = new long[4];
             longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
             longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
+            longValues[2] = longValues[1];
+            longValues[3] = longValues[1];
             statistics.update(longValues, binaryValues, binaryValues.length);
           } else if (targetDataType == TSDataType.TEXT) {
             Binary[] binaryValues = new Binary[2];
-            binaryValues[0] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMinValue().toString(),
-                    StandardCharsets.UTF_8);
-            binaryValues[1] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                    StandardCharsets.UTF_8);
+            if (valueChunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+              binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+              binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+            } else {
+              binaryValues[0] =
+                  new Binary(
+                      valueChunkMetadata.getStatistics().getMinValue().toString(),
+                      StandardCharsets.UTF_8);
+              binaryValues[1] =
+                  new Binary(
+                      valueChunkMetadata.getStatistics().getMaxValue().toString(),
+                      StandardCharsets.UTF_8);
+            }
             long[] longValues = new long[2];
             longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
             longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
@@ -499,14 +509,8 @@ public class SchemaUtils {
         case BLOB:
           if (targetDataType == TSDataType.STRING) {
             Binary[] binaryValues = new Binary[2];
-            binaryValues[0] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMinValue().toString(),
-                    StandardCharsets.UTF_8);
-            binaryValues[1] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                    StandardCharsets.UTF_8);
+            binaryValues[0] = new Binary("", StandardCharsets.UTF_8);
+            binaryValues[1] = new Binary("", StandardCharsets.UTF_8);
             long[] longValues = new long[2];
             longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
             longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
@@ -519,6 +523,8 @@ public class SchemaUtils {
           break;
       }
 
+      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      newChunkMetadata.setTsDataType(targetDataType);
       newChunkMetadata.setStatistics(statistics);
       newValueChunkMetadataList.add(newChunkMetadata);
     }
