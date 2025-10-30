@@ -123,6 +123,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
@@ -365,6 +367,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -376,6 +382,47 @@ import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECT
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
+
+  private static final AtomicReference<TEndPoint> CACHED_AINODE = new AtomicReference<>();
+  private static final ReentrantLock AINODE_REFRESH_LOCK = new ReentrantLock();
+  private static final long AINODE_TTL_NANOS = TimeUnit.SECONDS.toNanos(3);
+  private static final AtomicLong AINODE_LAST_REFRESH = new AtomicLong(0L);
+
+  /** Return cached AINode if fresh; otherwise refresh from ConfigNode using modelId. */
+  private TEndPoint resolveAINodeEp(String modelIdOrNull) {
+    final TEndPoint ep = CACHED_AINODE.get();
+    if (ep != null && System.nanoTime() - AINODE_LAST_REFRESH.get() < AINODE_TTL_NANOS) {
+      return ep;
+    }
+    return refreshAINodeFromConfigNode(modelIdOrNull);
+  }
+
+  /** Ask ConfigNode for the latest AINode location (precise by modelId when available). */
+  private TEndPoint refreshAINodeFromConfigNode(String modelIdOrNull) {
+    if (!AINODE_REFRESH_LOCK.tryLock()) {
+      return CACHED_AINODE.get();
+    }
+    try (ConfigNodeClient cn =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TEndPoint ep = null;
+      if (modelIdOrNull != null && !modelIdOrNull.isEmpty()) {
+        final TGetModelInfoResp resp = cn.getModelInfo(new TGetModelInfoReq(modelIdOrNull));
+        if (resp != null && resp.isSetAiNodeAddress()) {
+          ep = resp.getAiNodeAddress();
+        }
+      }
+      // if no modelId or location return，use showAIDevices to fetch an AINode
+      if (ep != null) {
+        CACHED_AINODE.set(ep);
+        AINODE_LAST_REFRESH.set(System.nanoTime());
+      }
+      return CACHED_AINODE.get();
+    } catch (Exception e) {
+      return CACHED_AINODE.get();
+    } finally {
+      AINODE_REFRESH_LOCK.unlock();
+    }
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigTaskExecutor.class);
 
@@ -3672,18 +3719,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint AINODE_KEY_PLACEHOLDER = new TEndPoint("AINODE_KEY", 0);
-    try (final AINodeClient client =
-        AINodeClientManager.getInstance().borrowClient(AINODE_KEY_PLACEHOLDER)) {
+    // 1) Try direct DataNode → AINode with cached endpoint
+    TEndPoint ep = resolveAINodeEp(existingModelId);
+    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
       final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
-      final TSStatus result = client.loadModel(req);
+      final TSStatus result = ai.loadModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
         future.setException(new IoTDBException(result));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final Exception first) {
+      // 2) Fallback: ask ConfigNode for latest AINode location, update cache and retry once
+      final TEndPoint refreshed = refreshAINodeFromConfigNode(existingModelId);
+      if (refreshed == null || (ep != null && refreshed.equals(ep))) {
+        future.setException(first);
+        return future;
+      }
+      try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(refreshed)) {
+        final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
+        final TSStatus result = ai.loadModel(req);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
+          future.setException(new IoTDBException(result));
+        } else {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        }
+      } catch (final Exception second) {
+        future.setException(second);
+      }
     }
     return future;
   }
