@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,8 +28,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
@@ -51,7 +48,6 @@ public class TransformOperatorTest {
 
   @Test
   public void testInputLayerEmptyBlockProcess() throws Exception {
-    // Construct operator tree
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
@@ -66,6 +62,7 @@ public class TransformOperatorTest {
     PlanNodeId planNodeId2 = new PlanNodeId("2");
     driverContext.addOperatorContext(2, planNodeId2, TransformOperator.class.getSimpleName());
 
+    // Construct child Operator
     TsBlock[] data = new TsBlock[3];
     TimeColumn timeColumn1 = new TimeColumn(1, new long[] {1});
     data[0] = new TsBlock(timeColumn1, new LongColumn(1, Optional.empty(), new long[] {1}));
@@ -127,8 +124,7 @@ public class TransformOperatorTest {
           }
         };
 
-    OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
-    Expression timeSeries = new TimeSeriesOperand(new PartialPath("root.db.d0.s0"));
+    // Construct LayerReader for TransformOperator
     QueryDataSetInputLayer inputLayer =
         new QueryDataSetInputLayer(
             queryId.toString(),
