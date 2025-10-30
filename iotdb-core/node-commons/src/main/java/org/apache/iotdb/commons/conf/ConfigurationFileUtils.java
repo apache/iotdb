@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
-import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,10 +82,14 @@ public class ConfigurationFileUtils {
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
   // Used to display in showConfigurationStatement
-  private static final Set<String> hidedParameters =
-      ImmutableSet.of("key_store_pwd", "trust_store_pwd");
-  private static final String displayValueOfHidedParameter = "******";
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
+  private static final String displayValueOfHidedParameter = "******";
+  private static final Set<String> hidedParameters = new HashSet<>();
+
+  static {
+    hidedParameters.add("key_store_pwd");
+    hidedParameters.add("trust_store_pwd");
+  }
 
   public static void updateAppliedProperties(TrimProperties properties, boolean isHotReloading) {
     try {
