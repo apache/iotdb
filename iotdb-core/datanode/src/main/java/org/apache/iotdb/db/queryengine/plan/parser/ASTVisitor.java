@@ -664,7 +664,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitAlterEncodingCompressor(IoTDBSqlParser.AlterEncodingCompressorContext ctx) {
+  public Statement visitAlterEncodingCompressor(
+      final IoTDBSqlParser.AlterEncodingCompressorContext ctx) {
     final PathPatternTree tree = new PathPatternTree();
     ctx.prefixPath().forEach(path -> tree.appendPathPattern(parsePrefixPath(path)));
     tree.constructTree();
@@ -677,7 +678,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         case COLUMN_TIMESERIES_ENCODING:
           try {
             encoding = TSEncoding.valueOf(value);
-          } catch (Exception e) {
+          } catch (final Exception e) {
             throw new SemanticException(String.format("Unsupported encoding: %s", value));
           }
           break;
@@ -685,7 +686,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         case COLUMN_TIMESERIES_COMPRESSION:
           try {
             compressor = CompressionType.valueOf(value);
-          } catch (Exception e) {
+          } catch (final Exception e) {
             throw new SemanticException(String.format("Unsupported compressor: %s", value));
           }
           break;
