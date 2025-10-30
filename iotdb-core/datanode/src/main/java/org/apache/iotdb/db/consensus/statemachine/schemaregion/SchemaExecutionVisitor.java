@@ -562,7 +562,9 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.alterEncodingCompressor(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      if (e.getErrorCode() != TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+        logger.error(e.getMessage(), e);
+      }
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }

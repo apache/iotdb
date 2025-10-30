@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -165,6 +167,32 @@ public class AlterEncodingCompressorProcedure
                 new TAlterEncodingCompressorReq(consensusGroupIdList, patternTreeBytes, ifExists)
                     .setCompressor(compressor)
                     .setEncoding(encoding))) {
+
+          @Override
+          protected List<TConsensusGroupId> processResponseOfOneDataNode(
+              final TDataNodeLocation dataNodeLocation,
+              final List<TConsensusGroupId> consensusGroupIdList,
+              final TSStatus response) {
+            final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              return failedRegionList;
+            }
+
+            if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              final List<TSStatus> subStatus = response.getSubStatus();
+              for (int i = 0; i < subStatus.size(); i++) {
+                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    && !(subStatus.get(i).getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                        && ifExists)) {
+                  failedRegionList.add(consensusGroupIdList.get(i));
+                }
+              }
+            } else if (!(response.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                && ifExists)) {
+              failedRegionList.addAll(consensusGroupIdList);
+            }
+            return failedRegionList;
+          }
 
           @Override
           protected void onAllReplicasetFailure(
