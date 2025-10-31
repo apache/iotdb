@@ -335,6 +335,9 @@ public class Util2 {
       public void invalidAllCache() {}
 
       @Override
+      public void invalidateDatabase(String database) {}
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           String database, List<IDeviceID> deviceIDList, String userName) {
         return null;

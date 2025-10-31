@@ -462,6 +462,9 @@ public class TSBSMetadata implements Metadata {
       public void invalidAllCache() {}
 
       @Override
+      public void invalidateDatabase(String database) {}
+
+      @Override
       public SchemaPartition getOrCreateSchemaPartition(
           String database, List<IDeviceID> deviceIDList, String userName) {
         return SCHEMA_PARTITION;

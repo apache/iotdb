@@ -607,7 +607,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePartitionCache(final TInvalidateCacheReq req) {
-    ClusterPartitionFetcher.getInstance().invalidAllCache();
+    if (req.isSetStorageGroup() && req.isStorageGroup() && req.isSetFullPath()) {
+      ClusterPartitionFetcher.getInstance().invalidateDatabase(req.fullPath);
+    } else {
+      ClusterPartitionFetcher.getInstance().invalidAllCache();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
