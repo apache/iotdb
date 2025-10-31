@@ -196,7 +196,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       byteBuffer.get(resultArr);
     }
     //  has lock
-    if (byteBuffer.get() == 1) {
+    if (byteBuffer.get() == 1 && this.state != ProcedureState.ROLLEDBACK) {
       this.lockedWhenLoading();
     }
   }
@@ -300,8 +300,12 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
     ProcedureLockState state = acquireLock(env);
     if (state == ProcedureLockState.LOCK_ACQUIRED) {
-      locked = true;
-      store.update(this);
+      try {
+        locked = true;
+        store.update(this);
+      } catch (Exception e) {
+        LOG.warn("pid={} Failed to persist lock state to store.", this.procId, e);
+      }
     }
     return state;
   }
@@ -314,10 +318,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   public final void doReleaseLock(Env env, IProcedureStore store) {
     locked = false;
-    if (getState() != ProcedureState.ROLLEDBACK) {
-      store.update(this);
+    if (getState() == ProcedureState.ROLLEDBACK) {
+      LOG.info("Force write unlock state to raft for pid={}", this.procId);
     }
-    releaseLock(env);
+    try {
+      store.update(this);
+      // do not release lock when consensus layer is not working
+      releaseLock(env);
+    } catch (Exception e) {
+      LOG.error("pid={} Failed to persist unlock state to store.", this.procId, e);
+    }
   }
 
   public final void restoreLock(Env env) {

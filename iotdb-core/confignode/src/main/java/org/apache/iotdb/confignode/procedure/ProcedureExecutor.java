@@ -477,12 +477,17 @@ public class ProcedureExecutor<Env> {
     }
     if (parent != null && parent.tryRunnable()) {
       // If success, means all its children have completed, move parent to front of the queue.
-      store.update(parent);
-      scheduler.addFront(parent);
-      LOG.info(
-          "Finished subprocedure pid={}, resume processing ppid={}",
-          proc.getProcId(),
-          parent.getProcId());
+      try {
+        store.update(parent);
+        // do not add this procedure when exception occurred
+        scheduler.addFront(parent);
+        LOG.info(
+            "Finished subprocedure pid={}, resume processing ppid={}",
+            proc.getProcId(),
+            parent.getProcId());
+      } catch (Exception e) {
+        LOG.warn("Failed to update parent on countdown", e);
+      }
     }
   }
 
@@ -506,21 +511,38 @@ public class ProcedureExecutor<Env> {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Stored {}, children {}", proc, Arrays.toString(subprocs));
       }
-      store.update(subprocs);
+      try {
+        store.update(subprocs);
+      } catch (Exception e) {
+        LOG.warn("Failed to update subprocs on execution", e);
+      }
     } else {
       LOG.debug("Store update {}", proc);
       if (proc.isFinished() && !proc.hasParent()) {
         final long[] childProcIds = rootProcStack.getSubprocedureIds();
         if (childProcIds != null) {
-          store.delete(childProcIds);
-          for (long childProcId : childProcIds) {
-            procedures.remove(childProcId);
+          try {
+            store.delete(childProcIds);
+            // do not remove these procedures when exception occurred
+            for (long childProcId : childProcIds) {
+              procedures.remove(childProcId);
+            }
+          } catch (Exception e) {
+            LOG.warn("Failed to delete subprocedures on execution", e);
           }
         } else {
-          store.update(proc);
+          try {
+            store.update(proc);
+          } catch (Exception e) {
+            LOG.warn("Failed to update procedure on execution", e);
+          }
         }
       } else {
-        store.update(proc);
+        try {
+          store.update(proc);
+        } catch (Exception e) {
+          LOG.warn("Failed to update procedure on execution", e);
+        }
       }
     }
   }
@@ -577,7 +599,13 @@ public class ProcedureExecutor<Env> {
     if (exception == null) {
       exception = procedureStack.getException();
       rootProcedure.setFailure(exception);
-      store.update(rootProcedure);
+      try {
+        store.update(rootProcedure);
+      } catch (Exception e) {
+        LOG.warn("Failed to update root procedure on rollback", e);
+        // roll back
+        rootProcedure.setFailure(null);
+      }
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
     int stackTail = subprocStack.size();
@@ -653,18 +681,31 @@ public class ProcedureExecutor<Env> {
       procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
 
       if (procedure.hasParent()) {
-        store.delete(procedure.getProcId());
-        procedures.remove(procedure.getProcId());
+        try {
+          store.delete(procedure.getProcId());
+          // do not remove this procedure when exception occurred
+          procedures.remove(procedure.getProcId());
+        } catch (Exception e) {
+          LOG.warn("Failed to delete procedure on rollback", e);
+        }
       } else {
         final long[] childProcIds = rollbackStack.get(procedure.getProcId()).getSubprocedureIds();
-        if (childProcIds != null) {
-          store.delete(childProcIds);
-        } else {
-          store.update(procedure);
+        try {
+          if (childProcIds != null) {
+            store.delete(childProcIds);
+          } else {
+            store.update(procedure);
+          }
+        } catch (Exception e) {
+          LOG.warn("Failed to delete procedure on rollback", e);
         }
       }
     } else {
-      store.update(procedure);
+      try {
+        store.update(procedure);
+      } catch (Exception e) {
+        LOG.warn("Failed to update procedure on rollback", e);
+      }
     }
   }
 
@@ -916,7 +957,11 @@ public class ProcedureExecutor<Env> {
     procedure.setProcId(store.getNextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
-    store.update(procedure);
+    try {
+      store.update(procedure);
+    } catch (Exception e) {
+      LOG.error("Failed to update store procedure {}", procedure, e);
+    }
     LOG.debug("{} is stored.", procedure);
     // Add the procedure to the executor
     return pushProcedure(procedure);

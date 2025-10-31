@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
 public class TimeoutExecutorThread<Env> extends StoppableThread {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeoutExecutorThread.class);
   private static final int DELAY_QUEUE_TIMEOUT = 20;
   private final ProcedureExecutor<Env> executor;
   private final DelayQueue<ProcedureDelayContainer<Env>> queue = new DelayQueue<>();
@@ -71,7 +75,11 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
           long rootProcId = executor.getRootProcedureId(procedure);
           RootProcedureStack<Env> rollbackStack = executor.getRollbackStack(rootProcId);
           rollbackStack.abort();
-          executor.getStore().update(procedure);
+          try {
+            executor.getStore().update(procedure);
+          } catch (Exception e) {
+            LOGGER.warn("Failed to update procedure {}", procedure, e);
+          }
           executor.getScheduler().addFront(procedure);
         }
       }
