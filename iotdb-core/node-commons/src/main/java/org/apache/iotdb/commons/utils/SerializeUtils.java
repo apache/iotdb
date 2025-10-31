@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchData.BatchDataType;
@@ -44,6 +46,22 @@ public class SerializeUtils {
 
   private SerializeUtils() {
     // util class
+  }
+
+  public static byte serializeNullable(final TSEncoding encoding) {
+    return encoding == null ? -1 : encoding.serialize();
+  }
+
+  public static TSEncoding deserializeEncodingNullable(final byte encoding) {
+    return encoding == -1 ? null : TSEncoding.deserialize(encoding);
+  }
+
+  public static byte serializeNullable(final CompressionType compressor) {
+    return compressor == null ? -1 : compressor.serialize();
+  }
+
+  public static CompressionType deserializeCompressorNullable(final byte compressor) {
+    return compressor == -1 ? null : CompressionType.deserialize(compressor);
   }
 
   public static void serialize(String str, DataOutputStream dataOutputStream) {

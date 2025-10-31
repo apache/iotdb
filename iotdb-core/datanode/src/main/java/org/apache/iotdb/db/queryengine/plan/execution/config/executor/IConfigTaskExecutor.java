@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -237,6 +238,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
+
+  SettableFuture<ConfigTaskResult> alterEncodingCompressor(
+      String queryId, AlterEncodingCompressorStatement alterEncodingCompressorStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);

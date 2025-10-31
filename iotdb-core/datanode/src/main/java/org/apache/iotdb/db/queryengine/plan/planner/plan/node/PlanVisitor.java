@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Seri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
@@ -493,6 +494,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteTimeseries(DeleteTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitAlterEncodingCompressor(AlterEncodingCompressorNode node, C context) {
     return visitPlan(node, context);
   }
 

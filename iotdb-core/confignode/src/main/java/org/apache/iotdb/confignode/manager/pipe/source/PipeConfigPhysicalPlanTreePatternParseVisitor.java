@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -248,6 +249,30 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
     } catch (final IOException e) {
       LOGGER.warn(
           "Serialization failed for the delete logical view plan in pipe transmission, skip transfer",
+          e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeAlterEncodingCompressor(
+      final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan,
+      final UnionIoTDBTreePattern pattern) {
+    try {
+      final PathPatternTree intersectedTree =
+          pattern.getIntersection(
+              PathPatternTree.deserialize(pipeAlterEncodingCompressorPlan.getPatternTreeBytes()));
+      return !intersectedTree.isEmpty()
+          ? Optional.of(
+              new PipeAlterEncodingCompressorPlan(
+                  intersectedTree.serialize(),
+                  pipeAlterEncodingCompressorPlan.getEncoding(),
+                  pipeAlterEncodingCompressorPlan.getCompressor(),
+                  pipeAlterEncodingCompressorPlan.isMayAlterAudit()))
+          : Optional.empty();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Serialization failed for the alter encoding time series plan in pipe transmission, skip transfer",
           e);
       return Optional.empty();
     }

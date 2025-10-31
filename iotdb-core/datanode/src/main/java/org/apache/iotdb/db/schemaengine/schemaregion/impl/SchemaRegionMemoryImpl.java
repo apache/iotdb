@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -941,19 +943,34 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+  public void deleteTimeseriesInBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
               SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
                   Collections.singletonList(path)));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
     }
+  }
+
+  @Override
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
+      throws MetadataException {
+    boolean exist = false;
+    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
+      exist |=
+          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
+    }
+    if (!exist) {
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
+    }
+    writeToMLog(node);
   }
 
   @Override
@@ -2053,6 +2070,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         dropTableAttribute(dropTableAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        alterEncodingCompressor(alterEncodingCompressorNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
