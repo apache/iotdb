@@ -477,4 +477,14 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
     return this;
   }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    return this;
+  }
 }

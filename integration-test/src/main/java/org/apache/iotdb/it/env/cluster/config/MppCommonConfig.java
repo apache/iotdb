@@ -651,6 +651,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    setProperty("cte_buffer_size_in_bytes", String.valueOf(cteBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    setProperty("max_rows_in_cte_buffer", String.valueOf(maxRows));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
