@@ -445,12 +445,18 @@ public class DeviceAttributeCacheUpdater {
   }
 
   private void requestMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException("requestMemory size must not be negative");
+    }
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
   private void releaseMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException("releaseMemory size must not be negative");
+    }
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }
