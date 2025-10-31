@@ -148,7 +148,7 @@ public class DeleteTimeSeriesProcedure
   // Return the total num of timeSeries in schemaEngine black list
   private long constructBlackList(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayDeleteAudit);
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
@@ -269,7 +269,7 @@ public class DeleteTimeSeriesProcedure
         new DeleteTimeSeriesRegionTaskExecutor<>(
             "delete time series in schema engine",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayDeleteAudit),
             CnToDnAsyncRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)

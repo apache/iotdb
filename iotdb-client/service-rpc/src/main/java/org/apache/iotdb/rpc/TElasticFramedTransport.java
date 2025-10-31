@@ -20,14 +20,17 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.TConfiguration;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
 
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
 import java.io.EOFException;
+import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
@@ -136,6 +139,20 @@ public class TElasticFramedTransport extends TTransport {
           && e.getCause().getCause() instanceof EOFException) {
         throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
       }
+      if (e.getCause() instanceof SSLException
+          && e.getMessage().contains("Unsupported or unrecognized SSL message")) {
+        SocketAddress remoteAddress = null;
+        if (underlying instanceof TSocket) {
+          remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+        }
+        throw new TTransportException(
+            TTransportException.CORRUPTED_DATA,
+            String.format(
+                "You may be sending non-SSL requests"
+                    + "%s to the SSL-enabled Thrift-RPC port, please confirm that you are "
+                    + "using the right configuration",
+                remoteAddress == null ? "" : " from " + remoteAddress));
+      }
       throw e;
     }
     return readBuffer.read(buf, off, len);
@@ -152,15 +169,20 @@ public class TElasticFramedTransport extends TTransport {
     }
 
     if (size > thriftMaxFrameSize) {
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket) {
+        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+      }
       close();
       if (size == 1195725856L || size == 1347375956L) {
         // if someone sends HTTP GET/POST to this port, the size will be read as the following
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
-            "Singular frame size ("
-                + size
-                + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, "
-                + "please confirm that you are using the right port");
+            String.format(
+                "Singular frame size (%d) detected, you may be sending HTTP GET/POST"
+                    + "%s requests to the Thrift-RPC port, "
+                    + "please confirm that you are using the right port",
+                size, remoteAddress == null ? "" : " from " + remoteAddress));
       } else {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
@@ -172,13 +194,18 @@ public class TElasticFramedTransport extends TTransport {
     if (high24 >= 0x160300 && high24 <= 0x160303 && (i32buf[3] & 0xFF) <= 0x02) {
       // The typical TLS ClientHello requests start with 0x160300 ~ 0x160303
       // The 4th byte is typically in [0x00, 0x01, 0x02].
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket) {
+        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+      }
       close();
       throw new TTransportException(
           TTransportException.CORRUPTED_DATA,
-          "Singular frame size ("
-              + size
-              + ") detected, you may be sending TLS ClientHello requests to the Non-SSL Thrift-RPC"
-              + " port, please confirm that you are using the right configuration");
+          String.format(
+              "Singular frame size (%d) detected, you may be sending TLS ClientHello requests"
+                  + "%s to the Non-SSL Thrift-RPC"
+                  + " port, please confirm that you are using the right configuration",
+              size, remoteAddress == null ? "" : " from " + remoteAddress));
     }
 
     readBuffer.fill(underlying, size);
