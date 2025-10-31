@@ -99,9 +99,13 @@ public class QueryDataSetInputLayer {
       YieldableState yieldableState = queryDataSet.yield();
       if (YieldableState.YIELDABLE.equals(yieldableState)) {
         Column[] columns = queryDataSet.currentBlock();
-        rowList.put(columns);
-        iterator.next();
-        cachedColumns = iterator.currentBlock();
+        if (columns[0].getPositionCount() == 0) {
+          cachedColumns = columns;
+        } else {
+          rowList.put(columns);
+          iterator.next();
+          cachedColumns = iterator.currentBlock();
+        }
         // No need to call `.consume()` like method in queryDataSet
       }
       return yieldableState;
