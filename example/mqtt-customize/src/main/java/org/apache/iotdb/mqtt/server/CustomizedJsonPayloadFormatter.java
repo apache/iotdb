@@ -33,10 +33,11 @@ import com.google.gson.JsonParseException;
 import io.netty.buffer.ByteBuf;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.NotImplementedException;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -94,7 +95,11 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     List<String> tagKeys = new ArrayList<>();
     tagKeys.add(JSON_KEY_DEVICEID);
     List<Object> tagValues = new ArrayList<>();
-    tagValues.add(jsonObject.get(JSON_KEY_DEVICEID).getAsString());
+    tagValues.add(
+        new Binary[] {
+          new Binary(
+              (jsonObject.get(JSON_KEY_DEVICEID).getAsString()).getBytes(StandardCharsets.UTF_8))
+        });
     message.setTagKeys(tagKeys);
     message.setTagValues(tagValues);
 
@@ -102,14 +107,31 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     List<String> attributeKeys = new ArrayList<>();
     List<Object> attributeValues = new ArrayList<>();
     attributeKeys.add(JSON_KEY_DEVICETYPE);
-    attributeValues.add(jsonObject.get(JSON_KEY_DEVICETYPE).getAsString());
+    attributeValues.add(
+        new Binary[] {
+          new Binary(
+              (jsonObject.get(JSON_KEY_DEVICETYPE).getAsString()).getBytes(StandardCharsets.UTF_8))
+        });
     message.setAttributeKeys(attributeKeys);
     message.setAttributeValues(attributeValues);
 
     // Parsing Fields
-    List<String> fields = Arrays.asList(JSON_KEY_POINT);
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT);
-    List<Object> values = Arrays.asList(jsonObject.get(JSON_KEY_VALUE).getAsFloat());
+    List<String> fields = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<Object> values = new ArrayList<>();
+    fields.add(JSON_KEY_POINT);
+    dataTypes.add(TSDataType.STRING);
+    values.add(
+        new Binary[] {
+          new Binary(
+              (jsonObject.get(JSON_KEY_POINT).getAsString()).getBytes(StandardCharsets.UTF_8))
+        });
+    fields.add(JSON_KEY_VALUE);
+    Pair<TSDataType, Object> typeAndValue =
+        analyticValue(jsonObject.get(JSON_KEY_VALUE).getAsString());
+    values.add(typeAndValue.getRight());
+    dataTypes.add(typeAndValue.getLeft());
+
     message.setFields(fields);
     message.setDataTypes(dataTypes);
     message.setValues(values);
@@ -117,6 +139,40 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     // Parsing timestamp
     message.setTimestamp(jsonObject.get(JSON_KEY_TIME).getAsLong());
     return Lists.newArrayList(message);
+  }
+
+  private Pair<TSDataType, Object> analyticValue(String value) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      // String
+      return new Pair<>(
+          TSDataType.TEXT,
+          new Binary[] {
+            new Binary(value.substring(1, value.length() - 1).getBytes(StandardCharsets.UTF_8))
+          });
+    } else if (value.equalsIgnoreCase("t")
+        || value.equalsIgnoreCase("true")
+        || value.equalsIgnoreCase("f")
+        || value.equalsIgnoreCase("false")) {
+      // boolean
+      return new Pair<>(
+          TSDataType.BOOLEAN,
+          new boolean[] {value.equalsIgnoreCase("t") || value.equalsIgnoreCase("true")});
+    } else if (value.endsWith("f")) {
+      // float
+      return new Pair<>(
+          TSDataType.FLOAT, new float[] {Float.parseFloat(value.substring(0, value.length() - 1))});
+    } else if (value.endsWith("i32")) {
+      // int
+      return new Pair<>(
+          TSDataType.INT32, new int[] {Integer.parseInt(value.substring(0, value.length() - 3))});
+    } else if (value.endsWith("u") || value.endsWith("i")) {
+      // long
+      return new Pair<>(
+          TSDataType.INT64, new long[] {Long.parseLong(value.substring(0, value.length() - 1))});
+    } else {
+      // double
+      return new Pair<>(TSDataType.DOUBLE, new double[] {Double.parseDouble(value)});
+    }
   }
 
   @Override
