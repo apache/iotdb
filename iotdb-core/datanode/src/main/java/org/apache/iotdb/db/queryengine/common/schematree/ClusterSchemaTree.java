@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisit
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;

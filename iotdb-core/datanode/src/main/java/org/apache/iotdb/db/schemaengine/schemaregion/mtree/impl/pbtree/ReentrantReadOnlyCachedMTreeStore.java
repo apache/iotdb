@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
