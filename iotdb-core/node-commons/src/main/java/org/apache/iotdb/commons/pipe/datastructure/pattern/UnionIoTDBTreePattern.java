@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * Represents a union of multiple {@link IoTDBTreePattern}s. This specialized class ensures type
  * safety and provides access to methods specific to IoTDBTreePattern, such as getIntersection.
  */
-public class UnionIoTDBTreePattern extends TreePattern {
+public class UnionIoTDBTreePattern extends TreePattern implements IoTDBPatternOperations {
 
   private final List<IoTDBTreePattern> patterns;
 
@@ -103,11 +103,6 @@ public class UnionIoTDBTreePattern extends TreePattern {
   // **********************************************************************
   // Implementation of abstract methods from TreePattern
   // **********************************************************************
-
-  @Override
-  public boolean isSingle() {
-    return patterns.size() == 1;
-  }
 
   @Override
   public String getPattern() {
