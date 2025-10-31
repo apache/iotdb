@@ -22,7 +22,7 @@ package org.apache.iotdb.it.env.cluster.node;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
-import org.apache.commons.io.file.PathUtils;
+import org.apache.tsfile.external.commons.io.file.PathUtils;
 import org.slf4j.Logger;
 
 import java.io.BufferedWriter;

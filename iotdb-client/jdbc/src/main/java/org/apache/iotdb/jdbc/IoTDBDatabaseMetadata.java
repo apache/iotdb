@@ -25,9 +25,9 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -391,38 +391,38 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       }
 
       String sql = "SHOW TIMESERIES";
-      if (org.apache.commons.lang3.StringUtils.isNotEmpty(catalog)) {
+      if (org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(catalog)) {
         if (catalog.contains("%")) {
           catalog = catalog.replace("%", "*");
         }
         sql = sql + " " + catalog;
-      } else if (org.apache.commons.lang3.StringUtils.isNotEmpty(schemaPattern)) {
+      } else if (org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(schemaPattern)) {
         if (schemaPattern.contains("%")) {
           schemaPattern = schemaPattern.replace("%", "*");
         }
         sql = sql + " " + schemaPattern;
       }
-      if ((org.apache.commons.lang3.StringUtils.isNotEmpty(catalog)
-              || org.apache.commons.lang3.StringUtils.isNotEmpty(schemaPattern))
-          && org.apache.commons.lang3.StringUtils.isNotEmpty(tableNamePattern)) {
+      if ((org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(catalog)
+              || org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(schemaPattern))
+          && org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(tableNamePattern)) {
         if (tableNamePattern.contains("%")) {
           tableNamePattern = tableNamePattern.replace("%", "*");
         }
         sql = sql + "." + tableNamePattern;
       }
 
-      if ((org.apache.commons.lang3.StringUtils.isNotEmpty(catalog)
-              || org.apache.commons.lang3.StringUtils.isNotEmpty(schemaPattern))
-          && org.apache.commons.lang3.StringUtils.isNotEmpty(tableNamePattern)
-          && org.apache.commons.lang3.StringUtils.isNotEmpty(columnNamePattern)) {
+      if ((org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(catalog)
+              || org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(schemaPattern))
+          && org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(tableNamePattern)
+          && org.apache.tsfile.external.commons.lang3.StringUtils.isNotEmpty(columnNamePattern)) {
         if (columnNamePattern.contains("%")) {
           columnNamePattern = columnNamePattern.replace("%", "*");
         }
         sql = sql + "." + columnNamePattern;
       }
 
-      if (org.apache.commons.lang3.StringUtils.isEmpty(catalog)
-          && org.apache.commons.lang3.StringUtils.isEmpty(schemaPattern)
+      if (org.apache.tsfile.external.commons.lang3.StringUtils.isEmpty(catalog)
+          && org.apache.tsfile.external.commons.lang3.StringUtils.isEmpty(schemaPattern)
           && StringUtils.isNotEmpty(tableNamePattern)) {
         sql = sql + " " + tableNamePattern + ".*";
       }

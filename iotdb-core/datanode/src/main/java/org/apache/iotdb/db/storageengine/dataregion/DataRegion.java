@@ -153,6 +153,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -160,8 +161,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -3087,7 +3088,9 @@ public class DataRegion implements IDataRegionForQuery {
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
-    CompactionScheduleContext context = new CompactionScheduleContext();
+    CompactionScheduleContext context =
+        new CompactionScheduleContext(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from largest to smallest
@@ -3140,7 +3143,9 @@ public class DataRegion implements IDataRegionForQuery {
         return 0;
       }
       logger.info("[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionId);
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context =
+          new CompactionScheduleContext(
+              EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);

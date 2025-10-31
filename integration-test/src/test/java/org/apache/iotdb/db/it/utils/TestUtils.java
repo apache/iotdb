@@ -1132,6 +1132,10 @@ public class TestUtils {
     }
   }
 
+  public static boolean tryExecuteNonQuery(BaseEnv env, String sql) {
+    return tryExecuteNonQuery(env, sql, null);
+  }
+
   public static boolean tryExecuteNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
     return tryExecuteNonQuery(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
@@ -1141,6 +1145,11 @@ public class TestUtils {
       BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
     return tryExecuteNonQueriesWithRetry(
         env, Collections.singletonList(sql), userName, password, defaultConnection);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, null);
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(

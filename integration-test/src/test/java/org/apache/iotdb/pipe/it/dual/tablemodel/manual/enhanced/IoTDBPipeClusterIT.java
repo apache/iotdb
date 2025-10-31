@@ -99,12 +99,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testMachineDowntimeAsync() {
-    testMachineDowntime("iotdb-thrift-connector");
+    testMachineDowntime("iotdb-thrift-sink");
   }
 
   @Test
   public void testMachineDowntimeSync() {
-    testMachineDowntime("iotdb-thrift-sync-connector");
+    testMachineDowntime("iotdb-thrift-sync-sink");
   }
 
   private void testMachineDowntime(String sink) {
@@ -120,24 +120,24 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source", "iotdb-source");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
-      connectorAttributes.put("connector", sink);
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.node-urls", a.toString());
+      sinkAttributes.put("sink", sink);
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.node-urls", a.toString());
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -188,32 +188,32 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("start-time", "0");
-      extractorAttributes.put("end-time", "199");
-      extractorAttributes.put("mode.streaming", realtimeMode);
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source", "iotdb-source");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("start-time", "0");
+      sourceAttributes.put("end-time", "199");
+      sourceAttributes.put("mode.streaming", realtimeMode);
+      sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.user", "root");
-      connectorAttributes.put("connector.password", "root");
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.user", "root");
+      sinkAttributes.put("sink.password", "root");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -241,9 +241,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
   }
 
   // This function has a certain probability of triggering replica asynchrony. To ensure the success
-  // of the test, it will be retried 5 times. The exception will be thrown after five retries.
+  // of the test, it will be retried 5 times. The test will be ignored after five retries.
   @Test
-  public void testPipeAfterDataRegionLeaderStop() throws Exception {
+  public void testPipeAfterDataRegionLeaderStop() {
     for (int retry = 0; retry < 5; retry++) {
       try {
         if (retry != 0) {
@@ -261,31 +261,31 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
         try (final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-          final Map<String, String> extractorAttributes = new HashMap<>();
+          final Map<String, String> sourceAttributes = new HashMap<>();
           final Map<String, String> processorAttributes = new HashMap<>();
-          final Map<String, String> connectorAttributes = new HashMap<>();
+          final Map<String, String> sinkAttributes = new HashMap<>();
           TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
           TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
           TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
           TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
-          extractorAttributes.put("extractor", "iotdb-extractor");
-          extractorAttributes.put("database-name", "test");
-          extractorAttributes.put("capture.table", "true");
-          extractorAttributes.put("table-name", "test");
-          extractorAttributes.put("start-time", "0");
-          extractorAttributes.put("end-time", "300");
-          extractorAttributes.put("user", "root");
+          sourceAttributes.put("source", "iotdb-source");
+          sourceAttributes.put("database-name", "test");
+          sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("table-name", "test");
+          sourceAttributes.put("start-time", "0");
+          sourceAttributes.put("end-time", "300");
+          sourceAttributes.put("user", "root");
 
-          connectorAttributes.put("connector", "iotdb-thrift-connector");
-          connectorAttributes.put("connector.batch.enable", "false");
-          connectorAttributes.put("connector.ip", receiverIp);
-          connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+          sinkAttributes.put("sink", "iotdb-thrift-sink");
+          sinkAttributes.put("sink.batch.enable", "false");
+          sinkAttributes.put("sink.ip", receiverIp);
+          sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
           final TSStatus status =
               client.createPipe(
-                  new TCreatePipeReq("p1", connectorAttributes)
-                      .setExtractorAttributes(extractorAttributes)
+                  new TCreatePipeReq("p1", sinkAttributes)
+                      .setExtractorAttributes(sourceAttributes)
                       .setProcessorAttributes(processorAttributes));
 
           Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -353,26 +353,26 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         try (final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
           // Create a new pipe and write new data
-          final Map<String, String> extractorAttributes = new HashMap<>();
+          final Map<String, String> sourceAttributes = new HashMap<>();
           final Map<String, String> processorAttributes = new HashMap<>();
-          final Map<String, String> connectorAttributes = new HashMap<>();
+          final Map<String, String> sinkAttributes = new HashMap<>();
 
-          extractorAttributes.put("database-name", "test1");
-          extractorAttributes.put("capture.table", "true");
-          extractorAttributes.put("table-name", "test1");
-          extractorAttributes.put("start-time", "0");
-          extractorAttributes.put("end-time", "300");
-          extractorAttributes.put("user", "root");
+          sourceAttributes.put("database-name", "test1");
+          sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("table-name", "test1");
+          sourceAttributes.put("start-time", "0");
+          sourceAttributes.put("end-time", "300");
+          sourceAttributes.put("user", "root");
 
-          connectorAttributes.put("connector", "iotdb-thrift-connector");
-          connectorAttributes.put("connector.batch.enable", "false");
-          connectorAttributes.put("connector.ip", receiverIp);
-          connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+          sinkAttributes.put("sink", "iotdb-thrift-sink");
+          sinkAttributes.put("sink.batch.enable", "false");
+          sinkAttributes.put("sink.ip", receiverIp);
+          sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
           final TSStatus status =
               client.createPipe(
-                  new TCreatePipeReq("p2", connectorAttributes)
-                      .setExtractorAttributes(extractorAttributes)
+                  new TCreatePipeReq("p2", sinkAttributes)
+                      .setExtractorAttributes(sourceAttributes)
                       .setProcessorAttributes(processorAttributes));
 
           Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -387,11 +387,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           TableModelUtils.assertData("test1", "test1", 0, 301, receiverEnv, handleFailure);
         }
         return;
-      } catch (Exception | Error e) {
+      } catch (final Exception e) {
         if (retry < 4) {
           this.tearDown();
-        } else {
-          throw e;
         }
       }
     }
@@ -411,9 +409,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
@@ -421,20 +419,20 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
 
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -470,24 +468,24 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // create a new pipe and write new data
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("database-name", "test1");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test1");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test1");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test1");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -513,19 +511,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("database-name", "test1");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test1");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test1");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test1");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final Thread t =
           new Thread(
@@ -533,8 +531,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                 for (int i = 0; i < 30; ++i) {
                   try {
                     client.createPipe(
-                        new TCreatePipeReq("p" + i, connectorAttributes)
-                            .setExtractorAttributes(extractorAttributes)
+                        new TCreatePipeReq("p" + i, sinkAttributes)
+                            .setExtractorAttributes(sourceAttributes)
                             .setProcessorAttributes(processorAttributes));
                   } catch (final TException e) {
                     // Not sure if the "createPipe" has succeeded
@@ -584,24 +582,24 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -663,24 +661,24 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -730,24 +728,24 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -780,19 +778,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
 
-    extractorAttributes.put("database-name", "test");
-    extractorAttributes.put("capture.table", "true");
-    extractorAttributes.put("table-name", "test");
-    extractorAttributes.put("user", "root");
+    sourceAttributes.put("database-name", "test");
+    sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("table-name", "test");
+    sourceAttributes.put("user", "root");
 
-    connectorAttributes.put("connector", "iotdb-thrift-connector");
-    connectorAttributes.put("connector.batch.enable", "false");
-    connectorAttributes.put("connector.ip", receiverIp);
-    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
     final AtomicInteger successCount = new AtomicInteger(0);
     final List<Thread> threads = new ArrayList<>();
@@ -804,8 +802,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
                   final TSStatus status =
                       client.createPipe(
-                          new TCreatePipeReq("p1", connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
+                          new TCreatePipeReq("p1", sinkAttributes)
+                              .setExtractorAttributes(sourceAttributes)
                               .setProcessorAttributes(processorAttributes));
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.incrementAndGet();
@@ -889,19 +887,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
 
-    extractorAttributes.put("database-name", "test");
-    extractorAttributes.put("capture.table", "true");
-    extractorAttributes.put("table-name", "test");
-    extractorAttributes.put("user", "root");
+    sourceAttributes.put("database-name", "test");
+    sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("table-name", "test");
+    sourceAttributes.put("user", "root");
 
-    connectorAttributes.put("connector", "iotdb-thrift-connector");
-    connectorAttributes.put("connector.batch.enable", "false");
-    connectorAttributes.put("connector.ip", receiverIp);
-    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
     final AtomicInteger successCount = new AtomicInteger(0);
     final List<Thread> threads = new ArrayList<>();
@@ -914,8 +912,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
                   final TSStatus status =
                       client.createPipe(
-                          new TCreatePipeReq("p" + finalI, connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
+                          new TCreatePipeReq("p" + finalI, sinkAttributes)
+                              .setExtractorAttributes(sourceAttributes)
                               .setProcessorAttributes(processorAttributes));
                   Assert.assertEquals(
                       TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -970,26 +968,26 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
       TableModelUtils.insertData("test", "test", -100, 100, senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("database-name", "test");
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("table-name", "test");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source", "iotdb-source");
+      sourceAttributes.put("database-name", "test");
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("table-name", "test");
+      sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

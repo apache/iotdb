@@ -28,7 +28,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,8 +92,7 @@ public class PipeSchemaRegionListenerMetrics implements IMetricSet {
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(
-      @NonNull final SchemaRegionListeningQueue schemaRegionListeningQueue,
-      final Integer schemaRegionId) {
+      final SchemaRegionListeningQueue schemaRegionListeningQueue, final Integer schemaRegionId) {
     listeningQueueMap.putIfAbsent(schemaRegionId, schemaRegionListeningQueue);
     if (Objects.nonNull(metricService)) {
       createMetrics(schemaRegionId);

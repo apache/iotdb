@@ -638,12 +638,6 @@ public class PipeMemoryManager {
     return usedMemorySizeInBytesOfTsFiles;
   }
 
-  public long getAllocatedMemorySizeInBytesOfBatch() {
-    return (long)
-        (PipeConfig.getInstance().getPipeDataStructureBatchMemoryProportion()
-            * getTotalNonFloatingMemorySizeInBytes());
-  }
-
   public long getFreeMemorySizeInBytes() {
     return memoryBlock.getFreeMemoryInBytes();
   }

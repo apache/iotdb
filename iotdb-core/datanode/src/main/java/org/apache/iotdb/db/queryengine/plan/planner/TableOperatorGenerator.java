@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
@@ -246,6 +247,7 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -4140,7 +4142,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                CollectOperator.class.getSimpleName());
-    return new CollectOperator(operatorContext, children);
+                MappingCollectOperator.class.getSimpleName());
+
+    int size = children.size();
+    List<List<Integer>> mappings = new ArrayList<>(size);
+    List<Symbol> unionOutputs = node.getOutputSymbols();
+    ListMultimap<Symbol, Symbol> outputToInputs = node.getSymbolMapping();
+    for (int i = 0; i < size; i++) {
+      Map<Symbol, Integer> childOutputs =
+          makeLayoutFromOutputSymbols(node.getChildren().get(i).getOutputSymbols());
+      int finalI = i;
+      mappings.add(
+          unionOutputs.stream()
+              .map(symbol -> childOutputs.get(outputToInputs.get(symbol).get(finalI)))
+              .collect(Collectors.toList()));
+    }
+    return new MappingCollectOperator(operatorContext, children, mappings);
   }
 }

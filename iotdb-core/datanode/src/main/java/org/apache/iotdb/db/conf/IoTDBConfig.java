@@ -49,6 +49,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -62,9 +63,11 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -629,7 +632,7 @@ public class IoTDBConfig {
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /** Database level when creating schema automatically is enabled */
-  private int defaultStorageGroupLevel = 1;
+  private int defaultDatabaseLevel = 1;
 
   /** BOOLEAN encoding when creating schema automatically is enabled */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
@@ -977,6 +980,12 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  /**
+   * Threshold for cache size in mayEvict. When cache size exceeds this threshold, the system will
+   * compute total memory in each eviction iteration to ensure accurate memory management.
+   */
+  private int cacheEvictionMemoryComputationThreshold = 20;
+
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
   /** GRASS Service */
@@ -1147,6 +1156,8 @@ public class IoTDBConfig {
   private String loadDiskSelectStrategyForIoTV2AndPipe =
       LoadDiskSelectorType.INHERIT_LOAD.getValue();
 
+  private boolean skipFailedTableSchemaCheck = false;
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -1175,6 +1186,10 @@ public class IoTDBConfig {
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   private boolean includeNullValueInWriteThroughputMetric = false;
+
+  private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
+      new ConcurrentHashMap<>(
+          Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
 
   IoTDBConfig() {}
 
@@ -2264,24 +2279,23 @@ public class IoTDBConfig {
     this.nanStringInferType = nanStringInferType;
   }
 
-  public int getDefaultStorageGroupLevel() {
-    return defaultStorageGroupLevel;
+  public int getDefaultDatabaseLevel() {
+    return defaultDatabaseLevel;
   }
 
-  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel, boolean startUp) {
-    if (defaultStorageGroupLevel < 1) {
+  void setDefaultDatabaseLevel(int defaultDatabaseLevel, boolean startUp) {
+    if (defaultDatabaseLevel < 1) {
       if (startUp) {
         logger.warn(
-            "Illegal defaultStorageGroupLevel: {}, should >= 1, use default value 1",
-            defaultStorageGroupLevel);
-        defaultStorageGroupLevel = 1;
+            "Illegal defaultDatabaseLevel: {}, should >= 1, use default value 1",
+            defaultDatabaseLevel);
+        defaultDatabaseLevel = 1;
       } else {
         throw new IllegalArgumentException(
-            String.format(
-                "Illegal defaultStorageGroupLevel: %d, should >= 1", defaultStorageGroupLevel));
+            String.format("Illegal defaultDatabaseLevel: %d, should >= 1", defaultDatabaseLevel));
       }
     }
-    this.defaultStorageGroupLevel = defaultStorageGroupLevel;
+    this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
   public TSEncoding getDefaultBooleanEncoding() {
@@ -3261,6 +3275,15 @@ public class IoTDBConfig {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
   }
 
+  public int getCacheEvictionMemoryComputationThreshold() {
+    return cacheEvictionMemoryComputationThreshold;
+  }
+
+  public void setCacheEvictionMemoryComputationThreshold(
+      int cacheEvictionMemoryComputationThreshold) {
+    this.cacheEvictionMemoryComputationThreshold = cacheEvictionMemoryComputationThreshold;
+  }
+
   public int getDataNodeTableCacheSemaphorePermitNum() {
     return dataNodeTableCacheSemaphorePermitNum;
   }
@@ -3925,6 +3948,18 @@ public class IoTDBConfig {
     this.loadDiskSelectStrategyForIoTV2AndPipe = loadDiskSelectStrategyForIoTV2AndPipe;
   }
 
+  public boolean isSkipFailedTableSchemaCheck() {
+    return skipFailedTableSchemaCheck;
+  }
+
+  public void setSkipFailedTableSchemaCheck(boolean skipFailedTableSchemaCheck) {
+    if (this.skipFailedTableSchemaCheck == skipFailedTableSchemaCheck) {
+      return;
+    }
+    this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
+    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
+  }
+
   public long getLoadActiveListeningCheckIntervalSeconds() {
     return loadActiveListeningCheckIntervalSeconds;
   }
@@ -4224,5 +4259,9 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
+    return tsFileDBToEncryptMap;
   }
 }

@@ -104,6 +104,22 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   }
 
   @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    iteratorIndex = 0;
+    while (iteratorIndex < alignedTvListIterators.size() && !hasNext) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (!iterator.hasNextTimeValuePair()) {
+        iteratorIndex++;
+        continue;
+      }
+      hasNext = iterator.hasNextTimeValuePair();
+    }
+    probeNext = false;
+  }
+
+  @Override
   protected void next() {
     TVList.TVListIterator iterator = alignedTvListIterators.get(iteratorIndex);
     iterator.next();
@@ -133,5 +149,13 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (AlignedTVList.AlignedTVListIterator iterator : alignedTvListIterators) {
+      iterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

@@ -3340,30 +3340,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
       if (arguments.size() == 1) {
-        arguments.add(
-            new Identifier(
-                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+        appendTimeArgument(arguments);
       } else if (arguments.size() == 2) {
         check(
-            arguments
-                .get(1)
-                .toString()
-                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            checkArgumentIsTime(arguments.get(1)),
             "The second argument of 'first' or 'last' function must be 'time'",
             ctx);
       }
     } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
       if (arguments.size() == 2) {
-        arguments.add(
-            new Identifier(
-                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+        appendTimeArgument(arguments);
       } else if (arguments.size() == 3) {
         check(
-            arguments
-                .get(2)
-                .toString()
-                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            checkArgumentIsTime(arguments.get(2)),
             "The third argument of 'first_by' or 'last_by' function must be 'time'",
             ctx);
       }
@@ -3393,6 +3383,30 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new FunctionCall(getLocation(ctx), name, window, nulls, distinct, mode, arguments);
+  }
+
+  private void appendTimeArgument(List<Expression> arguments) {
+    if (arguments.get(0) instanceof DereferenceExpression) {
+      arguments.add(
+          new DereferenceExpression(
+              ((DereferenceExpression) arguments.get(0)).getBase(),
+              new Identifier(
+                  TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH))));
+    } else {
+      arguments.add(
+          new Identifier(TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+    }
+  }
+
+  private boolean checkArgumentIsTime(Expression argument) {
+    if (argument instanceof DereferenceExpression) {
+      return ((DereferenceExpression) argument)
+          .getField()
+          .get()
+          .toString()
+          .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING);
+    }
+    return argument.toString().equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING);
   }
 
   @Override

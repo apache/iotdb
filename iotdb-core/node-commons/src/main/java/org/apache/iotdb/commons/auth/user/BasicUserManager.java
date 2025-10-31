@@ -140,6 +140,15 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return null;
   }
 
+  public long getUserId(String username) throws AuthException {
+    User user = this.getEntity(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+    }
+    return user.getUserId();
+  }
+
   public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {

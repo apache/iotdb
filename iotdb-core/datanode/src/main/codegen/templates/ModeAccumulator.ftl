@@ -26,7 +26,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.collections4.comparators.ComparatorChain;
+import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;

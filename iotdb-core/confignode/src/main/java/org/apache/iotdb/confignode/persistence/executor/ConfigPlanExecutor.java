@@ -461,6 +461,7 @@ public class ConfigPlanExecutor {
       case DropUser:
       case DropUserV2:
       case DropRole:
+      case AccountUnlock:
       case GrantRole:
       case GrantUser:
       case GrantRoleToUser:
@@ -493,6 +494,7 @@ public class ConfigPlanExecutor {
       case RUpdateUserV2:
       case RUpdateUserMaxSession:
       case RUpdateUserMinSession:
+      case RAccountUnlock:
       case RGrantUserRole:
       case RGrantRoleAny:
       case RGrantUserAny:

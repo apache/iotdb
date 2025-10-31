@@ -44,11 +44,12 @@ struct TGlobalConfig {
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
-  8: optional string timestampPrecision
-  9: optional string schemaEngineMode
-  10: optional i32 tagAttributeTotalSize
-  11: optional bool isEnterprise
-  12: optional i64 timePartitionOrigin
+  8: required bool enableGrantOption
+  9: optional string timestampPrecision
+  10: optional string schemaEngineMode
+  11: optional i32 tagAttributeTotalSize
+  12: optional bool isEnterprise
+  13: optional i64 timePartitionOrigin
 }
 
 struct TRatisConfig {

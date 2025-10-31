@@ -146,6 +146,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case DropRole:
           authorizer.deleteRole(roleName);
           break;
+        case AccountUnlock:
+          break;
         case GrantRole:
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];
@@ -245,6 +247,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           break;
         case RRenameUser:
           authorizer.renameUser(userName, newUsername);
+          break;
+        case RAccountUnlock:
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
@@ -738,6 +742,11 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
 
   @Override
   public String getUserName(long userId) throws AuthException {
-    return authorizer.getUser(userId).getName();
+    User user = authorizer.getUser(userId);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("No such user id: " + userId));
+    }
+    return user.getName();
   }
 }

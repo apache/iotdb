@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -42,8 +43,10 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.schemaengine.template.Template;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.tsfile.external.commons.io.IOUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -72,8 +75,8 @@ import java.util.Set;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
@@ -440,7 +443,7 @@ public class CNPhysicalPlanGenerator
 
       final Set<TsTable> tableSet = new HashSet<>();
 
-      if (type == STORAGE_GROUP_MNODE_TYPE) {
+      if (type == DATABASE_MNODE_TYPE) {
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
@@ -472,7 +475,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(internalMNode, hasDB));
             name = internalMNode.getName();
             break;
-          case STORAGE_GROUP_MNODE_TYPE:
+          case DATABASE_MNODE_TYPE:
             databaseMNode = deserializeDatabaseMNode(bufferedInputStream).getAsMNode();
             while (!stack.isEmpty() && !stack.peek().right) {
               databaseMNode.addChild(stack.pop().left);
@@ -548,10 +551,13 @@ public class CNPhysicalPlanGenerator
       templateNodeList.add((IConfigMNode) databaseMNode);
     }
 
-    final DatabaseSchemaPlan createDBPlan =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
-    planDeque.add(createDBPlan);
+    final TDatabaseSchema schema = databaseMNode.getAsMNode().getDatabaseSchema();
+    if (!schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+        && !schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+      final DatabaseSchemaPlan createDBPlan =
+          new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, schema);
+      planDeque.add(createDBPlan);
+    }
     return databaseMNode.getAsMNode();
   }
 

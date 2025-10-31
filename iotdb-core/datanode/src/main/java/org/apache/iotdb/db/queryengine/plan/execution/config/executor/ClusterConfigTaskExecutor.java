@@ -327,11 +327,11 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -2105,10 +2105,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
-    final PipeParameters extractorPipeParameters =
+    final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getSourceAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
-        && PipeDataNodeAgent.task().isFullSync(extractorPipeParameters)) {
+        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // 1. Send request to create the real-time data synchronization pipeline
@@ -2120,7 +2120,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
                 .setExtractorAttributes(
-                    extractorPipeParameters
+                    sourcePipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
@@ -2145,16 +2145,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 // Append suffix to the pipeline name for historical data
                 .setPipeName(createPipeStatement.getPipeName() + "_history")
                 .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-                // Use extractor parameters for historical data
+                // Use source parameters for historical data
                 .setExtractorAttributes(
-                    extractorPipeParameters
+                    sourcePipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 ImmutableMap.of(
                                     PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
-                                    Boolean.toString(true))))
+                                    Boolean.toString(true),
+                                    // We force the historical pipe to transfer data only
+                                    // Thus we can transfer schema only once
+                                    // And may drop the historical pipe on successfully transferred
+                                    PipeSourceConstant.SOURCE_INCLUSION_KEY,
+                                    PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
+                                    PipeSourceConstant.SOURCE_EXCLUSION_KEY,
+                                    PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
                 .setConnectorAttributes(createPipeStatement.getSinkAttributes());
@@ -3006,7 +3013,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TSStatus alterLogicalViewByPipe(final AlterLogicalViewNode alterLogicalViewNode) {
+  public TSStatus alterLogicalViewByPipe(
+      final AlterLogicalViewNode alterLogicalViewNode, final boolean shouldMarkAsPipeRequest) {
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
@@ -3025,7 +3033,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TAlterLogicalViewReq(
                 Coordinator.getInstance().createQueryId().getId(),
                 ByteBuffer.wrap(stream.toByteArray()))
-            .setIsGeneratedByPipe(true);
+            .setIsGeneratedByPipe(shouldMarkAsPipeRequest);
     TSStatus tsStatus;
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

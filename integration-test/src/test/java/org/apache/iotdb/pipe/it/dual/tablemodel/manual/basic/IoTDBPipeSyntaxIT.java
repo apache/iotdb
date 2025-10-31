@@ -580,7 +580,6 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.mode.streaming", "true");
-      extractorAttributes.put("extractor.mode.snapshot", "true");
       extractorAttributes.put("extractor.mode.strict", "true");
       extractorAttributes.put("extractor.start-time", "1");
       extractorAttributes.put("extractor.end-time", "2");

@@ -67,7 +67,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     schemaRegionReplicationFactor = Math.min(schemaRegionReplicationFactor, dataNodesNum);
     dataRegionReplicationFactor = Math.min(dataRegionReplicationFactor, dataNodesNum);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()

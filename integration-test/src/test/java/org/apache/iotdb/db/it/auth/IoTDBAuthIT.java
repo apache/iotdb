@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -1508,12 +1509,25 @@ public class IoTDBAuthIT {
   public void testPasswordHistory() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      testPasswordHistoryEncrypted(statement);
       testPasswordHistoryCreateAndDrop(statement);
       testPasswordHistoryAlter(statement);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public void testPasswordHistoryEncrypted(Statement statement) throws SQLException {
+    ResultSet resultSet =
+        statement.executeQuery("SELECT password,oldPassword from root.__audit.password_history._0");
+    assertTrue(resultSet.next());
+    assertEquals(
+        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
+        resultSet.getString("root.__audit.password_history._0.password"));
+    assertEquals(
+        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
+        resultSet.getString("root.__audit.password_history._0.oldPassword"));
   }
 
   public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {
@@ -1658,6 +1672,44 @@ public class IoTDBAuthIT {
         userStatement.execute("REVOKE ROLE common_role FROM common_user");
         userStatement.execute("DROP USER common_user2");
         userStatement.execute("DROP ROLE common_role");
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAudit() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("grant read_data on root.__audit to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("grant read_data on root.__audit to role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
       }
     } catch (SQLException e) {
       e.printStackTrace();

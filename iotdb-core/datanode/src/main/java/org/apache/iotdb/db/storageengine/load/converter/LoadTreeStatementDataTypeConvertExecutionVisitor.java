@@ -36,7 +36,7 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -93,7 +93,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
             new TsFileInsertionEventScanParser(
-                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+                file,
+                new IoTDBTreePattern(null),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                true)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(

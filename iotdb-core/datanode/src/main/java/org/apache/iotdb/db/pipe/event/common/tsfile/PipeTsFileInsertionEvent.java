@@ -771,7 +771,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                       ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
                       : null,
                   this)
-              .provide());
+              .provide(isWithMod));
       return eventParser.get();
     } catch (final Exception e) {
       close();

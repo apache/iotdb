@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -34,7 +33,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -44,9 +42,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -122,7 +118,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
@@ -163,7 +158,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSGroupByQueryIntervalReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -188,7 +182,6 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
 import io.airlift.units.Duration;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -1297,72 +1290,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req) {
     return executeAggregationQueryInternal(req, SELECT_RESULT);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
-      throws TException {
-
-    try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-
-      String database = req.getDatabase();
-      if (StringUtils.isEmpty(database)) {
-        String[] splits = req.getDevice().split("\\.");
-        database = String.format("%s.%s", splits[0], splits[1]);
-      }
-      IDeviceID deviceId = Factory.DEFAULT_FACTORY.create(req.getDevice());
-      String measurementId = req.getMeasurement();
-      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
-
-      // only one database, one device, one time interval
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartitionSlot(req.getStartTime());
-      DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(
-              deviceId, Collections.singletonList(timePartitionSlot), false, false);
-      sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      List<DataRegion> dataRegionList = new ArrayList<>();
-      List<TRegionReplicaSet> replicaSets =
-          dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceId, null);
-      for (TRegionReplicaSet region : replicaSets) {
-        dataRegionList.add(
-            StorageEngine.getInstance()
-                .getDataRegion(new DataRegionId(region.getRegionId().getId())));
-      }
-
-      List<TsBlock> blockResult =
-          executeGroupByQueryInternal(
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              deviceId,
-              measurementId,
-              dataType,
-              req.isAligned,
-              req.getStartTime(),
-              req.getEndTime(),
-              req.getInterval(),
-              req.getAggregationType(),
-              dataRegionList);
-
-      String outputColumnName = req.getAggregationType().name();
-      List<ColumnHeader> columnHeaders =
-          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
-      DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
-
-      TSExecuteStatementResp resp = createResponse(header, 1);
-      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
-      resp.setQueryDataSet(queryDataSet);
-
-      return resp;
-    } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
-    } finally {
-      SESSION_MANAGER.updateIdleTime();
-    }
   }
 
   @Override
@@ -3246,7 +3173,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IClientSession session = SESSION_MANAGER.getCurrSession();
     if (session != null) {
       TSCloseSessionReq req = new TSCloseSessionReq();
-      if (!session.getUsername().contains("null")) {
+      if (session.getUsername() != null && !session.getUsername().contains("null")) {
         AUDIT_LOGGER.log(
             new AuditLogFields(
                 session.getUserId(),

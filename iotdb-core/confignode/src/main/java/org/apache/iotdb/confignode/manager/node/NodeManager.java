@@ -178,6 +178,7 @@ public class NodeManager {
     globalConfig.setTimestampPrecision(commonConfig.getTimestampPrecision());
     globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
     globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
+    globalConfig.setEnableGrantOption(commonConfig.getEnableGrantOption());
     dataSet.setGlobalConfig(globalConfig);
   }
 

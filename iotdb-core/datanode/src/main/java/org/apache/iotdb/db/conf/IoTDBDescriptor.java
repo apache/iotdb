@@ -1061,6 +1061,12 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setCacheEvictionMemoryComputationThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "cache_eviction_memory_computation_threshold",
+                String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
+
     conf.setDataNodeTableCacheSemaphorePermitNum(
         Integer.parseInt(
             properties.getProperty(
@@ -1729,12 +1735,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "nan_string_infer_type",
                 ConfigurationFileUtils.getConfigurationDefaultValue("nan_string_infer_type"))));
-    conf.setDefaultStorageGroupLevel(
+    conf.setDefaultDatabaseLevel(
         Integer.parseInt(
-            properties.getProperty(
-                "default_storage_group_level",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "default_storage_group_level"))),
+            Optional.ofNullable(properties.getProperty("default_database_level"))
+                .orElse(
+                    properties.getProperty(
+                        "default_storage_group_level",
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_database_level"))
+                            .orElse(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_storage_group_level"))))),
         startUp);
     conf.setDefaultBooleanEncoding(
         properties.getProperty(
@@ -2125,6 +2137,13 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update cache_eviction_memory_computation_threshold
+      conf.setCacheEvictionMemoryComputationThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cache_eviction_memory_computation_threshold",
+                  String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
+
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
           Integer.parseInt(
@@ -2229,7 +2248,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
+  private void loadLoadTsFileProps(TrimProperties properties) {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2380,6 +2399,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cache_last_values_memory_budget_in_byte",
                 String.valueOf(conf.getCacheLastValuesMemoryBudgetInByte()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2427,6 +2452,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2456,27 +2487,31 @@ public class IoTDBDescriptor {
 
     String readerTransformerCollectorMemoryProportion =
         properties.getProperty("udf_reader_transformer_collector_memory_proportion");
+    String[] proportions;
     if (readerTransformerCollectorMemoryProportion != null) {
-      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
-      try {
-        conf.setUdfReaderMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setUdfTransformerMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setUdfCollectorMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-                + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion,
-            e);
-      }
+      proportions = readerTransformerCollectorMemoryProportion.split(":");
+    } else {
+      // Make the default proportion is 1:1:1
+      proportions = new String[] {"1", "1", "1"};
+    }
+    int proportionSum = 0;
+    for (String proportion : proportions) {
+      proportionSum += Integer.parseInt(proportion.trim());
+    }
+    float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+    try {
+      conf.setUdfReaderMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+      conf.setUdfTransformerMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      conf.setUdfCollectorMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
+              + " should be an integer, which is "
+              + readerTransformerCollectorMemoryProportion,
+          e);
     }
   }
 

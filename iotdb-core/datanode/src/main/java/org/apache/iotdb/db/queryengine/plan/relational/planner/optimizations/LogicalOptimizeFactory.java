@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MultipleDistinctAggregationToMarkDistinct;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.OptimizeRowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
@@ -207,6 +208,7 @@ public class LogicalOptimizeFactory {
                         new MergeFilters(),
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
+                        new MergeUnion(),
                         new MergeLimits(),
                         new RemoveTrivialFilters(),
                         //                        new RemoveRedundantLimit(),
@@ -245,7 +247,7 @@ public class LogicalOptimizeFactory {
                 .addAll(limitPushdownRules)
                 .addAll(
                     ImmutableSet.of(
-                        // new MergeUnion(),
+                        new MergeUnion(),
                         // new RemoveEmptyUnionBranches(),
                         new MergeFilters(),
                         new RemoveTrivialFilters(),
@@ -255,6 +257,17 @@ public class LogicalOptimizeFactory {
                 .build()),
         simplifyOptimizer,
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                .addAll(
+                    ImmutableSet.of(
+                        new MergeUnion(),
+                        // new MergeIntersect
+                        // new MergeExcept
+                        new PruneDistinctAggregation()))
+                .build()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
         new IterativeOptimizer(

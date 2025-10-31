@@ -28,9 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -48,6 +50,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final long startTime;
   private final long endTime;
   private final TablePattern tablePattern;
+  private final boolean isWithMod;
 
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
@@ -63,7 +66,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
     super(
         pipeName,
@@ -77,7 +81,15 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         true,
         sourceEvent);
 
+    this.isWithMod = isWithMod;
     try {
+      currentModifications =
+          isWithMod
+              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+              : PatternTreeMapFactory.getModsPatternTreeMap();
+      allocatedMemoryBlockForModifications =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
               PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
@@ -86,7 +98,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForChunk =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeMaxAlignedSeriesChunkSizeInOneBatch());
+                  PipeConfig.getInstance().getPipeMaxReaderChunkSize());
       this.allocatedMemoryBlockForBatchData =
           PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(tableSize);
       this.allocatedMemoryBlockForChunkMeta =
@@ -115,9 +127,20 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
-      final PipeInsertionEvent sourceEvent)
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent);
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod);
   }
 
   @Override
@@ -145,14 +168,22 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               allocatedMemoryBlockForChunk,
                               allocatedMemoryBlockForChunkMeta,
                               allocatedMemoryBlockForTableSchemas,
+                              currentModifications,
                               startTime,
                               endTime);
                     }
-                    if (!tabletIterator.hasNext()) {
+                    final boolean hasNext = tabletIterator.hasNext();
+                    if (hasNext && !parseStartTimeRecorded) {
+                      // Record start time on first hasNext() that returns true
+                      recordParseStartTime();
+                    } else if (!hasNext && parseStartTimeRecorded && !parseEndTimeRecorded) {
+                      // Record end time on last hasNext() that returns false
+                      recordParseEndTime();
                       close();
-                      return false;
+                    } else if (!hasNext) {
+                      close();
                     }
-                    return true;
+                    return hasNext;
                   } catch (Exception e) {
                     close();
                     throw new PipeException("Error while parsing tsfile insertion event", e);
@@ -179,6 +210,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                   }
 
                   final Tablet tablet = tabletIterator.next();
+                  // Record tablet metrics
+                  recordTabletMetrics(tablet);
 
                   final TabletInsertionEvent next;
                   if (!hasNext()) {

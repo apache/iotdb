@@ -57,6 +57,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +101,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
+  private List<TimeRange> globalTimeFilterTimeRanges;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<IFullPath> sourcePaths;
@@ -515,6 +518,23 @@ public class FragmentInstanceContext extends QueryContext {
 
   public Filter getGlobalTimeFilter() {
     return globalTimeFilter;
+  }
+
+  public List<TimeRange> getGlobalTimeFilterTimeRanges() {
+    if (globalTimeFilter == null) {
+      return Collections.singletonList(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    }
+    List<TimeRange> local = globalTimeFilterTimeRanges;
+    if (local == null) {
+      synchronized (this) {
+        local = globalTimeFilterTimeRanges;
+        if (local == null) {
+          local = globalTimeFilter.getTimeRanges();
+          globalTimeFilterTimeRanges = local;
+        }
+      }
+    }
+    return local;
   }
 
   public void setTimeFilterForTableModel(Filter timeFilter) {

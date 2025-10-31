@@ -226,7 +226,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
    * @param token Usually the JWT but could also be just the name of the user.
    * @return true if the user is an admin
    */
-  @Override
   public boolean isAdmin(String token) {
     Claims claims;
     if (this.loggedClaims.containsKey(token)) {

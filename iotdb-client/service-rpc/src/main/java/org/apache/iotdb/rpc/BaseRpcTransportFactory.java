@@ -26,6 +26,10 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 @SuppressWarnings("java:S1135") // ignore todos
 public class BaseRpcTransportFactory extends TTransportFactory {
 
@@ -95,8 +99,12 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
         new TSSLTransportFactory.TSSLTransportParameters();
-    params.setTrustStore(trustStore, trustStorePwd);
-    params.setKeyStore(keyStore, keyStorePwd);
+    if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
+      params.setTrustStore(trustStore, trustStorePwd);
+      params.setKeyStore(keyStore, keyStorePwd);
+    } else {
+      throw new TTransportException(new IOException("Could not load keystore or truststore file"));
+    }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }

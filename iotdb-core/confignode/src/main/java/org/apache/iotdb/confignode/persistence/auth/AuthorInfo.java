@@ -32,12 +32,15 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -63,6 +66,58 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       LOGGER.error("get user or role permissionInfo failed because ", e);
     }
+  }
+
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
+    if (authorType < 0) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorType >= AuthorType.RENAME_USER.ordinal()) {
+      AuthorType type = AuthorType.values()[authorType];
+      switch (type) {
+        case RENAME_USER:
+          return ConfigPhysicalPlanType.RenameUser;
+        case UPDATE_USER_MAX_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMaxSession;
+        case UPDATE_USER_MIN_SESSION:
+          return ConfigPhysicalPlanType.UpdateUserMinSession;
+        default:
+          throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      }
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[authorType + ConfigPhysicalPlanType.CreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case UpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.UpdateUserV2;
+          break;
+        case DropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.DropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
+  }
+
+  public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorRType(int authorRType) {
+    ConfigPhysicalPlanType configPhysicalPlanType;
+    if (authorRType == AuthorRType.RENAME_USER.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
+    } else {
+      configPhysicalPlanType =
+          ConfigPhysicalPlanType.values()[
+              authorRType + ConfigPhysicalPlanType.RCreateUser.ordinal()];
+      switch (configPhysicalPlanType) {
+        case RUpdateUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RUpdateUserV2;
+          break;
+        case RDropUser:
+          configPhysicalPlanType = ConfigPhysicalPlanType.RDropUserV2;
+          break;
+      }
+    }
+    return configPhysicalPlanType;
   }
 
   public void setAuthorQueryPlanExecutor(IAuthorPlanExecutor authorPlanExecutor) {
@@ -97,25 +152,54 @@ public class AuthorInfo implements SnapshotProcessor {
     return authorPlanExecutor.executeRelationalAuthorNonQuery(authorPlan);
   }
 
-  public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUsers(plan);
+  public PermissionInfoResp executeListUsers(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUsers(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRoles(plan);
+  public PermissionInfoResp executeListRoles(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRoles(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRolePrivileges(plan);
+  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRolePrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUserPrivileges(plan);
+  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUserPrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
-      throws AuthException {
-    return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission) {
+    try {
+      return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+    } catch (AuthException e) {
+      TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
@@ -123,13 +207,24 @@ public class AuthorInfo implements SnapshotProcessor {
     return authorPlanExecutor.generateRawAuthorizedPTree(username, type);
   }
 
-  public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
-      throws AuthException {
-    return authorPlanExecutor.checkRoleOfUser(username, roleName);
+  public TPermissionInfoResp checkRoleOfUser(String username, String roleName) {
+    try {
+      return authorPlanExecutor.checkRoleOfUser(username, roleName);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TPermissionInfoResp getUser(String username) throws AuthException {
-    return authorPlanExecutor.getUser(username);
+  public TPermissionInfoResp getUser(String username) {
+    try {
+      return authorPlanExecutor.getUser(username);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public String getUserName(long userId) throws AuthException {
@@ -151,9 +246,14 @@ public class AuthorInfo implements SnapshotProcessor {
    *
    * @param username The username of the user that needs to be cached
    */
-  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
-      throws AuthException {
-    return authorPlanExecutor.getUserPermissionInfo(username, type);
+  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type) {
+    try {
+      return authorPlanExecutor.getUserPermissionInfo(username, type);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public TSStatus enableSeparationOfAdminPowers(

@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class IoTDBTreePattern extends TreePattern {
+public class IoTDBTreePattern extends SingleTreePattern {
 
   private final PartialPath patternPartialPath;
   private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
@@ -58,13 +58,6 @@ public class IoTDBTreePattern extends TreePattern {
 
   public IoTDBTreePattern(final String pattern) {
     this(true, pattern);
-  }
-
-  public static <T> List<T> applyIndexesOnList(
-      final int[] filteredIndexes, final List<T> originalList) {
-    return Objects.nonNull(originalList)
-        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
-        : null;
   }
 
   public static <T> List<T> applyReversedIndexesOnList(

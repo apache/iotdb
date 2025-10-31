@@ -630,4 +630,91 @@ public class NonAlignedTVListIteratorTest {
     }
     return tvListMap;
   }
+
+  @Test
+  public void testSkipTimeRange() throws QueryProcessException, IOException {
+    List<Map<TVList, Integer>> list =
+        Arrays.asList(
+            buildNonAlignedSingleTvListMap(
+                Arrays.asList(new TimeRange(10, 20), new TimeRange(22, 40))),
+            buildNonAlignedMultiTvListMap(
+                Arrays.asList(new TimeRange(10, 20), new TimeRange(22, 40))),
+            buildNonAlignedMultiTvListMap(
+                Arrays.asList(
+                    new TimeRange(10, 20),
+                    new TimeRange(10, 20),
+                    new TimeRange(24, 30),
+                    new TimeRange(22, 40))));
+    for (Map<TVList, Integer> tvListMap : list) {
+      testSkipTimeRange(
+          tvListMap,
+          Ordering.ASC,
+          Arrays.asList(new TimeRange(11, 13), new TimeRange(21, 21), new TimeRange(33, 34)),
+          Arrays.asList(new TimeRange(11, 13), new TimeRange(33, 34)));
+      testSkipTimeRange(
+          tvListMap,
+          Ordering.DESC,
+          Arrays.asList(new TimeRange(33, 34), new TimeRange(21, 21), new TimeRange(11, 13)),
+          Arrays.asList(new TimeRange(33, 34), new TimeRange(11, 13)));
+    }
+  }
+
+  private void testSkipTimeRange(
+      Map<TVList, Integer> tvListMap,
+      Ordering scanOrder,
+      List<TimeRange> statisticsTimeRanges,
+      List<TimeRange> expectedResultTimeRange)
+      throws QueryProcessException, IOException {
+    ReadOnlyMemChunk chunk =
+        new ReadOnlyMemChunk(
+            fragmentInstanceContext,
+            "s1",
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            tvListMap,
+            null,
+            Collections.emptyList());
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+    MemPointIterator memPointIterator = chunk.createMemPointIterator(scanOrder, null);
+    List<Long> expectedTimestamps = new ArrayList<>();
+    for (TimeRange timeRange : expectedResultTimeRange) {
+      if (scanOrder == Ordering.ASC) {
+        for (long i = timeRange.getMin(); i <= timeRange.getMax(); i++) {
+          expectedTimestamps.add(i);
+        }
+      } else {
+        for (long i = timeRange.getMax(); i >= timeRange.getMin(); i--) {
+          expectedTimestamps.add(i);
+        }
+      }
+    }
+    List<Long> resultTimestamps = new ArrayList<>(expectedTimestamps.size());
+    for (TimeRange timeRange : statisticsTimeRanges) {
+      memPointIterator.setCurrentPageTimeRange(timeRange);
+      while (memPointIterator.hasNextBatch()) {
+        TsBlock tsBlock = memPointIterator.nextBatch();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long currentTimestamp = tsBlock.getTimeByIndex(i);
+          long value = tsBlock.getColumn(0).getLong(i);
+          Assert.assertEquals(currentTimestamp, value);
+          resultTimestamps.add(currentTimestamp);
+        }
+      }
+    }
+    Assert.assertEquals(expectedTimestamps, resultTimestamps);
+
+    memPointIterator = chunk.createMemPointIterator(scanOrder, null);
+
+    resultTimestamps.clear();
+    for (TimeRange timeRange : statisticsTimeRanges) {
+      memPointIterator.setCurrentPageTimeRange(timeRange);
+      while (memPointIterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = memPointIterator.nextTimeValuePair();
+        Assert.assertEquals(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        resultTimestamps.add(timeValuePair.getTimestamp());
+      }
+    }
+    Assert.assertEquals(expectedTimestamps, resultTimestamps);
+  }
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -48,7 +49,7 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,8 +146,8 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage("Authentication failed.")
-          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode());
+          .setMessage("Account is blocked due to consecutive failed logins.")
+          .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
 
@@ -175,7 +176,8 @@ public class SessionManager implements SessionManagerMBean {
               username);
           long currentTime = CommonDateTimeUtils.currentTime();
           TSStatus tsStatus =
-              DataNodeAuthUtils.recordPasswordHistory(userId, password, password, currentTime);
+              DataNodeAuthUtils.recordPasswordHistory(
+                  userId, password, AuthUtils.encryptPassword(password), currentTime);
           if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             openSessionResp
                 .sessionId(-1)

@@ -216,10 +216,6 @@ following license. See licenses/ for text of these licenses.
 Apache Software Foundation License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.5.0
-commons-codec:commons-codec:1.16.1
-org.apache.commons:commons-collections4:4.4
-commons-io:commons-io:2.14.0
-org.apache.commons:commons-lang3:3.18.0
 com.nimbusds:content-type:2.2
 com.google.code.gson:gson:2.13.1
 com.google.guava.guava:32.1.2-jre

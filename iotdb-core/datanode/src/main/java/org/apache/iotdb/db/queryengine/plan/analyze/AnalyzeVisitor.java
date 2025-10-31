@@ -431,17 +431,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new GetModelInfoException(status.getMessage());
     }
-    ModelInformation modelInformation = analysis.getModelInformation();
-    if (modelInformation == null || !modelInformation.available()) {
-      throw new SemanticException("Model " + modelId + " is not active");
-    }
 
     // set inference window if there is
     if (queryStatement.isSetInferenceWindow()) {
       InferenceWindow window = queryStatement.getInferenceWindow();
       if (InferenceWindowType.HEAD == window.getType()) {
         long windowSize = ((HeadInferenceWindow) window).getWindowSize();
-        checkWindowSize(windowSize, modelInformation);
+        //        checkWindowSize(windowSize, modelInformation);
         if (queryStatement.hasLimit() && queryStatement.getRowLimit() < windowSize) {
           throw new SemanticException(
               "Limit in Sql should be larger than window size in inference");
@@ -450,7 +446,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         queryStatement.setRowLimit(windowSize);
       } else if (InferenceWindowType.TAIL == window.getType()) {
         long windowSize = ((TailInferenceWindow) window).getWindowSize();
-        checkWindowSize(windowSize, modelInformation);
+        //        checkWindowSize(windowSize, modelInformation);
         InferenceWindowParameter inferenceWindowParameter =
             new BottomInferenceWindowParameter(windowSize);
         analysis
@@ -458,7 +454,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .setInferenceWindowParameter(inferenceWindowParameter);
       } else if (InferenceWindowType.COUNT == window.getType()) {
         CountInferenceWindow countInferenceWindow = (CountInferenceWindow) window;
-        checkWindowSize(countInferenceWindow.getInterval(), modelInformation);
+        //        checkWindowSize(countInferenceWindow.getInterval(), modelInformation);
         InferenceWindowParameter inferenceWindowParameter =
             new CountInferenceWindowParameter(
                 countInferenceWindow.getInterval(), countInferenceWindow.getStep());

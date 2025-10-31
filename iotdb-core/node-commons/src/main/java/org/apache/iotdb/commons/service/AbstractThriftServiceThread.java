@@ -44,7 +44,13 @@ import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
+import java.nio.file.AccessDeniedException;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -177,13 +183,15 @@ public abstract class AbstractThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
+      validateCertificate(keyStorePath, keyStorePwd);
       TSSLTransportFactory.TSSLTransportParameters params =
           new TSSLTransportFactory.TSSLTransportParameters();
       params.setKeyStore(keyStorePath, keyStorePwd);
       if (trustStorePath != null && !trustStorePath.isEmpty()) {
+        validateCertificate(trustStorePath, trustStorePwd);
         params.setTrustStore(trustStorePath, trustStorePwd);
+        params.requireClientAuth(true);
       }
-      params.requireClientAuth(false);
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
           TSSLTransportFactory.getServerSocket(
@@ -195,6 +203,41 @@ public abstract class AbstractThriftServiceThread extends Thread {
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
+  }
+
+  private static void validateCertificate(String keyStorePath, String keystorePassword)
+      throws TTransportException {
+    try {
+      KeyStore keystore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(keyStorePath)) {
+        keystore.load(fis, keystorePassword.toCharArray());
+      }
+
+      Enumeration<String> aliases = keystore.aliases();
+      while (aliases.hasMoreElements()) {
+        String currentAlias = aliases.nextElement();
+        checkCertificate(keystore, currentAlias);
+      }
+    } catch (AccessDeniedException e) {
+      throw new TTransportException("Failed to load keystore or truststore file");
+    } catch (FileNotFoundException e) {
+      throw new TTransportException("keystore or truststore file not found");
+    } catch (Exception e) {
+      throw new TTransportException(e);
+    }
+  }
+
+  private static void checkCertificate(KeyStore keystore, String alias) throws Exception {
+    if (!keystore.containsAlias(alias)) {
+      return;
+    }
+
+    X509Certificate cert = (X509Certificate) keystore.getCertificate(alias);
+    if (cert == null) {
+      return;
+    }
+
+    cert.checkValidity();
   }
 
   @SuppressWarnings("squid:S107")

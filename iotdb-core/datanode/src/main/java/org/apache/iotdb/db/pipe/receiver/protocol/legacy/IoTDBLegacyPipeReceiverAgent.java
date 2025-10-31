@@ -42,8 +42,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,6 +103,11 @@ public class IoTDBLegacyPipeReceiverAgent {
       final String remoteAddress,
       final IPartitionFetcher partitionFetcher,
       final ISchemaFetcher schemaFetcher) {
+    if (!validatePipeName(syncIdentityInfo)) {
+      return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+          .setMessage("Invalid pipeName");
+    }
+
     final SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);
     LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
@@ -117,6 +122,10 @@ public class IoTDBLegacyPipeReceiverAgent {
           String.format("Auto register database %s error.", identityInfo.getDatabase()));
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
+  }
+
+  private boolean validatePipeName(final TSyncIdentityInfo info) {
+    return info.isSetPipeName() && !info.getPipeName().contains(File.separator);
   }
 
   private void createConnection(final SyncIdentityInfo identityInfo) {
