@@ -440,7 +440,7 @@ public class DeviceAttributeCacheUpdater {
     if (size > 0) {
       requestMemory(size);
     } else {
-      releaseMemory(size);
+      releaseMemory(-size);
     }
   }
 
