@@ -131,16 +131,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException {
     this(
-        null,
-        0,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        sourceEvent,
-        isWithMod);
+        null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent, isWithMod);
   }
 
   @Override

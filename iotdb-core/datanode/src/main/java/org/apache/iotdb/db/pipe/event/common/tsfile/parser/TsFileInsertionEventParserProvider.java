@@ -80,7 +80,8 @@ public class TsFileInsertionEventParserProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide(final boolean isWithMod) throws IOException, IllegalPathException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod)
+      throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -138,7 +139,7 @@ public class TsFileInsertionEventParserProvider {
           entity,
           sourceEvent.isSkipIfNoPrivileges(),
           null,
-              false);
+          false);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =

@@ -172,7 +172,18 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, null, false, sourceEvent, isWithMod);
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        null,
+        false,
+        sourceEvent,
+        isWithMod);
   }
 
   @Override
@@ -518,21 +529,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               }
             }
 
-              if (Objects.nonNull(entity)) {
-                  final TSStatus status =
-                          AuthorityChecker.getAccessControl()
-                                  .checkSeriesPrivilege4Pipe(
-                                          entity,
-                                          Collections.singletonList(
-                                                  new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
-                                          PrivilegeType.READ_DATA);
-                  if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      if (skipIfNoPrivileges) {
-                          continue;
-                      }
-                      throw new AccessDeniedException(status.getMessage());
-                  }
+            if (Objects.nonNull(entity)) {
+              final TSStatus status =
+                  AuthorityChecker.getAccessControl()
+                      .checkSeriesPrivilege4Pipe(
+                          entity,
+                          Collections.singletonList(
+                              new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                          PrivilegeType.READ_DATA);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                if (skipIfNoPrivileges) {
+                  continue;
+                }
+                throw new AccessDeniedException(status.getMessage());
               }
+            }
 
             if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
               PipeDataNodeResourceManager.memory()

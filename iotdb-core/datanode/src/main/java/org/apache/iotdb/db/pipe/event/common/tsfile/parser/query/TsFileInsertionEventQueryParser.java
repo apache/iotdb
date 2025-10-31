@@ -87,7 +87,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false, null, false);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -100,7 +100,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
-      throws IOException {
+      throws IOException, IllegalPathException {
     this(
         pipeName,
         creationTime,
@@ -112,8 +112,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         sourceEvent,
         null,
         false,
-            null,
-            isWithMod);
+        null,
+        isWithMod);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -129,8 +129,18 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final boolean skipIfNoPrivileges,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
       final boolean isWithMod)
-      throws IOException {
-    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+      throws IOException, IllegalPathException {
+    super(
+        pipeName,
+        creationTime,
+        pattern,
+        null,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent);
 
     try {
       currentModifications =
