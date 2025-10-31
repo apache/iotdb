@@ -127,17 +127,19 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   public void addTableDevice(final String table) {
     tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+    schemaEngineStatistics.addTableDevice(table);
   }
 
   public void decreaseTableDevice(final String table, final long decrease) {
     tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+    schemaEngineStatistics.decreaseTableDevice(table, decrease);
   }
 
   // Reset table device, will alter the schema statistics as well
   public void resetTableDevice(final String table) {
     final long num = tableDeviceNumber.remove(table);
     devicesNumber.addAndGet(-num);
-    schemaEngineStatistics.deleteDevice(num);
+    schemaEngineStatistics.resetTableDevice(table);
   }
 
   public void addDevice() {
