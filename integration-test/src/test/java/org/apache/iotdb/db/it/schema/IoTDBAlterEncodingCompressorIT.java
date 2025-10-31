@@ -154,7 +154,8 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      try (final ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.__audit.**._0.password")) {
+      try (final ResultSet resultSet =
+          statement.executeQuery("SHOW TIMESERIES root.__audit.**._0.password")) {
         while (resultSet.next()) {
           assertEquals("PLAIN", resultSet.getString(5));
           assertEquals("LZMA2", resultSet.getString(6));
