@@ -379,6 +379,7 @@ public class ClusterSchemaManager {
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
+      databaseInfo.setNeedLastCache(databaseSchema.isNeedLastCache());
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
       databaseInfo.setMaxSchemaRegionNum(
@@ -870,6 +871,10 @@ public class ClusterSchemaManager {
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The timePartitionInterval should be positive.");
+    }
+
+    if (!databaseSchema.isSetNeedLastCache()) {
+      databaseSchema.setNeedLastCache(true);
     }
 
     if (isSystemDatabase || isAuditDatabase) {

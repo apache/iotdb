@@ -111,6 +111,7 @@ databaseAttributesClause
 
 databaseAttributeClause
     : databaseAttributeKey operator_eq INTEGER_LITERAL
+    | NEED_LAST_CACHE operator_eq boolean_literal
     ;
 
 databaseAttributeKey
