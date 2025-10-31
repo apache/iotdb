@@ -1437,6 +1437,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA);
         if (audit) {
           authTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+          authTree.constructTree();
         }
         alterEncodingCompressorStatement.setPatternTree(
             PathPatternTreeUtils.intersectWithFullPathPrefixTree(

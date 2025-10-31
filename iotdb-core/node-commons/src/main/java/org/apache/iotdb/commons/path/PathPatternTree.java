@@ -105,7 +105,7 @@ public class PathPatternTree {
   public void appendPathPattern(final PartialPath pathPattern, final boolean isReload) {
     if (useWildcard) {
       // This does not guarantee multi-thread safety
-      if (isReload) {
+      if (isReload && (pathPatternList == null || pathPatternList.isEmpty())) {
         pathPatternList = getAllPathPatterns();
       }
       boolean isExist = false;

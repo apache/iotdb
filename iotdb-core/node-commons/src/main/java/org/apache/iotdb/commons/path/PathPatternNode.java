@@ -252,7 +252,9 @@ public class PathPatternNode<V, S extends PathPatternNode.Serializer<V>> impleme
   }
 
   void clear() {
-    valueSet.clear();
+    if (Objects.nonNull(valueSet)) {
+      valueSet.clear();
+    }
     children.clear();
   }
 
