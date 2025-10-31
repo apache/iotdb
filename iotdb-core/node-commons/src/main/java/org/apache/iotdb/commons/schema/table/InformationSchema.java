@@ -24,11 +24,12 @@ import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
-import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +39,7 @@ public class InformationSchema {
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
   private static final Map<String, Set<String>> columnsThatSupportPushDownPredicate =
       new HashMap<>();
+  private static final Set<String> tablesThatSupportPushDownLimitOffset = new HashSet<>();
 
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
@@ -396,6 +398,8 @@ public class InformationSchema {
             ColumnHeaderConstant.NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
+
+    tablesThatSupportPushDownLimitOffset.add(TABLE_DISK_USAGE);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
@@ -404,6 +408,14 @@ public class InformationSchema {
 
   public static Set<String> getColumnsSupportPushDownPredicate(String tableName) {
     return columnsThatSupportPushDownPredicate.getOrDefault(tableName, Collections.emptySet());
+  }
+
+  public static boolean supportsPushDownLimitOffset(String tableName) {
+    return columnsThatSupportPushDownPredicate.containsKey(tableName);
+  }
+
+  public static boolean hasUnlimitedQueryTimeOut(String tableName) {
+    return tableName.equals(TABLE_DISK_USAGE);
   }
 
   private InformationSchema() {

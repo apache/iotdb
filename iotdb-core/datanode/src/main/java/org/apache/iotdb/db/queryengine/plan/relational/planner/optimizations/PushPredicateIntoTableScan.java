@@ -449,13 +449,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
         return node;
       }
-      switch (node.getQualifiedObjectName().getObjectName()) {
-          // information tables that supports pushdown predicate
-        case InformationSchema.TABLE_DISK_USAGE:
-          return combineFilterAndScan(node, context.inheritedPredicate);
-        default:
-          return node;
-      }
+      return combineFilterAndScan(node, context.inheritedPredicate);
     }
 
     @Override

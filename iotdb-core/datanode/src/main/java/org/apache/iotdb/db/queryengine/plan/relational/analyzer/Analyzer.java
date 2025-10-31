@@ -77,7 +77,8 @@ public class Analyzer {
             statement,
             parameters,
             parameterLookup,
-            warningCollector);
+            warningCollector,
+            context);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
     Statement innerStatement =

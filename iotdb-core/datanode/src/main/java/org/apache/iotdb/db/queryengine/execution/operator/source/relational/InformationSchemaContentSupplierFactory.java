@@ -94,6 +94,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
@@ -140,7 +141,8 @@ public class InformationSchemaContentSupplierFactory {
       final String tableName,
       final List<TSDataType> dataTypes,
       final UserEntity userEntity,
-      final Filter pushDownFilter) {
+      final Filter pushDownFilter,
+      final PaginationController paginationController) {
     try {
       switch (tableName) {
         case InformationSchema.QUERIES:
@@ -178,7 +180,8 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
         case InformationSchema.TABLE_DISK_USAGE:
-          return new TableDiskUsageSupplier(dataTypes, userEntity, pushDownFilter);
+          return new TableDiskUsageSupplier(
+              dataTypes, userEntity, pushDownFilter, paginationController);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -1242,6 +1245,7 @@ public class InformationSchemaContentSupplierFactory {
     private final List<TSDataType> dataTypes;
     private final Map<String, List<TTableInfo>> databaseTableInfoMap;
     private final Filter pushDownFilter;
+    private final PaginationController paginationController;
 
     private DataRegion currentDataRegion;
     private long currentTimePartition;
@@ -1251,10 +1255,14 @@ public class InformationSchemaContentSupplierFactory {
     private final StorageEngineTimePartitionIterator timePartitionIterator;
 
     private TableDiskUsageSupplier(
-        final List<TSDataType> dataTypes, final UserEntity userEntity, Filter pushDownFilter)
+        final List<TSDataType> dataTypes,
+        final UserEntity userEntity,
+        Filter pushDownFilter,
+        PaginationController paginationController)
         throws TException, ClientManagerException {
       this.dataTypes = dataTypes;
       this.pushDownFilter = pushDownFilter;
+      this.paginationController = paginationController;
       AuthorityChecker.getAccessControl().checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1280,6 +1288,9 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public boolean hasNext() {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
       if (statisticUtil != null) {
         return true;
       }
@@ -1347,6 +1358,13 @@ public class InformationSchemaContentSupplierFactory {
       long[] resultArr = statisticUtil.getResult();
 
       for (int i = 0; i < currentTablesToScan.size(); i++) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          continue;
+        }
+        if (!paginationController.hasCurLimit()) {
+          break;
+        }
         builder.getTimeColumnBuilder().writeLong(0);
         ColumnBuilder[] columns = builder.getValueColumnBuilders();
 
@@ -1358,6 +1376,7 @@ public class InformationSchemaContentSupplierFactory {
         columns[4].writeLong(currentTimePartition);
         columns[5].writeLong(resultArr[i]);
         builder.declarePosition();
+        paginationController.consumeLimit();
       }
       closeStatisticUtil();
       return builder.build();

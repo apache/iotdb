@@ -3790,6 +3790,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowDiskUsage(
       ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
+    context.setTimeOut(Long.MAX_VALUE);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showDiskUsageStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowDiskUsageHeader());

@@ -186,6 +186,11 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
       TableScanNode tableScanNode = subContext.tableScanNode;
       context.tableScanNode = tableScanNode;
+
+      if (!(tableScanNode instanceof DeviceTableScanNode)) {
+        context.enablePushDown = false;
+        return node;
+      }
       OrderingScheme orderingScheme = node.getOrderingScheme();
       Map<Symbol, ColumnSchema> tableColumnSchema =
           analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
@@ -203,11 +208,6 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         }
 
         sortSymbols.add(orderBy);
-      }
-
-      if (!(tableScanNode instanceof DeviceTableScanNode)) {
-        context.enablePushDown = false;
-        return node;
       }
 
       boolean pushLimitToEachDevice = false;

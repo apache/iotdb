@@ -286,8 +286,9 @@ public class QueryExecution implements IQueryExecution {
   public void doDistributedPlan() {
     this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
 
-    // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
-    // that the sub-tasks of the ShowQueries instances could be executed first.
+    // if is this Statement is ShowQueryStatement or ShowDiskUsageStatement, set its instances to
+    // the highest priority, so
+    // that the sub-tasks of the instances could be executed first.
     if (analysis.needSetHighestPriority()) {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }

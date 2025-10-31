@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -311,16 +312,23 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           outerContext);
     }
 
-    TableScanNode tableScanNode =
-        qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)
-            ? new InformationSchemaTableScanNode(
-                idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema)
-            : new DeviceTableScanNode(
-                idAllocator.genPlanNodeId(),
-                qualifiedObjectName,
-                outputSymbols,
-                tableColumnSchema,
-                tagAndAttributeIndexMap);
+    TableScanNode tableScanNode;
+    if (qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)) {
+      tableScanNode =
+          new InformationSchemaTableScanNode(
+              idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema);
+      if (InformationSchema.hasUnlimitedQueryTimeOut(qualifiedObjectName.getObjectName())) {
+        queryContext.setTimeOut(Long.MAX_VALUE);
+      }
+    } else {
+      tableScanNode =
+          new DeviceTableScanNode(
+              idAllocator.genPlanNodeId(),
+              qualifiedObjectName,
+              outputSymbols,
+              tableColumnSchema,
+              tagAndAttributeIndexMap);
+    }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);

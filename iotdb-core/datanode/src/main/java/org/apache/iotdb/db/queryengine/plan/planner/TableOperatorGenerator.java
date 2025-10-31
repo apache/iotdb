@@ -270,6 +270,7 @@ import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -1299,6 +1300,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               context.getZoneId(),
               TimestampPrecisionUtils.currPrecision);
     }
+    PaginationController paginationController =
+        new PaginationController(node.getPushDownLimit(), node.getPushDownOffset());
 
     final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
@@ -1316,7 +1319,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 .getFragmentInstanceContext()
                 .getSessionInfo()
                 .getUserEntity(),
-            pushDownFilter));
+            pushDownFilter,
+            paginationController));
   }
 
   @Override

@@ -54,16 +54,15 @@ public class PushDownOffsetIntoTableScan implements Rule<OffsetNode> {
   public Result apply(OffsetNode parent, Captures captures, Context context) {
     TableScanNode tableScanNode = captures.get(CHILD);
     if (tableScanNode instanceof DeviceTableScanNode
-        && !((DeviceTableScanNode) tableScanNode).isPushLimitToEachDevice()) {
-      tableScanNode.setPushDownOffset(parent.getCount());
-      // consider case that there is no limit
-      tableScanNode.setPushDownLimit(
-          tableScanNode.getPushDownLimit() == 0
-              ? 0
-              : tableScanNode.getPushDownLimit() - parent.getCount());
-      return Result.ofPlanNode(tableScanNode);
+        && ((DeviceTableScanNode) tableScanNode).isPushLimitToEachDevice()) {
+      return Result.empty();
     }
-
-    return Result.empty();
+    tableScanNode.setPushDownOffset(parent.getCount());
+    // consider case that there is no limit
+    tableScanNode.setPushDownLimit(
+        tableScanNode.getPushDownLimit() == 0
+            ? 0
+            : tableScanNode.getPushDownLimit() - parent.getCount());
+    return Result.ofPlanNode(tableScanNode);
   }
 }
