@@ -158,7 +158,7 @@ public class ForecastTableFunction implements TableFunction {
       int size = ReadWriteIOUtils.readInt(buffer);
       this.inputColumnTypes = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        inputColumnTypes.add(Type.valueOf(ReadWriteIOUtils.readString(buffer)));
+        inputColumnTypes.add(Type.valueOf(ReadWriteIOUtils.readByte(buffer)));
       }
       size = ReadWriteIOUtils.readInt(buffer);
       this.predicatedColumnTypes = new ArrayList<>(size);
