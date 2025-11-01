@@ -379,6 +379,7 @@ public class TableFunctionTest {
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
                         new TEndPoint("127.0.0.1", 10810),
+                        Collections.singletonList(DOUBLE),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
@@ -440,6 +441,7 @@ public class TableFunctionTest {
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
                         new TEndPoint("127.0.0.1", 10810),
+                        Collections.singletonList(DOUBLE),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
