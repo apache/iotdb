@@ -5,7 +5,6 @@
 /iotdb/thrift/
 /iotdb/tsfile/
 /iotdb/utils/
-/iotdb/__init__.py
 /iotdb/Session.py
 /iotdb/SessionPool.py
 /iotdb/table_session.py

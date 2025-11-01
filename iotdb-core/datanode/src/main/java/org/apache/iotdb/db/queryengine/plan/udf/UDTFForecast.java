@@ -128,11 +128,8 @@ public class UDTFForecast implements UDTF {
         Arrays.stream(
                 parameters.getStringOrDefault(OPTIONS_PARAMETER_NAME, DEFAULT_OPTIONS).split(","))
             .map(s -> s.split("="))
-            .filter(arr -> arr.length == 2 && !arr[0].isEmpty()) // 防御性检查
-            .collect(
-                Collectors.toMap(
-                    arr -> arr[0].trim(), arr -> arr[1].trim(), (v1, v2) -> v2 // 如果 key 重复，保留后一个
-                    ));
+            .filter(arr -> arr.length == 2 && !arr[0].isEmpty())
+            .collect(Collectors.toMap(arr -> arr[0].trim(), arr -> arr[1].trim(), (v1, v2) -> v2));
     this.inputRows = new LinkedList<>();
     List<TSDataType> tsDataTypeList = new ArrayList<>(this.types.size() - 1);
     for (int i = 0; i < this.types.size(); i++) {
