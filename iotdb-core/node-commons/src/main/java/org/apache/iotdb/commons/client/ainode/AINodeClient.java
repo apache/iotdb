@@ -77,7 +77,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private final TEndPoint endPoint;
+  private TEndPoint endPoint;
 
   private TTransport transport;
 
@@ -105,6 +105,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     this.property = property;
     this.clientManager = clientManager;
     this.endPoint = endPoint;
+    LocationRegistry.initDefaultIfAbsent(endPoint);
     init();
   }
 
@@ -122,6 +123,12 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
           close();
         } catch (Exception ignore) {
           // ignore
+        }
+        // try switch to another candidate maintained by the registry
+        final TEndPoint before = this.endPoint;
+        final TEndPoint next = LocationRegistry.rotateOnFailure(before);
+        if (next != null && (before == null || !before.equals(next))) {
+          this.endPoint = next;
         }
       }
     }
@@ -167,6 +174,75 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public TTransport getTransport() {
     return transport;
+  }
+
+  /** Shared dynamic AINode location/candidates registry (no ConfigNode dependency). */
+  private static final class LocationRegistry {
+    private static final java.util.concurrent.atomic.AtomicReference<TEndPoint> CURRENT =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    private static final java.util.concurrent.CopyOnWriteArrayList<TEndPoint> CANDIDATES =
+        new java.util.concurrent.CopyOnWriteArrayList<>();
+    private static final java.util.concurrent.locks.ReentrantLock SWITCH_LOCK =
+        new java.util.concurrent.locks.ReentrantLock();
+
+    static void initDefaultIfAbsent(final TEndPoint initial) {
+      if (initial != null && CURRENT.get() == null) {
+        CURRENT.compareAndSet(null, initial);
+        if (!CANDIDATES.contains(initial)) {
+          CANDIDATES.add(initial);
+        }
+      }
+    }
+
+    static TEndPoint getCurrent() {
+      return CURRENT.get();
+    }
+
+    static void setCurrent(final TEndPoint ep) {
+      if (ep == null) {
+        return;
+      }
+      CURRENT.set(ep);
+      if (!CANDIDATES.contains(ep)) {
+        CANDIDATES.add(ep);
+      }
+    }
+
+    static void replaceCandidates(final java.util.List<TEndPoint> eps) {
+      CANDIDATES.clear();
+      if (eps != null) {
+        CANDIDATES.addAll(eps);
+      }
+      // keep CURRENT if still in list, otherwise reset to first
+      final TEndPoint cur = CURRENT.get();
+      if (cur == null || !CANDIDATES.contains(cur)) {
+        if (!CANDIDATES.isEmpty()) {
+          CURRENT.set(CANDIDATES.get(0));
+        }
+      }
+    }
+
+    /** Move to the next available candidate (round-robin) on connection failure. */
+    static TEndPoint rotateOnFailure(final TEndPoint failed) {
+      if (!SWITCH_LOCK.tryLock()) {
+        return CURRENT.get();
+      }
+      try {
+        if (failed != null) {
+          // push failed to the end to avoid immediate retry
+          CANDIDATES.remove(failed);
+          CANDIDATES.add(failed);
+        }
+        if (!CANDIDATES.isEmpty()) {
+          final TEndPoint next = CANDIDATES.get(0);
+          CURRENT.set(next);
+          return next;
+        }
+        return CURRENT.get();
+      } finally {
+        SWITCH_LOCK.unlock();
+      }
+    }
   }
 
   public TSStatus stopAINode() throws TException {
@@ -240,6 +316,22 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   public TShowAIDevicesResp showAIDevices() throws TException {
     return executeRemoteCallWithRetry(IAINodeRPCService.Client::showAIDevices);
+  }
+
+  // ----------------------- static hooks for DataNode routing -----------------------
+  /** Update the global/default AINode endpoint (e.g., from ConfigNode resolution). */
+  public static void updateGlobalAINodeLocation(final TEndPoint ep) {
+    LocationRegistry.setCurrent(ep);
+  }
+
+  /** Replace the global candidate list; current will stick if still present, otherwise first. */
+  public static void updateGlobalAINodeCandidates(final java.util.List<TEndPoint> eps) {
+    LocationRegistry.replaceCandidates(eps);
+  }
+
+  /** Get the current chosen endpoint (may be null before any initialization). */
+  public static TEndPoint getCurrentEndpoint() {
+    return LocationRegistry.getCurrent();
   }
 
   public TInferenceResp inference(

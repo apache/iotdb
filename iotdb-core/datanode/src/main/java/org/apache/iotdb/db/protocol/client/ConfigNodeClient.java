@@ -111,6 +111,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -528,6 +530,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) throws TException {
     throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+  }
+
+  public TGetAINodeLocationResp getAINodeLocation(final TGetAINodeLocationReq req)
+      throws org.apache.thrift.TException {
+    return client.getAINodeLocation(req);
   }
 
   @Override

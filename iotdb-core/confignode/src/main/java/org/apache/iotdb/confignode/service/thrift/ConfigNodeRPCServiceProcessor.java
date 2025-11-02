@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -151,6 +152,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -647,6 +650,59 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())),
             req.getExecutedByUserID(),
             req.getNewUsername()));
+  }
+
+  @Override
+  public TGetAINodeLocationResp getAINodeLocation(final TGetAINodeLocationReq req)
+      throws TException {
+    final TGetAINodeLocationResp resp = new TGetAINodeLocationResp();
+    final TSStatus status = new TSStatus();
+    try {
+      final java.util.List<?> registered = configManager.getNodeManager().getRegisteredAINodes();
+      if (registered == null || registered.isEmpty()) {
+        status.setCode(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode());
+        status.setMessage("No registered AINode found");
+        resp.setStatus(status);
+        return resp;
+      }
+      final java.util.Optional<TEndPoint> picked = pickAnyEndPointFromRegistered(registered);
+      if (picked.isPresent()) {
+        resp.setAiNodeAddress(picked.get());
+        status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        status.setCode(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode());
+        status.setMessage("No valid AINode endpoint extracted from registry");
+      }
+    } catch (Exception e) {
+      status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage("getAINodeLocation failed: " + e.getMessage());
+    }
+    resp.setStatus(status);
+    return resp;
+  }
+
+  private java.util.Optional<TEndPoint> pickAnyEndPointFromRegistered(
+      final java.util.List<?> registered) {
+    for (Object v : registered) {
+      if (v instanceof TEndPoint) {
+        return java.util.Optional.of((TEndPoint) v);
+      }
+      try {
+        final Object ep = v.getClass().getMethod("getRpcEndPoint").invoke(v);
+        if (ep instanceof TEndPoint) {
+          return java.util.Optional.of((TEndPoint) ep);
+        }
+      } catch (ReflectiveOperationException ignore) {
+      }
+      try {
+        final Object ep = v.getClass().getMethod("getClientRpcEndPoint").invoke(v);
+        if (ep instanceof TEndPoint) {
+          return java.util.Optional.of((TEndPoint) ep);
+        }
+      } catch (ReflectiveOperationException ignore) {
+      }
+    }
+    return java.util.Optional.empty();
   }
 
   @Override

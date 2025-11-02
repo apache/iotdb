@@ -364,10 +364,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -380,25 +376,11 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
-  private static final AtomicReference<TEndPoint> CACHED_AINODE = new AtomicReference<>();
-  private static final ReentrantLock AINODE_REFRESH_LOCK = new ReentrantLock();
-  private static final long AINODE_TTL_NANOS = TimeUnit.SECONDS.toNanos(3);
-  private static final AtomicLong AINODE_LAST_REFRESH = new AtomicLong(0L);
-
-  /** Return cached AINode if fresh; otherwise refresh from ConfigNode using modelId. */
-  private TEndPoint resolveAINodeEp(String modelIdOrNull) {
-    final TEndPoint ep = CACHED_AINODE.get();
-    if (ep != null && System.nanoTime() - AINODE_LAST_REFRESH.get() < AINODE_TTL_NANOS) {
-      return ep;
-    }
-    return refreshAINodeFromConfigNode(modelIdOrNull);
-  }
+  // NOTE: AINode location is now maintained globally inside AINodeClient.
+  // We only resolve via ConfigNode when needed, then publish it back to AINodeClient.
 
   /** Ask ConfigNode for the latest AINode location (precise by modelId when available). */
-  private TEndPoint refreshAINodeFromConfigNode(String modelIdOrNull) {
-    if (!AINODE_REFRESH_LOCK.tryLock()) {
-      return CACHED_AINODE.get();
-    }
+  private TEndPoint resolveViaConfigNodeAndPublish(String modelIdOrNull) {
     try (ConfigNodeClient cn =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TEndPoint ep = null;
@@ -407,17 +389,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (resp != null && resp.isSetAiNodeAddress()) {
           ep = resp.getAiNodeAddress();
         }
+      } else {
+        final org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp r =
+            cn.getAINodeLocation(
+                new org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq());
+        if (r != null
+            && r.getStatus() != null
+            && r.getStatus().getCode()
+                == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && r.isSetAiNodeAddress()) {
+          ep = r.getAiNodeAddress();
+        }
       }
-      // if no modelId or location return，use showAIDevices to fetch an AINode
       if (ep != null) {
-        CACHED_AINODE.set(ep);
-        AINODE_LAST_REFRESH.set(System.nanoTime());
+        AINodeClient.updateGlobalAINodeLocation(ep);
       }
-      return CACHED_AINODE.get();
+      return ep;
     } catch (Exception e) {
-      return CACHED_AINODE.get();
-    } finally {
-      AINODE_REFRESH_LOCK.unlock();
+      return null;
     }
   }
 
@@ -3658,7 +3647,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // 1) Try direct DataNode → AINode with cached endpoint
-    TEndPoint ep = resolveAINodeEp(existingModelId);
+    TEndPoint ep = AINodeClient.getCurrentEndpoint();
     try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
       final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
       final TSStatus result = ai.loadModel(req);
@@ -3669,7 +3658,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } catch (final Exception first) {
       // 2) Fallback: ask ConfigNode for latest AINode location, update cache and retry once
-      final TEndPoint refreshed = refreshAINodeFromConfigNode(existingModelId);
+      final TEndPoint refreshed = resolveViaConfigNodeAndPublish(existingModelId);
       if (refreshed == null || (ep != null && refreshed.equals(ep))) {
         future.setException(first);
         return future;

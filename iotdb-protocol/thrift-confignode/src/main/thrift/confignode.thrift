@@ -659,6 +659,16 @@ struct TAINodeInfo {
   4: required i32 internalPort
 }
 
+// ----------- New messages -----------
+struct TGetAINodeLocationReq {
+  1: optional string deviceId
+}
+
+struct TGetAINodeLocationResp {
+  1: required common.TSStatus status
+  2: optional common.TEndPoint aiNodeAddress
+}
+
 struct TShowDataNodes4InformationSchemaResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
@@ -1370,6 +1380,16 @@ service IConfigNodeRPCService {
   TShowAINodesResp showAINodes()
 
   TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
+
+    // ====================================================
+    // AI Node Location (no modelId)
+    // ====================================================
+    /**
+     * Return a reachable AINode location when modelId is not provided.
+     * If deviceId is provided, try to pick one that supports the device; otherwise
+     * return any healthy/default AINode.
+     */
+    TGetAINodeLocationResp getAINodeLocation(TGetAINodeLocationReq req)
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
