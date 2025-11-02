@@ -40,6 +40,7 @@ import static com.google.common.collect.Sets.intersection;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.topK;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.union;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isAtMost;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 public class PushTopKThroughUnion implements Rule<TopKNode> {
@@ -59,31 +60,36 @@ public class PushTopKThroughUnion implements Rule<TopKNode> {
 
     ImmutableList.Builder<PlanNode> children = ImmutableList.builder();
 
+    boolean shouldApply = false;
     for (PlanNode child : unionNode.getChildren()) {
       SymbolMapper.Builder symbolMapper = SymbolMapper.builder();
       Set<Symbol> sourceOutputSymbols = ImmutableSet.copyOf(child.getOutputSymbols());
-
-      for (Symbol unionOutput : unionNode.getOutputSymbols()) {
-        Set<Symbol> inputSymbols =
-            ImmutableSet.copyOf(unionNode.getSymbolMapping().get(unionOutput));
-        Symbol unionInput = getLast(intersection(inputSymbols, sourceOutputSymbols));
-        symbolMapper.put(unionOutput, unionInput);
+      // This check is to ensure that we don't fire the optimizer if it was previously applied,
+      // which is the same as PushLimitThroughUnion.
+      if (isAtMost(child, context.getLookup(), topKNode.getCount())) {
+        children.add(child);
+      } else {
+        shouldApply = true;
+        for (Symbol unionOutput : unionNode.getOutputSymbols()) {
+          Set<Symbol> inputSymbols =
+              ImmutableSet.copyOf(unionNode.getSymbolMapping().get(unionOutput));
+          Symbol unionInput = getLast(intersection(inputSymbols, sourceOutputSymbols));
+          symbolMapper.put(unionOutput, unionInput);
+        }
+        children.add(
+            symbolMapper
+                .build()
+                .map(
+                    topKNode,
+                    Collections.singletonList(child),
+                    context.getIdAllocator().genPlanNodeId()));
       }
-      children.add(
-          symbolMapper
-              .build()
-              .map(
-                  topKNode,
-                  Collections.singletonList(topKNode),
-                  context.getIdAllocator().genPlanNodeId()));
     }
 
-    /*PlanNode result = topKNode.clone();
-    result.addChild(new UnionNode(
-            unionNode.getPlanNodeId(),
-            children.build(),
-            unionNode.getSymbolMapping(),
-            unionNode.getOutputSymbols()));*/
+    if (!shouldApply) {
+      return Result.empty();
+    }
+
     return Result.ofPlanNode(
         topKNode.replaceChildren(
             Collections.singletonList(

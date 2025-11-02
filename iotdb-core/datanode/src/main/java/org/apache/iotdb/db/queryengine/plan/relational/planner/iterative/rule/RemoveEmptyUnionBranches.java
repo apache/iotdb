@@ -88,6 +88,9 @@ public class RemoveEmptyUnionBranches implements Rule<UnionNode> {
       for (Symbol column : node.getOutputSymbols()) {
         assignments.put(column, node.getSymbolMapping().get(column).get(0).toSymbolReference());
       }
+
+      return Result.ofPlanNode(
+          new ProjectNode(node.getPlanNodeId(), node.getChildren().get(0), assignments.build()));
     }
 
     List<PlanNode> newChildren = newChildrenBuilder.build();

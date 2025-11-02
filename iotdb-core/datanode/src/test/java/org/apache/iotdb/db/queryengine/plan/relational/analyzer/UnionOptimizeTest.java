@@ -36,6 +36,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.union;
 
 public class UnionOptimizeTest {
@@ -121,17 +122,37 @@ public class UnionOptimizeTest {
     assertPlan(
         new PlanTester()
             .createPlan(
-                "(select tag1 from t1) union all (select tag1 from t2) order by tag1 limit 1"),
-        output(
-            limit(1, (union(limit(1, tableScan("testdb.t1")), limit(1, tableScan("testdb.t2")))))));
+                "(select tag1 from t1) union all (select tag1 from t2) order by tag1 limit 10"),
+        output(topK((union(topK(tableScan("testdb.t1")), topK(tableScan("testdb.t2")))))));
   }
 
   @Test
-  public void removeEmptyUnionBranchesTest() {
+  public void removeEmptyUnionBranchesTest1() {
+    // Normal case
     assertPlan(
         new PlanTester()
-            .createPlan("(select tag1 from t1) union all (select tag1 from t2) limit 1"),
-        output(
-            limit(1, (union(limit(1, tableScan("testdb.t1")), limit(1, tableScan("testdb.t2")))))));
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2)  union all (select tag1 from t3)"),
+        output((union(tableScan("testdb.t2"), tableScan("testdb.t3")))));
+  }
+
+  @Test
+  public void removeEmptyUnionBranchesTest2() {
+    // One non-empty branch
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 1)"),
+        output(limit(1, tableScan("testdb.t3"))));
+  }
+
+  @Test
+  public void removeEmptyUnionBranchesTest3() {
+    // All branches are empty
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 0)"),
+        output(limit(0, tableScan("testdb.t1"))));
   }
 }
