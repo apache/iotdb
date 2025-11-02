@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.ExclusionIoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -57,22 +55,15 @@ import java.util.List;
 
 public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
 
-  private final IoTDBPatternOperations prefixPathPattern =
+  private final UnionIoTDBTreePattern prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
-  private final IoTDBPatternOperations fullPathPattern =
+  private final UnionIoTDBTreePattern fullPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.s1"));
-  private final IoTDBPatternOperations multiplePathPattern =
+  private final UnionIoTDBTreePattern multiplePathPattern =
       new UnionIoTDBTreePattern(
           Arrays.asList(
               new IoTDBTreePattern("root.db.device.s1"),
               new IoTDBTreePattern("root.db.device.s2")));
-  private final IoTDBPatternOperations exclusionPattern =
-      new ExclusionIoTDBTreePattern(
-          new UnionIoTDBTreePattern(
-              new IoTDBTreePattern("root.db.device.**")), // Inclusion: root.db.device.**
-          new UnionIoTDBTreePattern(
-              new IoTDBTreePattern("root.db.device.s2")) // Exclusion: root.db.device.s2
-          );
 
   @Test
   public void testCreateDatabase() {
@@ -92,22 +83,11 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitCreateDatabase(createDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
-
     Assert.assertEquals(
         createDatabasePlan,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitCreateDatabase(createDatabasePlan, multiplePathPattern)
             .orElseThrow(AssertionError::new));
-
-    Assert.assertEquals(
-        createDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCreateDatabase(createDatabasePlan, exclusionPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCreateDatabase(createDatabasePlanToFilter, exclusionPattern)
-            .isPresent());
   }
 
   @Test
@@ -128,22 +108,11 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitAlterDatabase(alterDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
-
     Assert.assertEquals(
         alterDatabasePlan,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitAlterDatabase(alterDatabasePlan, multiplePathPattern)
             .orElseThrow(AssertionError::new));
-
-    Assert.assertEquals(
-        alterDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitAlterDatabase(alterDatabasePlan, exclusionPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitAlterDatabase(alterDatabasePlanToFilter, exclusionPattern)
-            .isPresent());
   }
 
   @Test
@@ -160,22 +129,11 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteDatabase(deleteDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
-
     Assert.assertEquals(
         deleteDatabasePlan,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteDatabase(deleteDatabasePlan, multiplePathPattern)
             .orElseThrow(AssertionError::new));
-
-    Assert.assertEquals(
-        deleteDatabasePlan,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitDeleteDatabase(deleteDatabasePlan, exclusionPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitDeleteDatabase(deleteDatabasePlanToFilter, exclusionPattern)
-            .isPresent());
   }
 
   @Test
@@ -184,11 +142,10 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
         new CreateSchemaTemplatePlan(
             new Template(
                     "template_name",
-                    Arrays.asList("s1", "s2", "t1"),
-                    Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN, TSDataType.TEXT),
-                    Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN, TSEncoding.PLAIN),
-                    Arrays.asList(
-                        CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4))
+                    Arrays.asList("s1", "s2"),
+                    Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN),
+                    Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
+                    Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY))
                 .serialize()
                 .array());
 
@@ -198,89 +155,49 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
             .visitCreateSchemaTemplate(createSchemaTemplatePlan, prefixPathPattern)
             .orElseThrow(AssertionError::new));
 
-    final CreateSchemaTemplatePlan parsedTemplatePlanS1 =
+    final CreateSchemaTemplatePlan parsedTemplatePlan =
         (CreateSchemaTemplatePlan)
             IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
                 .visitCreateSchemaTemplate(createSchemaTemplatePlan, fullPathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(
-        Collections.singleton("s1"), parsedTemplatePlanS1.getTemplate().getSchemaMap().keySet());
+        Collections.singleton("s1"), parsedTemplatePlan.getTemplate().getSchemaMap().keySet());
     Assert.assertEquals(
         createSchemaTemplatePlan.getTemplate().getSchemaMap().get("s1"),
-        parsedTemplatePlanS1.getTemplate().getSchemaMap().get("s1"));
+        parsedTemplatePlan.getTemplate().getSchemaMap().get("s1"));
 
-    final CreateSchemaTemplatePlan parsedTemplatePlanS1S2 =
+    final CreateSchemaTemplatePlan parsedTemplatePlan2 =
         (CreateSchemaTemplatePlan)
             IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
                 .visitCreateSchemaTemplate(createSchemaTemplatePlan, multiplePathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(
         new HashSet<>(Arrays.asList("s1", "s2")),
-        parsedTemplatePlanS1S2.getTemplate().getSchemaMap().keySet());
-
-    final CreateSchemaTemplatePlan parsedTemplatePlanExclusion =
-        (CreateSchemaTemplatePlan)
-            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-                .visitCreateSchemaTemplate(createSchemaTemplatePlan, exclusionPattern)
-                .orElseThrow(AssertionError::new);
-    Assert.assertEquals(
-        new HashSet<>(Arrays.asList("s1", "t1")),
-        parsedTemplatePlanExclusion.getTemplate().getSchemaMap().keySet());
+        parsedTemplatePlan2.getTemplate().getSchemaMap().keySet());
   }
 
   @Test
   public void testCommitSetSchemaTemplate() {
-    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnDb =
+    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnPrefix =
         new CommitSetSchemaTemplatePlan("t1", "root.db");
-    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnDevice =
-        new CommitSetSchemaTemplatePlan("t2", "root.db.device");
-    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnS1 =
-        new CommitSetSchemaTemplatePlan("t3", "root.db.device.s1");
-    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnS2 =
-        new CommitSetSchemaTemplatePlan("t4", "root.db.device.s2");
-    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnDb1 =
-        new CommitSetSchemaTemplatePlan("t5", "root.db1");
+    final CommitSetSchemaTemplatePlan setSchemaTemplatePlanOnFullPath =
+        new CommitSetSchemaTemplatePlan("t1", "root.db.device.s1");
 
     Assert.assertEquals(
-        setSchemaTemplatePlanOnDb,
+        setSchemaTemplatePlanOnPrefix,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnDb, fullPathPattern)
+            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnPrefix, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertEquals(
-        setSchemaTemplatePlanOnS1,
+        setSchemaTemplatePlanOnFullPath,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnS1, fullPathPattern)
-            .orElseThrow(AssertionError::new));
-
-    Assert.assertEquals(
-        setSchemaTemplatePlanOnS1,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnS1, multiplePathPattern)
-            .orElseThrow(AssertionError::new));
-
-    Assert.assertEquals(
-        setSchemaTemplatePlanOnDb,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnDb, exclusionPattern)
+            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertEquals(
-        setSchemaTemplatePlanOnDevice,
+        setSchemaTemplatePlanOnFullPath,
         IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnDevice, exclusionPattern)
+            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, multiplePathPattern)
             .orElseThrow(AssertionError::new));
-    Assert.assertEquals(
-        setSchemaTemplatePlanOnS1,
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnS1, exclusionPattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnS2, exclusionPattern)
-            .isPresent());
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
-            .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnDb1, exclusionPattern)
-            .isPresent());
   }
 
   @Test

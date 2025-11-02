@@ -111,7 +111,6 @@ public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatte
 
   @Override
   public boolean matchPrefixPath(final String path) {
-    // FIXME
     return inclusionPattern.matchPrefixPath(path) && !exclusionPattern.matchPrefixPath(path);
   }
 
