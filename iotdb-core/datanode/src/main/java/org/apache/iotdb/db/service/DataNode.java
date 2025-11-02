@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -270,6 +271,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
+      ConfigurationFileUtils.updateAppliedProperties(
+          IoTDBStartCheck.getInstance().getProperties(), false);
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
@@ -439,6 +442,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       throw new StartupException(e.getMessage());
     }
 
+    ConfigurationFileUtils.updateAppliedPropertiesFromCN(configurationResp);
     // init
     initTimestampPrecision();
     long endTime = System.currentTimeMillis();

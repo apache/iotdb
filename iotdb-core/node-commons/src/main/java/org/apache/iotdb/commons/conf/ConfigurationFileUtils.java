@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +42,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
@@ -79,9 +82,17 @@ public class ConfigurationFileUtils {
   private static final String PRIVILEGE_PREFIX = "Privilege:";
   private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
+  // Used to display in showConfigurationStatement
   private static final Map<String, String> lastAppliedProperties = new HashMap<>();
+  private static final String displayValueOfHidedParameter = "******";
+  private static final Set<String> hidedParameters = new HashSet<>();
 
-  public static void updateAppliedProperties(TrimProperties properties, boolean isHotReloading) {
+  static {
+    hidedParameters.add("key_store_pwd");
+    hidedParameters.add("trust_store_pwd");
+  }
+
+  public static void updateAppliedProperties(Properties properties, boolean isHotReloading) {
     try {
       loadConfigurationDefaultValueFromTemplate();
     } catch (IOException e) {
@@ -99,8 +110,68 @@ public class ConfigurationFileUtils {
         continue;
       }
       String value = entry.getValue() == null ? null : entry.getValue().toString();
-      lastAppliedProperties.put(key, value);
+      lastAppliedProperties.put(
+          key, hidedParameters.contains(key) ? displayValueOfHidedParameter : value);
     }
+  }
+
+  public static void updateAppliedPropertiesFromCN(TSystemConfigurationResp resp) {
+    if (resp.getGlobalConfig().isSetTimestampPrecision()) {
+      lastAppliedProperties.put(
+          "timestamp_precision", resp.getGlobalConfig().getTimestampPrecision());
+    }
+    if (resp.getGlobalConfig().isSetTimePartitionInterval()) {
+      lastAppliedProperties.put(
+          "time_partition_interval",
+          String.valueOf(resp.getGlobalConfig().getTimePartitionInterval()));
+    }
+    if (resp.getGlobalConfig().isSetTimePartitionOrigin()) {
+      lastAppliedProperties.put(
+          "time_partition_origin", String.valueOf(resp.getGlobalConfig().getTimePartitionOrigin()));
+    }
+    if (resp.getGlobalConfig().isSetSchemaEngineMode()) {
+      lastAppliedProperties.put("schema_engine_mode", resp.getGlobalConfig().getSchemaEngineMode());
+    }
+    if (resp.getGlobalConfig().isSetTagAttributeTotalSize()) {
+      lastAppliedProperties.put(
+          "tag_attribute_total_size",
+          String.valueOf(resp.getGlobalConfig().getTagAttributeTotalSize()));
+    }
+    if (resp.getGlobalConfig().isSetSeriesPartitionExecutorClass()) {
+      lastAppliedProperties.put(
+          "series_partition_executor_class",
+          resp.getGlobalConfig().getSeriesPartitionExecutorClass());
+    }
+    if (resp.getGlobalConfig().isSetSeriesPartitionSlotNum()) {
+      lastAppliedProperties.put(
+          "series_slot_num", String.valueOf(resp.getGlobalConfig().getSeriesPartitionSlotNum()));
+    }
+    if (resp.getGlobalConfig().isSetDataRegionConsensusProtocolClass()) {
+      lastAppliedProperties.put(
+          "data_region_consensus_protocol_class",
+          resp.getGlobalConfig().getDataRegionConsensusProtocolClass());
+    }
+    if (resp.getGlobalConfig().isSetSchemaRegionConsensusProtocolClass()) {
+      lastAppliedProperties.put(
+          "schema_region_consensus_protocol_class",
+          resp.getGlobalConfig().getSchemaRegionConsensusProtocolClass());
+    }
+    if (resp.getGlobalConfig().isSetReadConsistencyLevel()) {
+      lastAppliedProperties.put(
+          "read_consistency_level", resp.getGlobalConfig().getReadConsistencyLevel());
+    }
+    if (resp.getGlobalConfig().isSetDiskSpaceWarningThreshold()) {
+      lastAppliedProperties.put(
+          "disk_space_warning_threshold",
+          String.valueOf(resp.getGlobalConfig().getDiskSpaceWarningThreshold()));
+    }
+  }
+
+  // This method may not be used in the current version directly, but should not be removed to
+  // reduce conflicts
+  @SuppressWarnings("unused")
+  public static void updateAppliedProperties(String key, String value) {
+    lastAppliedProperties.put(key, value);
   }
 
   public static Map<String, String> getAppliedProperties() {

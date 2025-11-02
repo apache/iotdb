@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.file;
 
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.apache.ratis.util.AutoCloseableLock;
@@ -80,6 +81,7 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void overwrite(Properties properties) throws IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       if (!formalFile.exists()) {
         writeWithoutLock(properties, formalFile);
