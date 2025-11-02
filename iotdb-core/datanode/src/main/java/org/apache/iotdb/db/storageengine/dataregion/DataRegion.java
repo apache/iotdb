@@ -2905,6 +2905,44 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) sealedTsFile.getTimeIndex();
+      Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+      boolean onlyOneTable = devicesInFile.size() == 1;
+      IDeviceID theOnlyDevice = onlyOneTable ? devicesInFile.iterator().next() : null;
+
+      boolean fileFullyDeleted = false;
+
+      for (IDeviceID device : devicesInFile) {
+        Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+        Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+        if (!optStart.isPresent() || !optEnd.isPresent()) {
+          continue;
+        }
+
+        long fileStart = optStart.get();
+        long fileEnd = optEnd.get();
+
+        if (onlyOneTable
+            && device.equals(theOnlyDevice)
+            && deletion.getStartTime() <= fileStart
+            && deletion.getEndTime() >= fileEnd) {
+
+          logger.info(
+              "[Deletion] TsFile {} only contains one table and will be removed physically.",
+              sealedTsFile.getTsFilePath());
+
+          deleteTsFileCompletely(sealedTsFile);
+          removeTsFileResourceFromList(sealedTsFile);
+
+          fileFullyDeleted = true;
+          // current file is deleted, other devices need do nothing
+          break;
+        }
+      }
+
+      if (fileFullyDeleted) {
+        continue;
+      }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
     }
 
@@ -2941,6 +2979,43 @@ public class DataRegion implements IDataRegionForQuery {
         "[Deletion] Deletion {} is written into {} mod files",
         deletion,
         involvedModificationFiles.size());
+  }
+
+  /** Delete completely TsFile and related supporting files */
+  private void deleteTsFileCompletely(TsFileResource resource) throws IOException {
+    File tsFile = new File(resource.getTsFilePath());
+    if (tsFile.exists()) {
+      Files.deleteIfExists(tsFile.toPath());
+    }
+
+    File resFile = new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    if (resFile.exists()) {
+      Files.deleteIfExists(resFile.toPath());
+    }
+
+    ModificationFile modFile = resource.getModFileForWrite();
+    if (modFile != null && modFile.exists()) {
+      Files.deleteIfExists(modFile.getFile().toPath());
+    }
+
+    File marker = new File(resource.getTsFilePath() + ".marker");
+    if (marker.exists()) {
+      Files.deleteIfExists(marker.toPath());
+    }
+  }
+
+  /** Remove resource from memory */
+  private void removeTsFileResourceFromList(TsFileResource resource) {
+    writeLock("removeTsFileResourceFromList");
+    try {
+      if (resource.isSeq()) {
+        getSequenceFileList().remove(resource);
+      } else {
+        getUnSequenceFileList().remove(resource);
+      }
+    } finally {
+      writeUnlock();
+    }
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
