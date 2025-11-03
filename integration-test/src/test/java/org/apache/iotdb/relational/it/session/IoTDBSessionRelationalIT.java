@@ -43,6 +43,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -60,6 +61,8 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -844,6 +847,74 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  public void insertObjectTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "ainode-example"
+            + File.separator
+            + "model.pt";
+    File object = new File(testObject);
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // insert table data by tablet
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.OBJECT);
+      List<ColumnCategory> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
+      Tablet tablet = new Tablet("object_table", columnNameList, dataTypeList, columnTypeList, 1);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 1);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+      session.insert(tablet);
+      tablet.reset();
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select file from object_table where time = 1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Assert.assertEquals(
+              BytesUtils.parseObjectByteArrayToString(BytesUtils.longToBytes(object.length())),
+              iterator.getString(1));
+        }
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select READ_OBJECT(file) from object_table where time = 1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Binary binary = iterator.getBlob(1);
+          Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
+        }
+      }
     }
   }
 

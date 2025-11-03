@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;

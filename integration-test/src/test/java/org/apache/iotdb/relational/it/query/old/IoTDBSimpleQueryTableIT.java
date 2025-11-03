@@ -657,19 +657,21 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING TAG, s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD)");
+          "CREATE TABLE table1(device STRING TAG, "
+              + "s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD, s8 OBJECT FIELD)");
 
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
-                "insert into table1(time, device, s4, s5, s6, s7) values(%d, 'd1', '%s', %d, %s, '%s')",
-                i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i));
+                "insert into table1(time, device, s4, s5, s6, s7, s8) "
+                    + "values(%d, 'd1', '%s', %d, %s, '%s', %s)",
+                i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i, "X'cafebabe'"));
       }
 
       try (ResultSet resultSet = statement.executeQuery("select * from table1")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         final int columnCount = metaData.getColumnCount();
-        assertEquals(6, columnCount);
+        assertEquals(7, columnCount);
         HashMap<Integer, TSDataType> columnType = new HashMap<>();
         for (int i = 3; i <= columnCount; i++) {
           if (metaData.getColumnLabel(i).equals("s4")) {
@@ -680,6 +682,8 @@ public class IoTDBSimpleQueryTableIT {
             columnType.put(i, TSDataType.BLOB);
           } else if (metaData.getColumnLabel(i).equals("s7")) {
             columnType.put(i, TSDataType.TEXT);
+          } else if (metaData.getColumnLabel(i).equals("s8")) {
+            columnType.put(i, TSDataType.OBJECT);
           }
         }
         byte[] byteArray = new byte[] {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE};
@@ -689,12 +693,14 @@ public class IoTDBSimpleQueryTableIT {
           long timestamp = resultSet.getLong(4);
           byte[] blob = resultSet.getBytes(5);
           String text = resultSet.getString(6);
+          String objectSizeString = resultSet.getString(7);
           assertEquals(2024 - 1900, date.getYear());
           assertEquals(5 - 1, date.getMonth());
           assertEquals(time % 31 + 1, date.getDate());
           assertEquals(time, timestamp);
           assertArrayEquals(byteArray, blob);
           assertEquals(String.valueOf(time), text);
+          assertEquals("(Object) 4 B", objectSizeString);
         }
       }
 
