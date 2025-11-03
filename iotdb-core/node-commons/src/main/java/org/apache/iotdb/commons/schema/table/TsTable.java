@@ -191,7 +191,7 @@ public class TsTable {
     }
   }
 
-  public TsTableColumnSchema removeColumnSchema(final String columnName) {
+  public void removeColumnSchema(final String columnName) {
     readWriteLock.writeLock().lock();
     try {
       final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
@@ -204,7 +204,6 @@ public class TsTable {
           fieldNum--;
         }
       }
-      return columnSchema;
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -935,7 +935,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitShowStorageGroup(
+  public TSStatus visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -954,7 +954,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitCountStorageGroup(
+  public TSStatus visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -973,7 +973,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitDeleteStorageGroup(
+  public TSStatus visitDeleteDatabase(
       DeleteDatabaseStatement statement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.DDL)

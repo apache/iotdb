@@ -216,7 +216,7 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
-      // Cannot be rolled back, consider:
+      // Cannot be committed, consider:
       // 1. Fetched a non-changed CN table
       // 2. CN is changed
       // 3. If we commit here, it will always be the non-changed one
@@ -308,7 +308,6 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public TsTable getTableInWrite(final String database, final String tableName) {
-
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);
   }
