@@ -2080,8 +2080,9 @@ public class ProcedureManager {
       // CreateTableOrViewProcedure is covered by the default process, thus we can ignore it here
       // Note that if a table is creating there will not be a working table, and the DN will either
       // be updated by commit or fetch the CN tables
-      // And it won't be committed by other procedures because if the preUpdate of other procedures
-      // has failed there will not be any commit here
+      // And it won't be committed by other procedures because:
+      // if the preUpdate of other procedure has failed there will not be any commit here
+      // if it succeeded then it will go to the normal process and will not leave any problems
       if (procedure instanceof AbstractAlterOrDropTableProcedure) {
         result
             .computeIfAbsent(
