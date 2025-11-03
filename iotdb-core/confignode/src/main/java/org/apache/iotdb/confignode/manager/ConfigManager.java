@@ -3044,23 +3044,17 @@ public class ConfigManager implements IManager {
   @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     final TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.fetchTables(
-            fetchTableMap.entrySet().stream()
-                .filter(
-                    entry -> {
-                      entry
-                          .getValue()
-                          .removeIf(
-                              table ->
-                                  procedureManager
-                                      .checkDuplicateTableTask(
-                                          entry.getKey(), null, table, null, null, null)
-                                      .getRight());
-                      return true;
-                    })
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-        : new TFetchTableResp(status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TFetchTableResp(status);
+    }
+    fetchTableMap.forEach(
+        (key, value) ->
+            value.removeIf(
+                table ->
+                    procedureManager
+                        .checkDuplicateTableTask(key, null, table, null, null, null)
+                        .getRight()));
+    return clusterSchemaManager.fetchTables(fetchTableMap);
   }
 
   @Override
