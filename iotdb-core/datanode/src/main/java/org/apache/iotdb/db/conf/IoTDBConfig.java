@@ -422,10 +422,10 @@ public class IoTDBConfig {
   private long sortBufferSize = 32 * 1024 * 1024L;
 
   /** The buffer for cte scan operation */
-  private long cteBufferSize = 32 * 1024 * 1024L;
+  private long cteBufferSize = 128 * 1024L;
 
   /** Max number of rows for cte materialization */
-  private int maxRowsInCteBuffer = 10000;
+  private int maxRowsInCteBuffer = 1000;
 
   /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
