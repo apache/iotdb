@@ -703,6 +703,16 @@ public class IoTDBSimpleQueryTableIT {
           assertEquals("(Object) 4 B", objectSizeString);
         }
       }
+      try (ResultSet resultSet = statement.executeQuery("select read_object(s8) from table1")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int columnCount = metaData.getColumnCount();
+        assertEquals(1, columnCount);
+        byte[] byteArray = new byte[] {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE};
+        while (resultSet.next()) {
+          byte[] blob = resultSet.getBytes(1);
+          assertArrayEquals(byteArray, blob);
+        }
+      }
 
     } catch (SQLException e) {
       fail();

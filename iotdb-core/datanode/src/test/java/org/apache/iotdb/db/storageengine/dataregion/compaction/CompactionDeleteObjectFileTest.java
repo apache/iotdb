@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -50,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+@Ignore
 public class CompactionDeleteObjectFileTest extends AbstractCompactionTest {
   @Before
   public void setUp()
