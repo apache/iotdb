@@ -1117,8 +1117,8 @@ batch_size=100000
 # Datatype: long
 sort_buffer_size_in_bytes=0
 
-# The buffer size for CTE materialization. If cte_buffer_size_in_bytes <= 0, default value will be used, default value =
-# min(32MB, memory for query operators / query_thread_count / 2). if cte_buffer_size_in_bytes > 0, the specified value will be used.
+# The buffer size for CTE materialization. If cte_buffer_size_in_bytes <= 0, a default value of 128 KB is used; otherwise the specified value
+# will be used.
 # effectiveMode: hot_reload
 # Datatype: long
 cte_buffer_size_in_bytes=0
@@ -1127,7 +1127,7 @@ cte_buffer_size_in_bytes=0
 # Max rows for CTE materialization
 # effectiveMode: hot_reload
 # Datatype: int
-max_rows_in_cte_buffer=10000
+max_rows_in_cte_buffer=1000
 
 # The maximum mod entries size that each FragmentInstance can cache.
 # if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)
