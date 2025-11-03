@@ -219,6 +219,14 @@ public class SeriesScanUtil implements Accountable {
     orderUtils.setCurSeqFileIndex(dataSource);
     curUnseqFileIndex = 0;
 
+    List<TsFileResource> seqResources = dataSource.getSeqResources();
+    List<TsFileResource> unseqResources = dataSource.getUnseqResources();
+    if ((seqResources == null || seqResources.isEmpty())
+        && (unseqResources == null || unseqResources.isEmpty())) {
+      // no satisfied resources
+      return;
+    }
+
     if (satisfiedTimeRange == null) {
       long startTime = Long.MAX_VALUE;
       long endTime = Long.MIN_VALUE;
