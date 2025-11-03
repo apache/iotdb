@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -53,7 +55,7 @@ public final class MultiProducerSequencer {
    * modified by SequenceGroups Array reference is replaced atomically via
    * AtomicReferenceFieldUpdater
    */
-  volatile Sequence[] gatingSequences;
+  volatile AtomicReference<Sequence[]> gatingSequences = new AtomicReference<>();
 
   /**
    * Cached minimum gating sequence to reduce contention Updated opportunistically in next() to
@@ -90,7 +92,7 @@ public final class MultiProducerSequencer {
     }
 
     this.bufferSize = bufferSize;
-    this.gatingSequences = gatingSequences != null ? gatingSequences : new Sequence[0];
+    this.gatingSequences.set(Objects.nonNull(gatingSequences) ? gatingSequences : new Sequence[0]);
     this.availableBuffer = new AtomicIntegerArray(bufferSize);
     this.indexMask = bufferSize - 1;
     this.indexShift = log2(bufferSize);
@@ -123,7 +125,7 @@ public final class MultiProducerSequencer {
       final long cachedGatingSequence = gatingSequenceCache.get();
 
       if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current) {
-        long gatingSequence = Sequence.getMinimumSequence(gatingSequences, current);
+        long gatingSequence = Sequence.getMinimumSequence(gatingSequences.get(), current);
 
         if (wrapPoint > gatingSequence) {
           LockSupport.parkNanos(1);
@@ -180,7 +182,7 @@ public final class MultiProducerSequencer {
   }
 
   public long remainingCapacity() {
-    long consumed = Sequence.getMinimumSequence(gatingSequences, cursor.get());
+    long consumed = Sequence.getMinimumSequence(gatingSequences.get(), cursor.get());
     long produced = cursor.get();
     return bufferSize - (produced - consumed);
   }
@@ -241,6 +243,15 @@ public final class MultiProducerSequencer {
   /** Calculate index */
   private int calculateIndex(final long sequence) {
     return ((int) sequence) & indexMask;
+  }
+
+  public Sequence[] getGatingSequences() {
+    return gatingSequences.get();
+  }
+
+  public boolean compareAndSetGatingSequences(
+      final Sequence[] currentSequences, final Sequence[] updatedSequences) {
+    return gatingSequences.compareAndSet(currentSequences, updatedSequences);
   }
 
   /**

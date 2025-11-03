@@ -56,8 +56,11 @@ public enum BuiltinAggregationFunctionEnum {
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
-          Arrays.stream(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction.values())
-              .map(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction::getFunctionName)
+          Arrays.stream(
+                  org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction.values())
+              .map(
+                  org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction
+                      ::getFunctionName)
               .collect(Collectors.toList()));
 
   public static Set<String> getNativeFunctionNames() {

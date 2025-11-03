@@ -145,13 +145,21 @@ public class AINodeConcurrentInferenceIT {
     }
   }
 
+  String forecastTableFunctionSql =
+      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time), predict_length=>%d";
+  String forecastUDTFSql =
+      "SELECT forecast(s, 'MODEL_ID'='%s', 'PREDICT_LENGTH'='%d') FROM root.AI";
+
   @Test
   public void concurrentCPUForecastTest() throws SQLException, InterruptedException {
-    concurrentCPUForecastTest("timer_xl");
-    concurrentCPUForecastTest("sundial");
+    concurrentCPUForecastTest("timer_xl", forecastUDTFSql);
+    concurrentCPUForecastTest("sundial", forecastUDTFSql);
+    concurrentCPUForecastTest("timer_xl", forecastTableFunctionSql);
+    concurrentCPUForecastTest("sundial", forecastTableFunctionSql);
   }
 
-  private void concurrentCPUForecastTest(String modelId) throws SQLException, InterruptedException {
+  private void concurrentCPUForecastTest(String modelId, String selectSQL)
+      throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       final int threadCnt = 4;
@@ -162,9 +170,7 @@ public class AINodeConcurrentInferenceIT {
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
-          String.format(
-              "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time), predict_length=>%d",
-              modelId, predictLength),
+          String.format(selectSQL, modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
@@ -179,11 +185,14 @@ public class AINodeConcurrentInferenceIT {
 
   @Test
   public void concurrentGPUForecastTest() throws SQLException, InterruptedException {
-    concurrentGPUForecastTest("timer_xl");
-    concurrentGPUForecastTest("sundial");
+    concurrentGPUForecastTest("timer_xl", forecastUDTFSql);
+    concurrentGPUForecastTest("sundial", forecastUDTFSql);
+    concurrentGPUForecastTest("timer_xl", forecastTableFunctionSql);
+    concurrentGPUForecastTest("sundial", forecastTableFunctionSql);
   }
 
-  public void concurrentGPUForecastTest(String modelId) throws SQLException, InterruptedException {
+  public void concurrentGPUForecastTest(String modelId, String selectSql)
+      throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       final int threadCnt = 10;
@@ -195,9 +204,7 @@ public class AINodeConcurrentInferenceIT {
       long startTime = System.currentTimeMillis();
       concurrentInference(
           statement,
-          String.format(
-              "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time), predict_length=>%d",
-              modelId, predictLength),
+          String.format(selectSql, modelId, predictLength),
           threadCnt,
           loop,
           predictLength);
