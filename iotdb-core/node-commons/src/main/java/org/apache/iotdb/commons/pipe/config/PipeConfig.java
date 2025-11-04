@@ -183,6 +183,14 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
+  public long getPipeConnectorInsertNodeDegradeTransferThresholdMs() {
+    return COMMON_CONFIG.getPipeConnectorInsertNodeDegradeTransferThresholdMs();
+  }
+
+  public long getPipeConnectorTsFileDegradeTransferThresholdMs() {
+    return COMMON_CONFIG.getPipeConnectorTsFileDegradeTransferThresholdMs();
+  }
+
   public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
     return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
   }
