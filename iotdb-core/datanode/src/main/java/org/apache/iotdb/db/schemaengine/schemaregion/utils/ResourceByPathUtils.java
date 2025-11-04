@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -257,11 +259,23 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
     boolean isTable = false;
+    int index = 0;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AbstractAlignedChunkMetadata alignedChunkMetadata =
           (AbstractAlignedChunkMetadata) chunkMetadata;
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
+      TSDataType targetDataType = alignedFullPath.getSchemaList().get(index).getType();
+      if (Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)
+          && (alignedChunkMetadata.getValueChunkMetadataList().stream()
+                  .filter(iChunkMetadata -> iChunkMetadata.getDataType() != targetDataType)
+                  .count()
+              > 0)) {
+        // create new statistics object via new data type, and merge statistics information
+        alignedChunkMetadata =
+            SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, targetDataType);
+        alignedChunkMetadata.setModified(true);
+      }
       if (!useFakeStatistics) {
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
@@ -274,10 +288,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
                     alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
           }
         }
+        index++;
         continue;
       }
       startTime = Math.min(startTime, chunkMetadata.getStartTime());
       endTime = Math.max(endTime, chunkMetadata.getEndTime());
+      index++;
     }
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {

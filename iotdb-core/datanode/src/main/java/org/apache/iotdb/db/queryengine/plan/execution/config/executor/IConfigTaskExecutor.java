@@ -99,6 +99,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.enums.TSDataType;
 
 import javax.annotation.Nullable;
 
@@ -350,6 +351,16 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterColumnDataType(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType newType,
+      final String queryId,
+      final boolean tableIfExists,
+      boolean ifColumnExists,
       final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(

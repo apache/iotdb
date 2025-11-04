@@ -624,7 +624,7 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToText(final int value) {
-    return parseText(Integer.toString(value));
+    return parseText(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static long convertDateToTimestamp(final int value) {
@@ -639,11 +639,11 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToBlob(final int value) {
-    return parseBlob(Integer.toString(value));
+    return parseBlob(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static Binary convertDateToString(final int value) {
-    return parseString(Integer.toString(value));
+    return parseString(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   ///////////// BLOB //////////////
