@@ -177,6 +177,10 @@ public class TypeInferenceUtils {
       case SQLConstant.DUPLI_QUANTILE_KLL_PAIR:
       case SQLConstant.DUPLI_QUANTILE_DD:
       case SQLConstant.DUPLI_QUANTILE_REQ:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_OLD:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+      case SQLConstant.DUPLI_QUANTILE_KLL_GAMMA:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);

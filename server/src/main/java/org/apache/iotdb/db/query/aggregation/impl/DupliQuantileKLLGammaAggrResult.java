@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.KLLDupliPairFT;
+import org.apache.iotdb.tsfile.utils.KLLSketchLazyExactPriorigamma;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -37,14 +37,15 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class DupliQuantileKLLPairAggrResult extends AggregateResult {
+public class DupliQuantileKLLGammaAggrResult extends AggregateResult {
   String returnType = "value";
   private TSDataType seriesDataType;
   private int iteration;
   private long n;
-  private KLLDupliPairFT sketch;
+  private KLLSketchLazyExactPriorigamma sketch;
   private boolean hasFinalResult;
   long DEBUG = 0;
+  private double GAMMA = -1;
 
   private int getBitsOfDataType() {
     switch (seriesDataType) {
@@ -60,9 +61,9 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
     }
   }
 
-  public DupliQuantileKLLPairAggrResult(TSDataType seriesDataType)
+  public DupliQuantileKLLGammaAggrResult(TSDataType seriesDataType)
       throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.DUPLI_QUANTILE_KLL_PAIR);
+    super(DOUBLE, AggregationType.DUPLI_QUANTILE_KLL_GAMMA);
     this.seriesDataType = seriesDataType;
     reset();
   }
@@ -112,7 +113,7 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
 
   @Override
   public void startIteration() {
-    sketch = new KLLDupliPairFT(maxMemoryByte);
+    sketch = new KLLSketchLazyExactPriorigamma(maxMemoryByte, this.GAMMA);
     n = 0;
   }
 
@@ -286,6 +287,13 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
     if (attrs.containsKey("quantile")) {
       String q = attrs.get("quantile");
       this.QUANTILE = Double.parseDouble(q);
+    }
+    if (attrs.containsKey("gamma")) {
+      String g = attrs.get("gamma");
+      this.GAMMA = Double.parseDouble(g);
+    } else {
+      throw new IllegalArgumentException(
+          "Gamma parameter is required for DupliQuantileKLLPairGammaAggrResult");
     }
     if (attrs.containsKey("return_type")) {
       String q = attrs.get("return_type");
