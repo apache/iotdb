@@ -2989,7 +2989,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Delete completely TsFile and related supporting files */
-  private void deleteTsFileCompletely(List<TsFileResource> tsfileResourceList) throws IOException {
+  private void deleteTsFileCompletely(List<TsFileResource> tsfileResourceList) {
     for (TsFileResource tsFileResource : tsfileResourceList) {
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
@@ -3001,20 +3001,6 @@ public class DataRegion implements IDataRegionForQuery {
       } finally {
         tsFileResource.writeUnlock();
       }
-    }
-  }
-
-  /** Remove resource from memory */
-  private void removeTsFileResourceFromList(TsFileResource resource) {
-    writeLock("removeTsFileResourceFromList");
-    try {
-      if (resource.isSeq()) {
-        getSequenceFileList().remove(resource);
-      } else {
-        getUnSequenceFileList().remove(resource);
-      }
-    } finally {
-      writeUnlock();
     }
   }
 

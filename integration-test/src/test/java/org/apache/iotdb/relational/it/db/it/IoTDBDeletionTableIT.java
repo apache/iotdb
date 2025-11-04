@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -47,8 +48,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -63,8 +68,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -86,6 +93,10 @@ public class IoTDBDeletionTableIT {
   private final String insertTemplate =
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
+
+  private static final String RESOURCE = ".resource";
+  private static final String MODS = ".mods";
+  private static final String TSFILE = ".tsfile";
 
   @BeforeClass
   public static void setUpClass() {
@@ -2001,6 +2012,85 @@ public class IoTDBDeletionTableIT {
               .collect(Collectors.joining(",")));
       writer.flush();
     }
+  }
+
+  @Test
+  public void testCompletelyDeleteTable() throws SQLException {
+    String sequenceDataDir = "data" + File.separator + "sequence";
+    String unsequenceDataDir = "data" + File.separator + "unsequence";
+    String dataNodeDir = EnvFactory.getEnv().getDataNodeWrapper(0).getDataNodeDir();
+    int testNum = 1;
+    prepareData(testNum, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 1);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(2, TimeUnit.SECONDS)
+          .pollInterval(2, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                try (Stream<Path> s =
+                    Files.walk(
+                        Paths.get(
+                            dataNodeDir
+                                + File.separator
+                                + sequenceDataDir
+                                + File.separator
+                                + "test"))) {
+                  s.forEach(
+                      source -> {
+                        if (source.toString().endsWith(RESOURCE)
+                            || source.toString().endsWith(MODS)
+                            || source.toString().endsWith(TSFILE)) {
+                          if (source.toFile().length() > 0) {
+                            completelyDeleteSuccess.set(false);
+                          }
+                        }
+                      });
+                }
+                try (Stream<Path> s =
+                    Files.walk(
+                        Paths.get(
+                            dataNodeDir
+                                + File.separator
+                                + unsequenceDataDir
+                                + File.separator
+                                + "test"))) {
+                  s.forEach(
+                      source -> {
+                        if (source.toString().endsWith(RESOURCE)
+                            || source.toString().endsWith(MODS)
+                            || source.toString().endsWith(TSFILE)) {
+                          if (source.toFile().length() > 0) {
+                            completelyDeleteSuccess.set(false);
+                          }
+                        }
+                      });
+                }
+                return completelyDeleteSuccess.get();
+              });
+    }
+    cleanData(testNum);
   }
 
   private static void prepareDatabase() {
