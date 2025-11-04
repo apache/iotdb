@@ -23,6 +23,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -2018,7 +2019,6 @@ public class IoTDBDeletionTableIT {
   public void testCompletelyDeleteTable() throws SQLException {
     String sequenceDataDir = "data" + File.separator + "sequence";
     String unsequenceDataDir = "data" + File.separator + "unsequence";
-    String dataNodeDir = EnvFactory.getEnv().getDataNodeWrapper(0).getDataNodeDir();
     int testNum = 1;
     prepareData(testNum, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -2049,45 +2049,53 @@ public class IoTDBDeletionTableIT {
           .until(
               () -> {
                 AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
-                try (Stream<Path> s =
-                    Files.walk(
-                        Paths.get(
-                            dataNodeDir
-                                + File.separator
-                                + sequenceDataDir
-                                + File.separator
-                                + "test"))) {
-                  s.forEach(
-                      source -> {
-                        if (source.toString().endsWith(RESOURCE)
-                            || source.toString().endsWith(MODS)
-                            || source.toString().endsWith(TSFILE)) {
-                          if (source.toFile().length() > 0) {
-                            completelyDeleteSuccess.set(false);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  try (Stream<Path> s =
+                      Files.walk(
+                          Paths.get(
+                              dataNodeDir
+                                  + File.separator
+                                  + sequenceDataDir
+                                  + File.separator
+                                  + "test"))) {
+                    s.forEach(
+                        source -> {
+                          if (source.toString().endsWith(RESOURCE)
+                              || source.toString().endsWith(MODS)
+                              || source.toString().endsWith(TSFILE)) {
+                            if (source.toFile().length() > 0) {
+                              completelyDeleteSuccess.set(false);
+                            }
                           }
-                        }
-                      });
-                }
-                try (Stream<Path> s =
-                    Files.walk(
-                        Paths.get(
-                            dataNodeDir
-                                + File.separator
-                                + unsequenceDataDir
-                                + File.separator
-                                + "test"))) {
-                  s.forEach(
-                      source -> {
-                        if (source.toString().endsWith(RESOURCE)
-                            || source.toString().endsWith(MODS)
-                            || source.toString().endsWith(TSFILE)) {
-                          if (source.toFile().length() > 0) {
-                            completelyDeleteSuccess.set(false);
+                        });
+                  }
+
+                  try (Stream<Path> s =
+                      Files.walk(
+                          Paths.get(
+                              dataNodeDir
+                                  + File.separator
+                                  + unsequenceDataDir
+                                  + File.separator
+                                  + "test"))) {
+                    s.forEach(
+                        source -> {
+                          if (source.toString().endsWith(RESOURCE)
+                              || source.toString().endsWith(MODS)
+                              || source.toString().endsWith(TSFILE)) {
+                            if (source.toFile().length() > 0) {
+                              completelyDeleteSuccess.set(false);
+                            }
                           }
-                        }
-                      });
+                        });
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
                 }
-                return completelyDeleteSuccess.get();
+                return allPass;
               });
     }
     cleanData(testNum);
