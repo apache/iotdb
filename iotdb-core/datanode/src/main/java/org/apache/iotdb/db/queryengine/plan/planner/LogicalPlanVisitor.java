@@ -557,6 +557,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
+    // Ensure TypeProvider has schema query column types for later SortNode
+    org.apache.iotdb.commons.schema.column.ColumnHeaderConstant
+        .showTimeSeriesColumnHeaders.forEach(
+            columnHeader ->
+                context
+                    .getTypeProvider()
+                    .setTreeModelType(
+                        columnHeader.getColumnName(), columnHeader.getColumnType()));
+
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.hasTimeCondition()) {
