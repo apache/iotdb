@@ -200,8 +200,6 @@ public class IoTDBConfig {
   /** Wait time in milliseconds for device schema request cache */
   private volatile int deviceSchemaRequestCacheWaitTimeMs = 20;
 
-  private volatile long dataNodeTableSchemaCacheSize = 1 << 20;
-
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
@@ -1941,17 +1939,6 @@ public class IoTDBConfig {
 
   void setWalMinEffectiveInfoRatio(double walMinEffectiveInfoRatio) {
     this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
-  }
-
-  public long getDataNodeTableSchemaCacheSize() {
-    return dataNodeTableSchemaCacheSize;
-  }
-
-  public void setDataNodeTableSchemaCacheSize(long dataNodeTableSchemaCacheSize) {
-    if (dataNodeTableSchemaCacheSize < 0) {
-      return;
-    }
-    this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
   }
 
   public int getDeviceSchemaRequestCacheMaxSize() {

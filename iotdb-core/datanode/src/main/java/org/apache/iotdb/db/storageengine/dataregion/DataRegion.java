@@ -32,8 +32,8 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -63,7 +63,6 @@ import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -83,7 +82,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -159,8 +157,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -179,6 +175,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -252,15 +249,6 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
-
-  // Cache TableSchema to prevent OOM
-  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
-      Caffeine.newBuilder()
-          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
-          .weigher(
-              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
-                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
-          .build();
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -1440,17 +1428,17 @@ public class DataRegion implements IDataRegionForQuery {
                     ConfigNodeClientManager.getInstance()
                         .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
                   resp = client.describeTable(getDatabaseName(), tableName, false);
-                  tsTable =
-                      (resp != null) && (resp.tableInfo != null)
-                          ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
-                          : null;
+                  if (resp == null || resp.tableInfo == null) {
+                    TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                  }
+                  return TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
+                      ByteBuffer.wrap(resp.getTableInfo()));
                 } catch (TException | ClientManagerException e) {
                   logger.error(
                       "Remote request config node failed that judgment if table is exist, occur exception. {}",
                       e.getMessage());
-                }
-                if (tsTable == null) {
                   TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                  return null; // unreachable, throwTableNotExistsException always throws
                 }
               } else {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
@@ -1461,15 +1449,7 @@ public class DataRegion implements IDataRegionForQuery {
               }
             }
 
-            org.apache.tsfile.file.metadata.TableSchema tableSchema =
-                TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
-            org.apache.tsfile.file.metadata.TableSchema cachedSchema =
-                SCHEMA_CACHE.getIfPresent(tableName);
-            if (Objects.equals(cachedSchema, tableSchema)) {
-              return cachedSchema;
-            }
-            SCHEMA_CACHE.put(tableName, tableSchema);
-            return tableSchema;
+            return TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
           });
     }
   }

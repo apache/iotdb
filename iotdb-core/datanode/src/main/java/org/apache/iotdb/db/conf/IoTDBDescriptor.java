@@ -981,12 +981,6 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
-    conf.setDataNodeTableSchemaCacheSize(
-        Long.parseLong(
-            properties.getProperty(
-                "data_node_table_schema_cache_max_size_in_bytes",
-                String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
-
     conf.setDeviceSchemaRequestCacheMaxSize(
         Integer.parseInt(
             properties.getProperty(
