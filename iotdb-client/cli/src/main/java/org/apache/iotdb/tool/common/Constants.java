@@ -66,8 +66,7 @@ public class Constants {
 
   public static final String TRUST_STORE_PWD_ARGS = "tpw";
   public static final String TRUST_STORE_PWD_NAME = "trust_store_password";
-  public static final String TRUST_STORE_PWD_DESC =
-      "Trust store password. (optional)";
+  public static final String TRUST_STORE_PWD_DESC = "Trust store password. (optional)";
 
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
