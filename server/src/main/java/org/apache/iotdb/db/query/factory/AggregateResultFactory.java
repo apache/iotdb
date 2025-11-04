@@ -85,12 +85,12 @@ public class AggregateResultFactory {
         return new KLLFloatsMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
         return new AggressiveMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
-        //        return new BitsBucketStatMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
-        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
-        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        // return new BitsBucketStatMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        // return new BitsBucketStatFilterMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        // return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_KLL_STAT:
         return new KLLStatMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
@@ -179,6 +179,14 @@ public class AggregateResultFactory {
         return new DupliQuantileDDAggrResult(dataType);
       case SQLConstant.DUPLI_QUANTILE_REQ:
         return new DupliQuantileReqAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_OLD:
+        return new DupliQuantileKLLPairOldAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+        return new DupliQuantileKLLPair3wayAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+        return new DupliQuantileKLLPairGammaAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_GAMMA:
+        return new DupliQuantileKLLGammaAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -228,12 +236,12 @@ public class AggregateResultFactory {
         return new KLLFloatsMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
         return new AggressiveMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
-        //        return new BitsBucketStatMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
-        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
-        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
-        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        // return new BitsBucketStatMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        // return new BitsBucketStatFilterMedianAggrResult(dataType);
+        // case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        // return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_KLL_STAT:
         return new KLLStatMedianAggrResult(dataType);
       case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
@@ -322,6 +330,14 @@ public class AggregateResultFactory {
         return new DupliQuantileDDAggrResult(dataType);
       case SQLConstant.DUPLI_QUANTILE_REQ:
         return new DupliQuantileReqAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_OLD:
+        return new DupliQuantileKLLPairOldAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+        return new DupliQuantileKLLPair3wayAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+        return new DupliQuantileKLLPairGammaAggrResult(dataType);
+      case SQLConstant.DUPLI_QUANTILE_KLL_GAMMA:
+        return new DupliQuantileKLLGammaAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -372,12 +388,12 @@ public class AggregateResultFactory {
         return new KLLFloatsMedianAggrResult(dataType);
       case EXACT_MEDIAN_AGGRESSIVE:
         return new AggressiveMedianAggrResult(dataType);
-        //      case EXACT_MEDIAN_BITS_BUCKET_STAT:
-        //        return new BitsBucketStatMedianAggrResult(dataType);
-        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
-        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
-        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
-        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+        // case EXACT_MEDIAN_BITS_BUCKET_STAT:
+        // return new BitsBucketStatMedianAggrResult(dataType);
+        // case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        // return new BitsBucketStatFilterMedianAggrResult(dataType);
+        // case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        // return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
       case EXACT_MEDIAN_KLL_STAT:
         return new KLLStatMedianAggrResult(dataType);
       case EXACT_MEDIAN_KLL_STAT_SINGLE:
@@ -466,6 +482,8 @@ public class AggregateResultFactory {
         return new DupliQuantileDDAggrResult(dataType);
       case DUPLI_QUANTILE_REQ:
         return new DupliQuantileReqAggrResult(dataType);
+      case DUPLI_QUANTILE_KLL_PAIR_OLD:
+        return new DupliQuantileKLLPairOldAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

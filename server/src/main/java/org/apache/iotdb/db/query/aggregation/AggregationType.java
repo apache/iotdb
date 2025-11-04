@@ -91,7 +91,11 @@ public enum AggregationType {
   DUPLI_QUANTILE_KLL_VANILLA,
   DUPLI_QUANTILE_KLL_PAIR,
   DUPLI_QUANTILE_DD,
-  DUPLI_QUANTILE_REQ;
+  DUPLI_QUANTILE_REQ,
+  DUPLI_QUANTILE_KLL_PAIR_OLD,
+  DUPLI_QUANTILE_KLL_PAIR_3_WAY,
+  DUPLI_QUANTILE_KLL_PAIR_GAMMA,
+  DUPLI_QUANTILE_KLL_GAMMA;
 
   /**
    * give an integer to return a data type.
@@ -233,7 +237,14 @@ public enum AggregationType {
         return DUPLI_QUANTILE_DD;
       case 65:
         return DUPLI_QUANTILE_REQ;
-
+      case 66:
+        return DUPLI_QUANTILE_KLL_PAIR_OLD;
+      case 67:
+        return DUPLI_QUANTILE_KLL_PAIR_3_WAY;
+      case 68:
+        return DUPLI_QUANTILE_KLL_PAIR_GAMMA;
+      case 69:
+        return DUPLI_QUANTILE_KLL_GAMMA;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -439,6 +450,18 @@ public enum AggregationType {
         break;
       case DUPLI_QUANTILE_REQ:
         i = 65;
+        break;
+      case DUPLI_QUANTILE_KLL_PAIR_OLD:
+        i = 66;
+        break;
+      case DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+        i = 67;
+        break;
+      case DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+        i = 68;
+        break;
+      case DUPLI_QUANTILE_KLL_GAMMA:
+        i = 69;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

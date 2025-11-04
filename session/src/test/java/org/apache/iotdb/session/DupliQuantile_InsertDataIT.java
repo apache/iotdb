@@ -72,7 +72,11 @@ public class DupliQuantile_InsertDataIT {
   public static void setUp() throws Exception {
     baseSize[1] = baseSize[2] = baseSize[3] = baseSize[4] = (int) 3.1e7;
     for (int i = 10 + 1; i <= 10 + 14; i++) baseSize[i] = (int) 3.1e7;
+    baseSize[51] = baseSize[52] = baseSize[53] = baseSize[1];
+    for (int i = 61; i <= 70; i++) baseSize[i] = baseSize[1];
+    for (int i = 81; i <= 90; i++) baseSize[i] = baseSize[11];
     for (int i = 100 + 1; i <= 100 + 10; i++) baseSize[i] = (int) 3.1e7;
+    for (int i = 200 + 1; i <= 200 + 17; i++) baseSize[i] = (int) 3e7;
     for (int i = deviceNumL; i < deviceNumR; i++) {
       deviceList.add("root.Synthetic512ByteDD.d" + i);
       sizeList.add(baseSize[0] * (i + 1));
@@ -218,12 +222,39 @@ public class DupliQuantile_InsertDataIT {
       fileList[i] = "Zipf3E7Alpha" + (int) (i - 10) + ".txt";
       sgName[i] = "root.zipf" + (i - 10);
     }
+    fileList[51] = "DupliTorqueVoltage_random.txt";
+    sgName[51] = "root.voltagerandom";
+    fileList[52] = "DupliTorqueVoltage_sort.txt";
+    sgName[52] = "root.voltagesort";
+    fileList[53] = "DupliTorqueVoltage_reordered.txt";
+    sgName[53] = "root.voltagereordered";
+    int currentIndex = 61;
+    int binning_count = 16384;
+    for (int i = 0; i < 10; i++) {
+      fileList[currentIndex] = "DupliTorqueVoltage_binned_" + binning_count + ".txt";
+      sgName[currentIndex] = "root.voltagebinned" + binning_count;
+      binning_count *= 2;
+      currentIndex++;
+    }
+    currentIndex = 81;
+    for (int i = 0; i < 10; i++) {
+      fileList[currentIndex] = "Zipf3E7AlphaChangev2" + (i + 1) + ".txt";
+      sgName[currentIndex] = "root.zipfchangev2" + (i + 1);
+      currentIndex++;
+    }
     String muS = "5";
     for (int i = 100 + 1; i <= 100 + 10; i++) {
       fileList[i] = "Lognormal3E7Mu" + muS + "Sigma" + (int) (i - 100) * 2 + ".txt";
       sgName[i] = "root.lognormal" + (int) (i - 100) * 2;
     }
-    for (int fileID = 1; fileID <= 110; fileID++ /* : new int[] {1, 2} */) {
+    currentIndex = 201;
+    for (int c = 0; c <= 1024; c += 64) {
+      int realC = Math.max(1, c);
+      fileList[currentIndex] = "UniformN3E7Repeat" + realC + ".txt";
+      sgName[currentIndex] = "root.uniform" + realC;
+      currentIndex++;
+    }
+    for (int fileID = 1; fileID < 300; fileID++ /* : new int[] {1, 2} */) {
       String filename = fileList[fileID];
       if (filename == null || filename.isEmpty()) {
         continue;

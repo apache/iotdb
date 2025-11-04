@@ -142,6 +142,10 @@ public class SQLConstant {
   public static final String DUPLI_QUANTILE_KLL_PAIR = "dupli_quantile_kll_pair";
   public static final String DUPLI_QUANTILE_DD = "dupli_quantile_dd";
   public static final String DUPLI_QUANTILE_REQ = "dupli_quantile_req";
+  public static final String DUPLI_QUANTILE_KLL_PAIR_OLD = "dupli_quantile_kll_pair_old";
+  public static final String DUPLI_QUANTILE_KLL_PAIR_3_WAY = "dupli_quantile_kll_pair_3_way";
+  public static final String DUPLI_QUANTILE_KLL_PAIR_GAMMA = "dupli_quantile_kll_pair_gamma";
+  public static final String DUPLI_QUANTILE_KLL_GAMMA = "dupli_quantile_kll_gamma";
 
   public static final String ALL = "all";
 
@@ -213,7 +217,11 @@ public class SQLConstant {
               DUPLI_QUANTILE_KLL_VANILLA,
               DUPLI_QUANTILE_KLL_PAIR,
               DUPLI_QUANTILE_DD,
-              DUPLI_QUANTILE_REQ));
+              DUPLI_QUANTILE_REQ,
+              DUPLI_QUANTILE_KLL_PAIR_OLD,
+              DUPLI_QUANTILE_KLL_PAIR_3_WAY,
+              DUPLI_QUANTILE_KLL_PAIR_GAMMA,
+              DUPLI_QUANTILE_KLL_GAMMA));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.KLLDupliPairFT;
+import org.apache.iotdb.tsfile.utils.KLLDupliPairFT3way;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -37,12 +37,12 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class DupliQuantileKLLPairAggrResult extends AggregateResult {
+public class DupliQuantileKLLPair3wayAggrResult extends AggregateResult {
   String returnType = "value";
   private TSDataType seriesDataType;
   private int iteration;
   private long n;
-  private KLLDupliPairFT sketch;
+  private KLLDupliPairFT3way sketch;
   private boolean hasFinalResult;
   long DEBUG = 0;
 
@@ -60,9 +60,9 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
     }
   }
 
-  public DupliQuantileKLLPairAggrResult(TSDataType seriesDataType)
+  public DupliQuantileKLLPair3wayAggrResult(TSDataType seriesDataType)
       throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.DUPLI_QUANTILE_KLL_PAIR);
+    super(DOUBLE, AggregationType.DUPLI_QUANTILE_KLL_PAIR_3_WAY);
     this.seriesDataType = seriesDataType;
     reset();
   }
@@ -112,7 +112,7 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
 
   @Override
   public void startIteration() {
-    sketch = new KLLDupliPairFT(maxMemoryByte);
+    sketch = new KLLDupliPairFT3way(maxMemoryByte);
     n = 0;
   }
 
@@ -146,6 +146,7 @@ public class DupliQuantileKLLPairAggrResult extends AggregateResult {
 
     setDoubleValue(longToResult(sketch.findMinValueWithRank((long) (QUANTILE * n))));
     hasFinalResult = true;
+    System.out.println("[3way-sort-time] " + sketch.sort_time / 1000000000.0 + " s");
   }
 
   @Override

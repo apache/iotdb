@@ -76,15 +76,16 @@ public class AggregationQueryOperator extends QueryOperator {
       if (expression instanceof TimeSeriesOperand) {
         throw new LogicalOperatorException(ERROR_MESSAGE1);
       }
-      // Currently, the aggregation function expression can only contain a timeseries operand.
-      //      System.out.println("\t\t[DEBUG
+      // Currently, the aggregation function expression can only contain a timeseries
+      // operand.
+      // System.out.println("\t\t[DEBUG
       // checkSelectComponent]\t"+expression.toString()+"\t\texps:"+expression.getExpressions());
-      //      if(expression instanceof FunctionExpression
-      //          && (expression.getExpressions().size() > 1)){
-      //        System.out.println("\t\t[DEBUG checkSelectComponent]Found multi
+      // if(expression instanceof FunctionExpression
+      // && (expression.getExpressions().size() > 1)){
+      // System.out.println("\t\t[DEBUG checkSelectComponent]Found multi
       // Parameters.\t"+expression.toString()+"\t\texps:"+expression.getExpressions().subList(1,expression.getExpressions().size()));
-      ////        expression.getExpressions()
-      //      }
+      //// expression.getExpressions()
+      // }
       if (expression instanceof FunctionExpression
           && (expression.getExpressions().size() != 1
               || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))) {
@@ -187,6 +188,10 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.DUPLI_QUANTILE_KLL_PAIR:
       case SQLConstant.DUPLI_QUANTILE_DD:
       case SQLConstant.DUPLI_QUANTILE_REQ:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_OLD:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+      case SQLConstant.DUPLI_QUANTILE_KLL_GAMMA:
         return dataType.isNumeric();
       case SQLConstant.COUNT:
       case SQLConstant.MIN_TIME:
@@ -268,6 +273,10 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.DUPLI_QUANTILE_KLL_PAIR:
       case SQLConstant.DUPLI_QUANTILE_DD:
       case SQLConstant.DUPLI_QUANTILE_REQ:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_OLD:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_3_WAY:
+      case SQLConstant.DUPLI_QUANTILE_KLL_PAIR_GAMMA:
+      case SQLConstant.DUPLI_QUANTILE_KLL_GAMMA:
         return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
       default:
         return true;

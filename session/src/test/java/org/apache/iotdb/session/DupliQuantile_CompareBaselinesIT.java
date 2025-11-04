@@ -136,11 +136,11 @@ public class DupliQuantile_CompareBaselinesIT {
 
   @Test
   public void varyingN() throws IoTDBConnectionException, StatementExecutionException, IOException {
-    prepareParamsForDD();
+    // prepareParamsForDD();
     long ALL_T = -new Date().getTime();
-    int DROP_METHOD = 1, startType = 0, endType = 2;
-    int[] TESTCASE_DATASET = new int[] {10, 10, 5};
-    int[] TESTCASE_METHOD = new int[] {1, 1, 1, 1, 1, 1, 1};
+    int DROP_METHOD = 0, startType = 0, endType = 2;
+    int[] TESTCASE_DATASET = new int[] {10, 10, 10};
+    int[] TESTCASE_METHOD = new int[] {1};
     String[] methods =
         new String[] {
           "dupli_quantile_kll_vanilla",
@@ -242,9 +242,9 @@ public class DupliQuantile_CompareBaselinesIT {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     prepareParamsForDD();
     long ALL_T = -new Date().getTime();
-    int DROP_METHOD = 1, startType = 0, endType = 2;
-    int[] TESTCASE_DATASET = new int[] {8, 8, 3};
-    int[] TESTCASE_METHOD = new int[] {1, 1, 1, 1, 1, 1, 1};
+    int DROP_METHOD = 0, startType = 1, endType = 1;
+    int[] TESTCASE_DATASET = new int[] {10, 10, 10};
+    int[] TESTCASE_METHOD = new int[] {1};
     String[] methods =
         new String[] {
           "dupli_quantile_kll_vanilla",
@@ -260,7 +260,9 @@ public class DupliQuantile_CompareBaselinesIT {
 
     String[] datasets = new String[] {"voltage", "price", "custom"};
     int[] MSmall =
-        new int[] {16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256};
+        new int[] {16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256
+          // 16
+        };
     int[] MMedian = new int[] {};
     int[] MLarge = new int[] {};
     int[][] Ms = new int[][] {MSmall, MSmall, MSmall};
@@ -345,9 +347,9 @@ public class DupliQuantile_CompareBaselinesIT {
   @Test
   public void varyingZipf()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    prepareParamsForDD();
+    // prepareParamsForDD();
     long ALL_T = -new Date().getTime();
-    int DROP_METHOD = 1, startType = 0, endType = 13, TEST_CASE_BASE = 10;
+    int DROP_METHOD = 0, startType = 0, endType = 13, TEST_CASE_BASE = 10;
     int[] TESTCASE_DATASET =
         new int[] {
           TEST_CASE_BASE,
@@ -365,12 +367,12 @@ public class DupliQuantile_CompareBaselinesIT {
           TEST_CASE_BASE,
           TEST_CASE_BASE
         };
-    int[] TESTCASE_METHOD = new int[] {1, 1, 1, 1, 1, 1, 1};
+    int[] TESTCASE_METHOD = new int[] {1};
     String[] methods =
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss",
+          "dupli_quantile_dss", // 2min per dss 12s others
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
@@ -465,18 +467,728 @@ public class DupliQuantile_CompareBaselinesIT {
   }
 
   @Test
+  public void varyingUniform()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 16, TEST_CASE_BASE = 10;
+    int[] TESTCASE_DATASET =
+        new int[] {
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE,
+          TEST_CASE_BASE
+        };
+    int[] TESTCASE_METHOD = new int[] {1, 1, 1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss", // 2min per dss 12s others
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          "dupli_quantile_kll_vanilla", "dupli_quantile_kll_pair", "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // // "DSS",
+          // "GK",
+          // "TD",
+          "KLL-vanilla", "KLL-dupli", "KLL-dupli-old"
+        };
+
+    String[] datasets =
+        new String[] {
+          "uniform1",
+          "uniform64",
+          "uniform128",
+          "uniform192",
+          "uniform256",
+          "uniform320",
+          "uniform384",
+          "uniform448",
+          "uniform512",
+          "uniform576",
+          "uniform640",
+          "uniform704",
+          "uniform768",
+          "uniform832",
+          "uniform896",
+          "uniform960",
+          "uniform1024"
+        };
+    double N = 1e7;
+    double MaxN = 3e7;
+    int memoryKB = 128;
+    double[] results = new double[datasets.length * 1 * methods.length];
+    double[] Ts = new double[datasets.length * 1 * methods.length];
+    SessionDataSet dataSet;
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int nid = 0; nid < 1; nid++) {
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + memoryKB + "KB'";
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) N, timeL = randomQ.nextInt((int) MaxN - n), timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * 1) + nid) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+    System.out.print("\t\t\t\t\t\t\t");
+    for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+      System.out.print("\t" + xLegendName[methodID]);
+    System.out.println("");
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      // System.out.println(
+      // "--------------\n"
+      // + "dataset:\t"
+      // + datasets[datasetID]
+      // + "\n\tMemory:\t"
+      // + memoryKB[datasetID]
+      // + "KB"
+      // + "\nX-axis:\tN"
+      // + "\tY-axis:\tQuery time(s)");
+      System.out.print(
+          "N:\t"
+              + N
+              + "\tmemKB:\t"
+              + memoryKB
+              + "Uniform:\t"
+              + formatT.format((datasetID + 1) * 0.1)
+              + "\t"
+              + (datasetID + 1)
+              + "\t");
+      // for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+      // System.out.print("\t" + xLegendName[methodID]);
+      // System.out.println("");
+      for (int nid = 0; nid < 1; nid++) {
+        System.out.print(N + "\t" + (datasetID + 1));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * 1) + nid) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
+  public void varyingInputOrder()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 2;
+    int[] TESTCASE_DATASET = new int[] {10, 10, 10};
+    int[] TESTCASE_METHOD = new int[] {1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss",
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          // "dupli_quantile_kll_vanilla",
+          "dupli_quantile_kll_pair"
+          // "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // "DSS",
+          // "GK",
+          // "TD",
+          // "KLL-vanilla",
+          "KLL-dupli"
+          // "KLL-dupli-old"
+        };
+
+    String[] datasets = new String[] {"voltagereordered", "voltagesort", "voltagerandom"};
+    int[] MSmall =
+        new int[] {16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256};
+    int[] MMedian = new int[] {};
+    int[] MLarge = new int[] {};
+    int[][] Ms = new int[][] {MSmall, MSmall, MSmall};
+
+    // int[] MRelative =
+    // new int[] {64, 96, 128, 160, 192, 224, 256, 320, 384, 448, 512 /*, 768,
+    // 1024*/};
+    // int[][] Ms =
+    // new int[][] {
+    // MRelative, MRelative, MRelative, MRelative, MRelative, MRelative
+    // }; // for relative findPrTime
+    int MsLength = Math.max(Math.max(MSmall.length, MLarge.length), MMedian.length);
+    double[] MaxNs = new double[] {3e7, 3e7, 3e7};
+    double[] Ns = new double[] {1e7, 1e7, 1e7};
+    SessionDataSet dataSet;
+    double[] results = new double[datasets.length * MsLength * methods.length];
+    double[] Ts = new double[datasets.length * MsLength * methods.length];
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + Ms[datasetID][mid] + "KB'";
+            if (methods[methodID].contains("dd"))
+              sql += getParamsForDD(datasets[datasetID], Ms[datasetID][mid]);
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) Ns[datasetID],
+                timeL = randomQ.nextInt((int) MaxNs[datasetID] - n),
+                timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * MsLength) + mid) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      System.out.println(
+          "--------------\n"
+              + "dataset:\t"
+              + datasets[datasetID]
+              + "\n\tN:\t"
+              + Ns[datasetID]
+              + "\nX-axis:\tMemory(KB)"
+              + "\tY-axis:\tQuery time(s)");
+      System.out.print("Memory(KB)\t");
+      for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+        System.out.print("\t" + xLegendName[methodID]);
+      System.out.println("");
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+        System.out.print(Ms[datasetID][mid] + "\t" + (mid + 1));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * MsLength) + mid) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
+  public void varyingSortingMethod()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 0;
+    int[] TESTCASE_DATASET = new int[] {10};
+    int[] TESTCASE_METHOD = new int[] {1, 1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss",
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          // "dupli_quantile_kll_vanilla",
+          "dupli_quantile_kll_pair", "dupli_quantile_kll_pair_3_way"
+          // "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // "DSS",
+          // "GK",
+          // "TD",
+          // "KLL-vanilla",
+          "KLL-dupli", "KLL-dupli-3-way"
+          // "KLL-dupli-old"
+        };
+
+    String[] datasets = new String[] {"voltage"};
+    int[] MSmall = new int[] {128};
+    int[] MMedian = new int[] {};
+    int[] MLarge = new int[] {};
+    int[][] Ms = new int[][] {MSmall, MSmall, MSmall};
+
+    // int[] MRelative =
+    // new int[] {64, 96, 128, 160, 192, 224, 256, 320, 384, 448, 512 /*, 768,
+    // 1024*/};
+    // int[][] Ms =
+    // new int[][] {
+    // MRelative, MRelative, MRelative, MRelative, MRelative, MRelative
+    // }; // for relative findPrTime
+    int MsLength = Math.max(Math.max(MSmall.length, MLarge.length), MMedian.length);
+    double[] MaxNs = new double[] {3e7};
+    double[] Ns = new double[] {1e7};
+    SessionDataSet dataSet;
+    double[] results = new double[datasets.length * MsLength * methods.length];
+    double[] Ts = new double[datasets.length * MsLength * methods.length];
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + Ms[datasetID][mid] + "KB'";
+            if (methods[methodID].contains("dd"))
+              sql += getParamsForDD(datasets[datasetID], Ms[datasetID][mid]);
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) Ns[datasetID],
+                timeL = randomQ.nextInt((int) MaxNs[datasetID] - n),
+                timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * MsLength) + mid) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      System.out.println(
+          "--------------\n"
+              + "dataset:\t"
+              + datasets[datasetID]
+              + "\n\tN:\t"
+              + Ns[datasetID]
+              + "\nX-axis:\tMemory(KB)"
+              + "\tY-axis:\tQuery time(s)");
+      System.out.print("Memory(KB)\t");
+      for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+        System.out.print("\t" + xLegendName[methodID]);
+      System.out.println("");
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+        System.out.print(Ms[datasetID][mid] + "\t" + (mid + 1));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * MsLength) + mid) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
+  public void varyingBinning()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 9;
+    int[] TESTCASE_DATASET = new int[endType - startType + 1];
+    int TEST_CASE_CURRENT = 10;
+    for (int i = startType; i <= endType; i++) TESTCASE_DATASET[i - startType] = TEST_CASE_CURRENT;
+    int[] TESTCASE_METHOD = new int[] {1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss",
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          // "dupli_quantile_kll_vanilla",
+          "dupli_quantile_kll_pair"
+          // "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // "DSS",
+          // "GK",
+          // "TD",
+          // "KLL-vanilla",
+          "KLL-dupli"
+          // "KLL-dupli-old"
+        };
+
+    String[] datasets = new String[endType - startType + 1];
+    int currentBinning = 16384;
+    for (int i = startType; i <= endType; i++) {
+      datasets[i - startType] = "voltagebinned" + currentBinning;
+      currentBinning *= 2;
+    }
+    int[] MSmall = new int[] {128};
+    int[] MMedian = new int[] {};
+    int[] MLarge = new int[] {};
+    int[][] Ms =
+        new int[][] {
+          MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall
+        };
+
+    int MsLength = Math.max(Math.max(MSmall.length, MLarge.length), MMedian.length);
+    double[] MaxNs = new double[] {3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7};
+    double[] Ns = new double[] {1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7};
+    SessionDataSet dataSet;
+    double[] results = new double[datasets.length * MsLength * methods.length];
+    double[] Ts = new double[datasets.length * MsLength * methods.length];
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + Ms[datasetID][mid] + "KB'";
+            if (methods[methodID].contains("dd"))
+              sql += getParamsForDD(datasets[datasetID], Ms[datasetID][mid]);
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) Ns[datasetID],
+                timeL = randomQ.nextInt((int) MaxNs[datasetID] - n),
+                timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * MsLength) + mid) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      System.out.println(
+          "--------------\n"
+              + "dataset:\t"
+              + datasets[datasetID]
+              + "\n\tN:\t"
+              + Ns[datasetID]
+              + "\nX-axis:\tMemory(KB)"
+              + "\tY-axis:\tQuery time(s)");
+      System.out.print("Memory(KB)\t");
+      for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+        System.out.print("\t" + xLegendName[methodID]);
+      System.out.println("");
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+        System.out.print(Ms[datasetID][mid] + "\t" + (mid + 1));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * MsLength) + mid) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
+  public void varyingChangingTime()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 9;
+    int[] TESTCASE_DATASET = new int[endType - startType + 1];
+    int TEST_CASE_CURRENT = 10;
+    for (int i = startType; i <= endType; i++) TESTCASE_DATASET[i - startType] = TEST_CASE_CURRENT;
+    int[] TESTCASE_METHOD = new int[] {1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss",
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          // "dupli_quantile_kll_vanilla",
+          "dupli_quantile_kll_pair"
+          // "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // "DSS",
+          // "GK",
+          // "TD",
+          // "KLL-vanilla",
+          "KLL-dupli"
+          // "KLL-dupli-old"
+        };
+
+    String[] datasets = new String[endType - startType + 1];
+    for (int i = startType; i <= endType; i++) {
+      datasets[i - startType] = "zipfchangev2" + (i - startType + 1);
+    }
+    int[] MSmall = new int[] {64};
+    int[] MMedian = new int[] {};
+    int[] MLarge = new int[] {};
+    int[][] Ms =
+        new int[][] {
+          MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall, MSmall
+        };
+
+    int MsLength = Math.max(Math.max(MSmall.length, MLarge.length), MMedian.length);
+    double[] MaxNs = new double[] {3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7, 3e7};
+    double[] Ns = new double[] {1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7, 1e7};
+    SessionDataSet dataSet;
+    double[] results = new double[datasets.length * MsLength * methods.length];
+    double[] Ts = new double[datasets.length * MsLength * methods.length];
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + Ms[datasetID][mid] + "KB'";
+            if (methods[methodID].contains("dd"))
+              sql += getParamsForDD(datasets[datasetID], Ms[datasetID][mid]);
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) Ns[datasetID],
+                timeL = randomQ.nextInt((int) MaxNs[datasetID] - n),
+                timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * MsLength) + mid) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      System.out.println(
+          "--------------\n"
+              + "dataset:\t"
+              + datasets[datasetID]
+              + "\n\tN:\t"
+              + Ns[datasetID]
+              + "\nX-axis:\tMemory(KB)"
+              + "\tY-axis:\tQuery time(s)");
+      System.out.print("Memory(KB)\t");
+      for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+        System.out.print("\t" + xLegendName[methodID]);
+      System.out.println("");
+      for (int mid = 0; mid < Ms[datasetID].length; mid++) {
+        System.out.print(Ms[datasetID][mid] + "\t" + (mid + 1));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * MsLength) + mid) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
+  public void varyingGamma()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    long ALL_T = -new Date().getTime();
+    int DROP_METHOD = 0, startType = 0, endType = 0;
+    int[] TESTCASE_DATASET = new int[endType - startType + 1];
+    int TEST_CASE_CURRENT = 10;
+    for (int i = startType; i <= endType; i++) TESTCASE_DATASET[i - startType] = TEST_CASE_CURRENT;
+    int[] TESTCASE_METHOD = new int[] {1};
+    String[] methods =
+        new String[] {
+          // "dupli_quantile_kll_vanilla",
+          // "dupli_quantile_dd",
+          // "dupli_quantile_dss",
+          // "dupli_quantile_gk",
+          // "dupli_quantile_td",
+          // "dupli_quantile_kll_vanilla",
+          "dupli_quantile_kll_gamma"
+          // "dupli_quantile_kll_pair_old"
+        };
+    String[] xLegendName =
+        new String[] {
+          // "Dropped",
+          // "DD",
+          // "DSS",
+          // "GK",
+          // "TD",
+          // "KLL-vanilla",
+          "KLL-gamma"
+          // "KLL-dupli-old"
+        };
+
+    String[] datasets = new String[endType - startType + 1];
+    datasets[0] = "voltage";
+    int[] MSmall = new int[] {128};
+    int[] MMedian = new int[] {};
+    int[] MLarge = new int[] {};
+    int[][] Ms = new int[][] {MSmall};
+
+    int MsLength = Math.max(Math.max(MSmall.length, MLarge.length), MMedian.length);
+    double[] MaxNs = new double[] {3e7};
+    double[] Ns = new double[] {1e7};
+    SessionDataSet dataSet;
+    double[] results = new double[datasets.length * 9 * methods.length];
+    double[] Ts = new double[datasets.length * 9 * methods.length];
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      for (int i = 11; i <= 19; i++) {
+        int MCurrent = 128;
+        for (int methodID = 0; methodID < methods.length; methodID++) {
+          for (int qid = 0; qid < TESTCASE_DATASET[datasetID] * TESTCASE_METHOD[methodID]; qid++) {
+            Random randomQ = new Random(RANDOM_SEED + 1000 * qid);
+
+            String sql = "select " + methods[methodID] + "(s0";
+            double q = randomQ.nextDouble();
+            sql += ",'quantile'='" + q + "'";
+            sql += ",'memory'='" + MCurrent + "KB'";
+            sql += ",'gamma'='" + (1.0 / (i / 10.0)) + "'";
+            if (methods[methodID].contains("dd"))
+              sql += getParamsForDD(datasets[datasetID], MCurrent);
+            sql += ") from root." + datasets[datasetID] + ".d0";
+
+            int n = (int) Ns[datasetID],
+                timeL = randomQ.nextInt((int) MaxNs[datasetID] - n),
+                timeR = timeL + n;
+            sql += " where time>=" + timeL + " and time<" + timeR;
+            long tmpT = -new Date().getTime();
+            dataSet = session.executeQueryStatement(sql);
+            tmpT += new Date().getTime();
+            String tmp = dataSet.next().getFields().toString();
+            double result = Double.parseDouble(tmp.substring(1, tmp.lastIndexOf(']')));
+
+            // System.out.println("\tresult:\t" + result + "\t\t" + sql);
+            int id = ((datasetID * 9) + (i - 11)) * methods.length + methodID;
+            results[id] += result;
+            Ts[id] += tmpT;
+          }
+        }
+      }
+    }
+
+    for (int datasetID = startType; datasetID <= endType; datasetID++) {
+      System.out.println(
+          "--------------\n"
+              + "dataset:\t"
+              + datasets[datasetID]
+              + "\n\tN:\t"
+              + Ns[datasetID]
+              + "\nX-axis:\tGamma"
+              + "\tY-axis:\tQuery time(s)");
+      System.out.print("Gamma\t");
+      for (int methodID = DROP_METHOD; methodID < methods.length; methodID++)
+        System.out.print("\t" + xLegendName[methodID]);
+      System.out.println("");
+      for (int i = 11; i <= 19; i++) {
+        System.out.print((1.0 / (i / 10.0)) + "\t" + (i - 10));
+        for (int methodID = DROP_METHOD; methodID < methods.length; methodID++) {
+          double tmp = Ts[((datasetID * 9) + (i - 11)) * methods.length + methodID];
+          System.out.print(
+              "\t"
+                  + formatT.format(
+                      tmp / TESTCASE_DATASET[datasetID] / TESTCASE_METHOD[methodID] / 1000.0));
+        }
+        System.out.println("");
+      }
+    }
+    ALL_T += new Date().getTime();
+    System.out.println("\nALL_T:" + ALL_T / 1000 + "s");
+  }
+
+  @Test
   public void varyingLognormal()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     prepareParamsForDD();
     long ALL_T = -new Date().getTime();
-    int DROP_METHOD = 1, startType = 0, endType = 9, TEST_CASE_BASE = 1;
-    int TESTCASE = 10;
+    int DROP_METHOD = 0, startType = 0, endType = 9, TEST_CASE_BASE = 1;
+    int TESTCASE = 20;
     // int[] TESTCASE_METHOD = new int[] {4, 10, 2, 10, 10, 10, 10};
     String[] methods =
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss",
+          "dupli_quantile_dss", // 2min per dss 12s others
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
@@ -562,10 +1274,10 @@ public class DupliQuantile_CompareBaselinesIT {
   @Test
   public void varyingQueriedQuantile()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    prepareParamsForDD();
+    // prepareParamsForDD();
     long ALL_T = -new Date().getTime();
-    int[] QUANTILE_PER_TEST = new int[] {3, 3, 3};
-    int DROP_METHOD = 1, startType = 0, endType = 2;
+    int[] QUANTILE_PER_TEST = new int[] {8, 8, 8};
+    int DROP_METHOD = 0, startType = 0, endType = 1;
     // double[] tempQ = new double[] {0.0001,0.001,0.01,0.1,0.5, 0.9, 0.99, 0.999,
     // 0.9999};
     // double[] tempQ =
@@ -578,12 +1290,12 @@ public class DupliQuantile_CompareBaselinesIT {
         new String[] {
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_dd",
-          "dupli_quantile_dss",
+          "dupli_quantile_dss", // 2min per dss 12s others
           "dupli_quantile_gk",
           "dupli_quantile_td",
           "dupli_quantile_kll_vanilla",
           "dupli_quantile_kll_pair",
-          "dupli_quantile_req"
+          // "dupli_quantile_req"
         };
     String[] xLegendName =
         new String[] {"Dropped", "DD", "DSS", "GK", "TD", "KLL-vanilla", "KLL-dupli", "Req"};
