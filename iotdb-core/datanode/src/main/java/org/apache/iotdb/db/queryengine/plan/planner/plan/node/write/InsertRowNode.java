@@ -896,7 +896,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length || Objects.isNull(dataTypes[columnIndex])) {
+    if (columnIndex >= values.length
+        || Objects.isNull(dataTypes[columnIndex])
+        || dataTypes[columnIndex] == TSDataType.OBJECT) {
       return null;
     }
     Object value = values[columnIndex];
