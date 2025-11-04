@@ -2053,44 +2053,58 @@ public class IoTDBDeletionTableIT {
                 for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
                   String dataNodeDir = wrapper.getDataNodeDir();
 
-                  try (Stream<Path> s =
-                      Files.walk(
-                          Paths.get(
-                              dataNodeDir
-                                  + File.separator
-                                  + sequenceDataDir
-                                  + File.separator
-                                  + "test"))) {
-                    s.forEach(
-                        source -> {
-                          if (source.toString().endsWith(RESOURCE)
-                              || source.toString().endsWith(MODS)
-                              || source.toString().endsWith(TSFILE)) {
-                            if (source.toFile().length() > 0) {
-                              completelyDeleteSuccess.set(false);
+                  if (Paths.get(
+                          dataNodeDir + File.separator + sequenceDataDir + File.separator + "test")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "test"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                completelyDeleteSuccess.set(false);
+                              }
                             }
-                          }
-                        });
+                          });
+                    }
                   }
 
-                  try (Stream<Path> s =
-                      Files.walk(
-                          Paths.get(
-                              dataNodeDir
-                                  + File.separator
-                                  + unsequenceDataDir
-                                  + File.separator
-                                  + "test"))) {
-                    s.forEach(
-                        source -> {
-                          if (source.toString().endsWith(RESOURCE)
-                              || source.toString().endsWith(MODS)
-                              || source.toString().endsWith(TSFILE)) {
-                            if (source.toFile().length() > 0) {
-                              completelyDeleteSuccess.set(false);
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "test")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "test"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                completelyDeleteSuccess.set(false);
+                              }
                             }
-                          }
-                        });
+                          });
+                    }
                   }
 
                   allPass = allPass && completelyDeleteSuccess.get();
