@@ -196,8 +196,8 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
         try {
           resultSet = session.executeQueryStatement("select * from root.sg.**");
         } catch (StatementExecutionException e) {
-          if (System.currentTimeMillis() - start > 600_000L) {
-            fail("Cannot execute query within 600s");
+          if (System.currentTimeMillis() - start > 60_000L) {
+            fail("Cannot execute query within 60s");
           }
           TimeUnit.SECONDS.sleep(1);
           continue;
