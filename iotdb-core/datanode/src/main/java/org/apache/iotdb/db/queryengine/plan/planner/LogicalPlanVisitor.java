@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -572,7 +573,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean canPushDownOffsetLimit =
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
-            && !showTimeSeriesStatement.isOrderByHeat();
+            && !showTimeSeriesStatement.isOrderByHeat()
+            && !showTimeSeriesStatement.isOrderByTimeseries();
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;
@@ -593,6 +595,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getRelatedTemplateInfo(),
                 showTimeSeriesStatement.getAuthorityScope())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
+
+    // order by timeseries name
+    if (showTimeSeriesStatement.isOrderByTimeseries()) {
+      SortItem sortItem =
+          new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
+      planBuilder = planBuilder.planOrderBy(java.util.Collections.singletonList(sortItem));
+    }
 
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
