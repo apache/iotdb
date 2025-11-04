@@ -111,62 +111,63 @@ public class IoTDBSessionRelationalIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  // for manual debugging
-  public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
-    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
-      session.executeNonQueryStatement("CREATE DATABASE \"db2\"");
-      session.executeNonQueryStatement("USE \"db1\"");
-      session.executeNonQueryStatement(
-          "CREATE TABLE table10 (tag1 string tag, attr1 string attribute, "
-              + "m1 double "
-              + "field)");
-    }
-    // insert without db
-    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      long timestamp;
-
-      // no db in session and sql
-      assertThrows(
-          StatementExecutionException.class,
-          () ->
-              session.executeNonQueryStatement(
-                  String.format(
-                      "INSERT INTO table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                      0, "tag:" + 0, "attr:" + 0, 0 * 1.0)));
-
-      // specify db in sql
-      for (long row = 0; row < 15; row++) {
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "tag:" + row, "attr:" + row, row * 1.0));
-      }
-
-      session.executeNonQueryStatement("FLush");
-
-      for (long row = 15; row < 30; row++) {
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
-                row, "tag:" + row, "attr:" + row, row * 1.0));
-      }
-
-      SessionDataSet dataSet =
-          session.executeQueryStatement("select * from db1.table10 order by time");
-      int cnt = 0;
-      while (dataSet.hasNext()) {
-        RowRecord rowRecord = dataSet.next();
-        timestamp = rowRecord.getFields().get(0).getLongV();
-        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
-        cnt++;
-      }
-      assertEquals(30, cnt);
-    }
-  }
+  //
+  //  // for manual debugging
+  //  public static void main(String[] args)
+  //      throws IoTDBConnectionException, StatementExecutionException {
+  //    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+  //      session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
+  //      session.executeNonQueryStatement("CREATE DATABASE \"db2\"");
+  //      session.executeNonQueryStatement("USE \"db1\"");
+  //      session.executeNonQueryStatement(
+  //          "CREATE TABLE table10 (tag1 string tag, attr1 string attribute, "
+  //              + "m1 double "
+  //              + "field)");
+  //    }
+  //    // insert without db
+  //    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+  //      long timestamp;
+  //
+  //      // no db in session and sql
+  //      assertThrows(
+  //          StatementExecutionException.class,
+  //          () ->
+  //              session.executeNonQueryStatement(
+  //                  String.format(
+  //                      "INSERT INTO table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+  //                      0, "tag:" + 0, "attr:" + 0, 0 * 1.0)));
+  //
+  //      // specify db in sql
+  //      for (long row = 0; row < 15; row++) {
+  //        session.executeNonQueryStatement(
+  //            String.format(
+  //                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+  //                row, "tag:" + row, "attr:" + row, row * 1.0));
+  //      }
+  //
+  //      session.executeNonQueryStatement("FLush");
+  //
+  //      for (long row = 15; row < 30; row++) {
+  //        session.executeNonQueryStatement(
+  //            String.format(
+  //                "INSERT INTO db1.table10 (time, tag1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+  //                row, "tag:" + row, "attr:" + row, row * 1.0));
+  //      }
+  //
+  //      SessionDataSet dataSet =
+  //          session.executeQueryStatement("select * from db1.table10 order by time");
+  //      int cnt = 0;
+  //      while (dataSet.hasNext()) {
+  //        RowRecord rowRecord = dataSet.next();
+  //        timestamp = rowRecord.getFields().get(0).getLongV();
+  //        assertEquals("tag:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+  //        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+  //        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+  //        cnt++;
+  //      }
+  //      assertEquals(30, cnt);
+  //    }
+  //  }
 
   private static void insertRelationalTabletPerformanceTest()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1809,6 +1810,7 @@ public class IoTDBSessionRelationalIT {
     int testNum = 14;
     Set<TSDataType> dataTypes = new HashSet<>();
     Collections.addAll(dataTypes, TSDataType.values());
+    dataTypes.remove(TSDataType.OBJECT);
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
 
@@ -1899,6 +1901,7 @@ public class IoTDBSessionRelationalIT {
     int testNum = 17;
     Set<TSDataType> dataTypes = new HashSet<>();
     Collections.addAll(dataTypes, TSDataType.values());
+    dataTypes.remove(TSDataType.OBJECT);
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
 
