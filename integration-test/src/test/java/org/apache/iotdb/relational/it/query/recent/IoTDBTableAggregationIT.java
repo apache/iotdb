@@ -5482,6 +5482,17 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void emptyTimeRangeQueryTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"0,"};
+    tableResultSetEqualTest(
+        "select count(*) from table1 where time >= 0 and time < -1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void orderByLimitTest() {
     String[] expectedHeader =
         new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
