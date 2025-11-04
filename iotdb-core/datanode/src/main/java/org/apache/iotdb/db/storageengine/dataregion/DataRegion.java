@@ -2900,50 +2900,57 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
         continue;
       }
 
-      ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) sealedTsFile.getTimeIndex();
-      Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
-      boolean onlyOneTable = devicesInFile.size() == 1;
-      IDeviceID theOnlyDevice = onlyOneTable ? devicesInFile.iterator().next() : null;
+      ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
 
-      boolean fileFullyDeleted = false;
+      if ((timeIndex instanceof ArrayDeviceTimeIndex)
+          && (deletion.getType() == ModEntry.ModType.TABLE_DELETION)) {
+        ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+        boolean onlyOneTable = devicesInFile.size() == 1;
+        IDeviceID deviceID = onlyOneTable ? devicesInFile.iterator().next() : null;
 
-      for (IDeviceID device : devicesInFile) {
-        Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
-        Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
-        if (!optStart.isPresent() || !optEnd.isPresent()) {
-          continue;
+        for (IDeviceID device : devicesInFile) {
+          Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+          Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+          if (!optStart.isPresent() || !optEnd.isPresent()) {
+            continue;
+          }
+
+          long fileStartTime = optStart.get();
+          long fileEndTime = optEnd.get();
+
+          if (onlyOneTable
+              && device.equals(deviceID)
+              && deletion.getStartTime() <= fileStartTime
+              && deletion.getEndTime() >= fileEndTime
+              && sealedTsFile.isClosed()
+              && sealedTsFile.setStatus(TsFileResourceStatus.DELETED)) {
+            deletedByFiles.add(sealedTsFile);
+          } else {
+            deletedByMods.add(sealedTsFile);
+          }
         }
-
-        long fileStart = optStart.get();
-        long fileEnd = optEnd.get();
-
-        if (onlyOneTable
-            && device.equals(theOnlyDevice)
-            && deletion.getStartTime() <= fileStart
-            && deletion.getEndTime() >= fileEnd) {
-
-          logger.info(
-              "[Deletion] TsFile {} only contains one table and will be removed physically.",
-              sealedTsFile.getTsFilePath());
-
-          deleteTsFileCompletely(sealedTsFile);
-          removeTsFileResourceFromList(sealedTsFile);
-
-          fileFullyDeleted = true;
-          // current file is deleted, other devices need do nothing
-          break;
-        }
+      } else {
+        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
       }
+    }
 
-      if (fileFullyDeleted) {
-        continue;
-      }
-      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+    for (TsFileResource tsFileResource : deletedByMods) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+        involvedModificationFiles.add(tsFileResource.getModFileForWrite());
+      } // else do nothing
+    }
+
+    if (!deletedByFiles.isEmpty()) {
+      deleteTsFileCompletely(deletedByFiles);
     }
 
     if (involvedModificationFiles.isEmpty()) {
@@ -2982,25 +2989,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Delete completely TsFile and related supporting files */
-  private void deleteTsFileCompletely(TsFileResource resource) throws IOException {
-    File tsFile = new File(resource.getTsFilePath());
-    if (tsFile.exists()) {
-      Files.deleteIfExists(tsFile.toPath());
-    }
-
-    File resFile = new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
-    if (resFile.exists()) {
-      Files.deleteIfExists(resFile.toPath());
-    }
-
-    ModificationFile modFile = resource.getModFileForWrite();
-    if (modFile != null && modFile.exists()) {
-      Files.deleteIfExists(modFile.getFile().toPath());
-    }
-
-    File marker = new File(resource.getTsFilePath() + ".marker");
-    if (marker.exists()) {
-      Files.deleteIfExists(marker.toPath());
+  private void deleteTsFileCompletely(List<TsFileResource> tsfileResourceList) throws IOException {
+    for (TsFileResource tsFileResource : tsfileResourceList) {
+      tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
+      tsFileResource.writeLock();
+      try {
+        FileMetrics.getInstance()
+            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        tsFileResource.remove();
+        logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } finally {
+        tsFileResource.writeUnlock();
+      }
     }
   }
 
