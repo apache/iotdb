@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 
@@ -31,11 +32,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.union;
 
-public class MergeUnionTest {
+public class UnionOptimizeTest {
 
   @Test
   public void simpleLeftDeepMerge() {
@@ -94,5 +98,61 @@ public class MergeUnionTest {
                 tableScan("testdb.t2"),
                 tableScan("testdb.t3"),
                 tableScan("testdb.t4")))));
+  }
+
+  @Test
+  public void pushLimitThroughUnionTest() {
+    assertPlan(
+        new PlanTester()
+            .createPlan("(select tag1 from t1) union all (select tag1 from t2) limit 1"),
+        output(
+            limit(1, (union(limit(1, tableScan("testdb.t1")), limit(1, tableScan("testdb.t2")))))));
+  }
+
+  @Test
+  public void pushProjectionThroughUnionTest() {
+    assertPlan(
+        new PlanTester()
+            .createPlan("select s1 + 1 from ((select s1 from t1) union all (select s1 from t2)) "),
+        output((union(project(tableScan("testdb.t1")), project(tableScan("testdb.t2"))))));
+  }
+
+  @Test
+  public void pushTopKThroughUnionTest() {
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1) union all (select tag1 from t2) order by tag1 limit 10"),
+        output(topK((union(topK(tableScan("testdb.t1")), topK(tableScan("testdb.t2")))))));
+  }
+
+  @Test
+  public void removeEmptyUnionBranchesTest1() {
+    // Normal case
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2)  union all (select tag1 from t3)"),
+        output((union(tableScan("testdb.t2"), tableScan("testdb.t3")))));
+  }
+
+  @Test
+  public void removeEmptyUnionBranchesTest2() {
+    // One non-empty branch
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 1)"),
+        output(limit(1, tableScan("testdb.t3"))));
+  }
+
+  @Test
+  public void removeEmptyUnionBranchesTest3() {
+    // All branches are empty
+    assertPlan(
+        new PlanTester()
+            .createPlan(
+                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 0)"),
+        output(limit(0, tableScan("testdb.t1"))));
   }
 }
