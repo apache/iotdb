@@ -2916,16 +2916,20 @@ public class DataRegion implements IDataRegionForQuery {
         boolean onlyOneTable = false;
 
         if (deletion instanceof TableDeletionEntry) {
-          String tableName = ((TableDeletionEntry) deletion).getTableName();
+          TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+          String tableName = tableDeletionEntry.getTableName();
           long matchSize =
               devicesInFile.stream()
-                  .filter(device -> tableName.equals(device.getTableName()))
+                  .filter(
+                      device ->
+                          tableName.equals(device.getTableName())
+                              && tableDeletionEntry.getPredicate().matches(device))
                   .count();
           onlyOneTable = matchSize == devicesInFile.size();
         }
 
         if (onlyOneTable) {
-          boolean matchDeletionTime = true;
+          int matchSize = 0;
           for (IDeviceID device : devicesInFile) {
             Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
             Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
@@ -2936,14 +2940,17 @@ public class DataRegion implements IDataRegionForQuery {
             long fileStartTime = optStart.get();
             long fileEndTime = optEnd.get();
 
-            if (!isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
-              matchDeletionTime = false;
+            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+              ++matchSize;
+            } else {
               deletedByMods.add(sealedTsFile);
             }
           }
-          if (matchDeletionTime) {
+          if (matchSize == devicesInFile.size()) {
             deletedByFiles.add(sealedTsFile);
           }
+        } else {
+          involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
         }
       } else {
         involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
@@ -2998,7 +3005,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private boolean isFileFullyMatchedByTime(
       ModEntry deletion, long fileStartTime, long fileEndTime) {
-    return deletion.getStartTime() == fileStartTime && deletion.getEndTime() == fileEndTime;
+    return fileStartTime >= deletion.getStartTime() && fileEndTime <= deletion.getEndTime();
   }
 
   /** Delete completely TsFile and related supporting files */
