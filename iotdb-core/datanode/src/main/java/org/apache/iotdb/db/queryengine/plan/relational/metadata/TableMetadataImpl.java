@@ -1333,8 +1333,13 @@ public class TableMetadataImpl implements Metadata {
               Collections.emptyMap());
       try {
         ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            scalarFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                scalarFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -1351,8 +1356,13 @@ public class TableMetadataImpl implements Metadata {
       try {
         AggregateFunctionAnalysis aggregateFunctionAnalysis =
             aggregateFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            aggregateFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                aggregateFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {

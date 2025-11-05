@@ -360,7 +360,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return null;
       }
 
-      if (dataType.equals(TSDataType.BLOB)) {
+      if (dataType.equals(TSDataType.BLOB) || dataType.equals(TSDataType.OBJECT)) {
         Binary binary = ioTDBRpcDataSet.getBinary(columnIndex);
         return binary == null ? null : binary.getValues();
       } else {
