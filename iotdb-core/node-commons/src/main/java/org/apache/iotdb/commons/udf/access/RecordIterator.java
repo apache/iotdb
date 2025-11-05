@@ -25,12 +25,16 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.List;
+
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 
 public class RecordIterator implements Iterator<Record> {
 
@@ -70,7 +74,7 @@ public class RecordIterator implements Iterator<Record> {
 
     private final List<Column> childrenColumns;
     private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
-    private int index;
+    private final int index;
 
     private RecordImpl(
         List<Column> childrenColumns,
@@ -113,10 +117,15 @@ public class RecordIterator implements Iterator<Record> {
 
     @Override
     public String getString(int columnIndex) {
-      return childrenColumns
-          .get(columnIndex)
-          .getBinary(index)
-          .getStringValue(TSFileConfig.STRING_CHARSET);
+      Binary binary = childrenColumns.get(columnIndex).getBinary(index);
+      org.apache.tsfile.read.common.type.Type type = dataTypes.get(columnIndex);
+      if (type == ObjectType.OBJECT) {
+        return BytesUtils.parseObjectByteArrayToString(binary.getValues());
+      } else if (type == BLOB) {
+        return BytesUtils.parseBlobByteArrayToString(binary.getValues());
+      } else {
+        return binary.getStringValue(TSFileConfig.STRING_CHARSET);
+      }
     }
 
     @Override
