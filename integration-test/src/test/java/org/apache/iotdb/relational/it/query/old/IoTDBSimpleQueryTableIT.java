@@ -665,7 +665,12 @@ public class IoTDBSimpleQueryTableIT {
             String.format(
                 "insert into table1(time, device, s4, s5, s6, s7, s8) "
                     + "values(%d, 'd1', '%s', %d, %s, '%s', %s)",
-                i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i, "X'cafebabe'"));
+                i,
+                LocalDate.of(2024, 5, i % 31 + 1),
+                i,
+                "X'cafebabe'",
+                i,
+                "to_object(true, 0, X'cafebabe')"));
       }
 
       try (ResultSet resultSet = statement.executeQuery("select * from table1")) {
@@ -700,6 +705,40 @@ public class IoTDBSimpleQueryTableIT {
           assertEquals(time, timestamp);
           assertArrayEquals(byteArray, blob);
           assertEquals(String.valueOf(time), text);
+          assertEquals("(Object) 4 B", objectSizeString);
+        }
+      }
+      try (ResultSet resultSet = statement.executeQuery("select read_object(s8) from table1")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int columnCount = metaData.getColumnCount();
+        assertEquals(1, columnCount);
+        byte[] byteArray = new byte[] {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE};
+        while (resultSet.next()) {
+          byte[] blob = resultSet.getBytes(1);
+          assertArrayEquals(byteArray, blob);
+        }
+      }
+
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testObjectDataType() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE test");
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE table1(device STRING TAG, s8 OBJECT FIELD)");
+      statement.execute(
+          "insert into table1(time, device, s8) values(1, 'd1', to_object(false, 0, X'cafe'))");
+      statement.execute(
+          "insert into table1(time, device, s8) values(1, 'd1', to_object(true, 2, X'babe'))");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from table1")) {
+        while (resultSet.next()) {
+          String objectSizeString = resultSet.getString(3);
           assertEquals("(Object) 4 B", objectSizeString);
         }
       }

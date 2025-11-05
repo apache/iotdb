@@ -34,6 +34,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -206,18 +207,23 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     for (int j = 0; j < insertRowNode.getDataTypes().length; j++) {
       if (insertRowNode.getDataTypes()[j] == TSDataType.OBJECT) {
         Object[] values = insertRowNode.getValues();
-        byte[] content = ((Binary) values[j]).getValues();
+        byte[] binary = ((Binary) values[j]).getValues();
+        ByteBuffer buffer = ByteBuffer.wrap(binary);
+        boolean isEoF = buffer.get() == 1;
+        long offset = buffer.getLong();
+        byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
         String relativePath =
             TsFileNameGenerator.generateObjectFilePath(
                 dataRegionReplicaSet.getRegionId().getId(),
                 insertRowNode.getTime(),
                 insertRowNode.getDeviceID(),
                 insertRowNode.getMeasurements()[j]);
-        ObjectNode objectNode = new ObjectNode(true, 0, content, relativePath);
+        ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
         objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         byte[] filePathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
         byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
-        System.arraycopy(BytesUtils.longToBytes(content.length), 0, valueBytes, 0, Long.BYTES);
+        System.arraycopy(
+            BytesUtils.longToBytes(offset + content.length), 0, valueBytes, 0, Long.BYTES);
         System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
         ((Binary) values[j]).setValues(valueBytes);
         insertRowNode.setValues(values);

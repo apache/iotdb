@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -31,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -112,6 +117,23 @@ public final class AstUtil {
     if (expression instanceof Identifier) {
       throw new SemanticException(
           String.format("Cannot insert identifier %s, please use string literal", expression));
+    }
+    if (expression instanceof FunctionCall
+        && "to_object".equals(((FunctionCall) expression).getName().toString())) {
+      boolean isEOF =
+          (boolean)
+              ((BooleanLiteral) ((FunctionCall) expression).getArguments().get(0)).getTsValue();
+      long offset =
+          (long) ((LongLiteral) ((FunctionCall) expression).getArguments().get(1)).getTsValue();
+      byte[] content =
+          ((Binary)
+                  ((BinaryLiteral) ((FunctionCall) expression).getArguments().get(2)).getTsValue())
+              .getValues();
+      byte[] val = new byte[content.length + 9];
+      val[0] = (byte) (isEOF ? 1 : 0);
+      System.arraycopy(BytesUtils.longToBytes(offset), 0, val, 1, 8);
+      System.arraycopy(content, 0, val, 9, content.length);
+      return new Binary(val);
     }
     throw new SemanticException("Unsupported expression: " + expression);
   }
