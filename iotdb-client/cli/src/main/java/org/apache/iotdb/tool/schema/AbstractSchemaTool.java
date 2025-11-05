@@ -104,17 +104,6 @@ public abstract class AbstractSchemaTool {
     CliContext cliCtx = new CliContext(System.in, System.out, System.err, ExitType.SYSTEM_EXIT);
     LineReader lineReader = JlineUtils.getLineReader(cliCtx, username, host, port);
     cliCtx.setLineReader(lineReader);
-    boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
-    if (hasPw) {
-      String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
-      if (inputPassword != null) {
-        password = inputPassword;
-      } else {
-        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
-      }
-    } else {
-      password = Constants.PW_DEFAULT_VALUE;
-    }
     String useSslStr = commandLine.getOptionValue(Constants.USE_SSL_ARGS);
     useSsl = Boolean.parseBoolean(useSslStr);
     if (useSsl) {
@@ -130,6 +119,17 @@ public abstract class AbstractSchemaTool {
       } else {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
       }
+    }
+    boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
+    if (hasPw) {
+      String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
+      if (inputPassword != null) {
+        password = inputPassword;
+      } else {
+        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+      }
+    } else {
+      password = Constants.PW_DEFAULT_VALUE;
     }
   }
 
