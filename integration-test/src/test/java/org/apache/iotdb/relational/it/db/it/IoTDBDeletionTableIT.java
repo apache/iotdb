@@ -95,6 +95,10 @@ public class IoTDBDeletionTableIT {
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
+  private final String insertMultiDeviceTemplate =
+      "INSERT INTO test.vehicle%d(time, deviceId, positionId, s0,s1,s2,s3,s4"
+          + ") VALUES(%d,'d%d','p%d',%d,%d,%f,%s,%b)";
+
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
   private static final String TSFILE = ".tsfile";
@@ -2115,6 +2119,106 @@ public class IoTDBDeletionTableIT {
     cleanData(testNum);
   }
 
+  @Test
+  public void testMultiDeviceCompletelyDeleteTable() throws SQLException {
+    String sequenceDataDir = "data" + File.separator + "sequence";
+    String unsequenceDataDir = "data" + File.separator + "unsequence";
+    int testNum = 1;
+    prepareMultiDeviceData(testNum, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, positionId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 1);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(2, TimeUnit.SECONDS)
+          .pollInterval(2, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  if (Paths.get(
+                          dataNodeDir + File.separator + sequenceDataDir + File.separator + "test")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "test"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "test")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "test"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
+                }
+                return allPass;
+              });
+    }
+    cleanData(testNum);
+  }
+
   private static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -2169,6 +2273,89 @@ public class IoTDBDeletionTableIT {
           statement.execute(
               String.format(
                   insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+    }
+  }
+
+  private void prepareMultiDeviceData(int testNum, int deviceNum) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          String.format(
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, positionId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare seq file
+        for (int i = 201; i <= 300; i++) {
+          statement.execute(
+              String.format(
+                  insertMultiDeviceTemplate,
+                  testNum,
+                  i,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare unseq File
+        for (int i = 1; i <= 100; i++) {
+          statement.execute(
+              String.format(
+                  insertMultiDeviceTemplate,
+                  testNum,
+                  i,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare BufferWrite cache
+        for (int i = 301; i <= 400; i++) {
+          statement.execute(
+              String.format(
+                  insertMultiDeviceTemplate,
+                  testNum,
+                  i,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+        // prepare Overflow cache
+        for (int i = 101; i <= 200; i++) {
+          statement.execute(
+              String.format(
+                  insertMultiDeviceTemplate,
+                  testNum,
+                  i,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
       }
     }

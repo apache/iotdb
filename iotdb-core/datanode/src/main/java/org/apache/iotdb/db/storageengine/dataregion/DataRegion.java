@@ -2913,28 +2913,33 @@ public class DataRegion implements IDataRegionForQuery {
           && (deletion.getType() == ModEntry.ModType.TABLE_DELETION)) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
         Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
-        boolean onlyOneTable = devicesInFile.size() == 1;
-        IDeviceID deviceID = onlyOneTable ? devicesInFile.iterator().next() : null;
+        boolean onlyOneTable = false;
 
-        for (IDeviceID device : devicesInFile) {
-          Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
-          Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
-          if (!optStart.isPresent() || !optEnd.isPresent()) {
-            continue;
-          }
+        if (deletion instanceof TableDeletionEntry) {
+          String tableName = ((TableDeletionEntry) deletion).getTableName();
+          long matchSize =
+              devicesInFile.stream()
+                  .filter(device -> tableName.equals(device.getTableName()))
+                  .count();
+          onlyOneTable = matchSize == devicesInFile.size();
+        }
 
-          long fileStartTime = optStart.get();
-          long fileEndTime = optEnd.get();
+        if (onlyOneTable) {
+          for (IDeviceID device : devicesInFile) {
+            Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+            Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+            if (!optStart.isPresent() || !optEnd.isPresent()) {
+              continue;
+            }
 
-          if (onlyOneTable
-              && device.equals(deviceID)
-              && deletion.getStartTime() <= fileStartTime
-              && deletion.getEndTime() >= fileEndTime
-              && sealedTsFile.isClosed()
-              && sealedTsFile.setStatus(TsFileResourceStatus.DELETED)) {
-            deletedByFiles.add(sealedTsFile);
-          } else {
-            deletedByMods.add(sealedTsFile);
+            long fileStartTime = optStart.get();
+            long fileEndTime = optEnd.get();
+
+            if (deletion.getStartTime() <= fileStartTime && deletion.getEndTime() >= fileEndTime) {
+              deletedByFiles.add(sealedTsFile);
+            } else {
+              deletedByMods.add(sealedTsFile);
+            }
           }
         }
       } else {
