@@ -95,10 +95,6 @@ public class IoTDBDeletionTableIT {
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
-  private final String insertMultiDeviceTemplate =
-      "INSERT INTO test.vehicle%d(time, deviceId, positionId, s0,s1,s2,s3,s4"
-          + ") VALUES(%d,'d%d','p%d',%d,%d,%f,%s,%b)";
-
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
   private static final String TSFILE = ".tsfile";
@@ -2124,7 +2120,7 @@ public class IoTDBDeletionTableIT {
     String sequenceDataDir = "data" + File.separator + "sequence";
     String unsequenceDataDir = "data" + File.separator + "unsequence";
     int testNum = 1;
-    prepareMultiDeviceData(testNum, 1);
+    prepareData(testNum, 2);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
@@ -2135,7 +2131,7 @@ public class IoTDBDeletionTableIT {
 
       statement.execute(
           String.format(
-              "CREATE TABLE vehicle%d(deviceId STRING TAG, positionId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
               testNum));
 
       try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
@@ -2273,89 +2269,6 @@ public class IoTDBDeletionTableIT {
           statement.execute(
               String.format(
                   insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
-        }
-      }
-    }
-  }
-
-  private void prepareMultiDeviceData(int testNum, int deviceNum) throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use test");
-      statement.execute(
-          String.format(
-              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, positionId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
-              testNum));
-
-      for (int d = 0; d < deviceNum; d++) {
-        // prepare seq file
-        for (int i = 201; i <= 300; i++) {
-          statement.execute(
-              String.format(
-                  insertMultiDeviceTemplate,
-                  testNum,
-                  i,
-                  i,
-                  d,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0));
-        }
-      }
-
-      statement.execute("flush");
-
-      for (int d = 0; d < deviceNum; d++) {
-        // prepare unseq File
-        for (int i = 1; i <= 100; i++) {
-          statement.execute(
-              String.format(
-                  insertMultiDeviceTemplate,
-                  testNum,
-                  i,
-                  i,
-                  d,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0));
-        }
-      }
-      statement.execute("flush");
-
-      for (int d = 0; d < deviceNum; d++) {
-        // prepare BufferWrite cache
-        for (int i = 301; i <= 400; i++) {
-          statement.execute(
-              String.format(
-                  insertMultiDeviceTemplate,
-                  testNum,
-                  i,
-                  i,
-                  d,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0));
-        }
-        // prepare Overflow cache
-        for (int i = 101; i <= 200; i++) {
-          statement.execute(
-              String.format(
-                  insertMultiDeviceTemplate,
-                  testNum,
-                  i,
-                  i,
-                  d,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  i % 2 == 0));
         }
       }
     }

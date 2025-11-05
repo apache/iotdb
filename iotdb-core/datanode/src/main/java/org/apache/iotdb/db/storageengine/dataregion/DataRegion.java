@@ -2925,6 +2925,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
 
         if (onlyOneTable) {
+          boolean matchDeletionTime = true;
           for (IDeviceID device : devicesInFile) {
             Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
             Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
@@ -2935,11 +2936,13 @@ public class DataRegion implements IDataRegionForQuery {
             long fileStartTime = optStart.get();
             long fileEndTime = optEnd.get();
 
-            if (deletion.getStartTime() <= fileStartTime && deletion.getEndTime() >= fileEndTime) {
-              deletedByFiles.add(sealedTsFile);
-            } else {
+            if (!isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+              matchDeletionTime = false;
               deletedByMods.add(sealedTsFile);
             }
+          }
+          if (matchDeletionTime) {
+            deletedByFiles.add(sealedTsFile);
           }
         }
       } else {
@@ -2991,6 +2994,11 @@ public class DataRegion implements IDataRegionForQuery {
         "[Deletion] Deletion {} is written into {} mod files",
         deletion,
         involvedModificationFiles.size());
+  }
+
+  private boolean isFileFullyMatchedByTime(
+      ModEntry deletion, long fileStartTime, long fileEndTime) {
+    return deletion.getStartTime() == fileStartTime && deletion.getEndTime() == fileEndTime;
   }
 
   /** Delete completely TsFile and related supporting files */
