@@ -660,7 +660,7 @@ public class IoTDBSimpleQueryTableIT {
           "CREATE TABLE table1(device STRING TAG, "
               + "s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD, s8 OBJECT FIELD)");
 
-      for (int i = 1; i <= 10; i++) {
+       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
                 "insert into table1(time, device, s4, s5, s6, s7, s8) "
