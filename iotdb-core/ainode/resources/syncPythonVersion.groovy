@@ -120,41 +120,8 @@ def checkPython() {
     }
 }
 
-
-// On Ubuntu it seems that venv is generally available, but the 'ensurepip' command fails.
-// In this case we need to install the python3-venv package. Unfortunately checking the
-// venv is successful in this case, so we need this slightly odd test.
-def checkPythonVenv() {
-    print "Detecting venv:            "
-    try {
-        def python = project.properties['python.exe.bin']
-        def cmdArray = [python, "-Im", "ensurepip"]
-        def process = cmdArray.execute()
-        def stdOut = new StringBuilder()
-        def stdErr = new StringBuilder()
-        process.waitForProcessOutput(stdOut, stdErr)
-        if (stdErr.contains("No module named")) {
-            println "missing"
-            println "--- output of version `python -Im \"ensurepip\"` command ---"
-            println output
-            println "------------------------------------------------------------"
-            allConditionsMet = false
-        } else {
-            println "               OK"
-        }
-    } catch (Exception e) {
-        println "missing"
-        println "--- failed with exception ---"
-        println e
-        e.printStackTrace()
-        println "----------------------------------------------------"
-        allConditionsMet = false
-    }
-}
-
 // Check the python environment is setup correctly.
 checkPython()
-checkPythonVenv()
 
 if (!allConditionsMet) {
     throw new RuntimeException("Not all conditions met, see log for details.")

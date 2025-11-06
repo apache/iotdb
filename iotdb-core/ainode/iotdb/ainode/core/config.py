@@ -37,8 +37,6 @@ from iotdb.ainode.core.constant import (
     AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
     AINODE_LOG_DIR,
     AINODE_MODELS_DIR,
-    AINODE_ROOT_CONF_DIRECTORY_NAME,
-    AINODE_ROOT_DIR,
     AINODE_RPC_ADDRESS,
     AINODE_RPC_PORT,
     AINODE_SYSTEM_DIR,
@@ -315,9 +313,7 @@ class AINodeDescriptor(object):
             if "ainode_id" in system_configs:
                 self._config.set_ainode_id(int(system_configs["ainode_id"]))
 
-        git_file = os.path.join(
-            AINODE_ROOT_DIR, AINODE_ROOT_CONF_DIRECTORY_NAME, AINODE_CONF_GIT_FILE_NAME
-        )
+        git_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_GIT_FILE_NAME)
         if os.path.exists(git_file):
             git_configs = load_properties(git_file)
             if "git.commit.id.abbrev" in git_configs:
@@ -327,9 +323,7 @@ class AINodeDescriptor(object):
                         build_info += "-dev"
                 self._config.set_build_info(build_info)
 
-        pom_file = os.path.join(
-            AINODE_ROOT_DIR, AINODE_ROOT_CONF_DIRECTORY_NAME, AINODE_CONF_POM_FILE_NAME
-        )
+        pom_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_POM_FILE_NAME)
         if os.path.exists(pom_file):
             pom_configs = load_properties(pom_file)
             if "version" in pom_configs:

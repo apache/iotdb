@@ -19,6 +19,7 @@ import os
 import shutil
 import sys
 
+import multiprocessing
 import torch.multiprocessing as mp
 
 from iotdb.ainode.core.ai_node import AINode
@@ -74,6 +75,14 @@ def remove_ainode(arguments):
 
 
 def main():
+    # Handle PyInstaller: filter out Python arguments that might be passed to subprocesses
+    # These arguments are not needed in frozen executables and cause warnings
+    # Note: This filtering should happen AFTER freeze_support() has handled child processes
+    if getattr(sys, "frozen", False):
+        python_args_to_filter = ["-I", "-B", "-S", "-E", "-O", "-OO"]
+        sys.argv = [arg for arg in sys.argv if arg not in python_args_to_filter]
+
+    logger.info(f"Starting IoTDB-AINode process with sys argv {sys.argv}.")
     arguments = sys.argv
     # load config
     AINodeDescriptor()
@@ -104,4 +113,15 @@ def main():
 
 
 if __name__ == "__main__":
+    # PyInstaller multiprocessing support
+    # freeze_support() is essential for PyInstaller frozen executables on all platforms
+    # It detects if the current process is a multiprocessing child process
+    # If it is, it executes the child process target function and exits
+    # If it's not, it returns immediately and continues with main() execution
+    # This prevents child processes from executing the main application logic
+    if getattr(sys, "frozen", False):
+        # Call freeze_support() for both standard multiprocessing and torch.multiprocessing
+        multiprocessing.freeze_support()
+        mp.freeze_support()
+
     main()
