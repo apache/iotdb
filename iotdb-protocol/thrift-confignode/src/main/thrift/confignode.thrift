@@ -666,7 +666,7 @@ struct TGetAINodeLocationReq {
 
 struct TGetAINodeLocationResp {
   1: required common.TSStatus status
-  2: optional common.TEndPoint aiNodeAddress
+  2: optional common.TAINodeLocation aiNodeLocation
 }
 
 struct TShowDataNodes4InformationSchemaResp {
@@ -1381,15 +1381,10 @@ service IConfigNodeRPCService {
 
   TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
 
-    // ====================================================
-    // AI Node Location (no modelId)
-    // ====================================================
-    /**
-     * Return a reachable AINode location when modelId is not provided.
-     * If deviceId is provided, try to pick one that supports the device; otherwise
-     * return any healthy/default AINode.
-     */
-    TGetAINodeLocationResp getAINodeLocation(TGetAINodeLocationReq req)
+  /**
+   * Return a reachable AINode location.
+   */
+  TGetAINodeLocationResp getAINodeLocation()
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -2082,13 +2077,6 @@ service IConfigNodeRPCService {
    * Return the available ai devices
    */
   TShowAIDevicesResp showAIDevices()
-
-  /**
-   * Load an existing model to specific devices
-   *
-   * @return SUCCESS_STATUS if the model loading task was submitted successfully
-   */
-  common.TSStatus loadModel(TLoadModelReq req)
 
   /**
    * Unload an existing model to specific devices

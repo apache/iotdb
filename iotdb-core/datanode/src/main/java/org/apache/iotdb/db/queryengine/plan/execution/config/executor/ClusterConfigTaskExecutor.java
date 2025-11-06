@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 import org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -119,10 +120,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
@@ -378,37 +378,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   // NOTE: AINode location is now maintained globally inside AINodeClient.
   // We only resolve via ConfigNode when needed, then publish it back to AINodeClient.
-
-  /** Ask ConfigNode for the latest AINode location (precise by modelId when available). */
-  private TEndPoint resolveViaConfigNodeAndPublish(String modelIdOrNull) {
-    try (ConfigNodeClient cn =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TEndPoint ep = null;
-      if (modelIdOrNull != null && !modelIdOrNull.isEmpty()) {
-        final TGetModelInfoResp resp = cn.getModelInfo(new TGetModelInfoReq(modelIdOrNull));
-        if (resp != null && resp.isSetAiNodeAddress()) {
-          ep = resp.getAiNodeAddress();
-        }
-      } else {
-        final org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp r =
-            cn.getAINodeLocation(
-                new org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq());
-        if (r != null
-            && r.getStatus() != null
-            && r.getStatus().getCode()
-                == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && r.isSetAiNodeAddress()) {
-          ep = r.getAiNodeAddress();
-        }
-      }
-      if (ep != null) {
-        AINodeClient.updateGlobalAINodeLocation(ep);
-      }
-      return ep;
-    } catch (Exception e) {
-      return null;
-    }
-  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigTaskExecutor.class);
 
@@ -3646,36 +3615,104 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // 1) Try direct DataNode → AINode with cached endpoint
+    final long t0 = System.currentTimeMillis();
+    LOGGER.info("[LoadModel] begin: modelId={}, devices={}", existingModelId, deviceIdList);
     TEndPoint ep = AINodeClient.getCurrentEndpoint();
+    LOGGER.debug("[LoadModel] currentEndpoint(beforeResolve)={}", ep);
+
+    if (ep == null) {
+      ep = resolveAINodeEndpointOrNullWithLog("[LoadModel] initial-resolve");
+      LOGGER.debug("[LoadModel] endpoint(after initial resolve)={}", ep);
+    }
+
     try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+      LOGGER.info("[LoadModel] borrowClient OK: endpoint={}", ep);
+
       final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
       final TSStatus result = ai.loadModel(req);
+      LOGGER.info(
+          "[LoadModel] RPC done: statusCode={}, message={}", result.getCode(), result.getMessage());
+
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-        future.setException(new IoTDBException(result));
+        final IoTDBException ex = new IoTDBException(result);
+        LOGGER.warn("[LoadModel] RPC not success: {}", ex.getMessage());
+        future.setException(ex);
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final Exception first) {
-      // 2) Fallback: ask ConfigNode for latest AINode location, update cache and retry once
-      final TEndPoint refreshed = resolveViaConfigNodeAndPublish(existingModelId);
-      if (refreshed == null || (ep != null && refreshed.equals(ep))) {
+      final org.apache.iotdb.common.rpc.thrift.TAINodeLocation refreshedLocation;
+      try (final ConfigNodeClient cn =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp r =
+            cn.getAINodeLocation();
+        final boolean hasLoc = (r != null && r.isSetAiNodeLocation());
+
+        if (hasLoc) {
+          refreshedLocation = r.getAiNodeLocation();
+          debugDumpLocation("[LoadModel] refreshed-location", refreshedLocation);
+          AINodeClient.updateGlobalAINodeLocation(refreshedLocation);
+
+          final TEndPoint epRefreshed = pickEndpointFrom(refreshedLocation);
+        } else {
+          future.setException(first);
+          return future;
+        }
+      } catch (Exception e2) {
         future.setException(first);
         return future;
       }
-      try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(refreshed)) {
-        final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
-        final TSStatus result = ai.loadModel(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-          future.setException(new IoTDBException(result));
-        } else {
-          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-        }
-      } catch (final Exception second) {
-        future.setException(second);
-      }
+      future.setException(first);
     }
+
     return future;
+  }
+
+  private TEndPoint resolveAINodeEndpointOrNullWithLog(final String tag) {
+    try (final ConfigNodeClient cn =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetAINodeLocationResp resp = cn.getAINodeLocation();
+      final boolean ok = (resp != null && resp.isSetAiNodeLocation());
+      if (!ok) {
+        return null;
+      }
+      final TAINodeLocation loc = resp.getAiNodeLocation();
+      debugDumpLocation(tag + " aiNodeLocation", loc);
+
+      final TEndPoint picked = pickEndpointFrom(loc);
+      AINodeClient.updateGlobalAINodeLocation(loc);
+
+      return picked;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private static TEndPoint pickEndpointFrom(final TAINodeLocation loc) {
+    if (loc == null) return null;
+    try {
+      if (loc.isSetInternalEndPoint() && loc.getInternalEndPoint() != null) {
+        return loc.getInternalEndPoint();
+      }
+    } catch (Throwable ignore) {
+    }
+    return null;
+  }
+
+  private static void debugDumpLocation(final String tag, final TAINodeLocation loc) {
+    if (loc == null) {
+      LOGGER.debug("{}: location=null", tag);
+      return;
+    }
+    StringBuilder sb = new StringBuilder(128);
+    sb.append(tag).append(": ");
+    try {
+      sb.append("internal=")
+          .append(loc.isSetInternalEndPoint() ? loc.getInternalEndPoint() : "null")
+          .append("; ");
+    } catch (Throwable ignore) {
+    }
+    LOGGER.debug(sb.toString());
   }
 
   @Override

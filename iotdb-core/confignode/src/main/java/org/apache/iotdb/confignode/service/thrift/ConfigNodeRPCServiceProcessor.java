@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -152,7 +153,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -179,7 +179,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -653,24 +652,37 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetAINodeLocationResp getAINodeLocation(final TGetAINodeLocationReq req)
-      throws TException {
+  public TGetAINodeLocationResp getAINodeLocation() throws TException {
     final TGetAINodeLocationResp resp = new TGetAINodeLocationResp();
     final TSStatus status = new TSStatus();
     try {
-      final java.util.List<?> registered = configManager.getNodeManager().getRegisteredAINodes();
-      if (registered == null || registered.isEmpty()) {
-        status.setCode(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode());
+      final List<TAINodeConfiguration> registeredAINodes =
+          configManager.getNodeManager().getRegisteredAINodes();
+
+      if (registeredAINodes == null || registeredAINodes.isEmpty()) {
+        status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
         status.setMessage("No registered AINode found");
         resp.setStatus(status);
         return resp;
       }
-      final java.util.Optional<TEndPoint> picked = pickAnyEndPointFromRegistered(registered);
-      if (picked.isPresent()) {
-        resp.setAiNodeAddress(picked.get());
+
+      final TAINodeConfiguration cfg = registeredAINodes.get(0);
+      final TAINodeLocation loc = (cfg == null) ? null : cfg.getLocation();
+
+      boolean hasEndpoint = false;
+      if (loc != null) {
+        try {
+          hasEndpoint = (loc.isSetInternalEndPoint() && loc.getInternalEndPoint() != null);
+        } catch (Throwable ignore) {
+        }
+      }
+
+      if (loc != null && hasEndpoint) {
+        resp.setAiNodeLocation(loc);
         status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        status.setMessage("AINode location resolved");
       } else {
-        status.setCode(TSStatusCode.AI_NODE_INTERNAL_ERROR.getStatusCode());
+        status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
         status.setMessage("No valid AINode endpoint extracted from registry");
       }
     } catch (Exception e) {
@@ -679,30 +691,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
     resp.setStatus(status);
     return resp;
-  }
-
-  private java.util.Optional<TEndPoint> pickAnyEndPointFromRegistered(
-      final java.util.List<?> registered) {
-    for (Object v : registered) {
-      if (v instanceof TEndPoint) {
-        return java.util.Optional.of((TEndPoint) v);
-      }
-      try {
-        final Object ep = v.getClass().getMethod("getRpcEndPoint").invoke(v);
-        if (ep instanceof TEndPoint) {
-          return java.util.Optional.of((TEndPoint) ep);
-        }
-      } catch (ReflectiveOperationException ignore) {
-      }
-      try {
-        final Object ep = v.getClass().getMethod("getClientRpcEndPoint").invoke(v);
-        if (ep instanceof TEndPoint) {
-          return java.util.Optional.of((TEndPoint) ep);
-        }
-      } catch (ReflectiveOperationException ignore) {
-      }
-    }
-    return java.util.Optional.empty();
   }
 
   @Override
@@ -1403,11 +1391,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dropModel(TDropModelReq req) {
     return configManager.dropModel(req);
-  }
-
-  @Override
-  public TSStatus loadModel(TLoadModelReq req) {
-    return configManager.loadModel(req);
   }
 
   @Override

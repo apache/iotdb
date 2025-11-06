@@ -111,7 +111,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -138,7 +137,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -532,9 +530,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
   }
 
-  public TGetAINodeLocationResp getAINodeLocation(final TGetAINodeLocationReq req)
-      throws org.apache.thrift.TException {
-    return client.getAINodeLocation(req);
+  @Override
+  public TGetAINodeLocationResp getAINodeLocation() throws TException {
+    return client.getAINodeLocation();
   }
 
   @Override
@@ -1379,11 +1377,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus loadModel(TLoadModelReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.loadModel(req), status -> !updateConfigNodeLeader(status));
-  }
-
   public TSStatus unloadModel(TUnloadModelReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.unloadModel(req), status -> !updateConfigNodeLeader(status));

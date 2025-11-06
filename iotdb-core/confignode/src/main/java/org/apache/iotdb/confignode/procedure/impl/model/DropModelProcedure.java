@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.model;
 
+import org.apache.iotdb.ainode.rpc.thrift.TDeleteModelReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
@@ -115,7 +116,7 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
                           .getRegisteredAINode(nodeId)
                           .getLocation()
                           .getInternalEndPoint())) {
-            TSStatus status = client.deleteModel(modelName);
+            TSStatus status = client.deleteModel(new TDeleteModelReq(modelName));
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.warn(
                   "Failed to drop model [{}] on AINode [{}], status: {}",
