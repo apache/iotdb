@@ -51,7 +51,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
@@ -65,7 +66,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             validateTsFile,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            skipIfNoPrivileges);
     return clientManager;
   }
 }

@@ -146,6 +146,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -2163,6 +2164,23 @@ public class ConfigManager implements IManager {
             TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.alterEncodingCompressor(
+          req.getQueryId(),
+          PathPatternTree.deserialize(req.pathPatternTree),
+          req.getEncoding(),
+          req.getCompressor(),
+          req.isIfExists(),
+          req.isIsGeneratedByPipe(),
+          req.isMayAlterAudit());
     } else {
       return status;
     }
