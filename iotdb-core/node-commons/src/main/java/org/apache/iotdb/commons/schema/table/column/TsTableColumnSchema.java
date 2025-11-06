@@ -32,9 +32,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class TsTableColumnSchema {
 
-  protected final String columnName;
+  protected String columnName;
 
-  protected final TSDataType dataType;
+  protected TSDataType dataType;
 
   protected Map<String, String> props = null;
 
