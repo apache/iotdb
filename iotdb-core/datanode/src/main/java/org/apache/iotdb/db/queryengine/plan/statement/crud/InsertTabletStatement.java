@@ -611,6 +611,46 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     deviceIDs = null;
   }
 
+  @TableModel
+  @Override
+  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
+    final int oldLength = oldToNewMapping.length;
+    final int newLength = measurements.length;
+
+    // Save old arrays
+    final Object[] oldColumns = columns;
+    final BitMap[] oldNullBitMaps = nullBitMaps;
+
+    // Create new arrays: [TAG area: 0~totalTagCount] + [non-TAG area: totalTagCount~newLength]
+    columns = new Object[newLength];
+    nullBitMaps = oldNullBitMaps != null ? new BitMap[newLength] : null;
+
+    // Initialize all TAG columns with default empty arrays (STRING type)
+    for (int tagIdx = 0; tagIdx < totalTagCount; tagIdx++) {
+      columns[tagIdx] =
+          CommonUtils.createValueColumnOfDataType(
+              TSDataType.STRING, TsTableColumnCategory.TAG, rowCount);
+      if (nullBitMaps != null) {
+        nullBitMaps[tagIdx] = new BitMap(rowCount);
+        // Mark all as null initially (will be overwritten if data exists)
+        for (int row = 0; row < rowCount; row++) {
+          nullBitMaps[tagIdx].mark(row);
+        }
+      }
+    }
+
+    // Copy columns using the mapping: newColumns[oldToNewMapping[oldIdx]] = oldColumns[oldIdx]
+    for (int oldIdx = 0; oldIdx < oldLength; oldIdx++) {
+      final int newIdx = oldToNewMapping[oldIdx];
+      columns[newIdx] = oldColumns[oldIdx];
+      if (nullBitMaps != null && oldNullBitMaps != null) {
+        nullBitMaps[newIdx] = oldNullBitMaps[oldIdx];
+      }
+    }
+
+    deviceIDs = null;
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE

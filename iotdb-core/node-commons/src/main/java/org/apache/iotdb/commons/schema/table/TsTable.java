@@ -31,8 +31,12 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -240,6 +244,38 @@ public class TsTable {
     readWriteLock.readLock().lock();
     try {
       return new ArrayList<>(columnSchemaMap.values());
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public TableSchema convertToTableSchemaNoAttribute() {
+    readWriteLock.readLock().lock();
+    try {
+      final List<IMeasurementSchema> measurementSchemas = new ArrayList<>(columnSchemaMap.size());
+      final HashMap<String, Integer> columnPosIndex = new HashMap<>(columnSchemaMap.size());
+      final List<ColumnCategory> columnTypes = new ArrayList<>(columnSchemaMap.size());
+
+      // Directly iterate through columns and filter out TIME and ATTRIBUTE columns
+      int columnIndex = 0;
+      for (final Map.Entry<String, TsTableColumnSchema> columnSchema : columnSchemaMap.entrySet()) {
+        final TsTableColumnCategory category = columnSchema.getValue().getColumnCategory();
+        final String columnName = columnSchema.getKey();
+        final TsTableColumnSchema tableSchema = columnSchema.getValue();
+
+        // Skip TIME and ATTRIBUTE columns (only include TAG and FIELD)
+        if (category == TsTableColumnCategory.TIME || category == TsTableColumnCategory.ATTRIBUTE) {
+          continue;
+        }
+
+        // Add column to schema and record its position
+        measurementSchemas.add(new MeasurementSchema(columnName, tableSchema.getDataType()));
+        columnTypes.add(category.toTsFileColumnType());
+        columnPosIndex.put(columnName, columnIndex);
+        columnIndex++;
+      }
+
+      return new TableSchema(tableName, measurementSchemas, columnTypes, columnPosIndex);
     } finally {
       readWriteLock.readLock().unlock();
     }

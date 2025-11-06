@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -53,12 +54,14 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -252,6 +255,292 @@ public class TableHeaderSchemaValidator {
                         false,
                         o.getColumnCategory())));
     return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
+  }
+
+  /** Handler for validating and processing a single measurement column */
+  @FunctionalInterface
+  public interface MeasurementValidator {
+    /**
+     * Validate a measurement column
+     *
+     * @param index measurement index in the array
+     * @param measurementSchema measurement schema
+     * @param columnCategory column category
+     * @param existingColumn existing column in table, null if not exists
+     */
+    void validate(
+        int index,
+        MeasurementSchema measurementSchema,
+        TsTableColumnCategory columnCategory,
+        TsTableColumnSchema existingColumn);
+  }
+
+  /** Handler for processing TAG columns during validation */
+  @FunctionalInterface
+  public interface TagColumnHandler {
+    /**
+     * Adjust the order of TAG columns in this insertion to be consistent with that from the schema
+     * region, similar to adjustIdColumns logic.
+     *
+     * @param tagColumnIndexMap LinkedHashMap of incoming TAG columns, key is column name, value is
+     *     measurement index in the array (maintains insertion order)
+     * @param existingTagColumnIndexMap LinkedHashMap of existing TAG columns in TsTable, key is
+     *     column name, value is TAG column index in table (maintains schema region order)
+     */
+    void handle(
+        LinkedHashMap<String, Integer> tagColumnIndexMap,
+        LinkedHashMap<String, Integer> existingTagColumnIndexMap);
+  }
+
+  /**
+   * Optimized validation method with custom handlers for measurement validation and TAG column
+   * processing
+   *
+   * @param database database name
+   * @param measurementInfo measurement information from InsertNode
+   * @param context query context
+   * @param allowCreateTable whether to allow table auto-creation
+   * @param measurementValidator custom validator for each measurement, null to use default
+   * @param tagColumnHandler custom handler for TAG columns, null to skip TAG processing
+   * @param baseStatement InsertBaseStatement for column adjustment, null if not available
+   * @return validated TsTable, or empty if table doesn't exist and cannot be created
+   */
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final MeasurementValidator measurementValidator,
+      final TagColumnHandler tagColumnHandler) {
+
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+
+    final MeasurementSchema[] measurementSchemas = measurementInfo.getMeasurementSchemas();
+    final TsTableColumnCategory[] columnCategories = measurementInfo.getColumnCategories();
+
+    if (measurementSchemas == null || measurementSchemas.length == 0) {
+      throw new SemanticException("No measurements present, please check the request");
+    }
+
+    TsTable table =
+        DataNodeTableCache.getInstance().getTableInWrite(database, measurementInfo.getTableName());
+    final List<Integer> missingMeasurementIndices = new ArrayList<>();
+
+    final boolean isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+
+    // First round validate, check existing schema
+    if (table == null) {
+      // Auto create missing table
+      if (allowCreateTable && isAutoCreateSchemaEnabled) {
+        autoCreateTableFromMeasurementInfo(context, database, measurementInfo);
+        table =
+            DataNodeTableCache.getInstance()
+                .getTable(database, measurementInfo.getTableName(), false);
+        if (table == null) {
+          throw new IllegalStateException(
+              "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
+        }
+      } else {
+        TableMetadataImpl.throwTableNotExistsException(database, measurementInfo.getTableName());
+      }
+    } else {
+      DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);
+      // Note: isStrictTagColumn is always false for InsertNode, so TAG column order validation is
+      // skipped
+    }
+
+    boolean refreshed = false;
+    boolean noField = true;
+
+    // Track TAG column measurement indices for batch processing after validation loop
+    // LinkedHashMap maintains insertion order, key is column name, value is measurement index
+    final LinkedHashMap<String, Integer> tagColumnIndexMap = new LinkedHashMap<>();
+
+    // Validate each measurement
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      if (measurementSchemas[i] == null) {
+        continue;
+      }
+
+      final String measurementName = measurementSchemas[i].getMeasurementName();
+      final TsTableColumnCategory category =
+          columnCategories != null && i < columnCategories.length ? columnCategories[i] : null;
+
+      TsTableColumnSchema existingColumn = table.getColumnSchema(measurementName);
+
+      if (Objects.isNull(existingColumn)) {
+        if (!refreshed) {
+          // Refresh because there may be new columns added and failed to commit
+          refreshed = true;
+          table =
+              DataNodeTableCache.getInstance().getTable(database, measurementInfo.getTableName());
+          existingColumn = table.getColumnSchema(measurementName);
+        }
+
+        if (Objects.isNull(existingColumn)) {
+          // Check arguments for column auto creation
+          if (category == null) {
+            throw new SemanticException(
+                String.format(
+                    "Unknown column category for %s. Cannot auto create column.", measurementName),
+                TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+          }
+          missingMeasurementIndices.add(i);
+        }
+
+        if (noField && category != null && category == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
+      } else {
+        // Only check column category
+        if (category != null && !existingColumn.getColumnCategory().equals(category)) {
+          throw new SemanticException(
+              String.format("Wrong category at column %s.", measurementName),
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
+        }
+        if (noField && existingColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
+
+        // Custom validation handler
+        if (measurementValidator != null) {
+          measurementValidator.validate(i, measurementSchemas[i], category, existingColumn);
+        }
+      }
+
+      // Record TAG column measurement index during validation loop
+      if (tagColumnHandler != null && category == TsTableColumnCategory.TAG) {
+        tagColumnIndexMap.put(measurementName, i); // Store measurement index
+      }
+    }
+
+    if (noField) {
+      throw new SemanticException("No Field column present, please check the request");
+    }
+
+    // Auto create missing columns
+    if (!missingMeasurementIndices.isEmpty() && isAutoCreateSchemaEnabled) {
+      autoCreateColumnsFromMeasurements(
+          database, measurementInfo, missingMeasurementIndices, context);
+      table = DataNodeTableCache.getInstance().getTable(database, measurementInfo.getTableName());
+    } else if (!missingMeasurementIndices.isEmpty()
+        && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      final List<String> missingNames = new ArrayList<>();
+      for (int idx : missingMeasurementIndices) {
+        missingNames.add(measurementSchemas[idx].getMeasurementName());
+      }
+      throw new SemanticException(
+          String.format("Missing columns %s.", missingNames),
+          TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+    }
+
+    for (int i : missingMeasurementIndices) {
+      measurementValidator.validate(
+          i,
+          measurementSchemas[i],
+          columnCategories[i],
+          table.getColumnSchema(measurementSchemas[i].getMeasurementName()));
+    }
+
+    // Handle TAG columns after validation loop
+    if (tagColumnHandler != null && !tagColumnIndexMap.isEmpty()) {
+      // Build existing TAG column index map from TsTable
+      final LinkedHashMap<String, Integer> existingTagColumnIndexMap = new LinkedHashMap<>();
+      final List<TsTableColumnSchema> existingTagColumns = table.getTagColumnSchemaList();
+      for (int i = 0; i < existingTagColumns.size(); i++) {
+        existingTagColumnIndexMap.put(existingTagColumns.get(i).getColumnName(), i);
+      }
+
+      tagColumnHandler.handle(tagColumnIndexMap, existingTagColumnIndexMap);
+    }
+  }
+
+  private void autoCreateTableFromMeasurementInfo(
+      final MPPQueryContext context,
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    final TsTable tsTable = measurementInfo.toTsTable();
+    AuthorityChecker.getAccessControl()
+        .checkCanCreateTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, measurementInfo.getTableName()),
+            context);
+    final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
+    try {
+      final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
+      final ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                "Auto create table failed.", result.getStatusCode().getStatusCode()));
+      }
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+    } catch (final ExecutionException e) {
+      throw new RuntimeException(e);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void autoCreateColumnsFromMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final List<Integer> missingIndices,
+      final MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
+    AuthorityChecker.getAccessControl()
+        .checkCanAlterTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, measurementInfo.getTableName()),
+            context);
+
+    final MeasurementSchema[] measurementSchemas = measurementInfo.getMeasurementSchemas();
+    final TsTableColumnCategory[] columnCategories = measurementInfo.getColumnCategories();
+
+    final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(missingIndices.size());
+    for (int idx : missingIndices) {
+      final MeasurementSchema schema = measurementSchemas[idx];
+      final String columnName = schema.getMeasurementName();
+      final TSDataType dataType = schema.getType();
+      final TsTableColumnCategory category =
+          columnCategories != null && idx < columnCategories.length
+              ? columnCategories[idx]
+              : TsTableColumnCategory.FIELD;
+
+      columnSchemaList.add(generateColumnSchema(category, columnName, dataType, null, null));
+    }
+
+    final AlterTableAddColumnTask task =
+        new AlterTableAddColumnTask(
+            database,
+            measurementInfo.getTableName(),
+            columnSchemaList,
+            context.getQueryId().getId(),
+            true,
+            true,
+            false);
+    try {
+      final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
+      final ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                String.format(
+                    "Auto add table column failed: %s.%s",
+                    database, measurementInfo.getTableName()),
+                result.getStatusCode().getStatusCode()));
+      }
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+    } catch (final ExecutionException | InterruptedException e) {
+      LOGGER.warn("Auto add table column failed.", e);
+      throw new RuntimeException(e);
+    }
   }
 
   private void autoCreateTable(

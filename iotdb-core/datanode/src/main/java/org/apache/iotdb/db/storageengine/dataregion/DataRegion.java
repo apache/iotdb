@@ -1449,7 +1449,7 @@ public class DataRegion implements IDataRegionForQuery {
               }
             }
 
-            return TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
+            return tsTable.convertToTableSchemaNoAttribute();
           });
     }
   }

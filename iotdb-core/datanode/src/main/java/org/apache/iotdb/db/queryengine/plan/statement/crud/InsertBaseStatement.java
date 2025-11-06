@@ -612,6 +612,25 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     tagColumnIndices = null;
   }
 
+  /**
+   * Rebuild subclass-specific arrays after TAG column expansion. The base arrays (measurements,
+   * dataTypes, etc.) have already been reorganized into [TAG area: 0~totalTagCount] + [non-TAG
+   * area: totalTagCount~newLength]. Subclasses should override this method to reorganize their
+   * specific arrays (e.g., values[] in InsertRowStatement, columns[]/bitMaps[] in
+   * InsertTabletStatement) to match the new layout.
+   *
+   * <p>The oldToNewMapping array provides the mapping from old array positions to new array
+   * positions: newArray[oldToNewMapping[oldIdx]] = oldArray[oldIdx]
+   *
+   * @param oldToNewMapping maps each old index to its new position in the reorganized array
+   * @param totalTagCount total number of TAG columns (all at front in NEW array: 0~totalTagCount)
+   */
+  @TableModel
+  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
+    // Default implementation does nothing
+    // Subclasses should override this method to handle their specific arrays
+  }
+
   public boolean isWriteToTable() {
     return writeToTable;
   }
