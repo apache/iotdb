@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
@@ -173,7 +174,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
+        // Ensure that Mods files are not serialized into TsFileResource.
+        ModificationFile file = tsFileResource.getModFile();
+        tsFileResource.setModFile(null);
         tsFileResource.serialize();
+        tsFileResource.setModFile(file);
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
