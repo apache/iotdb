@@ -1535,6 +1535,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
+  public void checkTableDevice4Object(String table) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final AtomicInteger limit, final AtomicBoolean hasRemaining) {
     throw new UnsupportedOperationException();

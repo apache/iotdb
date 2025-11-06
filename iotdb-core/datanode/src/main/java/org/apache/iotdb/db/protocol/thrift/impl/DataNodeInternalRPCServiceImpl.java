@@ -176,6 +176,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1946,8 +1947,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance()
         .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
+      return executeInternalSchemaTask(
+          req.getRegionIdList(),
+          consensusGroupId -> {
+            final ISchemaRegion schemaRegion =
+                schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+            // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
+            final String[] nodes =
+                new String[] {
+                  "root", schemaRegion.getDatabaseFullPath().substring(5), req.getTableName(), "**"
+                };
+            final ISchemaSource<IDeviceSchemaInfo> schemaSource =
+                SchemaSourceFactory.getDeviceSchemaSource(
+                    new PartialPath(nodes), false, SchemaConstant.ALL_MATCH_SCOPE);
+            try (final ISchemaReader<IDeviceSchemaInfo> schemaReader =
+                schemaSource.getSchemaReader(schemaRegion)) {
+              while (schemaReader.hasNext()) {}
 
-      return StatusUtils.OK;
+            } catch (final Exception e) {
+              LOGGER.warn(e.getMessage(), e);
+              return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+            }
+            return RpcUtils.SUCCESS_STATUS;
+          });
     } finally {
       DataNodeSchemaLockManager.getInstance()
           .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
