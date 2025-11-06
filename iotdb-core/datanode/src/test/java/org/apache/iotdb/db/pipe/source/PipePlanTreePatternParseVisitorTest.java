@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.source;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -58,11 +58,11 @@ import java.util.Map;
 
 public class PipePlanTreePatternParseVisitorTest {
 
-  private final IoTDBPatternOperations prefixPathPattern =
+  private final IoTDBTreePatternOperations prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
-  private final IoTDBPatternOperations fullPathPattern =
+  private final IoTDBTreePatternOperations fullPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.s1"));
-  private final IoTDBPatternOperations multiplePathPattern =
+  private final IoTDBTreePatternOperations multiplePathPattern =
       new UnionIoTDBTreePattern(
           Arrays.asList(
               new IoTDBTreePattern("root.db.device.s1"),

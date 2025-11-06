@@ -22,49 +22,31 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-
 import java.util.List;
 
 /**
  * An interface for TreePattern classes that support IoTDB-specific path matching operations, such
  * as those used by schema-aware visitors.
  */
-public interface IoTDBPatternOperations {
+public abstract class IoTDBTreePatternOperations extends TreePattern {
 
-  boolean isTreeModelDataAllowedToBeCaptured();
-
-  //////////////////////////// Base Operations ////////////////////////////
-
-  String getPattern();
-
-  boolean isRoot();
-
-  boolean isLegal();
-
-  boolean coversDb(final String db);
-
-  boolean coversDevice(final IDeviceID device);
-
-  boolean mayOverlapWithDb(final String db);
-
-  boolean mayOverlapWithDevice(final IDeviceID device);
-
-  boolean matchesMeasurement(final IDeviceID device, final String measurement);
+  protected IoTDBTreePatternOperations(final boolean isTreeModelDataAllowedToBeCaptured) {
+    super(isTreeModelDataAllowedToBeCaptured);
+  }
 
   //////////////////////////// IoTDB Pattern Operations ////////////////////////////
 
-  boolean matchPrefixPath(String path);
+  public abstract boolean matchPrefixPath(final String path);
 
-  boolean matchDevice(String devicePath);
+  public abstract boolean matchDevice(final String devicePath);
 
-  boolean matchTailNode(String tailNode);
+  public abstract boolean matchTailNode(final String tailNode);
 
-  List<PartialPath> getIntersection(PartialPath partialPath);
+  public abstract List<PartialPath> getIntersection(final PartialPath partialPath);
 
-  PathPatternTree getIntersection(PathPatternTree patternTree);
+  public abstract PathPatternTree getIntersection(final PathPatternTree patternTree);
 
-  boolean isPrefixOrFullPath();
+  public abstract boolean isPrefixOrFullPath();
 
-  boolean mayMatchMultipleTimeSeriesInOneDevice();
+  public abstract boolean mayMatchMultipleTimeSeriesInOneDevice();
 }

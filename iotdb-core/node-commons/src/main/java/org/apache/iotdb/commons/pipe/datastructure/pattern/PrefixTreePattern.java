@@ -28,20 +28,33 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
+import java.util.Objects;
 
-public class PrefixTreePattern extends SingleTreePattern {
+public class PrefixTreePattern extends TreePattern {
+
+  private final String pattern;
 
   public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
-    super(isTreeModelDataAllowedToBeCaptured, pattern);
+    super(isTreeModelDataAllowedToBeCaptured);
+    this.pattern = pattern != null ? pattern : getDefaultPattern();
   }
 
   public PrefixTreePattern(final String pattern) {
     this(true, pattern);
   }
 
-  @Override
-  public String getDefaultPattern() {
+  private String getDefaultPattern() {
     return PipeSourceConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
+  }
+
+  @Override
+  public String getPattern() {
+    return pattern;
+  }
+
+  @Override
+  public boolean isRoot() {
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   @Override
@@ -133,6 +146,10 @@ public class PrefixTreePattern extends SingleTreePattern {
 
   @Override
   public String toString() {
-    return "PrefixPipePattern" + super.toString();
+    return "PrefixTreePattern{pattern='"
+        + pattern
+        + "', isTreeModelDataAllowedToBeCaptured="
+        + isTreeModelDataAllowedToBeCaptured
+        + '}';
   }
 }

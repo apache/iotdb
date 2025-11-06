@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPatternOperations;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
-  protected IoTDBPatternOperations treePattern;
+  protected IoTDBTreePatternOperations treePattern;
   protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
@@ -78,14 +78,14 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
 
-    if (!(pattern instanceof IoTDBPatternOperations
-        && (((IoTDBPatternOperations) pattern).isPrefixOrFullPath()))) {
+    if (!(pattern instanceof IoTDBTreePatternOperations
+        && (((IoTDBTreePatternOperations) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    treePattern = (IoTDBPatternOperations) pattern;
+    treePattern = (IoTDBTreePatternOperations) pattern;
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 

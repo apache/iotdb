@@ -30,35 +30,33 @@ import java.util.stream.Collectors;
 
 /**
  * Represents an exclusion pattern specifically for IoTDB-operation-aware patterns. It holds an
- * inclusion and exclusion pattern, both implementing {@link IoTDBPatternOperations}.
+ * inclusion and exclusion pattern, both implementing {@link IoTDBTreePatternOperations}.
  *
  * <p>The logic is: "Matches inclusion AND NOT exclusion" for all methods.
  */
-public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatternOperations {
+public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
 
-  private final IoTDBPatternOperations inclusionPattern;
-  private final IoTDBPatternOperations exclusionPattern;
+  private final IoTDBTreePatternOperations inclusionPattern;
+  private final IoTDBTreePatternOperations exclusionPattern;
 
-  public ExclusionIoTDBTreePattern(
+  public WithExclusionIoTDBTreePattern(
       final boolean isTreeModelDataAllowedToBeCaptured,
-      final IoTDBPatternOperations inclusionPattern,
-      final IoTDBPatternOperations exclusionPattern) {
+      final IoTDBTreePatternOperations inclusionPattern,
+      final IoTDBTreePatternOperations exclusionPattern) {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
   }
 
-  public ExclusionIoTDBTreePattern(
-      final IoTDBPatternOperations inclusionPattern,
-      final IoTDBPatternOperations exclusionPattern) {
+  public WithExclusionIoTDBTreePattern(
+      final IoTDBTreePatternOperations inclusionPattern,
+      final IoTDBTreePatternOperations exclusionPattern) {
     super(true);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
   }
 
-  // **********************************************************************
-  // Implementation of abstract methods from TreePattern
-  // **********************************************************************
+  //////////////////////////// Tree Pattern Operations ////////////////////////////
 
   @Override
   public String getPattern() {
@@ -105,9 +103,7 @@ public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatte
         && !exclusionPattern.matchesMeasurement(device, measurement);
   }
 
-  // **********************************************************************
-  // Implementation of abstract methods from IoTDBPatternOperations
-  // **********************************************************************
+  //////////////////////////// IoTDB Tree Pattern Operations ////////////////////////////
 
   @Override
   public boolean matchPrefixPath(final String path) {
@@ -193,6 +189,8 @@ public class ExclusionIoTDBTreePattern extends TreePattern implements IoTDBPatte
     // If inclusion might, the result might (even if exclusion trims it)
     return inclusionPattern.mayMatchMultipleTimeSeriesInOneDevice();
   }
+
+  //////////////////////////// Object ////////////////////////////
 
   @Override
   public String toString() {

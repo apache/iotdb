@@ -28,12 +28,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
  * <p>The logic implemented in the methods is: "Matches the inclusion pattern AND NOT the exclusion
  * pattern."
  */
-public class ExclusionTreePattern extends TreePattern {
+public class WithExclusionTreePattern extends TreePattern {
 
   private final TreePattern inclusionPattern;
   private final TreePattern exclusionPattern;
 
-  public ExclusionTreePattern(
+  public WithExclusionTreePattern(
       final boolean isTreeModelDataAllowedToBeCaptured,
       final TreePattern inclusionPattern,
       final TreePattern exclusionPattern) {

@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -635,7 +635,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Here we apply the statements as many as possible
         // Even if there are failed statements
         STATEMENT_TREE_PATTERN_PARSE_VISITOR
-            .process(originalStatement, (IoTDBPatternOperations) treePattern)
+            .process(originalStatement, (IoTDBTreePatternOperations) treePattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement

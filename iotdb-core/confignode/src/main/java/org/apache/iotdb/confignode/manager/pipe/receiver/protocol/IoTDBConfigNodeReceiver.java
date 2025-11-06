@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -1086,13 +1086,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
       IoTDBConfigRegionSource.parseConfigPlan(
-              generator.next(), (IoTDBPatternOperations) treePattern, tablePattern)
+              generator.next(), (IoTDBTreePatternOperations) treePattern, tablePattern)
           .filter(
               configPhysicalPlan ->
                   IoTDBConfigRegionSource.isTypeListened(
                       configPhysicalPlan,
                       executionTypes,
-                      (IoTDBPatternOperations) treePattern,
+                      (IoTDBTreePatternOperations) treePattern,
                       tablePattern))
           .ifPresent(
               configPhysicalPlan ->

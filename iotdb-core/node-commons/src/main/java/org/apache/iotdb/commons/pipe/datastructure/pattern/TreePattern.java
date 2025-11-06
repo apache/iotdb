@@ -164,15 +164,15 @@ public abstract class TreePattern {
     } else {
       // If both inclusion and exclusion patterns support IoTDB operations,
       // use the specialized ExclusionIoTDBTreePattern
-      if (inclusionPattern instanceof IoTDBPatternOperations
-          && exclusionPattern instanceof IoTDBPatternOperations) {
-        return new ExclusionIoTDBTreePattern(
+      if (inclusionPattern instanceof IoTDBTreePatternOperations
+          && exclusionPattern instanceof IoTDBTreePatternOperations) {
+        return new WithExclusionIoTDBTreePattern(
             isTreeModelDataAllowedToBeCaptured,
-            (IoTDBPatternOperations) inclusionPattern,
-            (IoTDBPatternOperations) exclusionPattern);
+            (IoTDBTreePatternOperations) inclusionPattern,
+            (IoTDBTreePatternOperations) exclusionPattern);
       }
       // Both are defined, wrap them in an ExclusionTreePattern
-      return new ExclusionTreePattern(
+      return new WithExclusionTreePattern(
           isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
     }
   }
@@ -231,14 +231,14 @@ public abstract class TreePattern {
                 exclusionSubstring, isTreeModelDataAllowedToBeCaptured, basePatternSupplier);
 
         // 3. Build ExclusionTreePattern
-        if (inclusionPattern instanceof IoTDBPatternOperations
-            && exclusionPattern instanceof IoTDBPatternOperations) {
-          return new ExclusionIoTDBTreePattern(
+        if (inclusionPattern instanceof IoTDBTreePatternOperations
+            && exclusionPattern instanceof IoTDBTreePatternOperations) {
+          return new WithExclusionIoTDBTreePattern(
               isTreeModelDataAllowedToBeCaptured,
-              (IoTDBPatternOperations) inclusionPattern,
-              (IoTDBPatternOperations) exclusionPattern);
+              (IoTDBTreePatternOperations) inclusionPattern,
+              (IoTDBTreePatternOperations) exclusionPattern);
         }
-        return new ExclusionTreePattern(
+        return new WithExclusionTreePattern(
             isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
       } catch (final Exception e) {
         // Error during parsing (e.g., index out of bounds), treat as a normal pattern
