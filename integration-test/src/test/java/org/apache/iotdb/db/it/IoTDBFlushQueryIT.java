@@ -166,7 +166,6 @@ public class IoTDBFlushQueryIT {
   }
 
   @Test
-  @Ignore
   public void testFlushNotExistGroupNoData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
