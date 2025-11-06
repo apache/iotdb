@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
@@ -120,20 +121,27 @@ public final class AstUtil {
     }
     if (expression instanceof FunctionCall
         && "to_object".equals(((FunctionCall) expression).getName().toString())) {
-      boolean isEOF =
-          (boolean)
-              ((BooleanLiteral) ((FunctionCall) expression).getArguments().get(0)).getTsValue();
-      long offset =
-          (long) ((LongLiteral) ((FunctionCall) expression).getArguments().get(1)).getTsValue();
-      byte[] content =
-          ((Binary)
-                  ((BinaryLiteral) ((FunctionCall) expression).getArguments().get(2)).getTsValue())
-              .getValues();
-      byte[] val = new byte[content.length + 9];
-      val[0] = (byte) (isEOF ? 1 : 0);
-      System.arraycopy(BytesUtils.longToBytes(offset), 0, val, 1, 8);
-      System.arraycopy(content, 0, val, 9, content.length);
-      return new Binary(val);
+      List<Expression> arguments = ((FunctionCall) expression).getArguments();
+      if (arguments.size() == 3
+          && arguments.get(0).getExpressionType() == TableExpressionType.BOOLEAN_LITERAL
+          && arguments.get(1).getExpressionType() == TableExpressionType.LONG_LITERAL
+          && arguments.get(2).getExpressionType() == TableExpressionType.BINARY_LITERAL) {
+        boolean isEOF =
+            (boolean)
+                ((BooleanLiteral) ((FunctionCall) expression).getArguments().get(0)).getTsValue();
+        long offset =
+            (long) ((LongLiteral) ((FunctionCall) expression).getArguments().get(1)).getTsValue();
+        byte[] content =
+            ((Binary)
+                    ((BinaryLiteral) ((FunctionCall) expression).getArguments().get(2))
+                        .getTsValue())
+                .getValues();
+        byte[] val = new byte[content.length + 9];
+        val[0] = (byte) (isEOF ? 1 : 0);
+        System.arraycopy(BytesUtils.longToBytes(offset), 0, val, 1, 8);
+        System.arraycopy(content, 0, val, 9, content.length);
+        return new Binary(val);
+      }
     }
     throw new SemanticException("Unsupported expression: " + expression);
   }
