@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -41,7 +46,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class AddTableColumnProcedure
@@ -77,6 +84,10 @@ public class AddTableColumnProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
+          if (table.setNeedCheck4Object()) {
+            checkObject(env, database, tableName);
+          }
+          setNextState(AddTableColumnState.ADD_COLUMN);
           break;
         case ADD_COLUMN:
           LOGGER.info("Add column to table {}.{}", database, tableName);
@@ -123,10 +134,25 @@ public class AddTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
-    setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
-  private void checkObject() {}
+  private void checkObject(final ConfigNodeProcedureEnv env, final String database, final String tableName) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
+             env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
+
+    if (!relatedRegionGroup.isEmpty()) {
+      new TableRegionTaskExecutor<>(
+              "check deviceId for object",
+              env,
+              relatedRegionGroup,
+              CnToDnAsyncRequestType.CHECK_DEVICE_ID_FOR_OBJECT,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                      new TDeleteColumnDataReq(
+                              new ArrayList<>(consensusGroupIdList),
+                              tableName)))
+              .execute();
+    }
+  }
 
   private void addColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =

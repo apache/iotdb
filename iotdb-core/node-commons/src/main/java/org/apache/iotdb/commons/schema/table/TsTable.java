@@ -278,13 +278,14 @@ public class TsTable {
     }
   }
 
-  public void setNeedCheck4Object() {
+  public boolean setNeedCheck4Object() {
     for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
       if (schema.getDataType().equals(TSDataType.OBJECT)) {
         this.needCheck4Object = true;
-        break;
+        return true;
       }
     }
+    return needCheck4Object;
   }
 
   public void setNeedCheck4Object(final boolean needCheck4Object) {

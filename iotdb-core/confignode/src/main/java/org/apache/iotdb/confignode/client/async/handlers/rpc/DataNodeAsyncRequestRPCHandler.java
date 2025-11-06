@@ -231,6 +231,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case INVALIDATE_MATCHED_TABLE_DEVICE_CACHE:
       case DELETE_DATA_FOR_TABLE_DEVICE:
       case DELETE_TABLE_DEVICE_IN_BLACK_LIST:
+      case CHECK_DEVICE_ID_FOR_OBJECT:
       default:
         return new DataNodeTSStatusRPCHandler(
             requestType,
