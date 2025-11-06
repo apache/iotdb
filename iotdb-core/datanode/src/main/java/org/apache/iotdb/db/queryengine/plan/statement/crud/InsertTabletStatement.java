@@ -611,7 +611,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     deviceIDs = null;
   }
 
-  @TableModel
   @Override
   public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
     final int oldLength = oldToNewMapping.length;

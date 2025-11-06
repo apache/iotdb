@@ -185,7 +185,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     }
   }
 
-  private void validateTableSchema(
+  public void validateTableSchema(
       TableSchema realSchema,
       TableSchema incomingTableSchema,
       InsertBaseStatement innerTreeStatement) {
