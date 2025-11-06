@@ -106,7 +106,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
     shouldCheckTTL = true;
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema.getType() == TSDataType.OBJECT) {
+      if (measurementSchema != null && measurementSchema.getType() == TSDataType.OBJECT) {
         shouldCheckTTL = false;
         break;
       }
