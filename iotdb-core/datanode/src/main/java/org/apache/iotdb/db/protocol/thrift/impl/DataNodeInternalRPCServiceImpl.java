@@ -1678,6 +1678,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case PRE_UPDATE_TABLE:
         final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+        pair.getRight().setNeedCheck4Object();
         DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:

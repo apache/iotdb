@@ -140,6 +140,10 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
+      if (table.isNeedCheck4Object()) {
+        final TsTable existing = databaseTableMap.get(database).remove(oldName);
+        existing.setNeedCheck4Object(true);
+      }
       LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
 
       // If rename table
