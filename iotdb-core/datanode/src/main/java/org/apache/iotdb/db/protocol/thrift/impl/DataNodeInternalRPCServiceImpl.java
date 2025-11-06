@@ -1706,14 +1706,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1790,7 +1790,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1801,7 +1801,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1897,7 +1897,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1908,7 +1908,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1942,7 +1942,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus checkDeviceIdForObject(final TCheckDeviceIdForObjectReq req) {
-    return null;
+    // Take the lock to avoid concurrent alter
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    try {
+
+      return StatusUtils.OK;
+    } finally {
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    }
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
