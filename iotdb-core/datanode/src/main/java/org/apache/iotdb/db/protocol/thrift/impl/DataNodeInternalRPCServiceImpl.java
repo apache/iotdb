@@ -212,6 +212,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -1937,6 +1938,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             // the request is only sent to associated region
                             null))
                     .getStatus());
+  }
+
+  @Override
+  public TSStatus checkDeviceIdForObject(final TCheckDeviceIdForObjectReq req) {
+    return null;
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {

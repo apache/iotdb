@@ -367,6 +367,11 @@ struct TDeleteDataOrDevicesForDropTableReq {
   2: required string tableName
 }
 
+struct TCheckDeviceIdForObjectReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
+}
+
 struct TTableDeviceDeletionWithPatternAndFilterReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required string tableName
@@ -1197,6 +1202,10 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
+  /**
+   * Check device ID for object
+   */
+  common.TSStatus checkDeviceIdForObject(TCheckDeviceIdForObjectReq req)
 
   /**
    * Construct table device black list

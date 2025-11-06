@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.Consum
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
@@ -456,6 +457,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.deleteTableDeviceInBlackList(
                 (TTableDeviceDeletionWithPatternOrModReq) req,
                 (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.CHECK_DEVICE_ID_FOR_OBJECT,
+        (req, client, handler) ->
+            client.checkDeviceIdForObject(
+                (TCheckDeviceIdForObjectReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.DETECT_TREE_DEVICE_VIEW_FIELD_TYPE,
         (req, client, handler) ->

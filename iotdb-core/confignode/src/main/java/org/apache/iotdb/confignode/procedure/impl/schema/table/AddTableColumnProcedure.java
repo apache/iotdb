@@ -34,9 +34,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
-import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -136,9 +135,10 @@ public class AddTableColumnProcedure
     super.preRelease(env);
   }
 
-  private void checkObject(final ConfigNodeProcedureEnv env, final String database, final String tableName) {
+  private void checkObject(
+      final ConfigNodeProcedureEnv env, final String database, final String tableName) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
-             env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
     if (!relatedRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
@@ -147,10 +147,8 @@ public class AddTableColumnProcedure
               relatedRegionGroup,
               CnToDnAsyncRequestType.CHECK_DEVICE_ID_FOR_OBJECT,
               ((dataNodeLocation, consensusGroupIdList) ->
-                      new TDeleteColumnDataReq(
-                              new ArrayList<>(consensusGroupIdList),
-                              tableName)))
-              .execute();
+                  new TCheckDeviceIdForObjectReq(new ArrayList<>(consensusGroupIdList), tableName)))
+          .execute();
     }
   }
 
