@@ -288,7 +288,7 @@ public class TsTable {
   }
 
   public void setNeedCheck4Object(final boolean needCheck4Object) {
-   this.needCheck4Object = needCheck4Object;
+    this.needCheck4Object = needCheck4Object;
   }
 
   public boolean isNeedCheck4Object() {
@@ -400,14 +400,14 @@ public class TsTable {
     }
   }
 
-  private static boolean isInvalid4ObjectType(final String column) {
+  public static boolean isInvalid4ObjectType(final String column) {
     return column.equals(".")
         || column.equals("..")
         || column.contains("./")
-        || column.contains("\\.");
+        || column.contains(".\\");
   }
 
-  private static String getObjectStringError(final String columnType, final String columnName) {
+  public static String getObjectStringError(final String columnType, final String columnName) {
     return String.format(OBJECT_STRING_ERROR, columnType, columnName);
   }
 

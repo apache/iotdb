@@ -126,9 +126,7 @@ public class AddTableColumnProcedure
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
-  private void checkObject() {
-
-  }
+  private void checkObject() {}
 
   private void addColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
