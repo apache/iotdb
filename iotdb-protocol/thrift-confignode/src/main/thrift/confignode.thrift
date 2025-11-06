@@ -790,6 +790,16 @@ struct TPipeConfigTransferResp {
   2: optional binary body
 }
 
+struct TAlterEncodingCompressorReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: required byte encoding
+  4: required byte compressor
+  5: required bool ifExists
+  6: required bool mayAlterAudit
+  7: optional bool isGeneratedByPipe
+}
+
 struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1592,6 +1602,8 @@ service IConfigNodeRPCService {
   common.TSStatus dropSchemaTemplate(string req)
 
   common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
+
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries

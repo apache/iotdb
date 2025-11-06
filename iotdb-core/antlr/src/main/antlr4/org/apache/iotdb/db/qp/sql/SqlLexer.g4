@@ -566,6 +566,10 @@ PATHS
     : P A T H S
     ;
 
+PERMITTED
+    : P E R M I T T E D
+    ;
+
 PIPE
     : P I P E
     ;

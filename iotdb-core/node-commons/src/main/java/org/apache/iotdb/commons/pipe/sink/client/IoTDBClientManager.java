@@ -48,6 +48,7 @@ public abstract class IoTDBClientManager {
   protected final boolean useLeaderCache;
 
   protected final boolean shouldMarkAsPipeRequest;
+  protected final boolean skipIfNoPrivileges;
 
   // This flag indicates whether the receiver supports mods transferring if
   // it is a DataNode receiver. The flag is useless for configNode receiver.
@@ -66,7 +67,8 @@ public abstract class IoTDBClientManager {
       final String loadTsFileStrategy,
       boolean useLeaderCache,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     this.endPointList = endPointList;
     this.username = username;
     this.password = password;
@@ -75,6 +77,7 @@ public abstract class IoTDBClientManager {
     this.useLeaderCache = useLeaderCache;
     this.validateTsFile = validateTsFile;
     this.shouldMarkAsPipeRequest = shouldMarkAsPipeRequest;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

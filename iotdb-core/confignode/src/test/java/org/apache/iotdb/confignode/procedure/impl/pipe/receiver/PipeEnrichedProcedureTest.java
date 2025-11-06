@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -41,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -362,4 +364,31 @@ public class PipeEnrichedProcedureTest {
     buffer.clear();
     byteArrayOutputStream.reset();
   }
+
+    @Test
+    public void alterEncodingCompressorTest() throws IllegalPathException, IOException {
+        final String queryId = "1";
+        final PathPatternTree patternTree = new PathPatternTree();
+        patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
+        patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+        patternTree.constructTree();
+        final AlterEncodingCompressorProcedure alterEncodingCompressorProcedure =
+                new AlterEncodingCompressorProcedure(
+                        false, queryId, patternTree, false, (byte) 0, (byte) 0, false);
+
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        alterEncodingCompressorProcedure.serialize(dataOutputStream);
+
+        final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+        Assert.assertEquals(
+                ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+        final AlterEncodingCompressorProcedure deserializedProcedure =
+                new AlterEncodingCompressorProcedure(false);
+        deserializedProcedure.deserialize(byteBuffer);
+
+        Assert.assertEquals(alterEncodingCompressorProcedure, deserializedProcedure);
+    }
 }
