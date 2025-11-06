@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -119,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -244,14 +246,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitDeleteStorageGroup(
+  public IConfigTask visitDeleteDatabase(
       DeleteDatabaseStatement statement, MPPQueryContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(
-      ShowDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitShowDatabase(ShowDatabaseStatement statement, MPPQueryContext context) {
     return new ShowDatabaseTask(statement);
   }
 
@@ -653,6 +654,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitDropSubscription(
       DropSubscriptionStatement dropSubscriptionStatement, MPPQueryContext context) {
     return new DropSubscriptionTask(dropSubscriptionStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterEncodingCompressor(
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement, MPPQueryContext context) {
+    return new AlterEncodingCompressorTask(
+        context.getQueryId().getId(), alterEncodingCompressorStatement);
   }
 
   @Override

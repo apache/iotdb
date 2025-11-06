@@ -56,7 +56,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useSSL,
@@ -69,7 +70,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
   }
 
   @Override

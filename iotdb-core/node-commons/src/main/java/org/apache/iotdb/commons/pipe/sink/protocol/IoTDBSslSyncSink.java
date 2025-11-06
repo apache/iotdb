@@ -139,7 +139,8 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             loadTsFileValidation,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            skipIfNoPrivileges);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -156,7 +157,8 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest);
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges);
 
   @Override
   public void handshake() throws Exception {
