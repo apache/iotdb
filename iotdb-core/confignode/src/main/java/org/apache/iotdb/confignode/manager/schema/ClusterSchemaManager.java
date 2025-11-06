@@ -110,6 +110,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -1331,9 +1332,14 @@ public class ClusterSchemaManager {
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
+
+    final List<String> objectNames = new ArrayList<>();
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
+              objectNames.add(columnSchema.getColumnName());
+            }
             expandedTable.addColumnSchema(columnSchema);
             return false;
           }
@@ -1342,6 +1348,10 @@ public class ClusterSchemaManager {
 
     if (columnSchemaList.isEmpty()) {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+    }
+
+    if (!objectNames.isEmpty()) {
+      expandedTable.checkTableNameAndObjectNames4Object();
     }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
