@@ -4467,10 +4467,9 @@ public class StatementAnalyzer {
       if (table.isNeedCheck4Object()) {
         for (final Object[] deviceId : node.getDeviceIdList()) {
           for (final Object part : deviceId) {
-            final Binary value = (Binary) part;
+            final String value = (String) part;
             if (Objects.nonNull(value)
-                && TsTable.isInvalid4ObjectType(
-                    value.getStringValue(TSFileConfig.STRING_CHARSET))) {
+                && TsTable.isInvalid4ObjectType(value)) {
               throw new SemanticException(
                   getObjectStringError("deviceId", Arrays.toString(deviceId)));
             }
