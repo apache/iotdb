@@ -2921,11 +2921,22 @@ public class DataRegion implements IDataRegionForQuery {
           long matchSize =
               devicesInFile.stream()
                   .filter(
-                      device ->
-                          tableName.equals(device.getTableName())
-                              && tableDeletionEntry.getPredicate().matches(device))
+                      device -> {
+                        logger.error(
+                            "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                            device,
+                            device.getTableName(),
+                            tableDeletionEntry.getPredicate().matches(device));
+                        return tableName.equals(device.getTableName())
+                            && tableDeletionEntry.getPredicate().matches(device);
+                      })
                   .count();
           onlyOneTable = matchSize == devicesInFile.size();
+          logger.error(
+              "tableName is {}, matchSize is {}, onlyOneTable is {}",
+              tableName,
+              matchSize,
+              onlyOneTable);
         }
 
         if (onlyOneTable) {
@@ -2940,7 +2951,23 @@ public class DataRegion implements IDataRegionForQuery {
             long fileStartTime = optStart.get();
             long fileEndTime = optEnd.get();
 
+            logger.error(
+                "out tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                device.getTableName(),
+                device,
+                deletion.getStartTime(),
+                deletion.getEndTime(),
+                fileStartTime,
+                fileEndTime);
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+              logger.error(
+                  "in tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  device.getTableName(),
+                  device,
+                  deletion.getStartTime(),
+                  deletion.getEndTime(),
+                  fileStartTime,
+                  fileEndTime);
               ++matchSize;
             } else {
               deletedByMods.add(sealedTsFile);
@@ -2949,6 +2976,12 @@ public class DataRegion implements IDataRegionForQuery {
           }
           if (matchSize == devicesInFile.size()) {
             deletedByFiles.add(sealedTsFile);
+          }
+
+          logger.error("expect is {}, actual is {}", devicesInFile.size(), matchSize);
+          for (TsFileResource tsFileResource : deletedByFiles) {
+            logger.error(
+                "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
           }
         } else {
           involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
@@ -2967,6 +3000,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!deletedByFiles.isEmpty()) {
       deleteTsFileCompletely(deletedByFiles);
+      logger.info("deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
     }
 
     if (involvedModificationFiles.isEmpty()) {
@@ -3019,6 +3053,11 @@ public class DataRegion implements IDataRegionForQuery {
             .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
         tsFileResource.remove();
         logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } catch (Exception e) {
+        logger.error(
+            "Remove tsfile {} directly but occur exception when delete data.",
+            tsFileResource.getTsFilePath(),
+            e);
       } finally {
         tsFileResource.writeUnlock();
       }
