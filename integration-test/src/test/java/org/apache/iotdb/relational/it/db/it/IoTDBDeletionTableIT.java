@@ -2064,8 +2064,8 @@ public class IoTDBDeletionTableIT {
 
       Awaitility.await()
           .atMost(5, TimeUnit.MINUTES)
-          .pollDelay(2, TimeUnit.SECONDS)
-          .pollInterval(2, TimeUnit.SECONDS)
+          .pollDelay(500, TimeUnit.MILLISECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
           .until(
               () -> {
                 AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
