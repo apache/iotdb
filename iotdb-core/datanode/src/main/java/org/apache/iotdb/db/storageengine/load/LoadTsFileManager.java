@@ -641,11 +641,7 @@ public class LoadTsFileManager {
       }
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setProgressIndex(progressIndex);
-      // Ensure that Mods files are not serialized into TsFileResource.
-      ModificationFile file = tsFileResource.getModFile();
-      tsFileResource.setModFile(null);
       tsFileResource.serialize();
-      tsFileResource.setModFile(file);
     }
 
     private long getTsFileWritePointCount(TsFileIOWriter writer) {
