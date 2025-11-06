@@ -1801,7 +1801,7 @@ public class MTreeBelowSGMemoryImpl {
     return true;
   }
 
-  void checkTableDevice4Object(final String tableName) throws MetadataException {
+  public void checkTableDevice4Object(final String tableName) throws MetadataException {
     if (!store.hasChild(databaseMNode, tableName)) {
       return;
     }
@@ -1836,7 +1836,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void generateResult(final IMemMNode nextMatchedNode) {
             if (TsTable.isInvalid4ObjectType(nextMatchedNode.getName())) {
               throw new SemanticException(
-                  TsTable.getObjectStringError("device", nextMatchedNode.getName()),
+                  TsTable.getObjectStringError("tag value", nextMatchedNode.getName()),
                   TSStatusCode.SEMANTIC_ERROR.getStatusCode());
             }
             return null;

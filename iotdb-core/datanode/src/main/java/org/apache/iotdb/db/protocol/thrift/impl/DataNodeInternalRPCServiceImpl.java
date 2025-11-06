@@ -176,7 +176,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1952,23 +1951,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           consensusGroupId -> {
             final ISchemaRegion schemaRegion =
                 schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-            // Get pattern nodes, length is (prefix - 1) + tagNumber + 1(measurement)
-            final String[] nodes =
-                new String[] {
-                  "root", schemaRegion.getDatabaseFullPath().substring(5), req.getTableName(), "**"
-                };
-            final ISchemaSource<IDeviceSchemaInfo> schemaSource =
-                SchemaSourceFactory.getDeviceSchemaSource(
-                    new PartialPath(nodes), false, SchemaConstant.ALL_MATCH_SCOPE);
-            try (final ISchemaReader<IDeviceSchemaInfo> schemaReader =
-                schemaSource.getSchemaReader(schemaRegion)) {
-              while (schemaReader.hasNext()) {}
-
-            } catch (final Exception e) {
-              LOGGER.warn(e.getMessage(), e);
-              return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+            try {
+              schemaRegion.checkTableDevice4Object(req.getTableName());
+              return RpcUtils.SUCCESS_STATUS;
+            } catch (final MetadataException e) {
+              return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                  .setMessage(e.getMessage());
             }
-            return RpcUtils.SUCCESS_STATUS;
           });
     } finally {
       DataNodeSchemaLockManager.getInstance()

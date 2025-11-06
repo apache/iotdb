@@ -43,6 +43,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -189,6 +190,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   protected class TableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
 
     private final String taskName;
+    private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
 
     protected TableRegionTaskExecutor(
         final String taskName,
@@ -220,6 +222,11 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
       } else {
         failedRegionList.addAll(consensusGroupIdList);
       }
+      if (!failedRegionList.isEmpty()) {
+        failureMap.put(dataNodeLocation, response);
+      } else {
+        failureMap.remove(dataNodeLocation);
+      }
       return failedRegionList;
     }
 
@@ -231,14 +238,15 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s, Failures: %s",
                       this.getClass().getSimpleName(),
                       database,
                       tableName,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      dataNodeLocationSet,
+                      failureMap))));
       interruptTask();
     }
   }

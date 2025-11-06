@@ -393,7 +393,7 @@ public interface ISchemaRegion {
   ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table, final List<Object[]> devicePathList) throws MetadataException;
 
-  void checkTableDevice4Object(final String table);
+  void checkTableDevice4Object(final String table) throws MetadataException;
 
   // region Interfaces for AttributeUpdate
   Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(

@@ -1720,8 +1720,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkTableDevice4Object(final String table) {
-    mTree.check(table);
+  public void checkTableDevice4Object(final String table) throws MetadataException {
+    mTree.checkTableDevice4Object(table);
   }
 
   @Override
