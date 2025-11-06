@@ -483,6 +483,26 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testFullDeleteWithoutWhereClauseByDifferentTime() throws SQLException {
+    prepareMultiDeviceDifferentTimeData(5, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("DELETE FROM vehicle5");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+      cleanData(5);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testDeleteWithSpecificDevice() throws SQLException {
     prepareData(6, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -2266,6 +2286,53 @@ public class IoTDBDeletionTableIT {
         }
         // prepare Overflow cache
         for (int i = 101; i <= 200; i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+    }
+  }
+
+  private void prepareMultiDeviceDifferentTimeData(int testNum, int deviceNum) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          String.format(
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare seq file
+        for (int i = 201 * (d + 1); i <= 300 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare unseq File
+        for (int i = 1 * (d + 1); i <= 100 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare BufferWrite cache
+        for (int i = 301 * (d + 1); i <= 400 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+        // prepare Overflow cache
+        for (int i = 101 * (d + 1); i <= 200 * (d + 1); i++) {
           statement.execute(
               String.format(
                   insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
