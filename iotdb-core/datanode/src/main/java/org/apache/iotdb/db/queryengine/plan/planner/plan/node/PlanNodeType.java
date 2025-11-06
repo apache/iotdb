@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Seri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
@@ -261,6 +262,7 @@ public enum PlanNodeType {
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
   LAST_QUERY_SCAN((short) 98),
+  ALTER_ENCODING_COMPRESSOR((short) 99),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -587,6 +589,8 @@ public enum PlanNodeType {
             "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
       case 98:
         return LastQueryScanNode.deserialize(buffer);
+      case 99:
+        return AlterEncodingCompressorNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
