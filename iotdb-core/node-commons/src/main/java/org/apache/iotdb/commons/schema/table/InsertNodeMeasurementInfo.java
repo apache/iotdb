@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * InsertNodeMeasurementInfo is a class that stores the measurement list from InsertNode and table
@@ -44,22 +45,38 @@ public class InsertNodeMeasurementInfo {
   private final TsTableColumnCategory[] columnCategories;
 
   /** Measurement schema list */
-  private final MeasurementSchema[] measurementSchemas;
+  private MeasurementSchema[] measurementSchemas;
+
+  /** Measurement names */
+  private final String[] measurements;
+
+  /** Data types */
+  private final TSDataType[] dataTypes;
+
+  /** Function to get first value of index for type inference */
+  private final Function<Integer, TSDataType> getTypeForFirstValue;
 
   /**
-   * Constructor
+   * Constructor with measurements and dataTypes for lazy schema building
    *
    * @param tableName table name
    * @param columnCategories column category list
-   * @param measurementSchemas measurement schema list
+   * @param measurements measurement names
+   * @param dataTypes data types
+   * @param firstValueGetter function to get first value of index
    */
   public InsertNodeMeasurementInfo(
       final String tableName,
       final TsTableColumnCategory[] columnCategories,
-      final MeasurementSchema[] measurementSchemas) {
+      final String[] measurements,
+      final TSDataType[] dataTypes,
+      final Function<Integer, TSDataType> firstValueGetter) {
     this.tableName = tableName;
     this.columnCategories = columnCategories;
-    this.measurementSchemas = measurementSchemas;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.getTypeForFirstValue = firstValueGetter;
+    ;
   }
 
   /**
@@ -81,12 +98,62 @@ public class InsertNodeMeasurementInfo {
   }
 
   /**
-   * Get measurement schema list
+   * Get measurements array
    *
-   * @return measurement schema array
+   * @return measurements array
    */
-  public MeasurementSchema[] getMeasurementSchemas() {
-    return measurementSchemas;
+  public String[] getMeasurements() {
+    return measurements;
+  }
+
+  /**
+   * Get the count of measurements
+   *
+   * @return measurement count
+   */
+  public int getMeasurementCount() {
+    if (measurementSchemas != null) {
+      return measurementSchemas.length;
+    }
+    if (measurements != null) {
+      return measurements.length;
+    }
+    return 0;
+  }
+
+  public TSDataType getType(int index) {
+    if (dataTypes == null) {
+      return null;
+    }
+    return dataTypes[index];
+  }
+
+  /**
+   * Get measurement name at specific index
+   *
+   * @param index the index
+   * @return measurement name or null
+   */
+  public String getMeasurementName(int index) {
+    if (measurementSchemas != null && index < measurementSchemas.length) {
+      return measurementSchemas[index] != null
+          ? measurementSchemas[index].getMeasurementName()
+          : null;
+    }
+    if (measurements != null && index < measurements.length) {
+      return measurements[index];
+    }
+    return null;
+  }
+
+  /**
+   * Get measurement schema at specific index (lazily build if needed)
+   *
+   * @param index the index
+   * @return measurement schema or null
+   */
+  public TSDataType getTypeForFirstValue(int index) {
+    return this.getTypeForFirstValue.apply(index);
   }
 
   /**

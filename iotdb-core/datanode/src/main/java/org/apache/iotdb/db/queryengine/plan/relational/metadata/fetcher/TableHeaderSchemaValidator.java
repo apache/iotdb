@@ -54,7 +54,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -264,13 +263,13 @@ public class TableHeaderSchemaValidator {
      * Validate a measurement column
      *
      * @param index measurement index in the array
-     * @param measurementSchema measurement schema
      * @param columnCategory column category
      * @param existingColumn existing column in table, null if not exists
      */
     void validate(
         int index,
-        MeasurementSchema measurementSchema,
+        String measurement,
+        TSDataType dataType,
         TsTableColumnCategory columnCategory,
         TsTableColumnSchema existingColumn);
   }
@@ -302,7 +301,6 @@ public class TableHeaderSchemaValidator {
    * @param allowCreateTable whether to allow table auto-creation
    * @param measurementValidator custom validator for each measurement, null to use default
    * @param tagColumnHandler custom handler for TAG columns, null to skip TAG processing
-   * @param baseStatement InsertBaseStatement for column adjustment, null if not available
    * @return validated TsTable, or empty if table doesn't exist and cannot be created
    */
   public void validateInsertNodeMeasurements(
@@ -316,10 +314,10 @@ public class TableHeaderSchemaValidator {
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
 
-    final MeasurementSchema[] measurementSchemas = measurementInfo.getMeasurementSchemas();
     final TsTableColumnCategory[] columnCategories = measurementInfo.getColumnCategories();
+    final int measurementCount = measurementInfo.getMeasurementCount();
 
-    if (measurementSchemas == null || measurementSchemas.length == 0) {
+    if (measurementCount == 0) {
       throw new SemanticException("No measurements present, please check the request");
     }
 
@@ -359,12 +357,12 @@ public class TableHeaderSchemaValidator {
     final LinkedHashMap<String, Integer> tagColumnIndexMap = new LinkedHashMap<>();
 
     // Validate each measurement
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      if (measurementSchemas[i] == null) {
+    for (int i = 0; i < measurementCount; i++) {
+      final String measurementName = measurementInfo.getMeasurementName(i);
+      if (measurementName == null) {
         continue;
       }
 
-      final String measurementName = measurementSchemas[i].getMeasurementName();
       final TsTableColumnCategory category =
           columnCategories != null && i < columnCategories.length ? columnCategories[i] : null;
 
@@ -404,9 +402,10 @@ public class TableHeaderSchemaValidator {
           noField = false;
         }
 
-        // Custom validation handler
+        // Custom validation handler - get MeasurementSchema on demand
         if (measurementValidator != null) {
-          measurementValidator.validate(i, measurementSchemas[i], category, existingColumn);
+          measurementValidator.validate(
+              i, measurementName, measurementInfo.getType(i), category, existingColumn);
         }
       }
 
@@ -429,7 +428,7 @@ public class TableHeaderSchemaValidator {
         && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       final List<String> missingNames = new ArrayList<>();
       for (int idx : missingMeasurementIndices) {
-        missingNames.add(measurementSchemas[idx].getMeasurementName());
+        missingNames.add(measurementInfo.getMeasurementName(idx));
       }
       throw new SemanticException(
           String.format("Missing columns %s.", missingNames),
@@ -439,9 +438,10 @@ public class TableHeaderSchemaValidator {
     for (int i : missingMeasurementIndices) {
       measurementValidator.validate(
           i,
-          measurementSchemas[i],
+          measurementInfo.getMeasurementName(i),
+          measurementInfo.getType(i),
           columnCategories[i],
-          table.getColumnSchema(measurementSchemas[i].getMeasurementName()));
+          table.getColumnSchema(measurementInfo.getMeasurementName(i)));
     }
 
     // Handle TAG columns after validation loop
@@ -499,20 +499,24 @@ public class TableHeaderSchemaValidator {
             new QualifiedObjectName(database, measurementInfo.getTableName()),
             context);
 
-    final MeasurementSchema[] measurementSchemas = measurementInfo.getMeasurementSchemas();
     final TsTableColumnCategory[] columnCategories = measurementInfo.getColumnCategories();
 
     final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(missingIndices.size());
     for (int idx : missingIndices) {
-      final MeasurementSchema schema = measurementSchemas[idx];
-      final String columnName = schema.getMeasurementName();
-      final TSDataType dataType = schema.getType();
+      final String columnName = measurementInfo.getMeasurementName(idx);
+      final TSDataType dataType = measurementInfo.getType(idx);
       final TsTableColumnCategory category =
           columnCategories != null && idx < columnCategories.length
               ? columnCategories[idx]
               : TsTableColumnCategory.FIELD;
 
-      columnSchemaList.add(generateColumnSchema(category, columnName, dataType, null, null));
+      columnSchemaList.add(
+          generateColumnSchema(
+              category,
+              columnName,
+              dataType == null ? measurementInfo.getTypeForFirstValue(idx) : dataType,
+              null,
+              null));
     }
 
     final AlterTableAddColumnTask task =

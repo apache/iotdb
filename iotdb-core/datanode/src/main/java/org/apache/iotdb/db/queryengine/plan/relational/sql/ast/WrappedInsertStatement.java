@@ -115,10 +115,16 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   protected InsertNodeMeasurementInfo toInsertNodeMeasurementInfo(
       InsertBaseStatement insertBaseStatement) {
     String tableName = insertBaseStatement.getDevicePath().getFullPath();
+
+    // Use lazy initialization with measurements and dataTypes
     return new InsertNodeMeasurementInfo(
         tableName,
         insertBaseStatement.getColumnCategories(),
-        insertBaseStatement.getMeasurementSchemas());
+        insertBaseStatement.getMeasurements(),
+        insertBaseStatement.getDataTypes(),
+        index ->
+            TypeInferenceUtils.getPredictedDataType(
+                insertBaseStatement.getFirstValueOfIndex(index), true));
   }
 
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
@@ -134,25 +140,25 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   private void validate(
       int index,
-      MeasurementSchema measurementSchema,
+      String measurement,
+      TSDataType dataType,
       TsTableColumnCategory columnCategory,
       TsTableColumnSchema existingColumn) {
     InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
     if (existingColumn == null) {
-      processNonExistColumn(
-          measurementSchema.getMeasurementName(), columnCategory, innerTreeStatement, index);
+      processNonExistColumn(measurement, columnCategory, innerTreeStatement, index);
       return; // Exit early if column doesn't exist
     }
 
     // check data type
-    if (measurementSchema.getType() == null || columnCategory != TsTableColumnCategory.FIELD) {
+    if (dataType == null || columnCategory != TsTableColumnCategory.FIELD) {
       // sql insertion does not provide type
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(existingColumn.getDataType(), index);
-    } else if (!existingColumn.getDataType().isCompatible(measurementSchema.getType())
+    } else if (!existingColumn.getDataType().isCompatible(dataType)
         && !innerTreeStatement.isForceTypeConversion()) {
       processTypeConflictColumn(
-          measurementSchema, columnCategory, existingColumn, index, innerTreeStatement);
+          measurement, dataType, columnCategory, existingColumn, index, innerTreeStatement);
     }
 
     // check column category
@@ -163,9 +169,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       throw new SemanticException(
           String.format(
               "Inconsistent column category of column %s: %s/%s",
-              measurementSchema.getMeasurementName(),
-              columnCategory,
-              existingColumn.getColumnCategory()),
+              measurement, columnCategory, existingColumn.getColumnCategory()),
           TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
     }
 
@@ -550,7 +554,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public static void processTypeConflictColumn(
-      MeasurementSchema incoming,
+      String incomingMeasurement,
+      TSDataType incomingDataType,
       TsTableColumnCategory columnCategory,
       TsTableColumnSchema real,
       int i,
@@ -559,7 +564,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         new SemanticException(
             String.format(
                 "Incompatible data type of column %s: %s/%s",
-                incoming.getMeasurementName(), incoming.getType(), real.getDataType()),
+                incomingMeasurement, incomingDataType, real.getDataType()),
             TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
     if (columnCategory != TsTableColumnCategory.FIELD
         || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
