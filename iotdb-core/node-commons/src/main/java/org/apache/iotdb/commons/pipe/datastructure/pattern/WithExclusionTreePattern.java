@@ -53,8 +53,9 @@ public class WithExclusionTreePattern extends TreePattern {
 
   @Override
   public boolean isRoot() {
-    // Matches "all" only if inclusion is "all" and exclusion is not "all"
-    return inclusionPattern.isRoot() && !exclusionPattern.isRoot();
+    // Since the exclusion is not empty, the whole pattern is always not root because it may more or
+    // less filter some data.
+    return false;
   }
 
   @Override
