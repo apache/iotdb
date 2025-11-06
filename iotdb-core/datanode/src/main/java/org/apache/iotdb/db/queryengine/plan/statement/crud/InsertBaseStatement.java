@@ -248,17 +248,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       return;
     }
 
-    Set<String> deduplicatedMeasurements = new HashSet<>(measurements.length);
-    int index = 0;
+    Set<String> deduplicatedMeasurements = new HashSet<>();
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         throw new SemanticException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
-      index++;
-      deduplicatedMeasurements.add(measurement);
-      if (index != deduplicatedMeasurements.size()) {
+      if (deduplicatedMeasurements.contains(measurement)) {
         throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
+      } else {
+        deduplicatedMeasurements.add(measurement);
       }
     }
 
