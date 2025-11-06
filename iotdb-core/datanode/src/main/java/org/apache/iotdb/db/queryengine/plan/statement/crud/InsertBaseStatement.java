@@ -110,6 +110,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   protected long ramBytesUsed = Long.MIN_VALUE;
 
+  /** Flag to indicate if semantic check has been performed */
+  private boolean hasSemanticChecked = false;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -240,6 +243,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   public abstract Object getFirstValueOfIndex(int index);
 
   public void semanticCheck() {
+    // Skip if semantic check has already been performed
+    if (hasSemanticChecked) {
+      return;
+    }
+
     Set<String> deduplicatedMeasurements = new HashSet<>();
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
@@ -252,6 +260,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         deduplicatedMeasurements.add(measurement);
       }
     }
+
+    // Mark as checked to avoid redundant checks
+    hasSemanticChecked = true;
   }
 
   // region partial insert
