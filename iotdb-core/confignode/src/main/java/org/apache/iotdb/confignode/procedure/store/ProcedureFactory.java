@@ -245,6 +245,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE:
         procedure = new AlterEncodingCompressorProcedure(true);
         break;
+      case PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE:
+        procedure = new AlterEncodingCompressorProcedure(true);
+        break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
         break;

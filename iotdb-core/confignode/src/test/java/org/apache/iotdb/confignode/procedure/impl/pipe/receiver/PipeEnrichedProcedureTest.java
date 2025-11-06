@@ -391,4 +391,31 @@ public class PipeEnrichedProcedureTest {
 
     Assert.assertEquals(alterEncodingCompressorProcedure, deserializedProcedure);
   }
+
+  @Test
+  public void alterEncodingCompressorTest() throws IllegalPathException, IOException {
+    final String queryId = "1";
+    final PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.constructTree();
+    final AlterEncodingCompressorProcedure alterEncodingCompressorProcedure =
+        new AlterEncodingCompressorProcedure(
+            false, queryId, patternTree, false, (byte) 0, (byte) 0, false);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    alterEncodingCompressorProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final AlterEncodingCompressorProcedure deserializedProcedure =
+        new AlterEncodingCompressorProcedure(false);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(alterEncodingCompressorProcedure, deserializedProcedure);
+  }
 }
