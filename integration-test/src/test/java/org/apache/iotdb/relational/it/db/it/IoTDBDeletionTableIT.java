@@ -2091,9 +2091,9 @@ public class IoTDBDeletionTableIT {
                                 || source.toString().endsWith(MODS)
                                 || source.toString().endsWith(TSFILE)) {
                               if (source.toFile().length() > 0) {
-                                System.out.println(
-                                    "[testCompletelyDeleteTable] undeleted seq file : "
-                                        + source.toFile().getAbsolutePath());
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted seq file : {}",
+                                    source.toFile().getAbsolutePath());
                                 completelyDeleteSuccess.set(false);
                               }
                             }
@@ -2123,9 +2123,9 @@ public class IoTDBDeletionTableIT {
                                 || source.toString().endsWith(MODS)
                                 || source.toString().endsWith(TSFILE)) {
                               if (source.toFile().length() > 0) {
-                                System.out.println(
-                                    "[testCompletelyDeleteTable] undeleted unseq file: "
-                                        + source.toFile().getAbsolutePath());
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
                                 completelyDeleteSuccess.set(false);
                               }
                             }
@@ -2197,9 +2197,9 @@ public class IoTDBDeletionTableIT {
                                 || source.toString().endsWith(MODS)
                                 || source.toString().endsWith(TSFILE)) {
                               if (source.toFile().length() > 0) {
-                                System.out.println(
-                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: "
-                                        + source.toFile().getAbsolutePath());
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
                                 completelyDeleteSuccess.set(false);
                               }
                             }
@@ -2229,9 +2229,9 @@ public class IoTDBDeletionTableIT {
                                 || source.toString().endsWith(MODS)
                                 || source.toString().endsWith(TSFILE)) {
                               if (source.toFile().length() > 0) {
-                                System.out.println(
-                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: "
-                                        + source.toFile().getAbsolutePath());
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
                                 completelyDeleteSuccess.set(false);
                               }
                             }
