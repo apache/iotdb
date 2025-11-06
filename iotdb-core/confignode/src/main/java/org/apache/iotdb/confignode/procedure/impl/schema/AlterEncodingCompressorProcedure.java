@@ -118,11 +118,13 @@ public class AlterEncodingCompressorProcedure
     try {
       switch (state) {
         case ALTER_SCHEMA_REGION:
-          LOGGER.info(
-              "Alter encoding {} & compressor {} in schema region for timeSeries {}",
-              SerializeUtils.deserializeEncodingNullable(encoding),
-              SerializeUtils.deserializeCompressorNullable(compressor),
-              requestMessage);
+          if (LOGGER.isInfoEnabled()) {
+            LOGGER.info(
+                "Alter encoding {} & compressor {} in schema region for timeSeries {}",
+                SerializeUtils.deserializeEncodingNullable(encoding),
+                SerializeUtils.deserializeCompressorNullable(compressor),
+                requestMessage);
+          }
           alterEncodingCompressorInSchemaRegion(env);
           break;
         case CLEAR_CACHE:

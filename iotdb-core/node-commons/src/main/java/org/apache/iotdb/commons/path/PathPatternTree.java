@@ -122,8 +122,6 @@ public class PathPatternTree {
         pathPatternList.add(pathPattern);
       }
       if (isReload) {
-        // Currently no need to construct here, cause the usage if "getAllPathPatterns" after it.
-        // Future calls may chan this considering their own use
         root.clear();
       }
     } else {
