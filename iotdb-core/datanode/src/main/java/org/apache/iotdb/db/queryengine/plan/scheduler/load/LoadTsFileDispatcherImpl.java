@@ -173,7 +173,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
-        tsFileResource.serialize();
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)

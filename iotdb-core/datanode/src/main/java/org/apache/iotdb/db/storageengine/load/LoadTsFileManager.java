@@ -680,7 +680,6 @@ public class LoadTsFileManager {
       }
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setProgressIndex(progressIndex);
-      tsFileResource.serialize();
     }
 
     private long getTsFileWritePointCount(TsFileIOWriter writer) {

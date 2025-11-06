@@ -3661,6 +3661,13 @@ public class DataRegion implements IDataRegionForQuery {
 
     loadModFile(tsFileToLoad, targetFile, deleteOriginFile, tsFileResource);
 
+    try {
+      tsFileResource.serialize();
+    } catch (IOException e) {
+      throw new LoadFileException(
+          String.format("TsFile Resource %s serialize failed when loading", tsFileResource));
+    }
+
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId, databaseName, tsFileResource, true);
