@@ -2944,6 +2944,7 @@ public class DataRegion implements IDataRegionForQuery {
               ++matchSize;
             } else {
               deletedByMods.add(sealedTsFile);
+              break;
             }
           }
           if (matchSize == devicesInFile.size()) {
