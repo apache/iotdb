@@ -147,6 +147,7 @@ public enum TSStatusCode {
 
   // OBJECT
   OBJECT_NOT_EXISTS(740),
+  OBJECT_INSERT_ERROR(741),
 
   // Arithmetic
   NUMERIC_VALUE_OUT_OF_RANGE(750),
