@@ -105,7 +105,7 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
         statement.execute("alter timeSeries if exists root.vehicle.** set falseKey=aaa");
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals("701: property falseKey is unsupported yet.", e.getMessage());
+        Assert.assertEquals("701: property falsekey is unsupported yet.", e.getMessage());
       }
 
       try {
