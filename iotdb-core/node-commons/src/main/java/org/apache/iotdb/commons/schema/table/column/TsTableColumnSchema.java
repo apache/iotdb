@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -68,7 +69,7 @@ public abstract class TsTableColumnSchema {
 
   public abstract TsTableColumnCategory getColumnCategory();
 
-  public MeasurementSchema getMeasurementSchema() {
+  public IMeasurementSchema getMeasurementSchema() {
     return new MeasurementSchema(columnName, dataType);
   }
 
