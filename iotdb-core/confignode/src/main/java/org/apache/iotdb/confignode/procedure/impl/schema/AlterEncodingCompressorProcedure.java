@@ -63,7 +63,8 @@ import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeries
 
 public class AlterEncodingCompressorProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterEncodingCompressorState> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlterEncodingCompressorState.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AlterEncodingCompressorProcedure.class);
   private String queryId;
   private PathPatternTree patternTree;
   private boolean ifExists;
@@ -298,7 +299,9 @@ public class AlterEncodingCompressorProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
+    if (this == o) {
+      return true;
+    }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }

@@ -95,6 +95,20 @@ public class PipeAlterEncodingCompressorPlan extends ConfigPhysicalPlan {
   }
 
   @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PipeAlterEncodingCompressorPlan that = (PipeAlterEncodingCompressorPlan) o;
+    return this.encoding == that.encoding
+        && this.compressor == that.compressor
+        && this.mayAlterAudit == that.mayAlterAudit;
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(patternTreeBytes, encoding, compressor);
   }
