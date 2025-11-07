@@ -126,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -838,6 +839,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitUnion(UnionNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitIntersect(IntersectNode node, C context) {
     return visitPlan(node, context);
   }
 }
