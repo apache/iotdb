@@ -158,16 +158,6 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
       try {
         statement.execute(
-            "alter timeSeries root.vehicle.wind.a, root.__audit.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "803: 'AUDIT' permission is needed to alter the encoding and compressor of database root.__audit",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(
             "alter timeSeries if permitted root.vehicle.**, root.__audit.** set STORAGE_PROPERTIES encoding=GORILLA, compressor=GZIP");
       } catch (final SQLException e) {
         fail("Alter encoding & compressor shall not fail when no privileges if set if permitted");

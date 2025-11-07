@@ -69,7 +69,9 @@ public class AlterEncodingCompressorProcedure
   private boolean ifExists;
   private byte encoding;
   private byte compressor;
-  private boolean mayAlterAudit;
+
+  // Reserved for potential upgrading
+  private boolean mayAlterAudit = false;
 
   private transient ByteBuffer patternTreeBytes;
   private transient String requestMessage;
@@ -149,7 +151,7 @@ public class AlterEncodingCompressorProcedure
 
   private boolean alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       if (!ifExists) {
@@ -167,7 +169,7 @@ public class AlterEncodingCompressorProcedure
     final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
         new DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq>(
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             false,
             CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
             ((dataNodeLocation, consensusGroupIdList) ->
@@ -237,9 +239,9 @@ public class AlterEncodingCompressorProcedure
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(
                           new PipeAlterEncodingCompressorPlan(
-                              patternTreeBytes, encoding, compressor, mayAlterAudit))
+                              patternTreeBytes, encoding, compressor, false))
                       : new PipeAlterEncodingCompressorPlan(
-                          patternTreeBytes, encoding, compressor, mayAlterAudit));
+                          patternTreeBytes, encoding, compressor, false));
     } catch (final ConsensusException e) {
       LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -285,7 +287,7 @@ public class AlterEncodingCompressorProcedure
     ReadWriteIOUtils.write(ifExists, stream);
     ReadWriteIOUtils.write(encoding, stream);
     ReadWriteIOUtils.write(compressor, stream);
-    ReadWriteIOUtils.write(mayAlterAudit, stream);
+    ReadWriteIOUtils.write(false, stream);
   }
 
   @Override
