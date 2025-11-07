@@ -4468,8 +4468,7 @@ public class StatementAnalyzer {
         for (final Object[] deviceId : node.getDeviceIdList()) {
           for (final Object part : deviceId) {
             final String value = (String) part;
-            if (Objects.nonNull(value)
-                && TsTable.isInvalid4ObjectType(value)) {
+            if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {
               throw new SemanticException(
                   getObjectStringError("deviceId", Arrays.toString(deviceId)));
             }
