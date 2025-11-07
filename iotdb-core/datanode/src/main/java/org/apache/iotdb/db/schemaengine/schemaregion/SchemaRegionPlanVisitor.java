@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
