@@ -75,7 +75,7 @@ public class PathCheckExample {
     }
   }
 
-  // This function wile check whether the paths are correct in current version.
+  // This function while check whether the paths are correct in current version.
   private static void checkPath(String path) {
     try {
       PathNodesGenerator.checkPath(path);
