@@ -95,6 +95,13 @@ public class IoTDBDeletionTableIT {
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
+  private final String insertDeletionTemplate =
+      "INSERT INTO deletion.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
+          + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
+
+  private static String sequenceDataDir = "data" + File.separator + "sequence";
+  private static String unsequenceDataDir = "data" + File.separator + "unsequence";
+
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
   private static final String TSFILE = ".tsfile";
@@ -487,7 +494,7 @@ public class IoTDBDeletionTableIT {
     prepareMultiDeviceDifferentTimeData(5, 2);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use test");
+      statement.execute("use deletion");
       statement.execute("DELETE FROM vehicle5");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
         int cnt = 0;
@@ -2037,13 +2044,13 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testCompletelyDeleteTable() throws SQLException {
-    String sequenceDataDir = "data" + File.separator + "sequence";
-    String unsequenceDataDir = "data" + File.separator + "unsequence";
     int testNum = 1;
-    prepareData(testNum, 1);
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use test");
+      statement.execute("use deletion");
 
       statement.execute("DROP TABLE vehicle" + testNum);
 
@@ -2074,7 +2081,11 @@ public class IoTDBDeletionTableIT {
                   String dataNodeDir = wrapper.getDataNodeDir();
 
                   if (Paths.get(
-                          dataNodeDir + File.separator + sequenceDataDir + File.separator + "test")
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
                       .toFile()
                       .exists()) {
                     try (Stream<Path> s =
@@ -2084,7 +2095,7 @@ public class IoTDBDeletionTableIT {
                                     + File.separator
                                     + sequenceDataDir
                                     + File.separator
-                                    + "test"))) {
+                                    + "deletion"))) {
                       s.forEach(
                           source -> {
                             if (source.toString().endsWith(RESOURCE)
@@ -2106,7 +2117,7 @@ public class IoTDBDeletionTableIT {
                               + File.separator
                               + unsequenceDataDir
                               + File.separator
-                              + "test")
+                              + "deletion")
                       .toFile()
                       .exists()) {
                     try (Stream<Path> s =
@@ -2116,7 +2127,7 @@ public class IoTDBDeletionTableIT {
                                     + File.separator
                                     + unsequenceDataDir
                                     + File.separator
-                                    + "test"))) {
+                                    + "deletion"))) {
                       s.forEach(
                           source -> {
                             if (source.toString().endsWith(RESOURCE)
@@ -2143,13 +2154,13 @@ public class IoTDBDeletionTableIT {
 
   @Test
   public void testMultiDeviceCompletelyDeleteTable() throws SQLException {
-    String sequenceDataDir = "data" + File.separator + "sequence";
-    String unsequenceDataDir = "data" + File.separator + "unsequence";
     int testNum = 1;
-    prepareData(testNum, 2);
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 2);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use test");
+      statement.execute("use deletion");
 
       statement.execute("DROP TABLE vehicle" + testNum);
 
@@ -2180,7 +2191,11 @@ public class IoTDBDeletionTableIT {
                   String dataNodeDir = wrapper.getDataNodeDir();
 
                   if (Paths.get(
-                          dataNodeDir + File.separator + sequenceDataDir + File.separator + "test")
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
                       .toFile()
                       .exists()) {
                     try (Stream<Path> s =
@@ -2190,7 +2205,7 @@ public class IoTDBDeletionTableIT {
                                     + File.separator
                                     + sequenceDataDir
                                     + File.separator
-                                    + "test"))) {
+                                    + "deletion"))) {
                       s.forEach(
                           source -> {
                             if (source.toString().endsWith(RESOURCE)
@@ -2212,7 +2227,7 @@ public class IoTDBDeletionTableIT {
                               + File.separator
                               + unsequenceDataDir
                               + File.separator
-                              + "test")
+                              + "deletion")
                       .toFile()
                       .exists()) {
                     try (Stream<Path> s =
@@ -2222,7 +2237,7 @@ public class IoTDBDeletionTableIT {
                                     + File.separator
                                     + unsequenceDataDir
                                     + File.separator
-                                    + "test"))) {
+                                    + "deletion"))) {
                       s.forEach(
                           source -> {
                             if (source.toString().endsWith(RESOURCE)
@@ -2253,6 +2268,40 @@ public class IoTDBDeletionTableIT {
 
       for (String sql : creationSqls) {
         statement.execute(sql);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE IF NOT EXISTS deletion");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void cleanDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS deletion");
+      for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        String dataNodeDir = wrapper.getDataNodeDir();
+        File targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
+
+        targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
       }
     } catch (Exception e) {
       fail(e.getMessage());
@@ -2309,7 +2358,7 @@ public class IoTDBDeletionTableIT {
   private void prepareMultiDeviceDifferentTimeData(int testNum, int deviceNum) throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use test");
+      statement.execute("use deletion");
       statement.execute(
           String.format(
               "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
@@ -2320,7 +2369,15 @@ public class IoTDBDeletionTableIT {
         for (int i = 201 * (d + 1); i <= 300 * (d + 1); i++) {
           statement.execute(
               String.format(
-                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
       }
 
@@ -2331,7 +2388,15 @@ public class IoTDBDeletionTableIT {
         for (int i = 1 * (d + 1); i <= 100 * (d + 1); i++) {
           statement.execute(
               String.format(
-                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
       }
       statement.execute("flush");
@@ -2341,13 +2406,29 @@ public class IoTDBDeletionTableIT {
         for (int i = 301 * (d + 1); i <= 400 * (d + 1); i++) {
           statement.execute(
               String.format(
-                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
         // prepare Overflow cache
         for (int i = 101 * (d + 1); i <= 200 * (d + 1); i++) {
           statement.execute(
               String.format(
-                  insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
       }
     }
