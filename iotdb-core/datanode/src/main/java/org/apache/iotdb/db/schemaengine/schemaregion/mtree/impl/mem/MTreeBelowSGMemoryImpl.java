@@ -91,6 +91,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -659,7 +660,7 @@ public class MTreeBelowSGMemoryImpl {
             }
             node.setSchema(
                 new MeasurementSchema(
-                    schema.getMeasurementName(),
+                    schema.getMeasurementId(),
                     schema.getType(),
                     Objects.nonNull(encoding) ? encoding : schema.getEncodingType(),
                     Objects.nonNull(compressor) ? compressor : schema.getCompressor(),

@@ -69,7 +69,6 @@ public class AlterEncodingCompressorProcedure
   private boolean ifExists;
   private byte encoding;
   private byte compressor;
-  private boolean mayAlterAudit;
 
   private transient ByteBuffer patternTreeBytes;
   private transient String requestMessage;
@@ -84,15 +83,13 @@ public class AlterEncodingCompressorProcedure
       final PathPatternTree pathPatternTree,
       final boolean ifExists,
       final byte encoding,
-      final byte compressor,
-      final boolean mayAlterAudit) {
+      final byte compressor) {
     super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(pathPatternTree);
     this.ifExists = ifExists;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.mayAlterAudit = mayAlterAudit;
   }
 
   public String getQueryId() {
@@ -147,7 +144,7 @@ public class AlterEncodingCompressorProcedure
 
   private void alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       if (!ifExists) {
@@ -165,7 +162,7 @@ public class AlterEncodingCompressorProcedure
     final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
         new DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq>(
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit),
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             false,
             CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
             ((dataNodeLocation, consensusGroupIdList) ->
@@ -234,9 +231,9 @@ public class AlterEncodingCompressorProcedure
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(
                           new PipeAlterEncodingCompressorPlan(
-                              patternTreeBytes, encoding, compressor, mayAlterAudit))
+                              patternTreeBytes, encoding, compressor))
                       : new PipeAlterEncodingCompressorPlan(
-                          patternTreeBytes, encoding, compressor, mayAlterAudit));
+                          patternTreeBytes, encoding, compressor));
     } catch (final ConsensusException e) {
       LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -282,7 +279,6 @@ public class AlterEncodingCompressorProcedure
     ReadWriteIOUtils.write(ifExists, stream);
     ReadWriteIOUtils.write(encoding, stream);
     ReadWriteIOUtils.write(compressor, stream);
-    ReadWriteIOUtils.write(mayAlterAudit, stream);
   }
 
   @Override
@@ -293,7 +289,6 @@ public class AlterEncodingCompressorProcedure
     ifExists = ReadWriteIOUtils.readBoolean(byteBuffer);
     encoding = ReadWriteIOUtils.readByte(byteBuffer);
     compressor = ReadWriteIOUtils.readByte(byteBuffer);
-    mayAlterAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
   }
 
   @Override
@@ -310,8 +305,7 @@ public class AlterEncodingCompressorProcedure
         && this.isGeneratedByPipe == that.isGeneratedByPipe
         && this.patternTree.equals(that.patternTree)
         && this.encoding == that.encoding
-        && this.compressor == that.compressor
-        && this.mayAlterAudit == that.mayAlterAudit;
+        && this.compressor == that.compressor;
   }
 
   @Override
@@ -325,7 +319,6 @@ public class AlterEncodingCompressorProcedure
         patternTree,
         ifExists,
         encoding,
-        compressor,
-        mayAlterAudit);
+        compressor);
   }
 }

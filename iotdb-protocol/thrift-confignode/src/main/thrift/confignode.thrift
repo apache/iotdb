@@ -796,8 +796,7 @@ struct TAlterEncodingCompressorReq {
   3: required byte encoding
   4: required byte compressor
   5: required bool ifExists
-  6: required bool mayAlterAudit
-  7: optional bool isGeneratedByPipe
+  6: optional bool isGeneratedByPipe
 }
 
 struct TDeleteTimeSeriesReq {

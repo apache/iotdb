@@ -36,8 +36,6 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -91,6 +89,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -273,14 +272,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 PrivilegeType.WRITE_SCHEMA.ordinal())
             .getStatus();
       case PipeAlterEncodingCompressor:
-        // Judge here in the future
-        if (configManager
-                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.AUDIT))
-                .getStatus()
-                .getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          ((PipeAlterEncodingCompressorPlan) plan).setMayAlterAudit(false);
-        }
         if (skipIfNoPrivileges.get()) {
           final PathPatternTree pathPatternTree =
               PathPatternTree.deserialize(
@@ -288,9 +279,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                       configManager
                           .fetchAuthizedPatternTree(username, PrivilegeType.WRITE_SCHEMA.ordinal())
                           .getPathPatternTree()));
-          if (((PipeAlterEncodingCompressorPlan) plan).isMayAlterAudit()) {
-            pathPatternTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
-          }
           ((PipeAlterEncodingCompressorPlan) plan)
               .setPatternTreeBytes(
                   PathPatternTreeUtils.intersectWithFullPathPrefixTree(
@@ -303,12 +291,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           return configManager
               .checkUserPrivileges(
                   username,
-                  new PrivilegeUnion(
-                      new ArrayList<>(
-                          PathPatternTree.deserialize(
-                                  ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
-                              .getAllPathPatterns()),
-                      PrivilegeType.WRITE_SCHEMA))
+                  new ArrayList<>(
+                      PathPatternTree.deserialize(
+                              ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
+                          .getAllPathPatterns()),
+                  PrivilegeType.WRITE_SCHEMA.ordinal())
               .getStatus();
         }
       case PipeDeleteLogicalView:
@@ -477,14 +464,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .getProcedureManager()
             .alterEncodingCompressor(
-                queryId,
+                generatePseudoQueryId(),
                 PathPatternTree.deserialize(
                     ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
                 ((PipeAlterEncodingCompressorPlan) plan).getEncoding(),
                 ((PipeAlterEncodingCompressorPlan) plan).getCompressor(),
                 true,
-                shouldMarkAsPipeRequest.get(),
-                ((PipeAlterEncodingCompressorPlan) plan).isMayAlterAudit());
+                shouldMarkAsPipeRequest.get());
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

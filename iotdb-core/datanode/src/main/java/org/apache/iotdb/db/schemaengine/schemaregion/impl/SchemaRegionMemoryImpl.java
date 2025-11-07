@@ -39,7 +39,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
@@ -846,15 +846,21 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
       throws MetadataException {
-    boolean exist = false;
-    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
-      exist |=
-          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
+    try {
+      boolean exist = false;
+      for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
+        exist |=
+            mtree.alterEncodingCompressor(
+                pathPattern, node.getEncoding(), node.getCompressionType());
+      }
+      if (!exist) {
+        throw new PathNotExistException(
+            node.getPatternTree().getAllPathPatterns().toString(), false);
+      }
+      writeToMLog(node);
+    } catch (final IOException e) {
+      throw new MetadataException(e);
     }
-    if (!exist) {
-      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
-    }
-    writeToMLog(node);
   }
 
   @Override

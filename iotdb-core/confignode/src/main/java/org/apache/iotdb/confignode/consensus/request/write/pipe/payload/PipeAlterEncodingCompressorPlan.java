@@ -36,22 +36,17 @@ public class PipeAlterEncodingCompressorPlan extends ConfigPhysicalPlan {
   private ByteBuffer patternTreeBytes;
   private byte encoding;
   private byte compressor;
-  private boolean mayAlterAudit;
 
   public PipeAlterEncodingCompressorPlan() {
     super(ConfigPhysicalPlanType.PipeAlterEncodingCompressor);
   }
 
   public PipeAlterEncodingCompressorPlan(
-      final @Nonnull ByteBuffer patternTreeBytes,
-      final byte encoding,
-      final byte compressor,
-      final boolean mayAlterAudit) {
+      final @Nonnull ByteBuffer patternTreeBytes, final byte encoding, final byte compressor) {
     super(ConfigPhysicalPlanType.PipeAlterEncodingCompressor);
     this.patternTreeBytes = patternTreeBytes;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.mayAlterAudit = mayAlterAudit;
   }
 
   public void setPatternTreeBytes(ByteBuffer patternTreeBytes) {
@@ -69,14 +64,6 @@ public class PipeAlterEncodingCompressorPlan extends ConfigPhysicalPlan {
 
   public byte getCompressor() {
     return compressor;
-  }
-
-  public void setMayAlterAudit(final boolean mayAlterAudit) {
-    this.mayAlterAudit = mayAlterAudit;
-  }
-
-  public boolean isMayAlterAudit() {
-    return mayAlterAudit;
   }
 
   @Override

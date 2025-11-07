@@ -42,7 +42,7 @@ public class AlterEncodingCompressorProcedureTest {
     patternTree.constructTree();
     final AlterEncodingCompressorProcedure alterEncodingCompressorProcedure =
         new AlterEncodingCompressorProcedure(
-            false, queryId, patternTree, false, (byte) 0, (byte) 0, false);
+            false, queryId, patternTree, false, (byte) 0, (byte) 0);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

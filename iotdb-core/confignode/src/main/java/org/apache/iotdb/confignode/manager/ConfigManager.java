@@ -2033,8 +2033,7 @@ public class ConfigManager implements IManager {
           req.getEncoding(),
           req.getCompressor(),
           req.isIfExists(),
-          req.isIsGeneratedByPipe(),
-          req.isMayAlterAudit());
+          req.isIsGeneratedByPipe());
     } else {
       return status;
     }

@@ -257,7 +257,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeAlterEncodingCompressor(
       final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan,
-      final UnionIoTDBTreePattern pattern) {
+      final UnionIoTDBPipePattern pattern) {
     try {
       final PathPatternTree intersectedTree =
           pattern.getIntersection(
@@ -267,8 +267,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
               new PipeAlterEncodingCompressorPlan(
                   intersectedTree.serialize(),
                   pipeAlterEncodingCompressorPlan.getEncoding(),
-                  pipeAlterEncodingCompressorPlan.getCompressor(),
-                  pipeAlterEncodingCompressorPlan.isMayAlterAudit()))
+                  pipeAlterEncodingCompressorPlan.getCompressor()))
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(

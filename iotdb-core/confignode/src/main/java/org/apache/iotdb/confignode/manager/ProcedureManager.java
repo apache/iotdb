@@ -259,8 +259,7 @@ public class ProcedureManager {
       final byte encoding,
       final byte compressor,
       final boolean ifExists,
-      final boolean isGeneratedByPipe,
-      final boolean mayAlterAudit) {
+      final boolean isGeneratedByPipe) {
     AlterEncodingCompressorProcedure procedure = null;
     synchronized (this) {
       ProcedureType type;
@@ -280,13 +279,7 @@ public class ProcedureManager {
       if (procedure == null) {
         procedure =
             new AlterEncodingCompressorProcedure(
-                isGeneratedByPipe,
-                queryId,
-                patternTree,
-                ifExists,
-                encoding,
-                compressor,
-                mayAlterAudit);
+                isGeneratedByPipe, queryId, patternTree, ifExists, encoding, compressor);
         this.executor.submitProcedure(procedure);
       }
     }

@@ -184,7 +184,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -2383,8 +2382,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
             SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getEncoding()),
             SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getCompressor()),
-            alterEncodingCompressorStatement.ifExists(),
-            alterEncodingCompressorStatement.isWithAudit());
+            alterEncodingCompressorStatement.ifExists());
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
