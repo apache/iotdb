@@ -96,8 +96,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -201,7 +201,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     // Step 1: constructs DeviceViewSplits
-    Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
+    Set<TRegionReplicaSet> relatedDataRegions = new LinkedHashSet<>();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
     boolean existDeviceCrossRegion = false;
 
@@ -249,7 +249,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // 1. generate old and new measurement idx relationship
     // 2. generate new outputColumns for each subDeviceView
     if (existDeviceCrossRegion && analysis.isDeviceViewSpecialProcess()) {
-      Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
+      Map<Integer, List<Integer>> newMeasurementIdxMap = new LinkedHashMap<>();
       List<String> newPartialOutputColumns = new ArrayList<>();
       Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
       // Used to rewrite child ProjectNode if it exists
@@ -442,7 +442,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       DistributionPlanContext context,
       Analysis analysis) {
 
-    Map<TRegionReplicaSet, DeviceViewNode> regionDeviceViewMap = new HashMap<>();
+    Map<TRegionReplicaSet, DeviceViewNode> regionDeviceViewMap = new LinkedHashMap<>();
     for (DeviceViewSplit split : deviceViewSplits) {
       if (split.dataPartitions.size() != 1) {
         throw new IllegalStateException(
@@ -613,8 +613,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
     List<PartialPath> pathPatternList = seed.getPathPatternList();
-    Set<TRegionReplicaSet> regionsOfSystemDatabase = new HashSet<>();
-    Set<TRegionReplicaSet> regionsOfAuditDatabase = new HashSet<>();
+    Set<TRegionReplicaSet> regionsOfSystemDatabase = new LinkedHashSet<>();
+    Set<TRegionReplicaSet> regionsOfAuditDatabase = new LinkedHashSet<>();
     if (pathPatternList.size() == 1) {
       // the path pattern overlaps with all storageGroup or storageGroup.**
       TreeSet<TRegionReplicaSet> schemaRegions =
@@ -668,7 +668,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       for (PartialPath pathPattern : pathPatternList) {
         patternTree.appendPathPattern(pathPattern);
       }
-      Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+      Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new LinkedHashMap<>();
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
@@ -686,7 +686,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           storageGroupSchemaRegionMap
-                              .computeIfAbsent(storageGroup, k -> new HashSet<>())
+                              .computeIfAbsent(storageGroup, k -> new LinkedHashSet<>())
                               .add(schemaRegionReplicaSet));
                 }
               });
@@ -740,7 +740,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
   private List<PartialPath> filterPathPattern(PathPatternTree patternTree, String database) {
     // extract the patterns overlap with current database
-    Set<PartialPath> filteredPathPatternSet = new HashSet<>();
+    Set<PartialPath> filteredPathPatternSet = new LinkedHashSet<>();
     try {
       PartialPath storageGroupPath = new PartialPath(database);
       filteredPathPatternSet.addAll(patternTree.getOverlappedPathPatterns(storageGroupPath));
@@ -771,7 +771,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       CountSchemaMergeNode node, DistributionPlanContext context) {
     CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
-    Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
+    Set<TRegionReplicaSet> schemaRegions = new LinkedHashSet<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
@@ -860,7 +860,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
   private List<PlanNode> splitRegionScanNodeByRegion(
       RegionScanNode node, DistributionPlanContext context) {
-    Map<TRegionReplicaSet, RegionScanNode> regionScanNodeMap = new HashMap<>();
+    Map<TRegionReplicaSet, RegionScanNode> regionScanNodeMap = new LinkedHashMap<>();
     Set<PartialPath> devicesList = node.getDevicePaths();
     boolean isAllDeviceOnlyInOneRegion = true;
 
@@ -980,13 +980,13 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   public List<PlanNode> visitSchemaFetchMerge(
       SchemaFetchMergeNode node, DistributionPlanContext context) {
     SchemaFetchMergeNode root = (SchemaFetchMergeNode) node.clone();
-    Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
+    Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new LinkedHashMap<>();
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
         .forEach(
             (storageGroup, deviceGroup) -> {
-              storageGroupSchemaRegionMap.put(storageGroup, new HashSet<>());
+              storageGroupSchemaRegionMap.put(storageGroup, new LinkedHashSet<>());
               deviceGroup.forEach(
                   (deviceGroupId, schemaRegionReplicaSet) ->
                       storageGroupSchemaRegionMap.get(storageGroup).add(schemaRegionReplicaSet));
@@ -1205,7 +1205,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         innerTimeJoinNode.setTimePartitions(timePartitionIds);
 
         // region group id -> parent InnerTimeJoinNode
-        Map<Integer, PlanNode> map = new HashMap<>();
+        Map<Integer, PlanNode> map = new LinkedHashMap<>();
         for (SeriesSourceNode sourceNode : seriesScanNodes) {
           TRegionReplicaSet dataRegion =
               analysis.getPartitionInfo(sourceNode.getPartitionPath(), oneRegion.get(0));
@@ -1338,7 +1338,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // Step 1: Get all source nodes. For the node which is not source, add it as the child of
     // current TimeJoinNode
     List<SourceNode> sources = new ArrayList<>();
-    Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new HashMap<>();
+    Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new LinkedHashMap<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
         // If the child is SeriesScanNode, we need to check whether this node should be seperated
@@ -1408,7 +1408,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
-        cache.computeIfAbsent(db, k -> new HashMap<>());
+        cache.computeIfAbsent(db, k -> new LinkedHashMap<>());
     TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
 
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
@@ -1431,7 +1431,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return Collections.singletonList(NOT_ASSIGNED);
     }
     List<TRegionReplicaSet> replicaSets = new ArrayList<>();
-    Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
+    Set<TRegionReplicaSet> uniqueValues = new LinkedHashSet<>();
     for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
         regionReplicaSetMap.entrySet()) {
       if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
@@ -1479,7 +1479,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       // upstream will give the final aggregate result,
       // the step of this series' aggregator will be `STATIC`
       List<SeriesAggregationSourceNode> sources = new ArrayList<>();
-      Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
+      Map<PartialPath, Integer> regionCountPerSeries = new LinkedHashMap<>();
       boolean[] eachSeriesOneRegion = {true};
       sourceGroup =
           splitAggregationSourceByPartition(
@@ -1584,7 +1584,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
-    Map<String, List<Expression>> columnNameToExpression = new HashMap<>();
+    Map<String, List<Expression>> columnNameToExpression = new LinkedHashMap<>();
     for (CrossSeriesAggregationDescriptor originalDescriptor :
         newRoot.getGroupByLevelDescriptors()) {
       columnNameToExpression.putAll(originalDescriptor.getGroupedInputStringToExpressionsMap());
@@ -1715,7 +1715,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         .forEach(child -> calculateGroupByLevelNodeAttributes(child, level + 1, context));
 
     // Construct all outputColumns from children. Using Set here to avoid duplication
-    Set<String> childrenOutputColumns = new HashSet<>();
+    Set<String> childrenOutputColumns = new LinkedHashSet<>();
     node.getChildren().forEach(child -> childrenOutputColumns.addAll(child.getOutputColumnNames()));
 
     if (node instanceof SlidingWindowAggregationNode) {
@@ -1747,7 +1747,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
       Map<String, List<Expression>> columnNameToExpression = context.getColumnNameToExpression();
-      Map<String, List<Expression>> childrenExpressionMap = new HashMap<>();
+      Map<String, List<Expression>> childrenExpressionMap = new LinkedHashMap<>();
       for (String childColumn : childrenOutputColumns) {
         String childInput =
             childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")"));
@@ -1756,7 +1756,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
-        Set<Expression> descriptorExpressions = new HashSet<>();
+        Set<Expression> descriptorExpressions = new LinkedHashSet<>();
 
         if (childrenExpressionMap.containsKey(originalDescriptor.getParametersString())) {
           descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
@@ -1969,7 +1969,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         IDeviceID device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
       this.device = device;
       this.root = root;
-      this.dataPartitions = new HashSet<>();
+      this.dataPartitions = new LinkedHashSet<>();
       this.dataPartitions.addAll(dataPartitions);
     }
 

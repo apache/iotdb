@@ -48,8 +48,8 @@ import org.apache.commons.lang3.Validate;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,7 +115,7 @@ public class DistributionPlanner {
         analysis.getTreeStatement() instanceof QueryStatement
             && needShuffleSinkNode((QueryStatement) analysis.getTreeStatement(), context);
 
-    adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
+    adjustUpStreamHelper(root, new LinkedHashMap<>(), needShuffleSinkNode, context);
   }
 
   private void adjustUpStreamHelper(PlanNode root, NodeGroupContext context) {
@@ -271,7 +271,7 @@ public class DistributionPlanner {
 
     public SubPlan splitToSubPlan(PlanNode root) {
       SubPlan rootSubPlan = createSubPlan(root);
-      Set<PlanNodeId> visitedSinkNode = new HashSet<>();
+      Set<PlanNodeId> visitedSinkNode = new LinkedHashSet<>();
       splitToSubPlan(root, rootSubPlan, visitedSinkNode);
       return rootSubPlan;
     }
