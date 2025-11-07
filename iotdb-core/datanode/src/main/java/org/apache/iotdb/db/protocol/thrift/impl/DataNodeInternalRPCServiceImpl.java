@@ -98,6 +98,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -1954,7 +1955,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             try {
               schemaRegion.checkTableDevice4Object(req.getTableName());
               return RpcUtils.SUCCESS_STATUS;
-            } catch (final MetadataException e) {
+            } catch (final SemanticException | MetadataException e) {
               return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
                   .setMessage(e.getMessage());
             }
