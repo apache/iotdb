@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -283,7 +284,12 @@ public class DataNodeTableCache implements ITableCache {
     try {
       if (databaseTableMap.containsKey(database)
           && databaseTableMap.get(database).containsKey(tableName)) {
-        databaseTableMap.get(database).get(tableName).removeColumnSchema(columnName);
+        final TsTable table = databaseTableMap.get(database).get(tableName);
+        final TSDataType type = table.getColumnSchema(columnName).getDataType();
+        table.removeColumnSchema(columnName);
+        if (type.equals(TSDataType.OBJECT)) {
+          table.setNeedCheck4Object();
+        }
       }
       if (preUpdateTableMap.containsKey(database)
           && preUpdateTableMap.get(database).containsKey(tableName)) {
