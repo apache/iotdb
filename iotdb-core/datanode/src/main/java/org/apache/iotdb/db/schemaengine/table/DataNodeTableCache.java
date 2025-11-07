@@ -177,6 +177,13 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
+      // If the "need check" flag is set by the "preUpdate" table, then it need to be cleared here
+      if (databaseTableMap.containsKey(database)) {
+        final TsTable existing = databaseTableMap.get(database).get(tableName);
+        if (Objects.nonNull(existing)) {
+          existing.setNeedCheck4Object();
+        }
+      }
       LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
 
       // If rename table

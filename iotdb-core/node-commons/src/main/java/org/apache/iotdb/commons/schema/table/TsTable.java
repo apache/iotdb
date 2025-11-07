@@ -285,7 +285,8 @@ public class TsTable {
         return true;
       }
     }
-    return needCheck4Object;
+    this.needCheck4Object = false;
+    return false;
   }
 
   public void setNeedCheck4Object(final boolean needCheck4Object) {
