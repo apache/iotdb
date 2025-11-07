@@ -253,21 +253,16 @@ public class TsFileResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (modFile != null && modFile.exists()) {
-      String modFileName = new File(modFile.getFilePath()).getName();
-      ReadWriteIOUtils.write(modFileName, outputStream);
-    } else {
-      // make the first "inputStream.available() > 0" in deserialize() happy.
-      //
-      // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
-      // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
-      // and skip the modFile deserialize.
-      //
-      // this make sure the first and the second "inputStream.available() > 0" in deserialize()
-      // will always be called... which is a bit ugly but allows the following variable
-      // maxProgressIndex to be deserialized correctly.
-      ReadWriteIOUtils.write((String) null, outputStream);
-    }
+    // make the first "inputStream.available() > 0" in deserialize() happy.
+    //
+    // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+    // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+    // and skip the modFile deserialize.
+    //
+    // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+    // will always be called... which is a bit ugly but allows the following variable
+    // maxProgressIndex to be deserialized correctly.
+    ReadWriteIOUtils.write((String) null, outputStream);
 
     if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
@@ -292,10 +287,6 @@ public class TsFileResource {
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
       }
 
       while (inputStream.available() > 0) {
