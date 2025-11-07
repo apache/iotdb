@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -116,13 +117,24 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
-                  file -> {
-                    final File parentFile = new File(file).getParentFile();
+                  filePath -> {
+                    final File tsFile = new File(filePath);
+                    final File pendingDir = ActiveLoadPathHelper.findPendingDirectory(tsFile);
+                    final Map<String, String> attributes =
+                        ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+
+                    final File parentFile = tsFile.getParentFile();
+                    final boolean isTableModel =
+                        ActiveLoadPathHelper.containsDatabaseName(attributes)
+                            || (parentFile != null
+                                && !Objects.equals(
+                                    parentFile.getAbsoluteFile(),
+                                    listeningDirFile.getAbsoluteFile()));
+
                     activeLoadTsFileLoader.tryTriggerTsFileLoad(
-                        file,
-                        parentFile != null
-                            && !Objects.equals(
-                                parentFile.getAbsoluteFile(), listeningDirFile.getAbsoluteFile()),
+                        tsFile.getAbsolutePath(),
+                        pendingDir == null ? null : pendingDir.getAbsolutePath(),
+                        isTableModel,
                         isGeneratedByPipe);
                   });
         } catch (final Exception e) {
