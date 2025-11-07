@@ -52,7 +52,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
   private static Map<String, String> tableCommentList = new HashMap<>();
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
@@ -61,8 +61,12 @@ public class ExportSchemaTable extends AbstractExportSchema {
             .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder =
+          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     checkDatabase();
     try {
       parseTablesBySelectSchema(String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
