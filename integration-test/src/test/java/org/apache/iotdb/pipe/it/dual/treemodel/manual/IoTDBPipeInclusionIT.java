@@ -77,13 +77,12 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              // TODO: add database creation after the database auto creating on receiver can be
-              // banned
+              "create database root.ln",
               "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeSeries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
               "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
           null)) {
-          return;
+        return;
       }
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -95,10 +94,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-              Arrays.asList(
-                      "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
-                      "insert into root.ln.wf01.wt01(time, status) values(now(), false)",
-                      "flush"),
+          Arrays.asList(
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)",
+              "flush"),
           null)) {
         return;
       }
@@ -150,8 +149,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              // TODO: add database creation after the database auto creating on receiver can be
-              // banned
+              "create timeseries root.ln",
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
               "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),

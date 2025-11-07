@@ -19,19 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.List;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.auth.AuthorityChecker.getAuthorizedPathTree;
 
 public class AlterEncodingCompressorStatement extends Statement implements IConfigStatement {
 
@@ -40,6 +49,8 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
   private final CompressionType compressor;
   private final boolean ifExists;
   private final boolean ifPermitted;
+
+  // Reserved for upgrading
   private boolean withAudit = false;
 
   public AlterEncodingCompressorStatement(
@@ -107,6 +118,29 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
         && Objects.equals(this.compressor, that.compressor)
         && Objects.equals(this.ifExists, that.ifExists)
         && Objects.equals(this.ifPermitted, that.ifPermitted);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    if (ifPermitted) {
+      try {
+        final PathPatternTree authTree =
+            getAuthorizedPathTree(userName, PrivilegeType.WRITE_SCHEMA);
+        setPatternTree(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(getPatternTree(), authTree));
+        return StatusUtils.OK;
+      } catch (final AuthException e) {
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            userName, getPaths(), PrivilegeType.WRITE_SCHEMA),
+        getPaths(),
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
