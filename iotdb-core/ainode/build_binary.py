@@ -65,6 +65,27 @@ def update_pip(venv_python):
     print("pip updated successfully")
 
 
+def install_poetry(venv_python):
+    """
+    Install poetry 2.1.2 in virtual environment.
+
+    Note: subprocess.run() is synchronous and blocks until the subprocess completes.
+    This ensures poetry installation finishes before the script continues.
+    """
+    print("Installing poetry 2.1.2...")
+    subprocess.run(
+        [
+            str(venv_python),
+            "-m",
+            "pip",
+            "install",
+            "poetry==2.1.2",
+        ],
+        check=True,
+    )
+    print("poetry 2.1.2 installed successfully")
+
+
 def get_venv_env(venv_dir):
     """Get environment variables for virtual environment activation"""
     env = os.environ.copy()
@@ -206,6 +227,9 @@ def build():
 
     # Update pip
     update_pip(venv_python)
+
+    # Install poetry 2.1.2
+    install_poetry(venv_python)
 
     # Install dependencies
     install_dependencies(venv_python, venv_dir, script_dir)
