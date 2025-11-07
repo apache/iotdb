@@ -36,7 +36,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -295,7 +294,7 @@ public class TsTable {
         }
 
         // Add column to schema and record its position
-        measurementSchemas.add(new MeasurementSchema(columnName, tableSchema.getDataType()));
+        measurementSchemas.add(tableSchema.getMeasurementSchema());
         columnTypes.add(category.toTsFileColumnType());
         columnPosIndex.put(columnName, columnIndex);
         columnIndex++;

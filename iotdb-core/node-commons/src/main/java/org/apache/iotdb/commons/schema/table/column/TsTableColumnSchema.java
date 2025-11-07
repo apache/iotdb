@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -66,6 +67,10 @@ public abstract class TsTableColumnSchema {
   }
 
   public abstract TsTableColumnCategory getColumnCategory();
+
+  public MeasurementSchema getMeasurementSchema() {
+    return new MeasurementSchema(columnName, dataType);
+  }
 
   void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(columnName, outputStream);
