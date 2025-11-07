@@ -89,7 +89,7 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return patternTree.getAllPathPatterns();
   }
 

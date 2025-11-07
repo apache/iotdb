@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.SerializeUtils;

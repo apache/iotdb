@@ -62,7 +62,7 @@ public class ClusterManager {
   private final IManager configManager;
   private final ClusterInfo clusterInfo;
 
-  private static final String CONSENSUS_WRITE_ERROR =
+  public static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterManager(IManager configManager, ClusterInfo clusterInfo) {
