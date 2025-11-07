@@ -23,15 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -487,21 +478,21 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
       }
     }
 
-      @Override
-      public SchemaRegionPlanSerializationResult visitAlterEncodingCompressor(
-              final AlterEncodingCompressorNode alterEncodingCompressorNode,
-              final DataOutputStream outputStream) {
-          return visitPlanNode(alterEncodingCompressorNode, outputStream);
-      }
+    @Override
+    public SchemaRegionPlanSerializationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(alterEncodingCompressorNode, outputStream);
+    }
 
-      private SchemaRegionPlanSerializationResult visitPlanNode(
-              final PlanNode planNode, final DataOutputStream outputStream) {
-          try {
-              planNode.serialize(outputStream);
-              return SchemaRegionPlanSerializationResult.SUCCESS;
-          } catch (final IOException e) {
-              return new SchemaRegionPlanSerializationResult(e);
-          }
+    private SchemaRegionPlanSerializationResult visitPlanNode(
+        final PlanNode planNode, final DataOutputStream outputStream) {
+      try {
+        planNode.serialize(outputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (final IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
       }
+    }
   }
 }

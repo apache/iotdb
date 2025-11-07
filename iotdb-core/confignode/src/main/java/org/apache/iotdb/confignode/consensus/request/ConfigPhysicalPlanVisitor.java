@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -85,7 +84,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitRevokeRoleFromUser((AuthorPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
-    case PipeAlterEncodingCompressor:
+      case PipeAlterEncodingCompressor:
         return visitPipeAlterEncodingCompressor((PipeAlterEncodingCompressorPlan) plan, context);
       default:
         return visitPlan(plan, context);
@@ -195,8 +194,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(setTTLPlan, context);
   }
 
-    public R visitPipeAlterEncodingCompressor(
-            final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan, final C context) {
-        return visitPlan(pipeAlterEncodingCompressorPlan, context);
-    }
+  public R visitPipeAlterEncodingCompressor(
+      final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan, final C context) {
+    return visitPlan(pipeAlterEncodingCompressorPlan, context);
+  }
 }
