@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
+
+import java.util.List;
 
 /**
  * Represents a pattern that includes data matched by an inclusion pattern, except for data matched
@@ -40,6 +44,8 @@ public class WithExclusionTreePattern extends TreePattern {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
+
+    TreePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   @Override
@@ -92,6 +98,11 @@ public class WithExclusionTreePattern extends TreePattern {
     // The core logic: Must match inclusion AND NOT match exclusion.
     return inclusionPattern.matchesMeasurement(device, measurement)
         && !exclusionPattern.matchesMeasurement(device, measurement);
+  }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    throw new UnsupportedOperationException();
   }
 
   @Override

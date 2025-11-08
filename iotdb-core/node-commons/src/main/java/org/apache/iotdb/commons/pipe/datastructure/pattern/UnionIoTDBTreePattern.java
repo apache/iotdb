@@ -97,6 +97,15 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
   }
 
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    final List<PartialPath> paths = new ArrayList<>();
+    for (final TreePattern p : patterns) {
+      paths.addAll(p.getBaseInclusionPaths());
+    }
+    return paths;
+  }
+
   //////////////////////////// IoTDB Tree Pattern Operations ////////////////////////////
 
   @Override

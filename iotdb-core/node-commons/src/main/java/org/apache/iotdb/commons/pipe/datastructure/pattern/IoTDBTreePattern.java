@@ -143,6 +143,11 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
     }
   }
 
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    return Collections.singletonList(patternPartialPath);
+  }
+
   //////////////////////////// IoTDB Tree Pattern Operations ////////////////////////////
 
   /**

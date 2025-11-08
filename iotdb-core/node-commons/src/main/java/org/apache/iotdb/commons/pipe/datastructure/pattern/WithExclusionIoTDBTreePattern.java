@@ -46,14 +46,14 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
+
+    TreePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   public WithExclusionIoTDBTreePattern(
       final IoTDBTreePatternOperations inclusionPattern,
       final IoTDBTreePatternOperations exclusionPattern) {
-    super(true);
-    this.inclusionPattern = inclusionPattern;
-    this.exclusionPattern = exclusionPattern;
+    this(true, inclusionPattern, exclusionPattern);
   }
 
   //////////////////////////// Tree Pattern Operations ////////////////////////////
@@ -103,6 +103,11 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     return inclusionPattern.matchesMeasurement(device, measurement)
         && !exclusionPattern.matchesMeasurement(device, measurement);
+  }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    throw new UnsupportedOperationException();
   }
 
   //////////////////////////// IoTDB Tree Pattern Operations ////////////////////////////
