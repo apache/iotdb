@@ -73,6 +73,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -674,6 +675,38 @@ public class MTreeBelowSGMemoryImpl {
       collector.traverse();
     }
     return result;
+  }
+
+  public boolean alterEncodingCompressor(
+      final PartialPath pathPattern, final TSEncoding encoding, final CompressionType compressor)
+      throws MetadataException {
+    final boolean[] exist = {false};
+    try (final MeasurementUpdater<IMemMNode> collector =
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node)
+              throws MetadataException {
+            if (node.isLogicalView()) {
+              return;
+            }
+            exist[0] = true;
+            final IMeasurementSchema schema = node.getSchema();
+            if (Objects.nonNull(encoding)) {
+              SchemaUtils.checkDataTypeWithEncoding(node.getDataType(), encoding);
+            }
+            node.setSchema(
+                new MeasurementSchema(
+                    schema.getMeasurementName(),
+                    schema.getType(),
+                    Objects.nonNull(encoding) ? encoding : schema.getEncodingType(),
+                    Objects.nonNull(compressor) ? compressor : schema.getCompressor(),
+                    schema.getProps()));
+          }
+        }) {
+      collector.traverse();
+    }
+    return exist[0];
   }
 
   // TODO: seems useless

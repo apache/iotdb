@@ -67,18 +67,23 @@ public class ExportDataTree extends AbstractExportData {
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException, TException {
-    session =
-        new Session(
-            host,
-            Integer.parseInt(port),
-            username,
-            password,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            rpcMaxFrameSize,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+    Session.Builder sessionBuilder =
+        new Session.Builder()
+            .host(host)
+            .port(Integer.parseInt(port))
+            .username(username)
+            .password(password)
+            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+            .zoneId(null)
+            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+            .thriftMaxFrameSize(rpcMaxFrameSize)
+            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+            .version(SessionConfig.DEFAULT_VERSION);
+    if (useSsl) {
+      sessionBuilder =
+          sessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    session = sessionBuilder.build();
     session.open(false);
     timestampPrecision = session.getTimestampPrecision();
     if (timeZoneID != null) {
