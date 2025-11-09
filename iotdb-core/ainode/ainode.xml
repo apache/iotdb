@@ -56,7 +56,7 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>dist</directory>
+            <directory>dist/ainode</directory>
             <outputDirectory>lib</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>

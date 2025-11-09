@@ -32,6 +32,6 @@ echo Script got ainode executable: "$ain_ainode_executable"
 
 echo Starting AINode...
 
-%ain_ainode_dir% start
+%$ain_ainode_executable% start
 
 pause
