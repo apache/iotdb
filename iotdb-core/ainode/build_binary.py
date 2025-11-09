@@ -21,7 +21,6 @@
 PyInstaller build script (Python version)
 """
 
-import hashlib
 import os
 import shutil
 import subprocess
@@ -47,37 +46,22 @@ def get_venv_base_dir():
     return base_dir
 
 
-def get_project_venv_name(project_dir):
-    """
-    Generate a unique virtual environment name based on the project directory path.
-    
-    Uses MD5 hash of the absolute path to ensure uniqueness across different
-    project locations while keeping the name readable.
-    
-    Returns:
-        str: Virtual environment name in format <project-name>-<hash>
-    """
-    project_path = str(project_dir.absolute())
-    path_hash = hashlib.md5(project_path.encode()).hexdigest()[:8]
-    project_name = project_dir.name
-    return f"{project_name}-{path_hash}"
-
-
 def setup_venv():
     """
     Create virtual environment outside the project directory.
     
     The virtual environment is created in a platform-specific location:
-    - Linux/macOS: ~/.cache/iotdb-ainode-build/<project-name>-<hash>/
-    - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\<project-name>-<hash>\\
+    - Linux/macOS: ~/.cache/iotdb-ainode-build/<project-name>/
+    - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\<project-name>\\
+    
+    The same venv is reused across multiple builds of the same project.
     
     Returns:
         Path: Path to the virtual environment directory
     """
     script_dir = Path(__file__).parent
     venv_base_dir = get_venv_base_dir()
-    venv_name = get_project_venv_name(script_dir)
-    venv_dir = venv_base_dir / venv_name
+    venv_dir = venv_base_dir / script_dir.name
     
     if venv_dir.exists():
         print(f"Virtual environment already exists at: {venv_dir}")
@@ -142,6 +126,14 @@ def get_venv_env(venv_dir):
     return env
 
 
+def get_poetry_executable(venv_dir):
+    """Get poetry executable path in the virtual environment."""
+    if sys.platform == "win32":
+        return venv_dir / "Scripts" / "poetry.exe"
+    else:
+        return venv_dir / "bin" / "poetry"
+
+
 def install_dependencies(venv_python, venv_dir, script_dir):
     """
     Install project dependencies using poetry.
@@ -151,12 +143,13 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     """
     print("Installing dependencies with poetry...")
     venv_env = get_venv_env(venv_dir)
+    poetry_exe = get_poetry_executable(venv_dir)
 
     # Configure poetry to use external virtual environments
     print("Configuring poetry to use external virtual environments...")
     try:
         subprocess.run(
-            ["poetry", "config", "virtualenvs.in-project", "false"],
+            [str(poetry_exe), "config", "virtualenvs.in-project", "false"],
             cwd=str(script_dir),
             env=venv_env,
             check=True,
@@ -169,7 +162,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     # Link poetry to the existing virtual environment
     print(f"Configuring poetry to use virtual environment at: {venv_dir}")
     result = subprocess.run(
-        ["poetry", "env", "use", str(venv_python)],
+        [str(poetry_exe), "env", "use", str(venv_python)],
         cwd=str(script_dir),
         env=venv_env,
         check=False,
@@ -188,7 +181,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     # Update lock file and install dependencies
     print("Running poetry lock...")
     result = subprocess.run(
-        ["poetry", "lock"],
+        [str(poetry_exe), "lock"],
         cwd=str(script_dir),
         env=venv_env,
         check=True,
@@ -202,7 +195,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
 
     print("Running poetry install...")
     result = subprocess.run(
-        ["poetry", "install"],
+        [str(poetry_exe), "install"],
         cwd=str(script_dir),
         env=venv_env,
         check=True,
@@ -217,8 +210,18 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     print("Dependencies installed successfully")
 
 
+def install_pyinstaller(venv_python):
+    """Install PyInstaller in the virtual environment."""
+    print("Installing PyInstaller...")
+    subprocess.run(
+        [str(venv_python), "-m", "pip", "install", "pyinstaller"],
+        check=True,
+    )
+    print("PyInstaller installed successfully")
+
+
 def check_pyinstaller(venv_python):
-    """Check if PyInstaller is installed"""
+    """Check if PyInstaller is installed, install if missing."""
     try:
         result = subprocess.run(
             [
@@ -234,9 +237,9 @@ def check_pyinstaller(venv_python):
         print(f"PyInstaller version: {version}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("Error: PyInstaller is not installed")
-        print("Please run: pip install pyinstaller")
-        return False
+        print("PyInstaller not found, installing...")
+        install_pyinstaller(venv_python)
+        return True
 
 
 def build():
