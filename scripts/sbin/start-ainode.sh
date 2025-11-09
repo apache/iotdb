@@ -37,9 +37,9 @@ while getopts "i:rn" opt; do
   esac
 done
 
-ain_ainode_executable="$IOTDB_AINODE_HOME/lib/ainode/ainode"
+ain_ainode_executable="$IOTDB_AINODE_HOME/lib/ainode"
 
-echo Script got ainode executable: "$ain_ainode_executable"
+echo Script got ainode executable: "%ain_ainode_executable%"
 
 echo Starting AINode...
 
