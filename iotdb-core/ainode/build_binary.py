@@ -21,6 +21,7 @@
 PyInstaller build script (Python version)
 """
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -28,15 +29,61 @@ import sys
 from pathlib import Path
 
 
-def setup_venv():
-    """Create virtual environment if it doesn't exist"""
-    script_dir = Path(__file__).parent
-    venv_dir = script_dir / ".venv"
+def get_venv_base_dir():
+    """
+    Get the base directory for virtual environments outside the project.
+    
+    Returns:
+        Path: Base directory path
+        - Linux/macOS: ~/.cache/iotdb-ainode-build/
+        - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\
+    """
+    if sys.platform == "win32":
+        localappdata = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA", os.path.expanduser("~"))
+        base_dir = Path(localappdata) / "iotdb-ainode-build"
+    else:
+        base_dir = Path.home() / ".cache" / "iotdb-ainode-build"
+    
+    return base_dir
 
+
+def get_project_venv_name(project_dir):
+    """
+    Generate a unique virtual environment name based on the project directory path.
+    
+    Uses MD5 hash of the absolute path to ensure uniqueness across different
+    project locations while keeping the name readable.
+    
+    Returns:
+        str: Virtual environment name in format <project-name>-<hash>
+    """
+    project_path = str(project_dir.absolute())
+    path_hash = hashlib.md5(project_path.encode()).hexdigest()[:8]
+    project_name = project_dir.name
+    return f"{project_name}-{path_hash}"
+
+
+def setup_venv():
+    """
+    Create virtual environment outside the project directory.
+    
+    The virtual environment is created in a platform-specific location:
+    - Linux/macOS: ~/.cache/iotdb-ainode-build/<project-name>-<hash>/
+    - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\<project-name>-<hash>\\
+    
+    Returns:
+        Path: Path to the virtual environment directory
+    """
+    script_dir = Path(__file__).parent
+    venv_base_dir = get_venv_base_dir()
+    venv_name = get_project_venv_name(script_dir)
+    venv_dir = venv_base_dir / venv_name
+    
     if venv_dir.exists():
         print(f"Virtual environment already exists at: {venv_dir}")
         return venv_dir
-
+    
+    venv_base_dir.mkdir(parents=True, exist_ok=True)
     print(f"Creating virtual environment at: {venv_dir}")
     subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
     print("Virtual environment created successfully")
@@ -52,12 +99,7 @@ def get_venv_python(venv_dir):
 
 
 def update_pip(venv_python):
-    """
-    Update pip in virtual environment.
-
-    Note: subprocess.run() is synchronous and blocks until the subprocess completes.
-    This ensures pip upgrade finishes before the script continues.
-    """
+    """Update pip in the virtual environment to the latest version."""
     print("Updating pip...")
     subprocess.run(
         [str(venv_python), "-m", "pip", "install", "--upgrade", "pip"], check=True
@@ -66,12 +108,7 @@ def update_pip(venv_python):
 
 
 def install_poetry(venv_python):
-    """
-    Install poetry 2.1.2 in virtual environment.
-
-    Note: subprocess.run() is synchronous and blocks until the subprocess completes.
-    This ensures poetry installation finishes before the script continues.
-    """
+    """Install poetry 2.1.2 in the virtual environment."""
     print("Installing poetry 2.1.2...")
     subprocess.run(
         [
@@ -87,46 +124,39 @@ def install_poetry(venv_python):
 
 
 def get_venv_env(venv_dir):
-    """Get environment variables for virtual environment activation"""
+    """
+    Get environment variables configured for the virtual environment.
+    
+    Sets VIRTUAL_ENV and prepends the venv's bin/Scripts directory to PATH
+    so that tools installed in the venv take precedence.
+    
+    Returns:
+        dict: Environment variables dictionary
+    """
     env = os.environ.copy()
-    venv_path = str(venv_dir.absolute())
-    env["VIRTUAL_ENV"] = venv_path
-
-    # Add venv bin directory to PATH
-    if sys.platform == "win32":
-        venv_bin = str(venv_dir / "Scripts")
-    else:
-        venv_bin = str(venv_dir / "bin")
-
-    # Prepend venv bin to PATH to ensure venv tools take precedence
+    env["VIRTUAL_ENV"] = str(venv_dir.absolute())
+    
+    venv_bin = str(venv_dir / ("Scripts" if sys.platform == "win32" else "bin"))
     env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
-
+    
     return env
 
 
 def install_dependencies(venv_python, venv_dir, script_dir):
     """
-    Install dependencies using poetry.
-
-    Note: subprocess.run() is synchronous and blocks until each command completes.
-    This ensures each step (poetry lock, install) finishes before proceeding.
-
-    We configure poetry to use our .venv directory by:
-    1. Configuring poetry to use in-project virtualenvs
-    2. Setting poetry to use our .venv via poetry env use
-    3. Running poetry lock and install which will use our .venv
+    Install project dependencies using poetry.
+    
+    Configures poetry to use the external virtual environment and installs
+    all dependencies from pyproject.toml.
     """
     print("Installing dependencies with poetry...")
-
-    # Get environment with VIRTUAL_ENV set
     venv_env = get_venv_env(venv_dir)
 
-    # Configure poetry to use in-project virtualenvs
-    # This makes poetry create/use .venv in the project directory
-    print("Configuring poetry to use in-project virtualenvs...")
+    # Configure poetry to use external virtual environments
+    print("Configuring poetry to use external virtual environments...")
     try:
         subprocess.run(
-            ["poetry", "config", "virtualenvs.in-project", "true"],
+            ["poetry", "config", "virtualenvs.in-project", "false"],
             cwd=str(script_dir),
             env=venv_env,
             check=True,
@@ -136,32 +166,26 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     except Exception:
         pass  # Configuration may already be set
 
-    # Configure poetry to use our existing virtual environment
-    # This links poetry's management to our .venv directory
+    # Link poetry to the existing virtual environment
     print(f"Configuring poetry to use virtual environment at: {venv_dir}")
     result = subprocess.run(
         ["poetry", "env", "use", str(venv_python)],
         cwd=str(script_dir),
         env=venv_env,
-        check=False,  # Don't fail if venv is already configured
+        check=False,
         capture_output=True,
         text=True,
     )
 
-    # Check output - if poetry tries to recreate venv, that's okay as it will use our path
     if result.stdout:
-        output = result.stdout.strip()
-        print(output)
+        print(result.stdout.strip())
     if result.stderr:
         stderr = result.stderr.strip()
-        # Ignore warnings about venv already existing or being created
-        if (
-            "already been activated" not in stderr.lower()
-            and "already in use" not in stderr.lower()
-        ):
+        # Only print non-benign errors
+        if "already been activated" not in stderr.lower() and "already in use" not in stderr.lower():
             print(stderr)
 
-    # Run poetry lock
+    # Update lock file and install dependencies
     print("Running poetry lock...")
     result = subprocess.run(
         ["poetry", "lock"],
@@ -176,8 +200,6 @@ def install_dependencies(venv_python, venv_dir, script_dir):
     if result.stderr:
         print(result.stderr)
 
-    # Run poetry install
-    # With VIRTUAL_ENV set and poetry env use configured, this should install into our .venv
     print("Running poetry install...")
     result = subprocess.run(
         ["poetry", "install"],
@@ -218,23 +240,24 @@ def check_pyinstaller(venv_python):
 
 
 def build():
-    """Execute build process"""
+    """
+    Execute the complete build process.
+    
+    Steps:
+    1. Setup virtual environment (outside project directory)
+    2. Update pip and install poetry 2.1.2
+    3. Install project dependencies
+    4. Build executable using PyInstaller
+    """
     script_dir = Path(__file__).parent
 
-    # Setup virtual environment
     venv_dir = setup_venv()
     venv_python = get_venv_python(venv_dir)
 
-    # Update pip
     update_pip(venv_python)
-
-    # Install poetry 2.1.2
     install_poetry(venv_python)
-
-    # Install dependencies
     install_dependencies(venv_python, venv_dir, script_dir)
 
-    # Check PyInstaller
     if not check_pyinstaller(venv_python):
         sys.exit(1)
 
@@ -243,7 +266,6 @@ def build():
     print("=" * 50)
     print()
 
-    # Execute build (incremental build - no cleanup for faster rebuilds)
     print("Starting build...")
     print()
 
