@@ -30,8 +30,10 @@ block_cipher = None
 from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_data_files
 
 # Collect only essential data files and binaries for large libraries
-# Using collect_all for all submodules slows down startup significantly
-# Instead, we collect only what's needed and rely on PyInstaller's dependency analysis
+# Using collect_all for all submodules slows down startup significantly.
+# However, for certain libraries with many dynamic imports (e.g., torch, transformers, safetensors),
+# collect_all is necessary to ensure all required modules are included.
+# For other libraries, we use lighter-weight collection methods to improve startup time.
 all_datas = []
 all_binaries = []
 all_hiddenimports = []
