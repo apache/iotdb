@@ -132,6 +132,9 @@ all_hiddenimports.extend(multiprocessing_modules)
 all_hiddenimports.extend(external_dependencies)
 
 # Analyze main entry file
+# Note: Do NOT add virtual environment site-packages to pathex manually.
+# When PyInstaller is run from the virtual environment's Python, it automatically
+# detects and uses the virtual environment's site-packages.
 a = Analysis(
     ['iotdb/ainode/core/script.py'],
     pathex=[str(project_root)],

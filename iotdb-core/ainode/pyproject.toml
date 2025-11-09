@@ -107,7 +107,7 @@ tzlocal = "^5.3.1"
 hf_xet = ">=1.1.9"
 
 # ---- Tooling ----
-pyinstaller  = "^6.13.0"
+pyinstaller = "6.16.0"
 black = "25.1.0"
 isort = "6.0.1"
 setuptools = ">=75.3.0"
@@ -119,3 +119,4 @@ ainode = "iotdb.ainode.core.script:main"
 
 [tool.isort]
 profile = "black"
+skip = ["build", "dist", "target"]
