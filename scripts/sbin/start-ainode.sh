@@ -39,7 +39,7 @@ done
 
 ain_ainode_executable="$IOTDB_AINODE_HOME/lib/ainode"
 
-echo Script got ainode executable: "%ain_ainode_executable%"
+echo Script got ainode executable: "$ain_ainode_executable"
 
 echo Starting AINode...
 

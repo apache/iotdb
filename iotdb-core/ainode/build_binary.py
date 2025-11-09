@@ -589,7 +589,6 @@ def build():
     print()
     print("Usage:")
     print("  ./dist/ainode/ainode start   # Start AINode")
-    print("  ./dist/ainode/ainode remove  # Remove AINode")
     print()
 
 

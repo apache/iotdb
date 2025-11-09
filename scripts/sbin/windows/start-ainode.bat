@@ -28,7 +28,7 @@ if NOT DEFINED IOTDB_AINODE_HOME set IOTDB_AINODE_HOME=%cd%
 
 set ain_ainode_executable=%IOTDB_AINODE_HOME%\lib\ainode
 
-echo Script got ainode executable: "$ain_ainode_executable"
+echo Script got ainode executable: %ain_ainode_executable%
 
 echo Starting AINode...
 
