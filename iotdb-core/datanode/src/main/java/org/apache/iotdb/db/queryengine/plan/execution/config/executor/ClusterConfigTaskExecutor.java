@@ -324,6 +324,7 @@ import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.SettableFuture;
@@ -368,6 +369,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -671,6 +673,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                             + "'.",
                         TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
                 return future;
+              } else if (checkObjectScalarParameter(specification)) {
+                future.setException(
+                    new IoTDBException(
+                        "Failed to create function '"
+                            + udfName
+                            + "', because there is an argument with OBJECT type '"
+                            + specification.getName()
+                            + "'.",
+                        TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
+                return future;
               }
             }
           }
@@ -712,6 +724,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private boolean checkObjectScalarParameter(ParameterSpecification parameterSpecification) {
+    if (parameterSpecification instanceof ScalarParameterSpecification) {
+      ScalarParameterSpecification scalarParameterSpecification =
+          (ScalarParameterSpecification) parameterSpecification;
+      return scalarParameterSpecification.getType() == OBJECT;
+    }
+    return false;
   }
 
   @Override
