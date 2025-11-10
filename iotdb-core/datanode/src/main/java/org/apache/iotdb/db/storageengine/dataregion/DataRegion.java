@@ -2922,11 +2922,13 @@ public class DataRegion implements IDataRegionForQuery {
               devicesInFile.stream()
                   .filter(
                       device -> {
-                        logger.debug(
-                            "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
-                            device,
-                            device.getTableName(),
-                            tableDeletionEntry.getPredicate().matches(device));
+                        if (logger.isDebugEnabled()) {
+                          logger.debug(
+                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                              device,
+                              device.getTableName(),
+                              tableDeletionEntry.getPredicate().matches(device));
+                        }
                         return tableName.equals(device.getTableName())
                             && tableDeletionEntry.getPredicate().matches(device);
                       })
@@ -2951,14 +2953,16 @@ public class DataRegion implements IDataRegionForQuery {
             long fileStartTime = optStart.get();
             long fileEndTime = optEnd.get();
 
-            logger.debug(
-                "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
-                device.getTableName(),
-                device,
-                deletion.getStartTime(),
-                deletion.getEndTime(),
-                fileStartTime,
-                fileEndTime);
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  device.getTableName(),
+                  device,
+                  deletion.getStartTime(),
+                  deletion.getEndTime(),
+                  fileStartTime,
+                  fileEndTime);
+            }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
               ++matchSize;
             } else {
@@ -2970,8 +2974,8 @@ public class DataRegion implements IDataRegionForQuery {
             deletedByFiles.add(sealedTsFile);
           }
 
-          logger.debug("expect is {}, actual is {}", devicesInFile.size(), matchSize);
           if (logger.isDebugEnabled()) {
+            logger.debug("expect is {}, actual is {}", devicesInFile.size(), matchSize);
             for (TsFileResource tsFileResource : deletedByFiles) {
               logger.debug(
                   "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
