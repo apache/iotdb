@@ -2610,6 +2610,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String queryId,
       final AlterEncodingCompressorStatement alterEncodingCompressorStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Will only occur if no permission
+    if (alterEncodingCompressorStatement.getPatternTree().isEmpty()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {

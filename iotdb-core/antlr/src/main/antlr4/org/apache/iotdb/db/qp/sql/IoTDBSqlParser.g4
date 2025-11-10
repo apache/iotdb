@@ -178,7 +178,7 @@ alterClause
     ;
 
 alterEncodingCompressor
-    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET attributePair (COMMA attributePair)*
+    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET STORAGE_PROPERTIES attributePair (COMMA attributePair)*
     ;
 
 aliasClause
