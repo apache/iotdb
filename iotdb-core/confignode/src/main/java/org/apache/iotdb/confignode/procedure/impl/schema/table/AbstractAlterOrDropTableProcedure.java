@@ -193,7 +193,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     private final String taskName;
     private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
     private final TriFunction<
-                TConsensusGroupId, Set<TDataNodeLocation>, Map<TDataNodeLocation, TSStatus>, Exception>
+            TConsensusGroupId, Set<TDataNodeLocation>, Map<TDataNodeLocation, TSStatus>, Exception>
         exceptionGenerator;
 
     protected TableRegionTaskExecutor(
