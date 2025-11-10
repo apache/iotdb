@@ -124,6 +124,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -1333,12 +1334,12 @@ public class ClusterSchemaManager {
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
 
-    final List<String> objectNames = new ArrayList<>();
+    final AtomicBoolean hasObject = new AtomicBoolean(false);
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
             if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
-              objectNames.add(columnSchema.getColumnName());
+              hasObject.set(true);
             }
             expandedTable.addColumnSchema(columnSchema);
             return false;
@@ -1350,7 +1351,7 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
 
-    if (!objectNames.isEmpty()) {
+    if (hasObject.get()) {
       expandedTable.checkTableNameAndObjectNames4Object();
     }
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);

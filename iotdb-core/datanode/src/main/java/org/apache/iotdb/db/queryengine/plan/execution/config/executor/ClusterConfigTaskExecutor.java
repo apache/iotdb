@@ -4221,8 +4221,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             new SemanticException(
                 tsStatus
                     .getMessage()
-                    .replace(
-                        "org.apache.iotdb.commons.exception.IoTDBRuntimeException: ", "")));
+                    .replace("org.apache.iotdb.commons.exception.IoTDBRuntimeException: ", "")));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
