@@ -71,7 +71,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                   processor,
                   getID().getName(),
                   ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-                  null,
+                  getBindIP(),
                   getBindPort(),
                   config.getRpcMaxConcurrentClientNum(),
                   config.getThriftServerAwaitTimeForStopService(),
