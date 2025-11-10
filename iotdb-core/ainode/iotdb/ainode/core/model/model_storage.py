@@ -38,17 +38,14 @@ from iotdb.ainode.core.exception import (
     UnsupportedError,
 )
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.built_in_model_factory import (
-    download_built_in_ltsm_from_hf_if_necessary,
-    fetch_built_in_model,
-)
+from iotdb.ainode.core.model.sktime.modeling_sktime import fetch_built_in_model
 from iotdb.ainode.core.model.model_enums import (
     BuiltInModelType,
     ModelCategory,
     ModelFileType,
     ModelStates,
 )
-from iotdb.ainode.core.model.model_factory import fetch_model_by_uri
+from iotdb.ainode.core.model.model_factory import fetch_model_by_uri, download_built_in_ltsm_from_hf_if_necessary
 from iotdb.ainode.core.model.model_info import (
     BUILT_IN_LTSM_MAP,
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
