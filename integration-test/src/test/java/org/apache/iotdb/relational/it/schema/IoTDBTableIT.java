@@ -797,10 +797,14 @@ public class IoTDBTableIT {
             "507: When there are object fields, the deviceId [.\\] shall not be '.', '..' or contain './', '.\\'",
             e.getMessage());
       }
+    }
 
-      // Test cache
-      TestUtils.restartCluster(EnvFactory.getEnv());
+    // Test cache
+    TestUtils.restartCluster(EnvFactory.getEnv());
 
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       try {
         statement.execute("insert into test (a, b, c) values ('.\\', 1, 1)");
         fail();
