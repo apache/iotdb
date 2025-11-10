@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import inspect
 import logging
 import os
 from enum import Enum
@@ -24,6 +23,7 @@ from typing import List
 from iotdb.ainode.core.model.model_enums import BuiltInModelType
 from iotdb.thrift.common.ttypes import TEndPoint
 
+IOTDB_AINODE_HOME = os.getenv("IOTDB_AINODE_HOME")
 AINODE_VERSION_INFO = "UNKNOWN"
 AINODE_BUILD_INFO = "UNKNOWN"
 AINODE_CONF_DIRECTORY_NAME = "conf"

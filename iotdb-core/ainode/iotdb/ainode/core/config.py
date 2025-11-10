@@ -16,6 +16,7 @@
 # under the License.
 #
 import os
+import re
 
 from iotdb.ainode.core.constant import (
     AINODE_BUILD_INFO,
@@ -44,6 +45,7 @@ from iotdb.ainode.core.constant import (
     AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
+    IOTDB_AINODE_HOME,
 )
 from iotdb.ainode.core.exception import BadNodeUrlError
 from iotdb.ainode.core.log import Logger
@@ -331,12 +333,14 @@ class AINodeDescriptor(object):
 
         conf_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_FILE_NAME)
         if not os.path.exists(conf_file):
-            logger.info(
-                "Cannot find AINode config file '{}', use default configuration.".format(
-                    conf_file
+            conf_file = os.path.join(IOTDB_AINODE_HOME, conf_file)
+            if not os.path.exists(conf_file):
+                logger.info(
+                    "Cannot find AINode config file '{}', use default configuration.".format(
+                        conf_file
+                    )
                 )
-            )
-            return
+                return
 
         # noinspection PyBroadException
         try:
@@ -447,18 +451,29 @@ class AINodeDescriptor(object):
         return self._config
 
 
+def unescape_java_properties(value: str) -> str:
+    """Undo Java Properties escaping rules"""
+    value = value.replace("\\t", "\t")
+    value = value.replace("\\n", "\n")
+    value = value.replace("\\r", "\r")
+    value = value.replace("\\\\", "\\")
+    value = re.sub(r"\\([:=\s])", r"\1", value)
+    return value
+
+
 def load_properties(filepath, sep="=", comment_char="#"):
     """
     Read the file passed as parameter as a properties file.
     """
     props = {}
-    with open(filepath, "rt") as f:
+    with open(filepath, "rt", encoding="utf-8") as f:
         for line in f:
             l = line.strip()
             if l and not l.startswith(comment_char):
-                key_value = l.split(sep)
+                key_value = l.split(sep, 1)
                 key = key_value[0].strip()
-                value = sep.join(key_value[1:]).strip().strip('"')
+                value = key_value[1].strip().strip('"')
+                value = unescape_java_properties(value)
                 props[key] = value
     return props
 

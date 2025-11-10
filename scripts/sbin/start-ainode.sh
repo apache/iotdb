@@ -23,7 +23,7 @@ echo Starting IoTDB AINode
 echo ---------------------------
 
 IOTDB_AINODE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
-
+export IOTDB_AINODE_HOME
 echo "IOTDB_AINODE_HOME: $IOTDB_AINODE_HOME"
 
 # fetch parameters with names
