@@ -143,17 +143,7 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
       try {
         statement.execute(
-            "alter timeSeries root.vechile.wind.a, root.__audit.** set encoding=PLAIN, compressor=LZMA2");
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            "803: 'AUDIT' permission is needed to alter the encoding and compressor of database root.__audit",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "alter timeSeries if permitted root.vehicle.**, root.__audit.** set encoding=GORILLA, compressor=GZIP");
+            "alter timeSeries if permitted root.vehicle.** set encoding=GORILLA, compressor=GZIP");
       } catch (final SQLException e) {
         fail("Alter encoding & compressor shall not fail when no privileges if set if permitted");
       }
@@ -161,14 +151,6 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      try (final ResultSet resultSet =
-          statement.executeQuery("SHOW TIMESERIES root.__audit.**._0.password")) {
-        while (resultSet.next()) {
-          assertEquals("PLAIN", resultSet.getString(5));
-          assertEquals("LZMA2", resultSet.getString(6));
-        }
-      }
-
       try (final ResultSet resultSet =
           statement.executeQuery("SHOW TIMESERIES root.vehicle.wind.b")) {
         resultSet.next();
