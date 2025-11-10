@@ -81,8 +81,23 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
               // banned
               "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeSeries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
-              "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
-              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD"))) {
+              "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"))) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)",
+              "flush"))) {
         return;
       }
 
@@ -92,13 +107,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
-
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"))) {
-        return;
-      }
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
