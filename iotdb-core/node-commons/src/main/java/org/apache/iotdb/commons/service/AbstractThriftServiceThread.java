@@ -192,10 +192,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         params.setTrustStore(trustStorePath, trustStorePwd);
         params.requireClientAuth(true);
       }
-      InetSocketAddress socketAddress =
-          bindAddress == null
-              ? new InetSocketAddress(port)
-              : new InetSocketAddress(bindAddress, port);
+      InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
           TSSLTransportFactory.getServerSocket(
               socketAddress.getPort(), clientTimeout, socketAddress.getAddress(), params);
