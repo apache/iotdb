@@ -158,6 +158,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -174,8 +176,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.io.File;
 import java.io.IOException;
@@ -1494,8 +1494,7 @@ public class DataRegion implements IDataRegionForQuery {
               return cachedSchema;
             }
 
-            TsTable tsTable =
-                DataNodeTableCache.getInstance().getTable(database, t, false);
+            TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
