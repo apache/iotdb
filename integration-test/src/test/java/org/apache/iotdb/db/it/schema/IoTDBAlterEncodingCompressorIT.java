@@ -73,6 +73,16 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
       try {
         statement.execute(
+                "alter timeSeries root set STORAGE_PROPERTIES encoding=PLAIN");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+                "701: The timeSeries shall not be root.",
+                e.getMessage());
+      }
+
+      try {
+        statement.execute(
             "alter timeSeries root.nonExist.** set STORAGE_PROPERTIES encoding=PLAIN");
         fail();
       } catch (final SQLException e) {
@@ -141,17 +151,17 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
         final Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "alter timeSeries root.vechile.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
+            "alter timeSeries root.vehicle.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.vechile.**]",
+            "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.vehicle.**]",
             e.getMessage());
       }
 
       try {
         statement.execute(
-            "alter timeSeries root.vechile.wind.a, root.__audit.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
+            "alter timeSeries root.vehicle.wind.a, root.__audit.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
