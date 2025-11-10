@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.commons.exception;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SemanticException extends IoTDBRuntimeException {

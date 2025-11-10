@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;

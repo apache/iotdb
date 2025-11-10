@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;

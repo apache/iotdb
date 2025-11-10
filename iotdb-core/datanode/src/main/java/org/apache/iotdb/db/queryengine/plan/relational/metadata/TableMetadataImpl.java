@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -30,7 +31,6 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;

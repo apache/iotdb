@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;

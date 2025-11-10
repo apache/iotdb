@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -147,9 +148,36 @@ public class AddTableColumnProcedure
               relatedRegionGroup,
               CnToDnAsyncRequestType.CHECK_DEVICE_ID_FOR_OBJECT,
               ((dataNodeLocation, consensusGroupIdList) ->
-                  new TCheckDeviceIdForObjectReq(new ArrayList<>(consensusGroupIdList), tableName)))
+                  new TCheckDeviceIdForObjectReq(new ArrayList<>(consensusGroupIdList), tableName)),
+              ((tConsensusGroupId, tDataNodeLocations, failureMap) -> {
+                final String message = parseStatus(failureMap.values());
+                // Shall not be SUCCESS here
+                return Objects.nonNull(message) ? new SemanticException(message) : null;
+              }))
           .execute();
     }
+  }
+
+  // Success: ""
+  // All semantic: return last one
+  // Non-semantic error: return null
+  private String parseStatus(final Iterable<TSStatus> statuses) {
+    String message = "";
+    for (final TSStatus status : statuses) {
+      if (status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+        message = status.getMessage();
+      } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        final String tempMsg = parseStatus(status.getSubStatus());
+        if (Objects.isNull(tempMsg)) {
+          return null;
+        } else if (!tempMsg.isEmpty()) {
+          message = tempMsg;
+        }
+      } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return null;
+      }
+    }
+    return message;
   }
 
   private void addColumn(final ConfigNodeProcedureEnv env) {

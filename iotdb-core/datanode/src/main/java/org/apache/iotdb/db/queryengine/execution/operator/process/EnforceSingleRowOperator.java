@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;

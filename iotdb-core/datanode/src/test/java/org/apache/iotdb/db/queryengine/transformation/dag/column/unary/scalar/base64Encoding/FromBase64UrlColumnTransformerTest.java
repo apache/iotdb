@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.base64Encoding;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;

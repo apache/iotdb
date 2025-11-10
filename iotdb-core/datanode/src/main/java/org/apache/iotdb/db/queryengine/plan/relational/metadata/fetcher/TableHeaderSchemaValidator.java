@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;

@@ -100,6 +100,11 @@ public class DataNodeTableCache implements ITableCache {
               databaseTableMap.put(
                   PathUtils.unQualifyDatabaseName(key),
                   value.stream()
+                      .filter(
+                          table -> {
+                            table.setNeedCheck4Object();
+                            return true;
+                          })
                       .collect(
                           Collectors.toMap(
                               TsTable::getTableName,
@@ -111,6 +116,18 @@ public class DataNodeTableCache implements ITableCache {
               preUpdateTableMap.put(
                   PathUtils.unQualifyDatabaseName(key),
                   value.stream()
+                      .filter(
+                          table -> {
+                            if (table.setNeedCheck4Object()
+                                && databaseTableMap.containsKey(key)
+                                && databaseTableMap.get(key).containsKey(table.getTableName())) {
+                              databaseTableMap
+                                  .get(key)
+                                  .get(table.getTableName())
+                                  .setNeedCheck4Object(true);
+                            }
+                            return true;
+                          })
                       .collect(
                           Collectors.toMap(
                               TsTable::getTableName,

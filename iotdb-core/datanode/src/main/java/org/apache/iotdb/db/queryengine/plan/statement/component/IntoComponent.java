@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.util.concurrent.TimeUnit;
 

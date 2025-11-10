@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;

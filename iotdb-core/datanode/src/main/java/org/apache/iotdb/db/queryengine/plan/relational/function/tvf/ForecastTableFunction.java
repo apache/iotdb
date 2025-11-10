@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ainode.AINodeClient;
 import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;

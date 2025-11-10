@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.function.TriFunction;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,6 +192,9 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
     private final String taskName;
     private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
+    private final TriFunction<
+            TConsensusGroupId, Set<TDataNodeLocation>, Map<TDataNodeLocation, TSStatus>, Exception>
+        exceptionGenerator;
 
     protected TableRegionTaskExecutor(
         final String taskName,
@@ -200,6 +204,24 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
         final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
+      this.exceptionGenerator = this::getThrowable;
+    }
+
+    protected TableRegionTaskExecutor(
+        final String taskName,
+        final ConfigNodeProcedureEnv env,
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+        final CnToDnAsyncRequestType dataNodeRequestType,
+        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator,
+        final TriFunction<
+                TConsensusGroupId,
+                Set<TDataNodeLocation>,
+                Map<TDataNodeLocation, TSStatus>,
+                Exception>
+            exceptionGenerator) {
+      super(env, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      this.taskName = taskName;
+      this.exceptionGenerator = exceptionGenerator;
     }
 
     @Override
@@ -234,20 +256,31 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
+      final Exception e =
+          exceptionGenerator.apply(consensusGroupId, dataNodeLocationSet, failureMap);
       setFailure(
           new ProcedureException(
-              new MetadataException(
-                  String.format(
-                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s, Failures: %s",
-                      this.getClass().getSimpleName(),
-                      database,
-                      tableName,
-                      taskName,
-                      consensusGroupId.type,
-                      consensusGroupId.id,
-                      dataNodeLocationSet,
-                      failureMap))));
+              Objects.nonNull(e)
+                  ? e
+                  : getThrowable(consensusGroupId, dataNodeLocationSet, failureMap)));
       interruptTask();
+    }
+
+    protected Exception getThrowable(
+        final TConsensusGroupId consensusGroupId,
+        final Set<TDataNodeLocation> dataNodeLocationSet,
+        final Map<TDataNodeLocation, TSStatus> failureMap) {
+      return new MetadataException(
+          String.format(
+              "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s, Failures: %s",
+              this.getClass().getSimpleName(),
+              database,
+              tableName,
+              taskName,
+              consensusGroupId.type,
+              consensusGroupId.id,
+              dataNodeLocationSet,
+              failureMap));
     }
   }
 

@@ -14,7 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 

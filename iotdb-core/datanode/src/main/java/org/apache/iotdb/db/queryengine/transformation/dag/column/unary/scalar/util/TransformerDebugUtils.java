@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;

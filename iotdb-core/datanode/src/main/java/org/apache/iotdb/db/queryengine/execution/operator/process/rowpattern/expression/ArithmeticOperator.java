@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 public enum ArithmeticOperator implements BinaryOperator {
   ADD {

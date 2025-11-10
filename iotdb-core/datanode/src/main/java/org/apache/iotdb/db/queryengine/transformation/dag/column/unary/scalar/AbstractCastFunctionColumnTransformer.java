@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;

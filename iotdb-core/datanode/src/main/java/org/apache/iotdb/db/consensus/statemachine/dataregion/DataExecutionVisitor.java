@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.exception.sql;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+
 public class ColumnCreationFailException extends SemanticException {
 
   public ColumnCreationFailException(String message) {

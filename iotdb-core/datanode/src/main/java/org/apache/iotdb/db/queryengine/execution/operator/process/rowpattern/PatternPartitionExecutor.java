@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer.PatternVariableComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;

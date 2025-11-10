@@ -68,7 +68,7 @@ public class TsTable {
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private static final String OBJECT_STRING_ERROR =
-      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '\\.'";
+      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'";
   private String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();

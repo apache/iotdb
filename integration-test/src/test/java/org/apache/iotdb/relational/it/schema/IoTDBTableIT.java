@@ -762,6 +762,68 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testTableObjectCheck() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database db");
+      statement.execute("use db");
+      statement.execute("create table \".\" ()");
+
+      try {
+        statement.execute("alter table \".\" add column a object");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: When there are object fields, the tableName . shall not be '.', '..' or contain './', '.\\'",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test (\"./\" object)");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: When there are object fields, the objectName ./ shall not be '.', '..' or contain './', '.\\'",
+            e.getMessage());
+      }
+
+      statement.execute("create table test (a tag, b attribute, c int32, d object)");
+      try {
+        statement.execute("insert into test (a, b, c) values ('.\\', 1, 1)");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "507: When there are object fields, the deviceId [.\\] shall not be '.', '..' or contain './', '.\\'",
+            e.getMessage());
+      }
+
+      // Test cache
+      TestUtils.restartCluster(EnvFactory.getEnv());
+
+      try {
+        statement.execute("insert into test (a, b, c) values ('.\\', 1, 1)");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "507: When there are object fields, the deviceId [.\\] shall not be '.', '..' or contain './', '.\\'",
+            e.getMessage());
+      }
+
+      statement.execute("alter table test drop column d");
+      statement.execute("insert into test (a, b, c) values ('.\\', 1, 1)");
+      try {
+        statement.execute("alter table test add column d object");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: When there are object fields, the tag value .\\ shall not be '.', '..' or contain './', '.\\'",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;

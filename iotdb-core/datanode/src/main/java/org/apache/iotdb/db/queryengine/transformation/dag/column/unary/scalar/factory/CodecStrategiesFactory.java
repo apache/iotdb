@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.inteface.CodecStrategy;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.HexUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.util.SpookyHashV2Utils;
