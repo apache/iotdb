@@ -2934,11 +2934,13 @@ public class DataRegion implements IDataRegionForQuery {
                       })
                   .count();
           onlyOneTable = matchSize == devicesInFile.size();
-          logger.debug(
-              "tableName is {}, matchSize is {}, onlyOneTable is {}",
-              tableName,
-              matchSize,
-              onlyOneTable);
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "tableName is {}, matchSize is {}, onlyOneTable is {}",
+                tableName,
+                matchSize,
+                onlyOneTable);
+          }
         }
 
         if (onlyOneTable) {
@@ -2998,8 +3000,10 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!deletedByFiles.isEmpty()) {
       deleteTsFileCompletely(deletedByFiles);
-      logger.debug(
-          "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
+      }
     }
 
     if (involvedModificationFiles.isEmpty()) {
