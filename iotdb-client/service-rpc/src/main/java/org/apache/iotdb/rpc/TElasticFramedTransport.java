@@ -169,54 +169,71 @@ public class TElasticFramedTransport extends TTransport {
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-
-    if (size < 0) {
-      close();
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
-    }
-
-    if (size > thriftMaxFrameSize) {
-      SocketAddress remoteAddress = null;
-      if (underlying instanceof TSocket) {
-        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
-      }
-      close();
-      if (size == 1195725856L || size == 1347375956L) {
-        // if someone sends HTTP GET/POST to this port, the size will be read as the following
-        throw new TTransportException(
-            TTransportException.CORRUPTED_DATA,
-            String.format(
-                "Singular frame size (%d) detected, you may be sending HTTP GET/POST"
-                    + "%s requests to the Thrift-RPC port, "
-                    + "please confirm that you are using the right port",
-                size, remoteAddress == null ? "" : " from " + remoteAddress));
-      } else {
-        throw new TTransportException(
-            TTransportException.CORRUPTED_DATA,
-            "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
-      }
-    }
-
-    int high24 = size >>> 8;
-    if (high24 >= 0x160300 && high24 <= 0x160303 && (i32buf[3] & 0xFF) <= 0x02) {
-      // The typical TLS ClientHello requests start with 0x160300 ~ 0x160303
-      // The 4th byte is typically in [0x00, 0x01, 0x02].
-      SocketAddress remoteAddress = null;
-      if (underlying instanceof TSocket) {
-        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
-      }
-      close();
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA,
-          String.format(
-              "Singular frame size (%d) detected, you may be sending TLS ClientHello requests"
-                  + "%s to the Non-SSL Thrift-RPC"
-                  + " port, please confirm that you are using the right configuration",
-              size, remoteAddress == null ? "" : " from " + remoteAddress));
-    }
-
+    checkFrameSize(size);
     readBuffer.fill(underlying, size);
+  }
+
+  protected void checkFrameSize(int size) throws TTransportException {
+    final int HTTP_GET_SIGNATURE = 0x47455420; // "GET "
+    final int HTTP_POST_SIGNATURE = 0x504F5354; // "POST"
+    final int TLS_MIN_VERSION = 0x160300;
+    final int TLS_MAX_VERSION = 0x160303;
+    final int TLS_LENGTH_HIGH_MAX = 0x02;
+
+    FrameError error = null;
+    if (size == HTTP_GET_SIGNATURE || size == HTTP_POST_SIGNATURE) {
+      error = FrameError.HTTP_REQUEST;
+    } else {
+      int high24 = size >>> 8;
+      if (high24 >= TLS_MIN_VERSION
+          && high24 <= TLS_MAX_VERSION
+          && (i32buf[3] & 0xFF) <= TLS_LENGTH_HIGH_MAX) {
+        error = FrameError.TLS_REQUEST;
+      } else if (size < 0) {
+        error = FrameError.NEGATIVE_FRAME_SIZE;
+      } else if (size > thriftMaxFrameSize) {
+        error = FrameError.FRAME_SIZE_EXCEEDED;
+      }
+    }
+
+    if (error == null) {
+      return;
+    }
+
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+    close();
+
+    error.throwException(size, remoteInfo, thriftMaxFrameSize);
+  }
+
+  private enum FrameError {
+    HTTP_REQUEST(
+        "Singular frame size (%d) detected, you may be sending HTTP GET/POST%s "
+            + "requests to the Thrift-RPC port, please confirm that you are using the right port"),
+    TLS_REQUEST(
+        "Singular frame size (%d) detected, you may be sending TLS ClientHello "
+            + "requests%s to the Non-SSL Thrift-RPC port, please confirm that you are using "
+            + "the right configuration"),
+    NEGATIVE_FRAME_SIZE("Read a negative frame size (%d)%s!"),
+    FRAME_SIZE_EXCEEDED("Frame size (%d) larger than protect max size (%d)%s!");
+
+    private final String messageFormat;
+
+    FrameError(String messageFormat) {
+      this.messageFormat = messageFormat;
+    }
+
+    void throwException(int size, String remoteInfo, int maxSize) throws TTransportException {
+      String message =
+          (this == FRAME_SIZE_EXCEEDED)
+              ? String.format(messageFormat, size, maxSize, remoteInfo)
+              : String.format(messageFormat, size, remoteInfo);
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+    }
   }
 
   @Override
