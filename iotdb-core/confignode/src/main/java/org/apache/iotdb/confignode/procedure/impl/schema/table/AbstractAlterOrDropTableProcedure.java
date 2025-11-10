@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecu
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.function.TriFunction;
+import org.apache.tsfile.external.commons.lang3.function.TriFunction;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,7 +193,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     private final String taskName;
     private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
     private final TriFunction<
-            TConsensusGroupId, Set<TDataNodeLocation>, Map<TDataNodeLocation, TSStatus>, Exception>
+                TConsensusGroupId, Set<TDataNodeLocation>, Map<TDataNodeLocation, TSStatus>, Exception>
         exceptionGenerator;
 
     protected TableRegionTaskExecutor(
