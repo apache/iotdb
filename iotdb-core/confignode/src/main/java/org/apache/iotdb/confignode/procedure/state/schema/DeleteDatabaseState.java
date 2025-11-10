@@ -17,26 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.metadata;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-
-public class CountDatabaseStatement extends CountStatement implements IConfigStatement {
-
-  public CountDatabaseStatement(PartialPath partialPath) {
-    super(partialPath);
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCountDatabase(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
+public enum DeleteDatabaseState {
+  PRE_DELETE_DATABASE,
+  INVALIDATE_CACHE,
+  DELETE_DATABASE_SCHEMA
 }

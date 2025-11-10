@@ -401,18 +401,18 @@ public interface IManager {
   TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
 
   /**
-   * Count StorageGroups.
+   * Count Databases.
    *
-   * @return The number of matched StorageGroups
+   * @return The number of matched Databases
    */
   DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan);
 
   /**
-   * Get StorageGroupSchemas.
+   * Get DatabaseSchemas.
    *
-   * @return StorageGroupSchemaDataSet
+   * @return DatabaseSchemaDataSet
    */
-  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
+  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountDatabasePlan);
 
   /**
    * Set Database.
@@ -429,7 +429,7 @@ public interface IManager {
   TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
-   * Delete StorageGroups.
+   * Delete Databases.
    *
    * @param tDeleteReq TDeleteDatabaseReq
    * @return status
@@ -660,10 +660,10 @@ public interface IManager {
   TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema();
 
   /**
-   * Show StorageGroup.
+   * Show Database.
    *
    * @param req TShowDatabaseReq
-   * @return TShowStorageGroupResp
+   * @return TShowDatabaseResp
    */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req);
 

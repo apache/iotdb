@@ -263,8 +263,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitCountStorageGroup(
-      CountDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitCountDatabase(CountDatabaseStatement statement, MPPQueryContext context) {
     return new CountDatabaseTask(statement);
   }
 
