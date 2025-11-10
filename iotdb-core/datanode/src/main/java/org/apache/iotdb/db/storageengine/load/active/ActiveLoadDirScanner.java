@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -125,6 +126,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                                 parentFile.getAbsoluteFile(), listeningDirFile.getAbsoluteFile()),
                         isGeneratedByPipe);
                   });
+        } catch (UncheckedIOException e) {
+          LOGGER.debug("The file has been deleted. Ignore this exception.");
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
         }
