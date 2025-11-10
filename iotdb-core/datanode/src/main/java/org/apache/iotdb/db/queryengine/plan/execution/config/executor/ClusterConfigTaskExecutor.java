@@ -44,7 +44,6 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -170,6 +169,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -4216,12 +4216,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else if (tsStatus.getMessage().contains("SemanticException")) {
+      } else if (tsStatus.getMessage().contains("When there are object fields")) {
         future.setException(
             new SemanticException(
                 tsStatus
                     .getMessage()
-                    .replace("org.apache.iotdb.commons.exception.SemanticException: ", "")));
+                    .replace(
+                        "org.apache.iotdb.commons.exception.IoTDBRuntimeException: ", "")));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));

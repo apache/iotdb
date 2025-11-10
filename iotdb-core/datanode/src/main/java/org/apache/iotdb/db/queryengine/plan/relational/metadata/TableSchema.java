@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.enums.ColumnCategory;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;

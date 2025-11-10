@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;

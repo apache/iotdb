@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;

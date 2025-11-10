@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory;
 
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.strategies.HmacStrategy;
 
 import com.google.common.hash.HashFunction;

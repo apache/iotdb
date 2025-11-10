@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.rpc.TSStatusCode;
 

@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -152,7 +152,10 @@ public class AddTableColumnProcedure
               ((tConsensusGroupId, tDataNodeLocations, failureMap) -> {
                 final String message = parseStatus(failureMap.values());
                 // Shall not be SUCCESS here
-                return Objects.nonNull(message) ? new SemanticException(message) : null;
+                return Objects.nonNull(message)
+                    ? new IoTDBRuntimeException(
+                        message, TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                    : null;
               }))
           .execute();
     }

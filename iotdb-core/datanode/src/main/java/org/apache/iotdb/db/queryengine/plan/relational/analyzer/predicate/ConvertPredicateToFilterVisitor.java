@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;

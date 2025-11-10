@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 public class BitwiseUtils {
   private static final long TINYINT_MASK = 0b1111_1111L;

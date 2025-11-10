@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.config;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 

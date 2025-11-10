@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;

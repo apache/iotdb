@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.statement.literal;
 
-import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
