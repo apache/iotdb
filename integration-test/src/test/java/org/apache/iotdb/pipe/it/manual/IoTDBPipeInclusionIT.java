@@ -82,7 +82,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
               "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "ALTER timeSeries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
               "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
-              "ALTER timeSeries root.** set compressor=ZSTD"))) {
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD"))) {
         return;
       }
 
