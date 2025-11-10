@@ -533,10 +533,10 @@ dn_rpc_selector_thread_count=1
 # Datatype: int
 dn_rpc_max_concurrent_client_num=1000
 
-# thrift max frame size, 512MB by default
+# thrift max frame size in bytes, When = 0, use min(64MB, datanode heap memory / 64)
 # effectiveMode: restart
 # Datatype: int
-dn_thrift_max_frame_size=536870912
+dn_thrift_max_frame_size=0
 
 # thrift init buffer size
 # effectiveMode: restart
