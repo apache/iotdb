@@ -85,6 +85,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
@@ -146,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
@@ -206,6 +208,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
@@ -788,11 +791,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String storageGroup =
+          String database =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -804,6 +807,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       ? new PipeEnrichedNonWritePlanNode(
                           new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
                       : new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) throws TException {
+    final PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          final String database =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          final PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          final RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new AlterEncodingCompressorNode(
+                      new PlanNodeId(""),
+                      filteredPatternTree,
+                      req.isIfExists(),
+                      SerializeUtils.deserializeEncodingNullable(req.getEncoding()),
+                      SerializeUtils.deserializeCompressorNullable(req.getCompressor())))
               .getStatus();
         });
   }

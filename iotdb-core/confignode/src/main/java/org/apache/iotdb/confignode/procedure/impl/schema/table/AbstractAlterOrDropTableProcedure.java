@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -188,7 +188,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
   }
 
-  protected class TableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  protected class TableRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
     private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();

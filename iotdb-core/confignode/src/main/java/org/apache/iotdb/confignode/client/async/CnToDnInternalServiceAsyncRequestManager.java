@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckS
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
@@ -310,6 +311,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.DELETE_TIMESERIES,
         (req, client, handler) ->
             client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
+        (req, client, handler) ->
+            client.alterEncodingCompressor(
+                (TAlterEncodingCompressorReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->

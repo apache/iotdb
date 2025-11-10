@@ -171,6 +171,7 @@ public abstract class IoTDBSink implements PipeConnector {
   protected boolean loadTsFileValidation;
 
   protected boolean shouldMarkAsPipeRequest;
+  protected boolean skipIfNoPrivileges;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -439,7 +440,7 @@ public abstract class IoTDBSink implements PipeConnector {
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    boolean skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
           String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
