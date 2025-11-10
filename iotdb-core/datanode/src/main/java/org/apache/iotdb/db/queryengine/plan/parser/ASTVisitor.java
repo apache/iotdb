@@ -694,6 +694,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
+    if (tree.isEmpty()) {
+      throw new SemanticException("The timeSeries shall not be root.");
+    }
     return new AlterEncodingCompressorStatement(
         tree,
         encoding,

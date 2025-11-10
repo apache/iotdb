@@ -842,6 +842,10 @@ STOP
     : S T O P
     ;
 
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
+    ;
+
 SUBSCRIPTION
     : S U B S C R I P T I O N
     ;
