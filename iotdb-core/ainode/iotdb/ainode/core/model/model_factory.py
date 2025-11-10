@@ -21,6 +21,7 @@ import shutil
 from urllib.parse import urljoin
 
 import yaml
+from huggingface_hub import hf_hub_download
 
 from iotdb.ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_YAML,
@@ -34,10 +35,69 @@ from iotdb.ainode.core.model.uri_utils import (
     download_file,
     download_snapshot_from_hf,
 )
+from iotdb.ainode.core.model.model_enums import BuiltInModelType
 from iotdb.ainode.core.util.serde import get_data_type_byte_from_str
 from iotdb.thrift.ainode.ttypes import TConfigs
+from iotdb.ainode.core.model.model_info import TIMER_REPO_ID
+from iotdb.ainode.core.constant import (
+    MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+)
 
 logger = Logger()
+
+
+def _download_file_from_hf_if_necessary(local_dir: str, repo_id: str) -> bool:
+    weights_path = os.path.join(local_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+    config_path = os.path.join(local_dir, MODEL_CONFIG_FILE_IN_JSON)
+    if not os.path.exists(weights_path):
+        logger.info(
+            f"Model weights file not found at {weights_path}, downloading from HuggingFace..."
+        )
+        try:
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                local_dir=local_dir,
+            )
+            logger.info(f"Got file to {weights_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to download model weights file to {local_dir} due to {e}"
+            )
+            return False
+    if not os.path.exists(config_path):
+        logger.info(
+            f"Model config file not found at {config_path}, downloading from HuggingFace..."
+        )
+        try:
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=MODEL_CONFIG_FILE_IN_JSON,
+                local_dir=local_dir,
+            )
+            logger.info(f"Got file to {config_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to download model config file to {local_dir} due to {e}"
+            )
+            return False
+    return True
+
+
+def download_built_in_ltsm_from_hf_if_necessary(
+        model_type: BuiltInModelType, local_dir: str
+) -> bool:
+    """
+    Download the built-in ltsm from HuggingFace repository when necessary.
+
+    Return:
+        bool: True if the model is existed or downloaded successfully, False otherwise.
+    """
+    repo_id = TIMER_REPO_ID[model_type]
+    if not _download_file_from_hf_if_necessary(local_dir, repo_id):
+        return False
+    return True
 
 
 def fetch_model_by_uri(
