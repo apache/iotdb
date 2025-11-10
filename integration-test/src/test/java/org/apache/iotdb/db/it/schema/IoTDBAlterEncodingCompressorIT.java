@@ -72,7 +72,8 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
       statement.execute("create timeSeries root.vehicle.wind.a int32");
 
       try {
-        statement.execute("alter timeSeries root.nonExist.** set encoding=PLAIN");
+        statement.execute(
+            "alter timeSeries root.nonExist.** set STORAGE_PROPERTIES encoding=PLAIN");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
@@ -81,41 +82,47 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
       }
 
       try {
-        statement.execute("alter timeSeries if exists root.nonExist.** set encoding=PLAIN");
+        statement.execute(
+            "alter timeSeries if exists root.nonExist.** set STORAGE_PROPERTIES encoding=PLAIN");
       } catch (final SQLException e) {
         fail(
             "Alter encoding & compressor shall not fail when timeSeries not exists if set if exists");
       }
 
       try {
-        statement.execute("alter timeSeries if exists root.vehicle.** set encoding=aaa");
+        statement.execute(
+            "alter timeSeries if exists root.vehicle.** set STORAGE_PROPERTIES encoding=aaa");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals("701: Unsupported encoding: AAA", e.getMessage());
       }
 
       try {
-        statement.execute("alter timeSeries if exists root.vehicle.** set compressor=aaa");
+        statement.execute(
+            "alter timeSeries if exists root.vehicle.** set STORAGE_PROPERTIES compressor=aaa");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals("701: Unsupported compressor: AAA", e.getMessage());
       }
 
       try {
-        statement.execute("alter timeSeries if exists root.vehicle.** set falseKey=aaa");
+        statement.execute(
+            "alter timeSeries if exists root.vehicle.** set STORAGE_PROPERTIES falseKey=aaa");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals("701: property falsekey is unsupported yet.", e.getMessage());
       }
 
       try {
-        statement.execute("alter timeSeries if exists root.vehicle.** set encoding=DICTIONARY");
+        statement.execute(
+            "alter timeSeries if exists root.vehicle.** set STORAGE_PROPERTIES encoding=DICTIONARY");
         fail();
       } catch (final SQLException e) {
         Assert.assertTrue(e.getMessage().contains("encoding DICTIONARY does not support INT32"));
       }
 
-      statement.execute("alter timeSeries root.** set encoding=Plain, compressor=LZMA2");
+      statement.execute(
+          "alter timeSeries root.** set STORAGE_PROPERTIES encoding=Plain, compressor=LZMA2");
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
         while (resultSet.next()) {
@@ -133,7 +140,8 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
             EnvFactory.getEnv().getConnection("IoTDBUser", "!@#$!dfdfzvd343");
         final Statement statement = connection.createStatement()) {
       try {
-        statement.execute("alter timeSeries root.vechile.** set encoding=PLAIN, compressor=LZMA2");
+        statement.execute(
+            "alter timeSeries root.vechile.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
@@ -143,7 +151,7 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
       try {
         statement.execute(
-            "alter timeSeries root.vechile.wind.a, root.__audit.** set encoding=PLAIN, compressor=LZMA2");
+            "alter timeSeries root.vechile.wind.a, root.__audit.** set STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2");
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
@@ -153,7 +161,7 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
 
       try {
         statement.execute(
-            "alter timeSeries if permitted root.vehicle.**, root.__audit.** set encoding=GORILLA, compressor=GZIP");
+            "alter timeSeries if permitted root.vehicle.**, root.__audit.** set STORAGE_PROPERTIES encoding=GORILLA, compressor=GZIP");
       } catch (final SQLException e) {
         fail("Alter encoding & compressor shall not fail when no privileges if set if permitted");
       }
