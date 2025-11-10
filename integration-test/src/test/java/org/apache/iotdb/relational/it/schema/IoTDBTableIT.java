@@ -805,6 +805,8 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("use db2");
+
       try {
         statement.execute("insert into test (a, b, c) values ('.\\', 1, 1)");
         fail();
