@@ -117,7 +117,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .forEach(
                   file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
         } catch (UncheckedIOException e) {
-            LOGGER.debug("The file has been deleted. Ignore this exception.");
+          LOGGER.debug("The file has been deleted. Ignore this exception.");
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
         }
