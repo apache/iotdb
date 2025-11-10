@@ -97,9 +97,13 @@ public final class ActiveLoadPathHelper {
       current = new File(current, formatSegment(key, value));
       // compatibility: keep placing tablet conversion and verify under convert folder
       if (LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY.equals(key)) {
-        final String threshold = attributes.get(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY);
+        final String threshold =
+            attributes.get(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY);
         if (threshold != null) {
-          current = new File(current, formatSegment(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, threshold));
+          current =
+              new File(
+                  current,
+                  formatSegment(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, threshold));
         }
         final String verify = attributes.get(LoadTsFileConfigurator.VERIFY_KEY);
         if (verify != null) {
@@ -170,7 +174,8 @@ public final class ActiveLoadPathHelper {
     }
     File current = file.getParentFile();
     while (current != null) {
-      if (IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME.equals(current.getName())) {
+      if (IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME.equals(
+          current.getName())) {
         return current;
       }
       current = current.getParentFile();
@@ -243,5 +248,3 @@ public final class ActiveLoadPathHelper {
     }
   }
 }
-
-

@@ -85,10 +85,7 @@ public class ActiveLoadTsFileLoader {
   }
 
   public void tryTriggerTsFileLoad(
-      String absolutePath,
-      String pendingDir,
-      boolean isTabletMode,
-      boolean isGeneratedByPipe) {
+      String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
@@ -232,15 +229,13 @@ public class ActiveLoadTsFileLoader {
         entry.getPendingDir() == null
             ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
             : new File(entry.getPendingDir());
-    final Map<String, String> attributes =
-        ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+    final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
     ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
 
     final File parentFile;
     if (statement.getDatabase() == null && entry.isTableModel()) {
       statement.setDatabase(
-          files.isEmpty()
-                  || (parentFile = files.get(0).getParentFile()) == null
+          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
               ? null
               : parentFile.getName());
     }

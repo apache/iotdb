@@ -69,9 +69,7 @@ public class ActiveLoadUtil {
   }
 
   private static boolean loadTsFilesToActiveDir(
-      final Map<String, String> loadAttributes,
-      final File file,
-      final boolean isDeleteAfterLoad)
+      final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
       throws IOException {
     if (file == null) {
       return true;

@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -138,7 +139,6 @@ import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
-import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -573,11 +573,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IOException {
     final Map<String, String> loadAttributes =
         ActiveLoadPathHelper.buildAttributes(
-            dataBaseName,
-            null,
-            Boolean.TRUE,
-            validateTsFile.get(),
-            null);
+            dataBaseName, null, Boolean.TRUE, validateTsFile.get(), null);
 
     if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");

@@ -39,7 +39,8 @@ public class ActiveLoadPendingQueue {
       final boolean isGeneratedByPipe,
       final boolean isTableModel) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
-      pendingFileQueue.offer(new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, isTableModel));
+      pendingFileQueue.offer(
+          new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, isTableModel));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
