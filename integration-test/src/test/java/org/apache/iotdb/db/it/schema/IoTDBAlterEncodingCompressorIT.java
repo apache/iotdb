@@ -72,13 +72,10 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
       statement.execute("create timeSeries root.vehicle.wind.a int32");
 
       try {
-        statement.execute(
-                "alter timeSeries root set STORAGE_PROPERTIES encoding=PLAIN");
+        statement.execute("alter timeSeries root set STORAGE_PROPERTIES encoding=PLAIN");
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(
-                "701: The timeSeries shall not be root.",
-                e.getMessage());
+        Assert.assertEquals("701: The timeSeries shall not be root.", e.getMessage());
       }
 
       try {
