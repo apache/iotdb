@@ -807,7 +807,10 @@ public class IoTDBConfig {
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 0;
+  private int thriftMaxFrameSize =
+      Math.min(
+          64 * 1024 * 1024,
+          (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
