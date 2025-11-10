@@ -168,10 +168,11 @@ public class NettyTNonblockingTransport extends TNonblockingTransport {
                                   "SSL handshake completed successfully for {}:{}", host, port);
                             }
                           } else {
-                            if (!future
-                                .cause()
-                                .getMessage()
-                                .contains("SslHandler removed before handshake completed")) {
+                            if (future.cause().getMessage() != null
+                                && !future
+                                    .cause()
+                                    .getMessage()
+                                    .contains("SslHandler removed before handshake completed")) {
                               logger.warn(
                                   "SSL handshake failed for {}:{}", host, port, future.cause());
                             } else if (logger.isDebugEnabled()) {
