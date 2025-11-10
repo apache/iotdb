@@ -172,6 +172,13 @@ public class IoTDBAlterEncodingCompressorIT extends AbstractSchemaIT {
       } catch (final SQLException e) {
         fail("Alter encoding & compressor shall not fail when no privileges if set if permitted");
       }
+
+      try {
+        statement.execute(
+            "alter timeSeries if permitted root.nonExist.** set STORAGE_PROPERTIES encoding=GORILLA, compressor=GZIP");
+      } catch (final SQLException e) {
+        fail("Alter encoding & compressor shall not fail if the intersected paths are empty");
+      }
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
