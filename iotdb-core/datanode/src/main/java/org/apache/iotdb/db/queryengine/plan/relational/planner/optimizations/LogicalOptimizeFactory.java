@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectAll;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectDistinctAsUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementPatternRecognition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
@@ -68,7 +70,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneWindowColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughUnion;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushProjectionThroughUnion;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushTopKThroughUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveEmptyUnionBranches;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantExists;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
@@ -141,8 +147,7 @@ public class LogicalOptimizeFactory {
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, columnPruningRules);
 
-    //    Set<Rule<?>> projectionPushdownRules = ImmutableSet.of(
-    //        new PushProjectionThroughUnion(),
+    Set<Rule<?>> projectionPushdownRules = ImmutableSet.of(new PushProjectionThroughUnion());
     //        new PushProjectionThroughExchange(),
     //        // Dereference pushdown rules
     //        new PushDownDereferencesThroughMarkDistinct(typeAnalyzer),
@@ -181,7 +186,10 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(plannerContext, ruleStats, simplifyOptimizerRules);
 
     Set<Rule<?>> limitPushdownRules =
-        ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
+        ImmutableSet.of(
+            new PushLimitThroughOffset(),
+            new PushLimitThroughProject(),
+            new PushLimitThroughUnion());
 
     ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
@@ -199,12 +207,13 @@ public class LogicalOptimizeFactory {
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
                 .addAll(columnPruningRules)
-                // .addAll(projectionPushdownRules).
+                .addAll(projectionPushdownRules)
                 // addAll(newUnwrapRowSubscript().rules()).
                 // addAll(new PushCastIntoRow().rules())
                 .addAll(
                     ImmutableSet.of(
                         new ImplementTableFunctionSource(),
+                        new RemoveEmptyUnionBranches(),
                         new MergeFilters(),
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
@@ -242,13 +251,13 @@ public class LogicalOptimizeFactory {
             plannerContext,
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
-                // .addAll(projectionPushdownRules)
+                .addAll(projectionPushdownRules)
                 .addAll(columnPruningRules)
                 .addAll(limitPushdownRules)
                 .addAll(
                     ImmutableSet.of(
                         new MergeUnion(),
-                        // new RemoveEmptyUnionBranches(),
+                        new RemoveEmptyUnionBranches(),
                         new MergeFilters(),
                         new RemoveTrivialFilters(),
                         new MergeLimits(),
@@ -267,6 +276,17 @@ public class LogicalOptimizeFactory {
                         // new MergeIntersect
                         // new MergeExcept
                         new PruneDistinctAggregation()))
+                .build()),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                .add(
+                    new ImplementIntersectDistinctAsUnion(metadata),
+                    // new ImplementExceptDistinctAsUnion(metadata)
+                    new ImplementIntersectAll(metadata)
+                    // new ImplementExceptAll(metadata))),
+                    )
                 .build()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
@@ -331,7 +351,10 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
+            ImmutableSet.of(
+                new MergeLimitWithSort(),
+                new MergeLimitOverProjectWithSort(),
+                new PushTopKThroughUnion())),
         new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();

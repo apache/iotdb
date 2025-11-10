@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -305,6 +306,46 @@ public class ProcedureManager {
     } else {
       return RpcUtils.getStatus(results);
     }
+  }
+
+  public TSStatus alterEncodingCompressor(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final byte encoding,
+      final byte compressor,
+      final boolean ifExists,
+      final boolean isGeneratedByPipe,
+      final boolean mayAlterAudit) {
+    AlterEncodingCompressorProcedure procedure = null;
+    synchronized (this) {
+      ProcedureType type;
+      AlterEncodingCompressorProcedure alterEncodingCompressorProcedure;
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
+        if (type == null || !type.equals(ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE)) {
+          continue;
+        }
+        alterEncodingCompressorProcedure = ((AlterEncodingCompressorProcedure) runningProcedure);
+        if (queryId.equals(alterEncodingCompressorProcedure.getQueryId())) {
+          procedure = alterEncodingCompressorProcedure;
+          break;
+        }
+      }
+
+      if (procedure == null) {
+        procedure =
+            new AlterEncodingCompressorProcedure(
+                isGeneratedByPipe,
+                queryId,
+                patternTree,
+                ifExists,
+                encoding,
+                compressor,
+                mayAlterAudit);
+        this.executor.submitProcedure(procedure);
+      }
+    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus deleteTimeSeries(
