@@ -23,12 +23,14 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.junit.Test;
 
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertThrows;
 
 /**
  * Test class for {@link TreePattern#checkAndLogPatternCoverage(TreePattern, TreePattern)}. It
@@ -61,10 +63,11 @@ public class TreePatternCoverageTest {
     final TreePattern inclusion = iotdb("root.a.b.c");
     final TreePattern exclusion = iotdb("root.a.**");
 
-    // Check the returned [coveredCount, totalCount]
-    // 1 inclusion path, 1 covered
-    final int[] counts = TreePattern.checkAndLogPatternCoverage(inclusion, exclusion);
-    assertArrayEquals(new int[] {1, 1}, counts);
+    // Verify that a PipeException is thrown
+    final PipeException e =
+        assertThrows(
+            PipeException.class,
+            () -> TreePattern.checkAndLogPatternCoverage(inclusion, exclusion));
   }
 
   @Test
@@ -99,9 +102,11 @@ public class TreePatternCoverageTest {
     // IoTDB "root.a.**" should cover all 4 variants
     final TreePattern exclusion = iotdb("root.a.**");
 
-    // 4 inclusion paths, 4 covered
-    final int[] counts = TreePattern.checkAndLogPatternCoverage(inclusion, exclusion);
-    assertArrayEquals(new int[] {4, 4}, counts);
+    // Verify that a PipeException is thrown
+    final PipeException e =
+        assertThrows(
+            PipeException.class,
+            () -> TreePattern.checkAndLogPatternCoverage(inclusion, exclusion));
   }
 
   @Test

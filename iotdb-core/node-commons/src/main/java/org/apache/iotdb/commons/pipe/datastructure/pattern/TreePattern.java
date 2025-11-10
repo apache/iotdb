@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -472,32 +473,43 @@ public abstract class TreePattern {
 
   /**
    * Checks if the exclusion pattern fully or partially covers the inclusion pattern and logs a
-   * warning if it does.
+   * warning or throws an exception.
    *
    * <p>This check uses the 'base' inclusion paths from both patterns. It is intended to catch
    * configuration errors where an exclusion rule negates all or part of an inclusion rule.
    *
+   * <p>If the exclusion pattern *fully* covers the inclusion pattern (and the inclusion pattern is
+   * not empty), this method will throw a {@link PipeException} to prevent the creation of a pipe
+   * that matches nothing.
+   *
+   * <p>If the exclusion pattern *partially* covers the inclusion pattern, a WARN log will be
+   * generated.
+   *
    * @param inclusion The inclusion pattern.
    * @param exclusion The exclusion pattern.
-   * @return An int array `[coveredCount, totalInclusionPaths]` for testing.
+   * @return An int array `[coveredCount, totalInclusionPaths]` for testing non-failing scenarios.
+   * @throws PipeException If the inclusion pattern is fully covered by the exclusion pattern.
    */
   public static int[] checkAndLogPatternCoverage(
-      final TreePattern inclusion, final TreePattern exclusion) {
+      final TreePattern inclusion, final TreePattern exclusion) throws PipeException {
     if (inclusion == null || exclusion == null) {
       return new int[] {0, 0};
     }
 
+    final List<PartialPath> inclusionPaths;
+    final List<PartialPath> exclusionPaths;
+    int coveredCount = 0;
+
     try {
       // Get the list of individual paths from both patterns
-      final List<PartialPath> inclusionPaths = inclusion.getBaseInclusionPaths();
-      final List<PartialPath> exclusionPaths = exclusion.getBaseInclusionPaths();
+      inclusionPaths = inclusion.getBaseInclusionPaths();
+      exclusionPaths = exclusion.getBaseInclusionPaths();
 
       if (inclusionPaths.isEmpty() || exclusionPaths.isEmpty()) {
         // Nothing to check
         return new int[] {0, inclusionPaths.size()};
       }
 
-      int coveredCount = 0;
       for (final PartialPath incPath : inclusionPaths) {
         // Check if *any* exclusion path includes this inclusion path
         final boolean isCovered =
@@ -506,38 +518,39 @@ public abstract class TreePattern {
           coveredCount++;
         }
       }
-
-      if (coveredCount == inclusionPaths.size() && !inclusionPaths.isEmpty()) {
-        // All inclusion paths are covered by the exclusion
-        LOGGER.warn(
-            "The provided exclusion pattern fully covers the inclusion pattern. "
-                + "This pipe pattern will match nothing. "
-                + "Inclusion: [{}], Exclusion: [{}]",
-            inclusion.getPattern(),
-            exclusion.getPattern());
-      } else if (coveredCount > 0) {
-        // Some inclusion paths are covered
-        LOGGER.warn(
-            "The provided exclusion pattern covers {} out of {} inclusion paths. "
-                + "These paths will be excluded. "
-                + "Inclusion: [{}], Exclusion: [{}]",
-            coveredCount,
-            inclusionPaths.size(),
-            inclusion.getPattern(),
-            exclusion.getPattern());
-      }
-
-      return new int[] {coveredCount, inclusionPaths.size()};
-
     } catch (final Exception e) {
       // This check is best-effort. Do not fail construction.
       LOGGER.warn(
-          "Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].",
+          "Pipe: Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].",
           inclusion.getPattern(),
           exclusion.getPattern(),
           e);
       // Return -1 to indicate failure in tests
       return new int[] {-1, -1};
     }
+
+    if (coveredCount == inclusionPaths.size() && !inclusionPaths.isEmpty()) {
+      // All inclusion paths are covered by the exclusion
+      final String msg =
+          String.format(
+              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
+                  + "This pipe pattern will match nothing. "
+                  + "Inclusion: [%s], Exclusion: [%s]",
+              inclusion.getPattern(), exclusion.getPattern());
+      LOGGER.warn(msg);
+      throw new PipeException(msg);
+    } else if (coveredCount > 0) {
+      // Some inclusion paths are covered
+      LOGGER.warn(
+          "Pipe: The provided exclusion pattern covers {} out of {} inclusion paths. "
+              + "These paths will be excluded. "
+              + "Inclusion: [{}], Exclusion: [{}]",
+          coveredCount,
+          inclusionPaths.size(),
+          inclusion.getPattern(),
+          exclusion.getPattern());
+    }
+
+    return new int[] {coveredCount, inclusionPaths.size()};
   }
 }
