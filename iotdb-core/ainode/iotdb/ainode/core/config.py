@@ -45,7 +45,6 @@ from iotdb.ainode.core.constant import (
     AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
-    IOTDB_AINODE_HOME,
 )
 from iotdb.ainode.core.exception import BadNodeUrlError
 from iotdb.ainode.core.log import Logger
@@ -333,14 +332,12 @@ class AINodeDescriptor(object):
 
         conf_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_FILE_NAME)
         if not os.path.exists(conf_file):
-            conf_file = os.path.join(IOTDB_AINODE_HOME, conf_file)
-            if not os.path.exists(conf_file):
-                logger.info(
-                    "Cannot find AINode config file '{}', use default configuration.".format(
-                        conf_file
-                    )
+            logger.info(
+                "Cannot find AINode config file '{}', use default configuration.".format(
+                    conf_file
                 )
-                return
+            )
+            return
 
         # noinspection PyBroadException
         try:
