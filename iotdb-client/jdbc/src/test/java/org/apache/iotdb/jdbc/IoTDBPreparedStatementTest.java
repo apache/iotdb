@@ -474,7 +474,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(java literal in final SQL
+    // a'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(Java literal in final SQL
     // statement)
     assertEquals(
         "SELECT * FROM users WHERE password = 'a\\'b'", argument.getValue().getStatement());
@@ -493,7 +493,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(java literal in final SQL
+    // a\'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(Java literal in final SQL
     // statement)
     assertEquals(
         "SELECT * FROM users WHERE password = 'a\\'b'", argument.getValue().getStatement());
@@ -512,7 +512,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(java literal in final
+    // a\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(Java literal in final
     // SQL statement)
     assertEquals(
         "SELECT * FROM users WHERE password = 'a\\\\'b'", argument.getValue().getStatement());
@@ -531,7 +531,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(java literal in
+    // a\\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(Java literal in
     // final
     // SQL statement)
     assertEquals(
