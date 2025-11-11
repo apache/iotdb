@@ -573,7 +573,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IOException {
     final Map<String, String> loadAttributes =
         ActiveLoadPathHelper.buildAttributes(
-            dataBaseName, null, Boolean.TRUE, validateTsFile.get(), null);
+            dataBaseName, null, shouldConvertDataTypeOnTypeMismatch, validateTsFile.get(), null);
 
     if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");

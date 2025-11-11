@@ -20,10 +20,9 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-
-import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -58,11 +57,11 @@ public final class ActiveLoadPathHelper {
   }
 
   public static Map<String, String> buildAttributes(
-      @Nullable final String databaseName,
-      @Nullable final Integer databaseLevel,
-      @Nullable final Boolean convertOnTypeMismatch,
-      @Nullable final Boolean verify,
-      @Nullable final Long tabletConversionThresholdBytes) {
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Long tabletConversionThresholdBytes) {
 
     final Map<String, String> attributes = new LinkedHashMap<>();
     if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
@@ -115,8 +114,7 @@ public final class ActiveLoadPathHelper {
     return current;
   }
 
-  public static Map<String, String> parseAttributes(
-      @Nullable final File file, @Nullable final File pendingDir) {
+  public static Map<String, String> parseAttributes(final File file, final File pendingDir) {
     if (file == null) {
       return Collections.emptyMap();
     }
@@ -127,14 +125,13 @@ public final class ActiveLoadPathHelper {
     while (current != null) {
       final String dirName = current.getName();
       if (pendingDir != null && current.equals(pendingDir)) {
-        current = current.getParentFile();
-        continue;
+        break;
       }
       for (final String key : KEY_ORDER) {
         final String prefix = key + SEGMENT_SEPARATOR;
         if (dirName.startsWith(prefix)) {
-          final String encodedValue = dirName.substring(prefix.length());
-          attributes.putIfAbsent(key, decodeValue(encodedValue));
+          extractAndValidateAttributeValue(key, dirName, prefix.length())
+              .ifPresent(value -> attributes.putIfAbsent(key, value));
           if (LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY.equals(key)) {
             convertFolderVisited = true;
           }
@@ -145,30 +142,31 @@ public final class ActiveLoadPathHelper {
           && !attributes.containsKey(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY)
           && dirName.startsWith(
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY + SEGMENT_SEPARATOR)) {
-        final String encodedValue =
-            dirName.substring(
+        extractAndValidateAttributeValue(
+                LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
+                dirName,
                 (LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY + SEGMENT_SEPARATOR)
-                    .length());
-        attributes.putIfAbsent(
-            LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, decodeValue(encodedValue));
+                    .length())
+            .ifPresent(
+                value ->
+                    attributes.putIfAbsent(
+                        LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, value));
       }
       if (convertFolderVisited
           && !attributes.containsKey(LoadTsFileConfigurator.VERIFY_KEY)
           && dirName.startsWith(LoadTsFileConfigurator.VERIFY_KEY + SEGMENT_SEPARATOR)) {
-        final String encodedValue =
-            dirName.substring((LoadTsFileConfigurator.VERIFY_KEY + SEGMENT_SEPARATOR).length());
-        attributes.putIfAbsent(LoadTsFileConfigurator.VERIFY_KEY, decodeValue(encodedValue));
+        extractAndValidateAttributeValue(
+                LoadTsFileConfigurator.VERIFY_KEY,
+                dirName,
+                (LoadTsFileConfigurator.VERIFY_KEY + SEGMENT_SEPARATOR).length())
+            .ifPresent(value -> attributes.putIfAbsent(LoadTsFileConfigurator.VERIFY_KEY, value));
       }
       current = current.getParentFile();
     }
     return attributes;
   }
 
-  public static Map<String, String> parseAttributes(@Nullable final File file) {
-    return parseAttributes(file, null);
-  }
-
-  public static @Nullable File findPendingDirectory(@Nullable final File file) {
+  public static File findPendingDirectory(final File file) {
     if (file == null) {
       return null;
     }
@@ -237,6 +235,59 @@ public final class ActiveLoadPathHelper {
     } catch (final UnsupportedEncodingException e) {
       // UTF-8 should always be supported; fallback to raw value when unexpected
       return value;
+    }
+  }
+
+  private static Optional<String> extractAndValidateAttributeValue(
+      final String key, final String dirName, final int prefixLength) {
+    if (dirName.length() <= prefixLength) {
+      return Optional.empty();
+    }
+
+    final String encodedValue = dirName.substring(prefixLength);
+    final String decodedValue = decodeValue(encodedValue);
+    try {
+      validateAttributeValue(key, decodedValue);
+      return Optional.of(decodedValue);
+    } catch (final SemanticException e) {
+      return Optional.empty();
+    }
+  }
+
+  private static void validateAttributeValue(final String key, final String value) {
+    switch (key) {
+      case LoadTsFileConfigurator.DATABASE_NAME_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException("Database name must not be empty.");
+        }
+        break;
+      case LoadTsFileConfigurator.DATABASE_LEVEL_KEY:
+        LoadTsFileConfigurator.validateDatabaseLevelParam(value);
+        break;
+      case LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY:
+        LoadTsFileConfigurator.validateConvertOnTypeMismatchParam(value);
+        break;
+      case LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY:
+        validateTabletConversionThreshold(value);
+        break;
+      case LoadTsFileConfigurator.VERIFY_KEY:
+        LoadTsFileConfigurator.validateVerifyParam(value);
+        break;
+      default:
+        LoadTsFileConfigurator.validateParameters(key, value);
+    }
+  }
+
+  private static void validateTabletConversionThreshold(final String value) {
+    try {
+      final long threshold = Long.parseLong(value);
+      if (threshold < 0) {
+        throw new SemanticException(
+            "Tablet conversion threshold must be a non-negative integer value.");
+      }
+    } catch (final NumberFormatException e) {
+      throw new SemanticException(
+          String.format("Tablet conversion threshold '%s' is not a valid integer value.", value));
     }
   }
 

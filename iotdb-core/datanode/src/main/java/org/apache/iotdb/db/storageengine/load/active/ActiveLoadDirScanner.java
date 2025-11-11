@@ -119,9 +119,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .forEach(
                   filePath -> {
                     final File tsFile = new File(filePath);
-                    final File pendingDir = ActiveLoadPathHelper.findPendingDirectory(tsFile);
                     final Map<String, String> attributes =
-                        ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
 
                     final File parentFile = tsFile.getParentFile();
                     final boolean isTableModel =
@@ -133,7 +132,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
                     activeLoadTsFileLoader.tryTriggerTsFileLoad(
                         tsFile.getAbsolutePath(),
-                        pendingDir == null ? null : pendingDir.getAbsolutePath(),
+                        listeningDirFile.getAbsolutePath(),
                         isTableModel,
                         isGeneratedByPipe);
                   });
