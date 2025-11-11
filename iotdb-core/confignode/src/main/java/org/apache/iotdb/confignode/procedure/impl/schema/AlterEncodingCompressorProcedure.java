@@ -132,7 +132,7 @@ public class AlterEncodingCompressorProcedure
           break;
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, false);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
