@@ -95,39 +95,38 @@ public class DataNodeTableCache implements ITableCache {
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
+      usingMap.values().forEach(list -> list.forEach(TsTable::setNeedCheck4Object));
       usingMap.forEach(
           (key, value) ->
               databaseTableMap.put(
                   PathUtils.unQualifyDatabaseName(key),
                   value.stream()
-                      .filter(
-                          table -> {
-                            table.setNeedCheck4Object();
-                            return true;
-                          })
                       .collect(
                           Collectors.toMap(
                               TsTable::getTableName,
                               Function.identity(),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
+
+      preCreateMap.forEach(
+          (key, value) ->
+              value.stream()
+                  .filter(
+                      table ->
+                          table.setNeedCheck4Object()
+                              && databaseTableMap.containsKey(key)
+                              && databaseTableMap.get(key).containsKey(table.getTableName()))
+                  .forEach(
+                      table ->
+                          databaseTableMap
+                              .get(key)
+                              .get(table.getTableName())
+                              .setNeedCheck4Object(true)));
       preCreateMap.forEach(
           (key, value) ->
               preUpdateTableMap.put(
                   PathUtils.unQualifyDatabaseName(key),
                   value.stream()
-                      .filter(
-                          table -> {
-                            if (table.setNeedCheck4Object()
-                                && databaseTableMap.containsKey(key)
-                                && databaseTableMap.get(key).containsKey(table.getTableName())) {
-                              databaseTableMap
-                                  .get(key)
-                                  .get(table.getTableName())
-                                  .setNeedCheck4Object(true);
-                            }
-                            return true;
-                          })
                       .collect(
                           Collectors.toMap(
                               TsTable::getTableName,
