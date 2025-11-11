@@ -1077,7 +1077,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
-    if (measurementIndex >= columns.length) {
+    if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
       return null;
     }
 
