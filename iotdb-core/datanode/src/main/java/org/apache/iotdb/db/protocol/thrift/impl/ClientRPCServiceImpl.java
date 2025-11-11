@@ -25,13 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -41,10 +42,8 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.audit.AuditLogger;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -89,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
@@ -118,7 +118,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
@@ -159,7 +158,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSGroupByQueryIntervalReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -184,7 +182,6 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
 import io.airlift.units.Duration;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -235,6 +232,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);
 
+  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -250,8 +249,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
-  private static final boolean ENABLE_AUDIT_LOG = config.isEnableAuditLog();
 
   private final IPartitionFetcher partitionFetcher;
 
@@ -325,7 +322,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ExecutionResult result;
       if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
         Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
-
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
         }
@@ -350,7 +346,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   false);
         } else {
           // permission check
-          TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+          TSStatus status =
+              AuthorityChecker.checkAuthority(
+                  s,
+                  new TreeAccessCheckContext(
+                          clientSession.getUserId(),
+                          clientSession.getUsername(),
+                          clientSession.getClientAddress())
+                      .setSqlString(statement));
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return RpcUtils.getTSExecuteStatementResp(status);
           }
@@ -359,9 +362,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               DataNodeThrottleQuotaManager.getInstance()
                   .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
           statementType = s.getType();
-          if (ENABLE_AUDIT_LOG) {
-            AuditLogger.log(statement, s);
-          }
 
           queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
@@ -528,7 +528,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Statement s = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -537,9 +543,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("execute Raw Data Query: %s", req), s);
-      }
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -620,7 +623,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       Statement s = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -629,9 +638,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("Last Data Query: %s", req), s);
-      }
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -714,7 +720,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       Statement s = StatementGenerator.createStatement(req);
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -1158,7 +1170,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // cache miss
       Statement s = StatementGenerator.createStatement(convert(req));
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
@@ -1167,9 +1185,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("Last Data Query: %s", req), s);
-      }
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.executeForTreeModel(
@@ -1275,72 +1290,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req) {
     return executeAggregationQueryInternal(req, SELECT_RESULT);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
-      throws TException {
-
-    try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-
-      String database = req.getDatabase();
-      if (StringUtils.isEmpty(database)) {
-        String[] splits = req.getDevice().split("\\.");
-        database = String.format("%s.%s", splits[0], splits[1]);
-      }
-      IDeviceID deviceId = Factory.DEFAULT_FACTORY.create(req.getDevice());
-      String measurementId = req.getMeasurement();
-      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
-
-      // only one database, one device, one time interval
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartitionSlot(req.getStartTime());
-      DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(
-              deviceId, Collections.singletonList(timePartitionSlot), false, false);
-      sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      List<DataRegion> dataRegionList = new ArrayList<>();
-      List<TRegionReplicaSet> replicaSets =
-          dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceId, null);
-      for (TRegionReplicaSet region : replicaSets) {
-        dataRegionList.add(
-            StorageEngine.getInstance()
-                .getDataRegion(new DataRegionId(region.getRegionId().getId())));
-      }
-
-      List<TsBlock> blockResult =
-          executeGroupByQueryInternal(
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              deviceId,
-              measurementId,
-              dataType,
-              req.isAligned,
-              req.getStartTime(),
-              req.getEndTime(),
-              req.getInterval(),
-              req.getAggregationType(),
-              dataRegionList);
-
-      String outputColumnName = req.getAggregationType().name();
-      List<ColumnHeader> columnHeaders =
-          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
-      DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
-
-      TSExecuteStatementResp resp = createResponse(header, 1);
-      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
-      resp.setQueryDataSet(queryDataSet);
-
-      return resp;
-    } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
-    } finally {
-      SESSION_MANAGER.updateIdleTime();
-    }
   }
 
   @Override
@@ -1555,11 +1504,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: Create SetStorageGroupStatement
       DatabaseSchemaStatement statement = StatementGenerator.createStatement(storageGroup);
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("create database %s", storageGroup), statement);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1596,11 +1548,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       req.setMeasurementAlias(PathUtils.checkAndReturnSingleMeasurement(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement = StatementGenerator.createStatement(req);
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("create timeseries %s", req.getPath()), statement);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1643,14 +1598,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement = StatementGenerator.createStatement(req);
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "create aligned timeseries %s.%s", req.getPrefixPath(), req.getMeasurements()),
-            statement);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1693,15 +1648,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement = StatementGenerator.createStatement(req);
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "create %s timeseries, the first is %s",
-                req.getPaths().size(), req.getPaths().get(0)),
-            statement);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1741,7 +1695,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createDeleteTimeSeriesStatement(path);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1779,12 +1739,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteDatabaseStatement statement = StatementGenerator.createStatement(storageGroups);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("delete databases: %s", storageGroups), statement);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -1864,7 +1826,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                       false);
             } else {
               // permission check
-              TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+              TSStatus status =
+                  AuthorityChecker.checkAuthority(
+                      s,
+                      new TreeAccessCheckContext(
+                              clientSession.getUserId(),
+                              clientSession.getUsername(),
+                              clientSession.getClientAddress())
+                          .setSqlString(statement));
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 return status;
               }
@@ -1872,10 +1841,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               quota =
                   DataNodeThrottleQuotaManager.getInstance()
                       .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
-
-              if (ENABLE_AUDIT_LOG) {
-                AuditLogger.log(statement, s);
-              }
 
               queryId = SESSION_MANAGER.requestQueryId();
               type = s.getType() == null ? null : s.getType().name();
@@ -2057,17 +2022,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertRecords, first device %s, first time %s",
-                req.prefixPaths.get(0), req.getTimestamps().get(0)),
-            statement,
-            true);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2126,17 +2088,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertRecords, first device %s, first time %s",
-                req.prefixPath, req.getTimestamps().get(0)),
-            statement,
-            true);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2197,16 +2156,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertRecords, first device %s, first time %s",
-                req.prefixPath, req.getTimestamps().get(0)),
-            statement,
-            true);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2269,16 +2226,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertRecord, device %s, time %s", req.getPrefixPath(), req.getTimestamp()),
-            statement,
-            true);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2347,7 +2302,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2410,7 +2371,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // permission check for tree model, table model does this in the analysis stage
       if (!req.isWriteToTable()) {
-        TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+        TSStatus status =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    clientSession.getUserId(),
+                    clientSession.getUsername(),
+                    clientSession.getClientAddress()));
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
@@ -2480,17 +2447,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertRecords, first device %s, first time %s",
-                req.prefixPaths.get(0), req.getTimestamps().get(0)),
-            statement,
-            true);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2580,7 +2544,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DeleteDataStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2639,11 +2609,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("create device template %s", req.getName()), statement);
-      }
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2806,7 +2779,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         resp.setStatus(status);
         return resp;
@@ -2816,9 +2795,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("execute Query: %s", statement), statement);
-      }
       long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
@@ -2887,14 +2863,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("set device template %s.%s", req.getTemplateName(), req.getPrefixPath()),
-            statement);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2934,15 +2910,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "unset device template %s from %s", req.getTemplateName(), req.getPrefixPath()),
-            statement);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2982,12 +2957,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("drop device template %s", req.getTemplateName()), statement);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -3025,13 +3002,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       BatchActivateTemplateStatement statement =
           StatementGenerator.createBatchActivateTemplateStatement(req.getDevicePathList());
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format("batch activate device template %s", req.getDevicePathList()), statement);
-      }
-
       // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -3120,16 +3098,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       final InsertRowStatement statement = StatementGenerator.createStatement(req);
 
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(
-            String.format(
-                "insertStringRecord, device %s, time %s", req.getPrefixPath(), req.getTimestamp()),
-            statement,
-            true);
-      }
-
       // Permission check
-      final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              statement,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -3197,6 +3173,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IClientSession session = SESSION_MANAGER.getCurrSession();
     if (session != null) {
       TSCloseSessionReq req = new TSCloseSessionReq();
+      if (session.getUsername() != null && !session.getUsername().contains("null")) {
+        AUDIT_LOGGER.log(
+            new AuditLogFields(
+                session.getUserId(),
+                session.getUsername(),
+                session.getClientAddress(),
+                AuditEventType.LOGOUT,
+                AuditLogOperation.CONTROL,
+                true),
+            () -> String.format("Session-%s is closing", session));
+      }
       closeSession(req);
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();

@@ -34,15 +34,22 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 
 /** To read one chunk from memory, and only used in iotdb server module. */
 public class MemChunkLoader implements IChunkLoader {
-  private final QueryContext context;
-  private final ReadOnlyMemChunk chunk;
+  protected final QueryContext context;
+  protected final ReadOnlyMemChunk chunk;
+  protected final boolean streamingQueryMemChunk;
 
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+  protected static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public MemChunkLoader(QueryContext context, ReadOnlyMemChunk chunk) {
+    this(context, chunk, false);
+  }
+
+  public MemChunkLoader(
+      QueryContext context, ReadOnlyMemChunk chunk, boolean streamingQueryMemChunk) {
     this.context = context;
     this.chunk = chunk;
+    this.streamingQueryMemChunk = streamingQueryMemChunk;
   }
 
   @Override
@@ -66,5 +73,13 @@ public class MemChunkLoader implements IChunkLoader {
       context.getQueryStatistics().getConstructNonAlignedChunkReadersMemTime().getAndAdd(duration);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_MEM, duration);
     }
+  }
+
+  public ReadOnlyMemChunk getReadOnlyMemChunk() {
+    return chunk;
+  }
+
+  public boolean isStreamingQueryMemChunk() {
+    return streamingQueryMemChunk;
   }
 }

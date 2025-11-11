@@ -44,6 +44,8 @@ public abstract class IClientSession {
 
   private TimeZone timeZone;
 
+  private long userId;
+
   private String username;
 
   private boolean login = false;
@@ -87,6 +89,14 @@ public abstract class IClientSession {
   public void setTimeZone(TimeZone timeZone) {
     this.timeZone = timeZone;
     this.zoneId = timeZone.toZoneId();
+  }
+
+  public long getUserId() {
+    return userId;
+  }
+
+  public void setUserId(long userId) {
+    this.userId = userId;
   }
 
   public String getUsername() {

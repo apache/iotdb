@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -207,7 +208,12 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
               header.getEncodingType(),
               header.getCompressionType());
       compactionWriter.startMeasurement(
-          schema.getMeasurementName(), new ChunkWriterImpl(schema, true), subTaskId);
+          schema.getMeasurementName(),
+          new ChunkWriterImpl(
+              schema,
+              true,
+              EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
+          subTaskId);
       hasStartMeasurement = true;
       seriesCompressionType = header.getCompressionType();
       seriesTSEncoding = header.getEncodingType();

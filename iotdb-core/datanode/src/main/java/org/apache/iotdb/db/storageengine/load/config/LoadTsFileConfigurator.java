@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.load.config;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 
@@ -75,7 +75,7 @@ public class LoadTsFileConfigurator {
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+      IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {

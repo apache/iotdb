@@ -73,8 +73,13 @@ while true; do
             shift 2
             ;;
         -pw)
-            passwd_param="-pw $2"
-            shift 2
+            if [ -n "$2" ] && [[ ! "$2" =~ ^- ]]; then
+                passwd_param="-pw $2"
+                shift 2
+            else
+                passwd_param="-pw"
+                shift
+            fi
         ;;
         -h)
             host_param="-h $2"

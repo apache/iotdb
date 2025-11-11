@@ -393,7 +393,7 @@ public class IoTDBRestServiceIT {
     queryShowChildPaths(httpClient);
     queryShowNodes(httpClient);
     showAllTTL(httpClient);
-    showStorageGroup(httpClient);
+    showDatabase(httpClient);
     showFunctions(httpClient);
     showTimeseries(httpClient);
 
@@ -413,7 +413,7 @@ public class IoTDBRestServiceIT {
     queryShowChildPathsV2(httpClient);
     queryShowNodesV2(httpClient);
     showAllTTLV2(httpClient);
-    showStorageGroupV2(httpClient);
+    showDatabaseV2(httpClient);
     showFunctionsV2(httpClient);
     showTimeseriesV2(httpClient);
 
@@ -1094,7 +1094,7 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showStorageGroup(CloseableHttpClient httpClient) {
+  public void showDatabase(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
@@ -1399,6 +1399,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -1409,7 +1410,7 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
@@ -1756,7 +1757,7 @@ public class IoTDBRestServiceIT {
     Assert.assertEquals(values2, valuesResult.get(1));
   }
 
-  public void showStorageGroupV2(CloseableHttpClient httpClient) {
+  public void showDatabaseV2(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
     Map map = queryMetaDataV2(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("column_names");
@@ -2062,6 +2063,7 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
+            add(ColumnHeaderConstant.USER_ID);
             add(ColumnHeaderConstant.USER);
           }
         };
@@ -2072,7 +2074,7 @@ public class IoTDBRestServiceIT {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values1, valuesResult.get(1));
   }
 
   public void selectCountV2(CloseableHttpClient httpClient) {

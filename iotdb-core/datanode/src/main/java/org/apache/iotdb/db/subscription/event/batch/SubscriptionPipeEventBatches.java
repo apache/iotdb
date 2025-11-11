@@ -26,7 +26,6 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
 import com.google.common.collect.ImmutableList;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,8 +92,7 @@ public class SubscriptionPipeEventBatches {
   /**
    * @return {@code true} if there are subscription events consumed.
    */
-  public boolean onEvent(
-      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
+  public boolean onEvent(final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     final int regionId = event.getCommitterKey().getRegionId();
 

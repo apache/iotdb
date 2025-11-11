@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -70,24 +71,26 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
         loadBalanceStrategy,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -246,7 +249,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
                   Objects.nonNull(templateFile) ? templateFile.getName() : null,
                   Objects.nonNull(templateFile) ? templateFile.length() : 0,
                   snapshotEvent.getFileType(),
-                  snapshotEvent.toSealTypeString()));
+                  snapshotEvent.toSealTypeString(),
+                  snapshotEvent.getAuthUserName()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
           snapshotEvent.getCreationTime(),

@@ -76,7 +76,9 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
         Boolean.toString(shouldReceiverConvertOnTypeMismatch));
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID, userId);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, cliHostname);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -84,6 +86,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
         Boolean.toString(shouldMarkAsPipeRequest));
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, Boolean.toString(skipIfNoPrivileges));
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
@@ -237,7 +241,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
             Objects.nonNull(templateFile) ? templateFile.getName() : null,
             Objects.nonNull(templateFile) ? templateFile.length() : 0,
             pipeConfigRegionSnapshotEvent.getFileType(),
-            pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
+            pipeConfigRegionSnapshotEvent.toSealTypeString(),
+            pipeConfigRegionSnapshotEvent.getAuthUserName()))) {
       final String errorMessage =
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
       // Send handshake because we don't know whether the receiver side configNode

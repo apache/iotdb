@@ -53,7 +53,7 @@ public class IoTDBPartitionShuffleStrategyIT {
   private static final String testDataRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
   private static final int testReplicationFactor = 1;
-  private static final String testDataPartitionAllocationStrategy = "SHUFFLE";
+  public static final String SHUFFLE = "SHUFFLE";
   private static final int testSeriesSlotNum = 1000;
   private static final long testTimePartitionInterval = 604800000;
   private static final double testDataRegionPerDataNode = 5.0;
@@ -70,7 +70,7 @@ public class IoTDBPartitionShuffleStrategyIT {
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
         .setSeriesSlotNum(testSeriesSlotNum)
-        .setDataPartitionAllocationStrategy(testDataPartitionAllocationStrategy)
+        .setDataPartitionAllocationStrategy(SHUFFLE)
         .setDataRegionPerDataNode(testDataRegionPerDataNode);
 
     // Init 1C1D environment

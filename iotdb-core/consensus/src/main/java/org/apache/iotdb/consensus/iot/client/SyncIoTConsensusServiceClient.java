@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -36,6 +38,7 @@ import org.apache.thrift.transport.TTransportException;
 
 public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
     implements ThriftClient, AutoCloseable {
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -50,16 +53,27 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
         property
             .getProtocolFactory()
             .getProtocol(
-                DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                    new TSocket(
-                        TConfigurationConst.defaultTConfiguration,
+                commonConfig.isEnableInternalSSL()
+                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endpoint.getIp(),
                         endpoint.getPort(),
-                        property.getConnectionTimeoutMs()))));
+                        property.getConnectionTimeoutMs(),
+                        commonConfig.getTrustStorePath(),
+                        commonConfig.getTrustStorePwd(),
+                        commonConfig.getKeyStorePath(),
+                        commonConfig.getKeyStorePwd())
+                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        new TSocket(
+                            TConfigurationConst.defaultTConfiguration,
+                            endpoint.getIp(),
+                            endpoint.getPort(),
+                            property.getConnectionTimeoutMs()))));
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    getInputProtocol().getTransport().open();
+    if (!getInputProtocol().getTransport().isOpen()) {
+      getInputProtocol().getTransport().open();
+    }
   }
 
   @Override

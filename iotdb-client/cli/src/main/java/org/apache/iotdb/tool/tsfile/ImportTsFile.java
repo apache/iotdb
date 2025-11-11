@@ -402,7 +402,9 @@ public class ImportTsFile extends AbstractTsFileTool {
     // ImportTsFileRemotely
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
+    // TODO: Figure out how to fetch userId here
     ImportTsFileRemotely.setUsername(username);
+    ImportTsFileRemotely.setCliHostname(host);
     ImportTsFileRemotely.setPassword(password);
     ImportTsFileRemotely.setValidateTsFile(verify);
 

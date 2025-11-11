@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -478,6 +486,10 @@ LOAD
     : L O A D
     ;
 
+LOADED
+    : L O A D E D
+    ;
+
 LOCAL
     : L O C A L
     ;
@@ -596,6 +608,10 @@ PATH
 
 PATHS
     : P A T H S
+    ;
+
+PERMITTED
+    : P E R M I T T E D
     ;
 
 PIPE
@@ -830,6 +846,10 @@ STOP
     : S T O P
     ;
 
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
+    ;
+
 SUBSCRIPTION
     : S U B S C R I P T I O N
     ;
@@ -952,6 +972,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNLOCK
+    : U N L O C K
     ;
 
 UNSET
@@ -1130,6 +1154,14 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1194,6 +1226,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

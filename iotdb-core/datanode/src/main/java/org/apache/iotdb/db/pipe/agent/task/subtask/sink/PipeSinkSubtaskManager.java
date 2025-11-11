@@ -114,7 +114,6 @@ public class PipeSinkSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
@@ -261,7 +260,7 @@ public class PipeSinkSubtaskManager {
   private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
-    sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
+    sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
     return sortedStringSourceMap.toString();
   }
 

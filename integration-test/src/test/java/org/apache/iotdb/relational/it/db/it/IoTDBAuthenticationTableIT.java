@@ -91,6 +91,14 @@ public class IoTDBAuthenticationTableIT {
   public void testInsert() throws IoTDBConnectionException, StatementExecutionException {
 
     try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
+
+      try {
+        sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS __audit");
+        fail("Should have thrown an exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("803: Access Denied: The database '__audit' is read-only.", e.getMessage());
+      }
+
       sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS \"汉化\"");
       sessionRoot.executeNonQueryStatement("USE \"汉化\"");
 

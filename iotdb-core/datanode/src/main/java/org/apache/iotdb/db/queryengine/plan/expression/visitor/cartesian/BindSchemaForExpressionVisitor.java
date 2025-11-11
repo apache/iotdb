@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasureme
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;

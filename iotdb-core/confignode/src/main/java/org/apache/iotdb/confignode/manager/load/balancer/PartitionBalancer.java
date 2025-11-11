@@ -40,12 +40,12 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -274,7 +274,7 @@ public class PartitionBalancer {
       List<TTimePartitionSlot> timePartitionSlots,
       BalanceTreeMap<TConsensusGroupId, Integer> availableDataRegionGroupCounter,
       SeriesPartitionTable seriesPartitionTable) {
-    final Random random = new Random();
+    final SecureRandom random = new SecureRandom();
     List<TConsensusGroupId> availableDataRegionGroups =
         new ArrayList<>(availableDataRegionGroupCounter.keySet());
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {

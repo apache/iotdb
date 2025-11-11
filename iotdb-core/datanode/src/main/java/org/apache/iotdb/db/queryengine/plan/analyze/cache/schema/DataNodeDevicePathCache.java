@@ -72,7 +72,7 @@ public class DataNodeDevicePathCache {
               return new PartialPath(path);
             } catch (final IllegalPathException e) {
               try {
-                return PartialPath.getDatabasePath(path);
+                return PartialPath.getQualifiedDatabasePartialPath(path);
               } catch (final IllegalPathException e1) {
                 throw new IllegalArgumentException(e1);
               }

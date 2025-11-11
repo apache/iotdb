@@ -69,11 +69,11 @@ public:
         AbstractSessionBuilder::nodeUrls = nodeUrls;
         return this;
     }
-    TableSession* build() {
+    std::shared_ptr<TableSession> build() {
         sqlDialect = "table";
-        Session* newSession = new Session(this);
+        auto newSession = std::make_shared<Session>(this);
         newSession->open(false);
-        return new TableSession(newSession);
+        return std::make_shared<TableSession>(newSession);
     }
 };
 

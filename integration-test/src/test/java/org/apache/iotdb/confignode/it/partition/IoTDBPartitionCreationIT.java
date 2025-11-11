@@ -96,10 +96,10 @@ public class IoTDBPartitionCreationIT {
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
-    setStorageGroup();
+    setDatabase();
   }
 
-  private void setStorageGroup() throws Exception {
+  private void setDatabase() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
@@ -405,6 +405,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
@@ -470,6 +473,9 @@ public class IoTDBPartitionCreationIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
         for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {

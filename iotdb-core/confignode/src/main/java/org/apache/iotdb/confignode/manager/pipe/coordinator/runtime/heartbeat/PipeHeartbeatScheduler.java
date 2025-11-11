@@ -36,6 +36,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -118,7 +119,7 @@ public class PipeHeartbeatScheduler {
 
     // config node heartbeat
     try {
-      final TPipeHeartbeatResp configNodeResp = new TPipeHeartbeatResp();
+      final TPipeHeartbeatResp configNodeResp = new TPipeHeartbeatResp(new ArrayList<>());
       PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
       pipeHeartbeatParser.parseHeartbeat(
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),

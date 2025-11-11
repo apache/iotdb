@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
@@ -87,6 +88,7 @@ public class SystemPropertiesUtils {
    */
   public static void checkSystemProperties() throws IOException {
     Properties systemProperties = systemPropertiesHandler.read();
+    ConfigurationFileUtils.updateAppliedProperties(systemProperties, false);
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
             + " Your configuration: {} will be forced update to: {}";

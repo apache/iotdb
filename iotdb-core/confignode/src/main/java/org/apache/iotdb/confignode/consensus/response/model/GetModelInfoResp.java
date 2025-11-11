@@ -25,12 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.nio.ByteBuffer;
-
 public class GetModelInfoResp implements DataSet {
 
   private final TSStatus status;
-  private ByteBuffer serializedModelInformation;
 
   private int targetAINodeId;
   private TEndPoint targetAINodeAddress;
@@ -41,10 +38,6 @@ public class GetModelInfoResp implements DataSet {
 
   public GetModelInfoResp(TSStatus status) {
     this.status = status;
-  }
-
-  public void setModelInfo(ByteBuffer serializedModelInformation) {
-    this.serializedModelInformation = serializedModelInformation;
   }
 
   public int getTargetAINodeId() {
@@ -64,7 +57,6 @@ public class GetModelInfoResp implements DataSet {
 
   public TGetModelInfoResp convertToThriftResponse() {
     TGetModelInfoResp resp = new TGetModelInfoResp(status);
-    resp.setModelInfo(serializedModelInformation);
     resp.setAiNodeAddress(targetAINodeAddress);
     return resp;
   }

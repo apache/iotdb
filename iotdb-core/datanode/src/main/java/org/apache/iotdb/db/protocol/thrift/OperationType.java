@@ -51,7 +51,8 @@ public enum OperationType {
   CHECK_AUTHORITY("checkAuthority"),
   EXECUTE_NON_QUERY_PLAN("executeNonQueryPlan"),
   SELECT_INTO("selectInto"),
-  QUERY_LATENCY("queryLatency");
+  QUERY_LATENCY("queryLatency"),
+  WRITE_AUDIT_LOG("writeAuditLog");
   private final String name;
 
   OperationType(String name) {

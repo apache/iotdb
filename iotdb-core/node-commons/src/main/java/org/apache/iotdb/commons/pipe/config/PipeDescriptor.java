@@ -210,11 +210,6 @@ public class PipeDescriptor {
                 "pipe_data_structure_ts_file_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
-    config.setPipeDataStructureBatchMemoryProportion(
-        Double.parseDouble(
-            properties.getProperty(
-                "pipe_data_structure_batch_memory_proportion",
-                String.valueOf(config.getPipeDataStructureBatchMemoryProportion()))));
     config.setPipeTotalFloatingMemoryProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -295,11 +290,6 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
-    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_subtask_executor_forced_restart_interval_ms",
-                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -483,11 +473,10 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
-    config.setPipeMaxAlignedSeriesChunkSizeInOneBatch(
+    config.setPipeMaxReaderChunkSize(
         Long.parseLong(
             properties.getProperty(
-                "pipe_max_aligned_series_chunk_size_in_one_batch",
-                String.valueOf(config.getPipeMaxAlignedSeriesChunkSizeInOneBatch()))));
+                "pipe_max_reader_chunk_size", String.valueOf(config.getPipeMaxReaderChunkSize()))));
 
     config.setPipeTransferTsFileSync(
         Boolean.parseBoolean(
@@ -498,6 +487,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_check_all_sync_client_live_time_interval_ms",
                 String.valueOf(config.getPipeCheckAllSyncClientLiveTimeIntervalMs()))));
+    config.setPipeTsFileResourceSegmentLockNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_resource_segment_lock_num",
+                String.valueOf(config.getPipeTsFileResourceSegmentLockNum()))));
 
     config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
         Long.parseLong(
@@ -547,6 +541,12 @@ public class PipeDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "pipe_max_wait_finish_time", String.valueOf(config.getPipeMaxWaitFinishTime()))));
+
+    config.setPipeAutoSplitFullEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_auto_split_full_enabled",
+                String.valueOf(config.getPipeAutoSplitFullEnabled()))));
   }
 
   public static void loadPipeExternalConfig(

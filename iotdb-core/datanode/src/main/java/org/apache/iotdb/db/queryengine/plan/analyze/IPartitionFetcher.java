@@ -38,9 +38,12 @@ public interface IPartitionFetcher {
   /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
+  SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB);
+
   /** Get schema partition without automatically create, used in write and query scenarios. */
-  default SchemaPartition getSchemaPartition(PathPatternTree patternTree, String username) {
-    return getSchemaPartition(patternTree);
+  default SchemaPartition getSchemaPartition(
+      PathPatternTree patternTree, String username, boolean needAuditDB) {
+    return getSchemaPartition(patternTree, needAuditDB);
   }
 
   /**
@@ -86,13 +89,13 @@ public interface IPartitionFetcher {
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, PathPatternTree scope) {
-    return getSchemaNodeManagementPartitionWithLevel(patternTree, scope, null);
+      PathPatternTree patternTree, PathPatternTree scope, boolean needAuditDB) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, scope, null, needAuditDB);
   }
 
   /** Get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, PathPatternTree scope, Integer level);
+      PathPatternTree patternTree, PathPatternTree scope, Integer level, boolean needAuditDB);
 
   /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);

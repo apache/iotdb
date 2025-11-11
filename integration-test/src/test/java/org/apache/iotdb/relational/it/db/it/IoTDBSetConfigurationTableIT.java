@@ -20,6 +20,8 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -39,7 +41,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -91,11 +94,11 @@ public class IoTDBSetConfigurationTableIT {
 
   @Test
   public void testSetConfiguration() {
+    int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+    int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"enable_seq_space_compaction\"='false'");
-      int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
-      int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
 
       for (int i = 0; i < configNodeNum; i++) {
         statement.execute("set configuration enable_unseq_space_compaction=\'false\' on " + i);
@@ -110,28 +113,29 @@ public class IoTDBSetConfigurationTableIT {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
-    Assert.assertTrue(
-        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
-            .allMatch(
-                nodeWrapper ->
-                    checkConfigFileContains(
-                        nodeWrapper,
-                        "enable_seq_space_compaction=false",
-                        "enable_unseq_space_compaction=false")));
-    Assert.assertTrue(
-        EnvFactory.getEnv().getDataNodeWrapperList().stream()
-            .allMatch(
-                nodeWrapper ->
-                    checkConfigFileContains(
-                        nodeWrapper,
-                        "enable_seq_space_compaction=false",
-                        "enable_cross_space_compaction=false",
-                        "inner_compaction_candidate_file_num=1",
-                        "max_cross_compaction_candidate_file_num=1")));
+    for (int i = 0; i < configNodeNum; i++) {
+      Assert.assertTrue(
+          checkConfigFileContains(
+              i,
+              EnvFactory.getEnv().getConfigNodeWrapperList().get(i),
+              "enable_seq_space_compaction=false",
+              "enable_unseq_space_compaction=false"));
+    }
+    for (int i = 0; i < dataNodeNum; i++) {
+      int dnId = configNodeNum + i;
+      Assert.assertTrue(
+          checkConfigFileContains(
+              dnId,
+              EnvFactory.getEnv().getDataNodeWrapperList().get(i),
+              "enable_seq_space_compaction=false",
+              "enable_cross_space_compaction=false",
+              "inner_compaction_candidate_file_num=1",
+              "max_cross_compaction_candidate_file_num=1"));
+    }
   }
 
   private static boolean checkConfigFileContains(
-      AbstractNodeWrapper nodeWrapper, String... contents) {
+      int nodeId, AbstractNodeWrapper nodeWrapper, String... contents) {
     try {
       String systemPropertiesPath =
           nodeWrapper.getNodePath()
@@ -141,9 +145,37 @@ public class IoTDBSetConfigurationTableIT {
               + CommonConfig.SYSTEM_CONFIG_NAME;
       File f = new File(systemPropertiesPath);
       String fileContent = new String(Files.readAllBytes(f.toPath()));
-      return Arrays.stream(contents).allMatch(fileContent::contains);
+      Map<String, String> showConfigurationResults = new HashMap<>();
+      for (String content : contents) {
+        if (!fileContent.contains(content)) {
+          return false;
+        }
+        String[] split = content.split("=");
+        showConfigurationResults.put(split[0], split[1]);
+      }
+      return checkShowConfigurationContains(nodeId, showConfigurationResults);
     } catch (IOException ignore) {
       return false;
     }
+  }
+
+  private static boolean checkShowConfigurationContains(
+      int nodeId, Map<String, String> expectedKeyValues) {
+    try (ITableSession tableSessionConnection = EnvFactory.getEnv().getTableSessionConnection()) {
+      SessionDataSet sessionDataSet =
+          tableSessionConnection.executeQueryStatement("show configuration on " + nodeId);
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        String name = iterator.getString(1);
+        String value = iterator.isNull(2) ? null : iterator.getString(2);
+        String expectedValue = expectedKeyValues.remove(name);
+        if (expectedValue != null && !expectedValue.equals(value)) {
+          return false;
+        }
+      }
+    } catch (Exception e) {
+      return false;
+    }
+    return expectedKeyValues.isEmpty();
   }
 }

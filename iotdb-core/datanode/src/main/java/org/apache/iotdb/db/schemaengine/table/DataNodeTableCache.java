@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -176,6 +178,14 @@ public class DataNodeTableCache implements ITableCache {
       if (Objects.nonNull(oldName)) {
         // Equals to commit update
         final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+        // Cannot be rolled back, consider:
+        // 1. Fetched a written CN table
+        // 2. CN rollback because of timeout
+        // 3. If we roll back here, the flag will be cleared, and it will always be the written
+        // one
+        if (oldTable instanceof NonCommittableTsTable) {
+          return;
+        }
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
             .put(tableName, oldTable);
@@ -206,6 +216,14 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      // Cannot be committed, consider:
+      // 1. Fetched a non-changed CN table
+      // 2. CN is changed
+      // 3. If we commit here, it will always be the non-changed one
+      // (And it is not committable because it's not real table)
+      if (newTable instanceof NonCommittableTsTable) {
+        return;
+      }
       final TsTable oldTable =
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
@@ -291,21 +309,29 @@ public class DataNodeTableCache implements ITableCache {
 
   public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
-    return Objects.nonNull(result) ? result : getTable(database, tableName);
+    return Objects.nonNull(result) ? result : getTable(database, tableName, false);
+  }
+
+  public TsTable getTable(final String database, final String tableName) {
+    return getTable(database, tableName, true);
   }
 
   /**
    * The following logic can handle the cases when configNode failed to clear some table in {@link
    * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
    */
-  public TsTable getTable(String database, final String tableName) {
+  public TsTable getTable(String database, final String tableName, final boolean force) {
     database = PathUtils.unQualifyDatabaseName(database);
     final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
     if (Objects.nonNull(preUpdateTables) && !preUpdateTables.isEmpty()) {
       updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
-    return getTableInCache(database, tableName);
+    final TsTable table = getTableInCache(database, tableName);
+    if (Objects.isNull(table) && force) {
+      TableMetadataImpl.throwTableNotExistsException(database, tableName);
+    }
+    return table;
   }
 
   private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(

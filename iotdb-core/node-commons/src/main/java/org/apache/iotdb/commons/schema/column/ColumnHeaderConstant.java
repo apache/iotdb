@@ -35,6 +35,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
+  public static final String DEVICE_ID = "DeviceId";
   public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
@@ -80,6 +81,7 @@ public class ColumnHeaderConstant {
   public static final String COUNT_NODES = "count(nodes)";
   public static final String COUNT_TIMESERIES = "count(timeseries)";
   public static final String COUNT_DATABASE = "count(database)";
+  public static final String COUNT_INSTANCES = "Count(instances)";
 
   // column names for show cluster and show cluster details statements
   public static final String NODE_ID = "NodeID";
@@ -161,6 +163,8 @@ public class ColumnHeaderConstant {
   public static final String COUNT_TIME_PARTITION = "count(timePartition)";
   public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
+  public static final String MAX_SESSION_PER_USER = "MaxSessionPerUser";
+  public static final String MIN_SESSION_PER_USER = "MinSessionPerUser";
   public static final String CREATE_TIME = "CreateTime";
   public static final String TSFILE_SIZE = "TsFileSize";
   public static final String COMPRESSION_RATIO = "CompressionRatio";
@@ -277,6 +281,7 @@ public class ColumnHeaderConstant {
 
   // column names for show throttle quota
   public static final String USER = "User";
+  public static final String USER_ID = "UserId";
   public static final String READ_WRITE = "Read/Write";
 
   // column names for show models/trials
@@ -314,6 +319,11 @@ public class ColumnHeaderConstant {
   public static final String CURRENT_DATABASE = "CurrentDatabase";
 
   public static final String CURRENT_SQL_DIALECT = "CurrentSqlDialect";
+
+  public static final String SHOW_CONFIGURATIONS_NAME = "name";
+  public static final String SHOW_CONFIGURATIONS_VALUE = "value";
+  public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
+  public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -622,6 +632,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showLoadedModelsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DEVICE_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
+          new ColumnHeader(COUNT_INSTANCES, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showAIDevicesColumnHeaders =
+      ImmutableList.of(new ColumnHeader(DEVICE_ID, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -673,6 +692,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(USER_ID, TSDataType.INT64), new ColumnHeader(USER, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
@@ -704,4 +727,17 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> SHOW_CURRENT_TIMESTAMP_COLUMN_HEADERS =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.TIMESTAMP));
+
+  public static final List<ColumnHeader> SHOW_CONFIGURATIONS_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(SHOW_CONFIGURATIONS_NAME, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> SHOW_CONFIGURATIONS_COLUMN_HEADERS_WITH_DESCRIPTION =
+      ImmutableList.of(
+          new ColumnHeader(SHOW_CONFIGURATIONS_NAME, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT),
+          new ColumnHeader(SHOW_CONFIGURATIONS_DESCRIPTION, TSDataType.TEXT));
 }

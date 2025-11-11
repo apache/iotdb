@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -474,6 +475,12 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
     public ISchemaRegionPlan visitDropTableAttribute(
         final TableAttributeColumnDropNode dropTableAttributePlan, final ByteBuffer buffer) {
       return (TableAttributeColumnDropNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode, final ByteBuffer buffer) {
+      return (AlterEncodingCompressorNode) PlanNodeType.deserialize(buffer);
     }
   }
 }

@@ -172,6 +172,8 @@ public interface CommonConfig {
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
 
+  CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled);
+
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
 
   CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
@@ -184,11 +186,29 @@ public interface CommonConfig {
 
   CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 
-  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
+  CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
+
+  CommonConfig setKeyStorePath(String keyStorePath);
+
+  CommonConfig setKeyStorePwd(String keyStorePwd);
+
+  CommonConfig setTrustStorePath(String trustStorePath);
+
+  CommonConfig setTrustStorePwd(String trustStorePwd);
+
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
+
+  CommonConfig setEnableAuditLog(boolean enableAuditLog);
+
+  CommonConfig setAuditableOperationType(String auditableOperationType);
+
+  CommonConfig setAuditableOperationLevel(String auditableOperationLevel);
+
+  CommonConfig setAuditableOperationResult(String auditableOperationResult);
 }

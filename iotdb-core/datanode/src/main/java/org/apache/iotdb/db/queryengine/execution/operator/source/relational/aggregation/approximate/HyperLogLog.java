@@ -182,15 +182,16 @@ public class HyperLogLog {
       }
     }
 
+    if (sum == 0.0) {
+      throw new IllegalStateException("sum should never be zero.");
+    }
     // Apply bias correction formula
     double estimate = alpha * m * m / sum;
 
     // Small range correction
-    if (estimate <= 2.5 * m) {
-      if (zeros > 0) {
-        // Linear counting for small cardinalities
-        return Math.round(m * Math.log((double) m / zeros));
-      }
+    if (estimate <= 2.5 * m && zeros > 0) {
+      // Linear counting for small cardinalities
+      return Math.round(m * Math.log((double) m / zeros));
     }
 
     // Large range correction (for values > 2^32 / 30)

@@ -100,9 +100,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      setStorageGroupAndCheckRegionGroupDistribution(client);
+      setDatabaseAndCheckRegionGroupDistribution(client);
 
-      // Delete all StorageGroups
+      // Delete all Databases
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
         String curSg = DATABASE + i;
         client.deleteDatabase(new TDeleteDatabaseReq(curSg));
@@ -113,6 +113,9 @@ public class IoTDBAutoRegionGroupExtensionIT {
         showRegionResp
             .getRegionInfoList()
             .removeIf(r -> r.database.equals(SystemConstant.SYSTEM_DATABASE));
+        showRegionResp
+            .getRegionInfoList()
+            .removeIf(r -> r.database.equals(SystemConstant.AUDIT_DATABASE));
         if (showRegionResp.getRegionInfoListSize() == 0) {
           isAllRegionGroupDeleted = true;
           break;
@@ -123,11 +126,11 @@ public class IoTDBAutoRegionGroupExtensionIT {
       Assert.assertTrue(isAllRegionGroupDeleted);
 
       // Re-test for safety
-      setStorageGroupAndCheckRegionGroupDistribution(client);
+      setDatabaseAndCheckRegionGroupDistribution(client);
     }
   }
 
-  private void setStorageGroupAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
+  private void setDatabaseAndCheckRegionGroupDistribution(SyncConfigNodeIServiceClient client)
       throws TException, IllegalPathException, IOException {
 
     for (int i = 0; i < TEST_DATABASE_NUM; i++) {
@@ -186,7 +189,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
                   .merge(regionInfo.getDataNodeId(), 1, Integer::sum);
             });
     // The number of RegionGroups should not less than the testMinRegionGroupNum for each database
-    // +1 for system database
+    // +1 for AUDIT database
     Assert.assertEquals(TEST_DATABASE_NUM + 1, databaseRegionCounter.size());
     databaseRegionCounter.forEach(
         (database, regionCount) ->

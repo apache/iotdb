@@ -59,11 +59,11 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
-import org.apache.iotdb.db.exception.runtime.TableNotExistsRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -152,13 +153,16 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -248,6 +252,15 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+
+  // Cache TableSchema to prevent OOM
+  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
+          .weigher(
+              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
+                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
+          .build();
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -1414,18 +1427,19 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileProcessor.registerToTsFile(
           tableName,
           t -> {
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(getDatabaseName(), t);
+            TsTable tsTable =
+                DataNodeTableCache.getInstance().getTable(getDatabaseName(), t, false);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
               if (node.isGeneratedByRemoteConsensusLeader()) {
                 // If current node is follower, after request config node and get the answer that
                 // table is exist or not, then tell leader node when table is not exist.
-                try {
-                  TDescTableResp resp =
-                      ConfigNodeClientManager.getInstance()
-                          .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)
-                          .describeTable(getDatabaseName(), tableName, false);
+                TDescTableResp resp;
+                try (ConfigNodeClient client =
+                    ConfigNodeClientManager.getInstance()
+                        .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+                  resp = client.describeTable(getDatabaseName(), tableName, false);
                   tsTable =
                       (resp != null) && (resp.tableInfo != null)
                           ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
@@ -1436,7 +1450,7 @@ public class DataRegion implements IDataRegionForQuery {
                       e.getMessage());
                 }
                 if (tsTable == null) {
-                  throw new TableNotExistsRuntimeException(getDatabaseName(), tableName);
+                  TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
                 }
               } else {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
@@ -1446,7 +1460,16 @@ public class DataRegion implements IDataRegionForQuery {
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
-            return TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+
+            org.apache.tsfile.file.metadata.TableSchema tableSchema =
+                TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
+            org.apache.tsfile.file.metadata.TableSchema cachedSchema =
+                SCHEMA_CACHE.getIfPresent(tableName);
+            if (Objects.equals(cachedSchema, tableSchema)) {
+              return cachedSchema;
+            }
+            SCHEMA_CACHE.put(tableName, tableSchema);
+            return tableSchema;
           });
     }
   }
@@ -2195,6 +2218,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
@@ -2204,6 +2230,21 @@ public class DataRegion implements IDataRegionForQuery {
           && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
+          if (tsFileProcessor == null) {
+            // tsFileProcessor == null means this tsfile is being closed, here we try to busy loop
+            // until status in TsFileResource has been changed which is supposed to be the last step
+            // of closing
+            while (!tsFileResource.isClosed() && waitTimeInMs > 0) {
+              TimeUnit.MILLISECONDS.sleep(5);
+              waitTimeInMs -= 5;
+            }
+            if (tsFileResource.isClosed()) {
+              continue;
+            } else {
+              clearAlreadyLockedList(needToUnLockList);
+              return false;
+            }
+          }
           long startTime = System.nanoTime();
           if (tsFileProcessor.tryReadLock(waitTimeInMs)) {
             // minus already consumed time
@@ -2223,6 +2264,9 @@ public class DataRegion implements IDataRegionForQuery {
           clearAlreadyLockedList(needToUnLockList);
           Thread.currentThread().interrupt();
           return false;
+        } catch (Throwable throwable) {
+          clearAlreadyLockedList(needToUnLockList);
+          throw throwable;
         }
       }
     }
@@ -2856,12 +2900,110 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
         continue;
       }
 
-      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+      ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
+
+      if ((timeIndex instanceof ArrayDeviceTimeIndex)
+          && (deletion.getType() == ModEntry.ModType.TABLE_DELETION)) {
+        ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+        boolean onlyOneTable = false;
+
+        if (deletion instanceof TableDeletionEntry) {
+          TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+          String tableName = tableDeletionEntry.getTableName();
+          long matchSize =
+              devicesInFile.stream()
+                  .filter(
+                      device -> {
+                        if (logger.isDebugEnabled()) {
+                          logger.debug(
+                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                              device,
+                              device.getTableName(),
+                              tableDeletionEntry.getPredicate().matches(device));
+                        }
+                        return tableName.equals(device.getTableName())
+                            && tableDeletionEntry.getPredicate().matches(device);
+                      })
+                  .count();
+          onlyOneTable = matchSize == devicesInFile.size();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "tableName is {}, matchSize is {}, onlyOneTable is {}",
+                tableName,
+                matchSize,
+                onlyOneTable);
+          }
+        }
+
+        if (onlyOneTable) {
+          int matchSize = 0;
+          for (IDeviceID device : devicesInFile) {
+            Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+            Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+            if (!optStart.isPresent() || !optEnd.isPresent()) {
+              continue;
+            }
+
+            long fileStartTime = optStart.get();
+            long fileEndTime = optEnd.get();
+
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  device.getTableName(),
+                  device,
+                  deletion.getStartTime(),
+                  deletion.getEndTime(),
+                  fileStartTime,
+                  fileEndTime);
+            }
+            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+              ++matchSize;
+            } else {
+              deletedByMods.add(sealedTsFile);
+              break;
+            }
+          }
+          if (matchSize == devicesInFile.size()) {
+            deletedByFiles.add(sealedTsFile);
+          }
+
+          if (logger.isDebugEnabled()) {
+            logger.debug("expect is {}, actual is {}", devicesInFile.size(), matchSize);
+            for (TsFileResource tsFileResource : deletedByFiles) {
+              logger.debug(
+                  "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
+            }
+          }
+        } else {
+          involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+        }
+      } else {
+        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+      }
+    }
+
+    for (TsFileResource tsFileResource : deletedByMods) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+        involvedModificationFiles.add(tsFileResource.getModFileForWrite());
+      } // else do nothing
+    }
+
+    if (!deletedByFiles.isEmpty()) {
+      deleteTsFileCompletely(deletedByFiles);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
+      }
     }
 
     if (involvedModificationFiles.isEmpty()) {
@@ -2897,6 +3039,27 @@ public class DataRegion implements IDataRegionForQuery {
         "[Deletion] Deletion {} is written into {} mod files",
         deletion,
         involvedModificationFiles.size());
+  }
+
+  private boolean isFileFullyMatchedByTime(
+      ModEntry deletion, long fileStartTime, long fileEndTime) {
+    return fileStartTime >= deletion.getStartTime() && fileEndTime <= deletion.getEndTime();
+  }
+
+  /** Delete completely TsFile and related supporting files */
+  private void deleteTsFileCompletely(List<TsFileResource> tsfileResourceList) {
+    for (TsFileResource tsFileResource : tsfileResourceList) {
+      tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
+      tsFileResource.writeLock();
+      try {
+        FileMetrics.getInstance()
+            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        tsFileResource.remove();
+        logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } finally {
+        tsFileResource.writeUnlock();
+      }
+    }
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
@@ -3044,7 +3207,9 @@ public class DataRegion implements IDataRegionForQuery {
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
-    CompactionScheduleContext context = new CompactionScheduleContext();
+    CompactionScheduleContext context =
+        new CompactionScheduleContext(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from largest to smallest
@@ -3097,7 +3262,9 @@ public class DataRegion implements IDataRegionForQuery {
         return 0;
       }
       logger.info("[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionId);
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context =
+          new CompactionScheduleContext(
+              EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -3254,6 +3421,9 @@ public class DataRegion implements IDataRegionForQuery {
       return Optional.empty();
     }
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return Optional.empty();
+    }
+    if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
       return Optional.empty();
     }
     int lastIndex = databaseName.lastIndexOf("-");
@@ -4294,7 +4464,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.directBufferMemoryCost = acquireDirectBufferMemCost;
   }
 
-  private static long getAcquireDirectBufferMemCost() {
+  public static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {

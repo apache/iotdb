@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.pipe.it.single;
 
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,9 +44,7 @@ import static org.junit.Assert.fail;
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
   public void testSinkPermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(env, "create user `thulab` 'passwd'", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(env, "create user `thulab` 'passwd'", null);
 
     // Shall fail if username is specified without password
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -101,38 +102,22 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
     // Write some data
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
     // Filter this
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery("test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush", null);
 
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
 
     // Continue, ensure that it won't block
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test1",
-        BaseEnv.TABLE_SQL_DIALECT,
-        env,
-        "grant INSERT on test.test1 to user thulab",
-        null)) {
-      return;
-    }
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on test.test1 to user thulab", null);
+    TableModelUtils.insertData("test1", "test1", 0, 100, env);
     TableModelUtils.assertCountData("test", "test1", 100, env);
 
     // Clear data, avoid resending
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery("test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1", null);
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -146,19 +131,42 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test", "test1");
     TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
 
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
 
     // Grant some privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null)) {
-      return;
-    }
+    TestUtils.executeNonQuery(
+        "test", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on any to user thulab", null);
 
     TableModelUtils.assertCountData("test", "test", 100, env);
+
+    // test showing pipe
+    // Create another pipe, user is root
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create pipe a2c "
+              + "with source ('database'='test1') "
+              + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
+              + "with sink ('sink'='write-back-sink')");
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Create pipe without user shall succeed if use the current session");
+    }
+
+    // A user shall only see its own pipe
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+      Assert.assertEquals(
+          1,
+          client
+              .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
+              .pipeInfoList
+              .size());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
   @Test
@@ -168,24 +176,18 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     TableModelUtils.createDataBaseAndTable(env, "test", "test");
     TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         "test",
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
             "create user thulab 'passwD@123456'", "grant INSERT on test.test1 to user thulab"),
-        null)) {
-      return;
-    }
+        null);
 
     // Write some data
-    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test", 0, 100, env);
 
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
-      return;
-    }
+    TableModelUtils.insertData("test1", "test1", 0, 100, env);
 
     // Use current session, user is root
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);

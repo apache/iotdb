@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -73,21 +74,23 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       boolean useLeaderCache,
       String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      String username,
+      UserEntity userEntity,
       String password,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
       boolean validateTsFile,
-      boolean shouldMarkAsPipeRequest) {
+      boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useLeaderCache,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -121,7 +124,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       // Check whether any clients are available, if any client is available, return directly
       for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
           endPoint2ClientAndStatus.values()) {
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return;
         }
       }
@@ -130,7 +133,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
-      if (Boolean.TRUE.equals(entry.getValue().getRight())) {
+      if (Boolean.TRUE.equals(entry.getValue().getRight()) && entry.getValue().getLeft() != null) {
         continue;
       }
 
@@ -139,7 +142,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
     // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
         lastCheckClientStatusTimestamp = System.currentTimeMillis();
         return;
       }
@@ -231,7 +234,12 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID,
+          String.valueOf(userEntity.getUserId()));
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, userEntity.getUsername());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, userEntity.getCliHostname());
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -239,6 +247,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
           Boolean.toString(shouldMarkAsPipeRequest));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
+          Boolean.toString(skipIfNoPrivileges));
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
@@ -306,7 +317,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       try {
         if (clientAndStatus.getLeft() != null) {
           clientAndStatus.getLeft().close();
-          clientAndStatus.setLeft(null);
         }
         LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
@@ -337,7 +347,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final int clientIndex = (int) (currentClientIndex++ % clientSize);
         final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return clientAndStatus;
         }
       }
@@ -354,7 +364,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       final int clientIndex = (int) (Math.random() * clientSize);
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
           endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
         return clientAndStatus;
       }
 
@@ -363,7 +373,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final int nextClientIndex = (clientIndex + tryCount + 1) % clientSize;
         final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
-        if (Boolean.TRUE.equals(nextClientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(nextClientAndStatus.getRight())
+            && clientAndStatus.getLeft() != null) {
           return nextClientAndStatus;
         }
       }
@@ -380,7 +391,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       for (final TEndPoint endPoint : endPointList) {
         final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
             endPoint2ClientAndStatus.get(endPoint);
-        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight()) && clientAndStatus.getLeft() != null) {
           return clientAndStatus;
         }
       }
