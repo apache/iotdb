@@ -359,6 +359,7 @@ struct TRollbackSchemaBlackListReq {
 
 struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
+  2: optional bool needLock
 }
 
 struct TFetchSchemaBlackListReq {
