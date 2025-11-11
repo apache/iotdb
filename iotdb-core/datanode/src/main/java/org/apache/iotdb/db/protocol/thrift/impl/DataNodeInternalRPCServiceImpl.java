@@ -708,7 +708,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(final TInvalidateMatchedSchemaCacheReq req) {
     final TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
-    if (req.needLock) {
+    if (req.needLock || !req.isSetNeedLock()) {
       DataNodeSchemaLockManager.getInstance()
           .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
     }
@@ -720,7 +720,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         cache.releaseWriteLock();
       }
     } finally {
-      if (req.needLock) {
+      if (req.needLock || !req.isSetNeedLock()) {
         DataNodeSchemaLockManager.getInstance()
             .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TREE);
       }
