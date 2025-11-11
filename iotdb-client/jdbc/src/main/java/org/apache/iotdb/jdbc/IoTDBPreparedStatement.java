@@ -916,10 +916,36 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
             && !((x.startsWith("'") && x.endsWith("'"))
                 || ((x.startsWith("\"") && x.endsWith("\""))
                     && "tree".equals(getSqlDialect())))))) {
-      this.parameters.put(parameterIndex, "'" + x + "'");
+      // Escape single quotes to prevent SQL injection: ' -> \'
+      String escapedValue = escapeString(x);
+      this.parameters.put(parameterIndex, "'" + escapedValue + "'");
     } else {
       this.parameters.put(parameterIndex, x);
     }
+  }
+
+  /**
+   * Escapes single quotes in a string to prevent SQL injection. Replaces each single quote (') with
+   * a backslash-escaped single quote (\').
+   *
+   * <p>Note: The backslash in a Java string must be escaped, while the single quote in a Java
+   * string can be escaped or not.
+   *
+   * <ul>
+   *   <li>Input "O'Reilly" becomes "O\'Reilly" (correctly escaped)
+   *   <li>Input "a\'b" (Java string literal, actual content is a'b) becomes "a\'b"
+   *   <li>Input "a\\'b" (Java string literal, actual content is a\'b) becomes "a\\'b"
+   * </ul>
+   *
+   * @param value the string to escape
+   * @return the escaped string
+   */
+  private String escapeString(String value) {
+    if (value == null) {
+      return null;
+    }
+    // Escape single quotes to prevent SQL injection
+    return value.replace("'", "\\'");
   }
 
   @Override
