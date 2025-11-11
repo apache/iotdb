@@ -110,6 +110,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -123,6 +124,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -1331,9 +1333,14 @@ public class ClusterSchemaManager {
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
+
+    final AtomicBoolean hasObject = new AtomicBoolean(false);
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
+              hasObject.set(true);
+            }
             expandedTable.addColumnSchema(columnSchema);
             return false;
           }
@@ -1343,7 +1350,16 @@ public class ClusterSchemaManager {
     if (columnSchemaList.isEmpty()) {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+
+    if (hasObject.get()) {
+      expandedTable.checkTableNameAndObjectNames4Object();
+    }
+    final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    // Check tag values only if the table does not have any object fields before
+    if (!originalTable.setNeedCheck4Object()) {
+      status.setMessage("");
+    }
+    return new Pair<>(status, expandedTable);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(

@@ -930,8 +930,9 @@ rowCount
     ;
 
 queryTerm
-    : queryPrimary                                                                                #queryTermDefault
-    | left=queryTerm operator=(INTERSECT | UNION | EXCEPT) setQuantifier? right=queryTerm         #setOperation
+    : queryPrimary                                                                 #queryTermDefault
+    | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm             #setOperation
+    | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm      #setOperation
     ;
 
 queryPrimary

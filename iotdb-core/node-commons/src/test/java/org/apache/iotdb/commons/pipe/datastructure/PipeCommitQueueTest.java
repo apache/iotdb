@@ -57,6 +57,8 @@ public class PipeCommitQueueTest {
     Assert.assertEquals(0, pipeCommitQueue.size());
     Assert.assertEquals(new IoTProgressIndex(0, 4L), pipeTaskMeta.getProgressIndex());
     Assert.assertEquals(1, commitHookTestSet.size());
+    // Test null progressIndex
+    pipeCommitQueue.offer(new TestEnrichedEvent(6, null));
   }
 
   private class TestEnrichedEvent extends EnrichedEvent {

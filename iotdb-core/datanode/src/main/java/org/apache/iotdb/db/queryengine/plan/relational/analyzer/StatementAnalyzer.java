@@ -231,6 +231,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -268,6 +269,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+import static org.apache.iotdb.commons.schema.table.TsTable.getObjectStringError;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -4459,9 +4461,21 @@ public class StatementAnalyzer {
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .takeReadLock(queryContext, SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
       // Check if the table exists
-      DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
+      if (table.isNeedCheck4Object()) {
+        for (final Object[] deviceId : node.getDeviceIdList()) {
+          for (final Object part : deviceId) {
+            final String value = (String) part;
+            if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {
+              throw new SemanticException(
+                  getObjectStringError("deviceId", Arrays.toString(deviceId)));
+            }
+          }
+        }
+      }
       return null;
     }
 

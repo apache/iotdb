@@ -100,13 +100,15 @@ public class RegionReadExecutor {
                 });
         return resp;
       }
-    } catch (ConsensusGroupNotExistException e) {
+    } catch (final ConsensusGroupNotExistException e) {
       LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
-      RegionExecutionResult resp =
+      final String errorMsg = String.format(ERROR_MSG_FORMAT, e.getMessage());
+      final RegionExecutionResult resp =
           RegionExecutionResult.create(
               false,
-              String.format(ERROR_MSG_FORMAT, e.getMessage()),
-              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+              errorMsg,
+              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode())
+                  .setMessage(errorMsg));
       resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {

@@ -512,14 +512,19 @@ public class CompactionUtils {
     }
   }
 
-  public static void removeDeletedObjectFiles(TsFileResource resource)
-      throws IOException, IllegalPathException {
+  public static void removeDeletedObjectFiles(TsFileResource resource) {
+    // check for compaction recovery
+    if (!resource.tsFileExists()) {
+      return;
+    }
     try (MultiTsFileDeviceIterator deviceIterator =
         new MultiTsFileDeviceIterator(Collections.singletonList(resource))) {
       while (deviceIterator.hasNextDevice()) {
         deviceIterator.nextDevice();
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
       }
+    } catch (Exception e) {
+      logger.warn("Failed to remove object files from file {}", resource.getTsFilePath(), e);
     }
   }
 

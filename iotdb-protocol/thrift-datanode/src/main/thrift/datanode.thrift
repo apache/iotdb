@@ -367,6 +367,11 @@ struct TDeleteDataOrDevicesForDropTableReq {
   2: required string tableName
 }
 
+struct TCheckDeviceIdForObjectReq {
+  1: required list<common.TConsensusGroupId> regionIdList
+  2: required string tableName
+}
+
 struct TTableDeviceDeletionWithPatternAndFilterReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required string tableName
@@ -462,6 +467,14 @@ struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+}
+
+struct TAlterEncodingCompressorReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+  3: required bool ifExists
+  4: optional byte encoding
+  5: optional byte compressor
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -1073,6 +1086,11 @@ service IDataNodeRPCService {
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
   /**
+   * Alter matched timeseries to specific encoding and compressor in target schemaRegions
+   */
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
    */
   common.TSStatus constructSchemaBlackListWithTemplate(TConstructSchemaBlackListWithTemplateReq req)
@@ -1197,6 +1215,10 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
+  /**
+   * Check device ID for object
+   */
+  common.TSStatus checkDeviceIdForObject(TCheckDeviceIdForObjectReq req)
 
   /**
    * Construct table device black list

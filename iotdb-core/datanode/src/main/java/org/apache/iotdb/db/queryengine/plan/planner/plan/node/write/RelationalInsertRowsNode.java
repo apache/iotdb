@@ -27,13 +27,19 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -159,6 +165,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    List<WritePlanNode> writePlanNodeList = new ArrayList<>();
     Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < getInsertRowNodeList().size(); i++) {
@@ -172,6 +179,9 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
+      // handle object type
+      handleObjectValue(insertRowNode, dataRegionReplicaSet, writePlanNodeList);
+
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -185,8 +195,41 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       }
     }
     analysis.setRedirectNodeList(redirectInfo);
+    writePlanNodeList.addAll(splitMap.values());
 
-    return new ArrayList<>(splitMap.values());
+    return writePlanNodeList;
+  }
+
+  private void handleObjectValue(
+      InsertRowNode insertRowNode,
+      TRegionReplicaSet dataRegionReplicaSet,
+      List<WritePlanNode> writePlanNodeList) {
+    for (int j = 0; j < insertRowNode.getDataTypes().length; j++) {
+      if (insertRowNode.getDataTypes()[j] == TSDataType.OBJECT) {
+        Object[] values = insertRowNode.getValues();
+        byte[] binary = ((Binary) values[j]).getValues();
+        ByteBuffer buffer = ByteBuffer.wrap(binary);
+        boolean isEoF = buffer.get() == 1;
+        long offset = buffer.getLong();
+        byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+        String relativePath =
+            TsFileNameGenerator.generateObjectFilePath(
+                dataRegionReplicaSet.getRegionId().getId(),
+                insertRowNode.getTime(),
+                insertRowNode.getDeviceID(),
+                insertRowNode.getMeasurements()[j]);
+        ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
+        objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        byte[] filePathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
+        byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
+        System.arraycopy(
+            BytesUtils.longToBytes(offset + content.length), 0, valueBytes, 0, Long.BYTES);
+        System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
+        ((Binary) values[j]).setValues(valueBytes);
+        insertRowNode.setValues(values);
+        writePlanNodeList.add(objectNode);
+      }
+    }
   }
 
   public RelationalInsertRowsNode emptyClone() {

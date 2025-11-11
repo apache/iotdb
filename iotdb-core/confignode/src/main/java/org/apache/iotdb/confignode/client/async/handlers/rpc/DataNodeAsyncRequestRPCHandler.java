@@ -83,6 +83,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case ROLLBACK_SCHEMA_BLACK_LIST:
       case DELETE_DATA_FOR_DELETE_SCHEMA:
       case DELETE_TIMESERIES:
+      case ALTER_ENCODING_COMPRESSOR:
       case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case DEACTIVATE_TEMPLATE:
@@ -231,6 +232,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case INVALIDATE_MATCHED_TABLE_DEVICE_CACHE:
       case DELETE_DATA_FOR_TABLE_DEVICE:
       case DELETE_TABLE_DEVICE_IN_BLACK_LIST:
+      case CHECK_DEVICE_ID_FOR_OBJECT:
       default:
         return new DataNodeTSStatusRPCHandler(
             requestType,

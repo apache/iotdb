@@ -85,6 +85,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -145,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
@@ -205,6 +208,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
@@ -212,6 +216,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -786,11 +791,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {
-          String storageGroup =
+          String database =
               schemaEngine
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath();
-          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
           if (filteredPatternTree.isEmpty()) {
             return RpcUtils.SUCCESS_STATUS;
           }
@@ -802,6 +807,35 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       ? new PipeEnrichedNonWritePlanNode(
                           new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
                       : new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) throws TException {
+    final PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          final String database =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          final PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, database);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          final RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new AlterEncodingCompressorNode(
+                      new PlanNodeId(""),
+                      filteredPatternTree,
+                      req.isIfExists(),
+                      SerializeUtils.deserializeEncodingNullable(req.getEncoding()),
+                      SerializeUtils.deserializeCompressorNullable(req.getCompressor())))
               .getStatus();
         });
   }
@@ -1678,6 +1712,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case PRE_UPDATE_TABLE:
         final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+        pair.getRight().setNeedCheck4Object();
         DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:
@@ -1704,14 +1739,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1788,7 +1823,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1799,7 +1834,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1895,7 +1930,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1906,7 +1941,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1936,6 +1971,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             // the request is only sent to associated region
                             null))
                     .getStatus());
+  }
+
+  @Override
+  public TSStatus checkDeviceIdForObject(final TCheckDeviceIdForObjectReq req) {
+    // Take the lock to avoid concurrent alter
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    try {
+      return executeInternalSchemaTask(
+          req.getRegionIdList(),
+          consensusGroupId -> {
+            final ISchemaRegion schemaRegion =
+                schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+            try {
+              schemaRegion.checkTableDevice4Object(req.getTableName());
+              return RpcUtils.SUCCESS_STATUS;
+            } catch (final SemanticException | MetadataException e) {
+              return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                  .setMessage(e.getMessage());
+            }
+          });
+    } finally {
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    }
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {

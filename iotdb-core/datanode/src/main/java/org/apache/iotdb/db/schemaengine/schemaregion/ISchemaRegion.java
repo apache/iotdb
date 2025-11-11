@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -207,6 +208,8 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
+
+  void alterEncodingCompressor(final AlterEncodingCompressorNode node) throws MetadataException;
 
   // endregion
 
@@ -392,6 +395,8 @@ public interface ISchemaRegion {
 
   ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table, final List<Object[]> devicePathList) throws MetadataException;
+
+  void checkTableDevice4Object(final String table) throws MetadataException;
 
   // region Interfaces for AttributeUpdate
   Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(

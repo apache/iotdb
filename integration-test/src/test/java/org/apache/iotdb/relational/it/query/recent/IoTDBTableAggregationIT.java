@@ -5491,4 +5491,17 @@ public class IoTDBTableAggregationIT {
         retArray,
         DATABASE_NAME);
   }
+
+  @Test
+  public void orderByLimitTest() {
+    String[] expectedHeader =
+        new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
+    String[] retArray = new String[] {"beijing,beijing,chaoyang,d09,2024-09-24T06:00:00.000Z,2,"};
+
+    tableResultSetEqualTest(
+        "select province, city, region, device_id, date_bin(1h, time), count(s1) from table1 where s1 >= 40 group by 1,2,3,4,5 order by province, city, region, device_id, date_bin(1h, time) limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }

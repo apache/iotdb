@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectAll;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectDistinctAsUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementPatternRecognition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
@@ -274,6 +276,17 @@ public class LogicalOptimizeFactory {
                         // new MergeIntersect
                         // new MergeExcept
                         new PruneDistinctAggregation()))
+                .build()),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                .add(
+                    new ImplementIntersectDistinctAsUnion(metadata),
+                    // new ImplementExceptDistinctAsUnion(metadata)
+                    new ImplementIntersectAll(metadata)
+                    // new ImplementExceptAll(metadata))),
+                    )
                 .build()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,

@@ -423,7 +423,7 @@ public class TableDistributedPlanGenerator
   private boolean canTopKEliminated(OrderingScheme orderingScheme, long k, PlanNode child) {
     // if DeviceTableScanNode has limit <= K and with same order, we can directly return
     // DeviceTableScanNode
-    if (child instanceof DeviceTableScanNode) {
+    if (child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode)) {
       DeviceTableScanNode tableScanNode = (DeviceTableScanNode) child;
       if (canSortEliminated(orderingScheme, nodeOrderingMap.get(child.getPlanNodeId()))) {
         if (tableScanNode.getPushDownLimit() <= 0) {

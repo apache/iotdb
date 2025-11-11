@@ -63,14 +63,18 @@ public class ExportDataTable extends AbstractExportData {
 
   @Override
   public void init() throws IoTDBConnectionException, StatementExecutionException {
-    tableSession =
+    TableSessionBuilder tableSessionBuilder =
         new TableSessionBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .username(username)
             .password(password)
             .database(database)
-            .thriftMaxFrameSize(rpcMaxFrameSize)
-            .build();
+            .thriftMaxFrameSize(rpcMaxFrameSize);
+    if (useSsl) {
+      tableSessionBuilder =
+          tableSessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    tableSession = tableSessionBuilder.build();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("show databases", timeout);
     List<String> databases = new ArrayList<>();
     while (sessionDataSet.hasNext()) {

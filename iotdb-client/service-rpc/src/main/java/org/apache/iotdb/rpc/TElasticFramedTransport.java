@@ -132,13 +132,21 @@ public class TElasticFramedTransport extends TTransport {
       if (e.getCause() instanceof SocketTimeoutException) {
         throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
       }
-      // When client with SSL shut down due to time out. Some unnecessary error logs may be printed.
-      // Adding this workaround to avoid the problem.
-      if (e.getCause() instanceof SSLHandshakeException
-          && e.getCause().getCause() != null
-          && e.getCause().getCause() instanceof EOFException) {
-        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      if (e.getCause() instanceof SSLHandshakeException) {
+        // There is an unsolved JDK bug https://bugs.openjdk.org/browse/JDK-8221218.
+        // Adding this workaround to avoid the error log printed.
+        if (e.getMessage()
+            .contains("Insufficient buffer remaining for AEAD cipher fragment (2).")) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
+        // When client with SSL shutdown due to time out. Some unnecessary error logs may be
+        // printed.
+        // Adding this workaround to avoid the problem.
+        if (e.getCause().getCause() != null && e.getCause().getCause() instanceof EOFException) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
       }
+
       if (e.getCause() instanceof SSLException
           && e.getMessage().contains("Unsupported or unrecognized SSL message")) {
         SocketAddress remoteAddress = null;

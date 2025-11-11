@@ -64,8 +64,6 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   private boolean singleDevice;
 
-  private Object[] convertedColumns;
-
   public RelationalInsertTabletNode(
       PlanNodeId id,
       PartialPath devicePath,
