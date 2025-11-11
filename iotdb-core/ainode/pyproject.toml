@@ -76,7 +76,7 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<=3.13.5"
+python = ">=3.11.0,<3.14.0"
 
 # ---- DL / HF stack ----
 torch = ">=2.7.0"

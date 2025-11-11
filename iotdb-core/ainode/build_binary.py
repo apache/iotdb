@@ -94,15 +94,15 @@ def update_pip(venv_python):
 
 
 def install_poetry(venv_python):
-    """Install poetry 2.1.2 in the virtual environment."""
-    print("Installing poetry 2.1.2...")
+    """Install poetry 2.2.1 in the virtual environment."""
+    print("Installing poetry 2.2.1...")
     subprocess.run(
         [
             str(venv_python),
             "-m",
             "pip",
             "install",
-            "poetry==2.1.2",
+            "poetry==2.2.1",
         ],
         check=True,
     )
@@ -520,7 +520,7 @@ def build():
 
     Steps:
     1. Setup virtual environment (outside project directory)
-    2. Update pip and install 2.1.2 poetry
+    2. Update pip and install 2.2.1 poetry
     3. Install project dependencies (including PyInstaller from pyproject.toml)
     4. Build executable using PyInstaller
     """
