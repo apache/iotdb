@@ -75,8 +75,10 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -244,6 +246,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -2769,6 +2772,65 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               : Collections.emptyList(),
           future);
     } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterEncodingCompressor(
+      final String queryId,
+      final AlterEncodingCompressorStatement alterEncodingCompressorStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Will only occur if no permission
+    if (alterEncodingCompressorStatement.getPatternTree().isEmpty()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      alterEncodingCompressorStatement.getPatternTree().serialize(dataOutputStream);
+    } catch (final IOException ignored) {
+      // memory operation, won't happen
+    }
+    final TAlterEncodingCompressorReq req =
+        new TAlterEncodingCompressorReq(
+            queryId,
+            ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+            SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getEncoding()),
+            SerializeUtils.serializeNullable(alterEncodingCompressorStatement.getCompressor()),
+            alterEncodingCompressorStatement.ifExists(),
+            alterEncodingCompressorStatement.isWithAudit());
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.alterEncodingCompressor(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
