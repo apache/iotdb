@@ -87,7 +87,9 @@ public class AddTableColumnProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
-          if (needCheck4Object && table.setNeedCheck4Object()) {
+          if (needCheck4Object
+              && table.setNeedCheck4Object()
+              && !(this instanceof AddViewColumnProcedure)) {
             checkObject(env, database, tableName);
           }
           setNextState(AddTableColumnState.ADD_COLUMN);
