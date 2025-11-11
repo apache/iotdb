@@ -4273,12 +4273,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
               && columnIfExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else if (tsStatus.getMessage().contains("When there are object fields")) {
-        future.setException(
-            new SemanticException(
-                tsStatus
-                    .getMessage()
-                    .replace("org.apache.iotdb.commons.exception.IoTDBRuntimeException: ", "")));
+      } else if (tsStatus.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+        future.setException(new SemanticException(tsStatus.getMessage()));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
