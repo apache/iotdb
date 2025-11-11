@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +95,7 @@ public class DataNodeTableCache implements ITableCache {
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
+      usingMap.values().forEach(list -> list.forEach(TsTable::setNeedCheck4Object));
       usingMap.forEach(
           (key, value) ->
               databaseTableMap.put(
@@ -105,6 +107,21 @@ public class DataNodeTableCache implements ITableCache {
                               Function.identity(),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
+
+      preCreateMap.forEach(
+          (key, value) ->
+              value.stream()
+                  .filter(
+                      table ->
+                          table.setNeedCheck4Object()
+                              && databaseTableMap.containsKey(key)
+                              && databaseTableMap.get(key).containsKey(table.getTableName()))
+                  .forEach(
+                      table ->
+                          databaseTableMap
+                              .get(key)
+                              .get(table.getTableName())
+                              .setNeedCheck4Object(true)));
       preCreateMap.forEach(
           (key, value) ->
               preUpdateTableMap.put(
@@ -140,6 +157,12 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
+      if (table.isNeedCheck4Object() && databaseTableMap.containsKey(database)) {
+        final TsTable existing = databaseTableMap.get(database).get(table.getTableName());
+        if (Objects.nonNull(existing)) {
+          existing.setNeedCheck4Object(true);
+        }
+      }
       LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
 
       // If rename table
@@ -171,6 +194,13 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
+      // If the "need check" flag is set by the "preUpdate" table, then it need to be cleared here
+      if (databaseTableMap.containsKey(database)) {
+        final TsTable existing = databaseTableMap.get(database).get(tableName);
+        if (Objects.nonNull(existing)) {
+          existing.setNeedCheck4Object();
+        }
+      }
       LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
 
       // If rename table
@@ -270,7 +300,12 @@ public class DataNodeTableCache implements ITableCache {
     try {
       if (databaseTableMap.containsKey(database)
           && databaseTableMap.get(database).containsKey(tableName)) {
-        databaseTableMap.get(database).get(tableName).removeColumnSchema(columnName);
+        final TsTable table = databaseTableMap.get(database).get(tableName);
+        final TSDataType type = table.getColumnSchema(columnName).getDataType();
+        table.removeColumnSchema(columnName);
+        if (type.equals(TSDataType.OBJECT)) {
+          table.setNeedCheck4Object();
+        }
       }
       if (preUpdateTableMap.containsKey(database)
           && preUpdateTableMap.get(database).containsKey(tableName)) {

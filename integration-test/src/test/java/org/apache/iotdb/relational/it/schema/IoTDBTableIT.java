@@ -762,6 +762,104 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testTableObjectCheck() throws Exception {
+    final Set<String> illegal = new HashSet<>(Arrays.asList("./", ".", "..", ".\\", "../hack"));
+    for (final String single : illegal) {
+      testObject4SingleIllegalPath(single);
+    }
+  }
+
+  private void testObject4SingleIllegalPath(final String illegal) throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database db2");
+      statement.execute("use db2");
+      statement.execute(String.format("create table \"%s\" ()", illegal));
+
+      try {
+        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(String.format("create table test (\"%s\" object)", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      statement.execute("create table test (a tag, b attribute, c int32, d object)");
+      try {
+        statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "507: When there are object fields, the deviceId [%s] shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(String.format("alter table test add column \"%s\" object", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+    }
+
+    // Test cache
+    TestUtils.restartCluster(EnvFactory.getEnv());
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use db2");
+
+      try {
+        statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "507: When there are object fields, the deviceId [%s] shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      statement.execute("alter table test drop column d");
+      statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
+      try {
+        statement.execute("alter table test add column d object");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the tag value %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      statement.execute("drop database db2");
+    }
+  }
+
+  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {

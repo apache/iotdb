@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -51,6 +53,7 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -141,7 +144,7 @@ public class MTreeBelowSGMemoryImpl {
   private final MemMTreeStore store;
 
   @SuppressWarnings("java:S3077")
-  private volatile IMemMNode storageGroupMNode;
+  private volatile IMemMNode databaseMNode;
 
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
@@ -160,7 +163,7 @@ public class MTreeBelowSGMemoryImpl {
       final SchemaRegionMemMetric metric) {
     store = new MemMTreeStore(storageGroupPath, regionStatistics, metric);
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
+    this.databaseMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
@@ -175,7 +178,7 @@ public class MTreeBelowSGMemoryImpl {
       final MemSchemaRegionStatistics regionStatistics) {
     this.store = store;
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
+    this.databaseMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
@@ -184,7 +187,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public void clear() {
     store.clear();
-    storageGroupMNode = null;
+    databaseMNode = null;
   }
 
   public synchronized boolean createSnapshot(final File snapshotDir) {
@@ -409,7 +412,7 @@ public class MTreeBelowSGMemoryImpl {
     if (nodeNames.length == levelOfSG + 1) {
       return null;
     }
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode child;
     String childName;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
@@ -433,13 +436,12 @@ public class MTreeBelowSGMemoryImpl {
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
       // device is sg
-      return storageGroupMNode;
+      return databaseMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkDeviceLimit(storageGroupMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(databaseMNode.getName())) {
           throw new ExceedQuotaException(
               "The number of devices has reached the upper limit",
               TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
@@ -501,8 +503,7 @@ public class MTreeBelowSGMemoryImpl {
                 devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
       }
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkTimeSeriesNum(storageGroupMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkTimeSeriesNum(databaseMNode.getName())) {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
@@ -747,7 +748,7 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     MetaFormatUtils.checkTimeseries(deviceId);
     final String[] nodeNames = deviceId.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode child;
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
@@ -894,7 +895,7 @@ public class MTreeBelowSGMemoryImpl {
    */
   public IMemMNode getNodeByPath(final PartialPath path) throws PathNotExistException {
     final String[] nodes = path.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode next;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       next = cur.getChild(nodes[i]);
@@ -930,7 +931,7 @@ public class MTreeBelowSGMemoryImpl {
   public void activateTemplate(final PartialPath activatePath, final Template template)
       throws MetadataException {
     final String[] nodes = activatePath.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
@@ -1037,7 +1038,7 @@ public class MTreeBelowSGMemoryImpl {
   public void activateTemplateWithoutCheck(
       final PartialPath activatePath, final int templateId, final boolean isAligned) {
     final String[] nodes = activatePath.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
@@ -1334,18 +1335,16 @@ public class MTreeBelowSGMemoryImpl {
 
   private IMemMNode getTableDeviceNode(final String table, final Object[] deviceId)
       throws PathNotExistException {
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode next;
 
     next = cur.getChild(table);
     if (next == null) {
       throw new PathNotExistException(
-          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
-          true);
+          databaseMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId), true);
     } else if (next.isMeasurement()) {
       throw new PathNotExistException(
-          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
-          true);
+          databaseMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId), true);
     }
     cur = next;
 
@@ -1353,14 +1352,13 @@ public class MTreeBelowSGMemoryImpl {
       next = cur.getChild(deviceId[i] == null ? null : String.valueOf(deviceId[i]));
       if (next == null) {
         throw new PathNotExistException(
-            storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
-            true);
+            databaseMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId), true);
       } else if (next.isMeasurement()) {
         if (i == deviceId.length - 1) {
           return next;
         } else {
           throw new PathNotExistException(
-              storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+              databaseMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
               true);
         }
       }
@@ -1628,7 +1626,7 @@ public class MTreeBelowSGMemoryImpl {
   // region table device management
 
   public int getTableDeviceNotExistNum(final String tableName, final List<Object[]> deviceIdList) {
-    final IMemMNode tableNode = storageGroupMNode.getChild(tableName);
+    final IMemMNode tableNode = databaseMNode.getChild(tableName);
     int notExistNum = deviceIdList.size();
     if (tableNode == null) {
       return notExistNum;
@@ -1659,11 +1657,10 @@ public class MTreeBelowSGMemoryImpl {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Start to create table device {}.{}", tableName, Arrays.toString(devicePath));
     }
-    IMemMNode cur = storageGroupMNode.getChild(tableName);
+    IMemMNode cur = databaseMNode.getChild(tableName);
     if (cur == null) {
       cur =
-          store.addChild(
-              storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
+          store.addChild(databaseMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
     }
 
     for (final String childName : devicePath) {
@@ -1776,14 +1773,14 @@ public class MTreeBelowSGMemoryImpl {
 
   public boolean deleteTableDevice(final String tableName, final IntConsumer attributeDeleter)
       throws MetadataException {
-    if (!store.hasChild(storageGroupMNode, tableName)) {
+    if (!store.hasChild(databaseMNode, tableName)) {
       return false;
     }
     final AtomicInteger memoryReleased = new AtomicInteger(0);
     try (final MNodeCollector<Void, IMemMNode> collector =
         new MNodeCollector<Void, IMemMNode>(
-            storageGroupMNode,
-            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            databaseMNode,
+            new PartialPath(new String[] {databaseMNode.getName(), tableName}),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -1805,7 +1802,7 @@ public class MTreeBelowSGMemoryImpl {
         }) {
       collector.traverse();
     }
-    storageGroupMNode.deleteChild(tableName);
+    databaseMNode.deleteChild(tableName);
     regionStatistics.resetTableDevice(tableName);
     store.releaseMemory(memoryReleased.get());
     return true;
@@ -1813,14 +1810,14 @@ public class MTreeBelowSGMemoryImpl {
 
   public boolean dropTableAttribute(final String tableName, final IntConsumer attributeDropper)
       throws MetadataException {
-    if (!store.hasChild(storageGroupMNode, tableName)) {
+    if (!store.hasChild(databaseMNode, tableName)) {
       return false;
     }
     final AtomicInteger memoryReleased = new AtomicInteger(0);
     try (final EntityUpdater<IMemMNode> updater =
         new EntityUpdater<IMemMNode>(
-            storageGroupMNode,
-            new PartialPath(new String[] {storageGroupMNode.getName(), tableName}),
+            databaseMNode,
+            new PartialPath(new String[] {databaseMNode.getName(), tableName}),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -1835,6 +1832,56 @@ public class MTreeBelowSGMemoryImpl {
     }
     store.releaseMemory(memoryReleased.get());
     return true;
+  }
+
+  public void checkTableDevice4Object(final String tableName) throws MetadataException {
+    if (!store.hasChild(databaseMNode, tableName)) {
+      return;
+    }
+    try (final Traverser<Void, IMemMNode> checker =
+        new Traverser<Void, IMemMNode>(
+            databaseMNode,
+            new PartialPath(new String[] {databaseMNode.getName(), tableName}),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected boolean acceptInternalMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected boolean acceptFullMatchedNode(final IMemMNode node) {
+            return true;
+          }
+
+          @Override
+          protected Void generateResult(final IMemMNode nextMatchedNode) {
+            if (TsTable.isInvalid4ObjectType(nextMatchedNode.getName())) {
+              throw new SemanticException(
+                  TsTable.getObjectStringError("tag value", nextMatchedNode.getName()),
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+            }
+            return null;
+          }
+
+          @Override
+          protected boolean mayTargetNodeType(final IMemMNode node) {
+            return true;
+          }
+        }) {
+      checker.traverse();
+    }
   }
 
   // endregion

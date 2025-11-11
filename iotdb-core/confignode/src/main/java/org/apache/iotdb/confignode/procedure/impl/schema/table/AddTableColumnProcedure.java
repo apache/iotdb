@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -32,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -41,7 +45,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class AddTableColumnProcedure
@@ -49,6 +55,9 @@ public class AddTableColumnProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   protected List<TsTableColumnSchema> addedColumnList;
+
+  // May be lost when deserialized, but just cause some redundant check
+  private transient boolean needCheck4Object = false;
 
   public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -77,6 +86,12 @@ public class AddTableColumnProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
+          if (needCheck4Object
+              && table.setNeedCheck4Object()
+              && !(this instanceof AddViewColumnProcedure)) {
+            checkObject(env, database, tableName);
+          }
+          setNextState(AddTableColumnState.ADD_COLUMN);
           break;
         case ADD_COLUMN:
           LOGGER.info("Add column to table {}.{}", database, tableName);
@@ -115,6 +130,7 @@ public class AddTableColumnProcedure
       }
       table = result.getRight();
       setNextState(AddTableColumnState.PRE_RELEASE);
+      needCheck4Object = status.isSetMessage();
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
@@ -123,7 +139,52 @@ public class AddTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
-    setNextState(AddTableColumnState.ADD_COLUMN);
+  }
+
+  private void checkObject(
+      final ConfigNodeProcedureEnv env, final String database, final String tableName) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
+
+    if (!relatedRegionGroup.isEmpty()) {
+      new TableRegionTaskExecutor<>(
+              "check deviceId for object",
+              env,
+              relatedRegionGroup,
+              CnToDnAsyncRequestType.CHECK_DEVICE_ID_FOR_OBJECT,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TCheckDeviceIdForObjectReq(new ArrayList<>(consensusGroupIdList), tableName)),
+              ((tConsensusGroupId, tDataNodeLocations, failureMap) -> {
+                final String message = parseStatus(failureMap.values());
+                // Shall not be SUCCESS here
+                return Objects.nonNull(message)
+                    ? new IoTDBException(message, TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                    : null;
+              }))
+          .execute();
+    }
+  }
+
+  // Success: ""
+  // All semantic: return last one
+  // Non-semantic error: return null
+  private String parseStatus(final Iterable<TSStatus> statuses) {
+    String message = "";
+    for (final TSStatus status : statuses) {
+      if (status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+        message = status.getMessage();
+      } else if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        final String tempMsg = parseStatus(status.getSubStatus());
+        if (Objects.isNull(tempMsg)) {
+          return null;
+        } else if (!tempMsg.isEmpty()) {
+          message = tempMsg;
+        }
+      } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return null;
+      }
+    }
+    return message;
   }
 
   private void addColumn(final ConfigNodeProcedureEnv env) {

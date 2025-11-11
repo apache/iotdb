@@ -99,6 +99,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -215,6 +216,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -1710,6 +1712,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case PRE_UPDATE_TABLE:
         final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
+        pair.getRight().setNeedCheck4Object();
         DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
         break;
       case ROLLBACK_UPDATE_TABLE:
@@ -1736,14 +1739,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateTableCache(final TInvalidateTableCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1820,7 +1823,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedTableDeviceCache(final TTableDeviceInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1831,7 +1834,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1927,7 +1930,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateColumnCache(final TInvalidateColumnCacheReq req) {
     DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     try {
       TableDeviceSchemaCache.getInstance()
           .invalidate(
@@ -1938,7 +1941,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
     }
   }
 
@@ -1968,6 +1971,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             // the request is only sent to associated region
                             null))
                     .getStatus());
+  }
+
+  @Override
+  public TSStatus checkDeviceIdForObject(final TCheckDeviceIdForObjectReq req) {
+    // Take the lock to avoid concurrent alter
+    DataNodeSchemaLockManager.getInstance()
+        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    try {
+      return executeInternalSchemaTask(
+          req.getRegionIdList(),
+          consensusGroupId -> {
+            final ISchemaRegion schemaRegion =
+                schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+            try {
+              schemaRegion.checkTableDevice4Object(req.getTableName());
+              return RpcUtils.SUCCESS_STATUS;
+            } catch (final SemanticException | MetadataException e) {
+              return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                  .setMessage(e.getMessage());
+            }
+          });
+    } finally {
+      DataNodeSchemaLockManager.getInstance()
+          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+    }
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
