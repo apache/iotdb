@@ -85,7 +85,7 @@ public class IoTDBLoadTsFileWithModIT {
     // write mods file
     resource
         .getExclusiveModFile()
-        .write(new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1"), 1, 2));
+        .write(new TreeDeletionEntry(new MeasurementPath("root.test.d1.de.s1"), 1, 2));
     resource.getExclusiveModFile().close();
   }
 
@@ -93,7 +93,7 @@ public class IoTDBLoadTsFileWithModIT {
       throws IOException, DataRegionException, WriteProcessException, IllegalPathException {
     TsFileResource resource = generateFile();
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(resource);
-    oldModFile.write(new Deletion(new MeasurementPath("root.test.d1.s1"), Long.MAX_VALUE, 1, 2));
+    oldModFile.write(new Deletion(new MeasurementPath("root.test.d1.de.s1"), Long.MAX_VALUE, 1, 2));
     oldModFile.close();
   }
 
@@ -102,11 +102,11 @@ public class IoTDBLoadTsFileWithModIT {
     File tsfile = new File(tmpDir, "1-1-0-0.tsfile");
     try (TsFileWriter writer = new TsFileWriter(tsfile)) {
       writer.registerAlignedTimeseries(
-          "root.test.d1",
+          "root.test.d1.de",
           Collections.singletonList(new MeasurementSchema("s1", TSDataType.BOOLEAN)));
       Tablet tablet =
           new Tablet(
-              "root.test.d1",
+              "root.test.d1.de",
               Collections.singletonList(new MeasurementSchema("s1", TSDataType.BOOLEAN)));
       for (int i = 0; i < 5; i++) {
         tablet.addTimestamp(i, i);
@@ -138,7 +138,53 @@ public class IoTDBLoadTsFileWithModIT {
       statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(s1) as c from root.test.d1")) {
+          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(3, resultSet.getLong("c"));
+      }
+    }
+  }
+
+  @Test
+  public void testWithNewModFileAndLoadAttributes()
+      throws SQLException,
+          IOException,
+          DataRegionException,
+          WriteProcessException,
+          IllegalPathException {
+    generateFileWithNewModFile();
+    final String databaseName = "root.test.d1";
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          String.format(
+              "load \'%s\' with ("
+                  + "'database-name'='%s',"
+                  + "'database-level'='2',"
+                  + "'convert-on-type-mismatch'='true',"
+                  + "'tablet-conversion-threshold'='1024',"
+                  + "'verify'='true',"
+                  + "'on-success'='none',"
+                  + "'async'='false')",
+              tmpDir.getAbsolutePath(),
+              databaseName));
+
+      boolean databaseFound = false;
+      try (final ResultSet resultSet = statement.executeQuery("show databases")) {
+        while (resultSet.next()) {
+          final String currentDatabase = resultSet.getString(1);
+          if (databaseName.equalsIgnoreCase(currentDatabase)) {
+            databaseFound = true;
+            break;
+          }
+        }
+      }
+      Assert.assertTrue("database-name parameter should create or locate root.test", databaseFound);
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals(3, resultSet.getLong("c"));
       }
@@ -159,7 +205,7 @@ public class IoTDBLoadTsFileWithModIT {
       statement.execute(String.format("load \'%s\'", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(s1) as c from root.test.d1")) {
+          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals(3, resultSet.getLong("c"));
         Assert.assertTrue(
