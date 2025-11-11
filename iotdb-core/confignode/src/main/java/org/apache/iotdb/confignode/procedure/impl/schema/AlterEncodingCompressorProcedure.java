@@ -125,7 +125,9 @@ public class AlterEncodingCompressorProcedure
                 SerializeUtils.deserializeCompressorNullable(compressor),
                 requestMessage);
           }
-          alterEncodingCompressorInSchemaRegion(env);
+          if (!alterEncodingCompressorInSchemaRegion(env)) {
+            return Flow.NO_MORE_STATE;
+          }
           break;
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
@@ -145,7 +147,7 @@ public class AlterEncodingCompressorProcedure
     }
   }
 
-  private void alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
+  private boolean alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
 
@@ -159,7 +161,7 @@ public class AlterEncodingCompressorProcedure
                         .collect(Collectors.toList()),
                     false)));
       }
-      return;
+      return false;
     }
 
     final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
@@ -222,6 +224,7 @@ public class AlterEncodingCompressorProcedure
         };
     alterEncodingCompressorTask.execute();
     setNextState(AlterEncodingCompressorState.CLEAR_CACHE);
+    return true;
   }
 
   private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
