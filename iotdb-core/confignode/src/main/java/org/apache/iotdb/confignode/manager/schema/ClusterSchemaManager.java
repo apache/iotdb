@@ -1354,7 +1354,12 @@ public class ClusterSchemaManager {
     if (hasObject.get()) {
       expandedTable.checkTableNameAndObjectNames4Object();
     }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+    final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    // Check tag values only if the table does not have any object fields before
+    if (!originalTable.setNeedCheck4Object()) {
+      status.setMessage("");
+    }
+    return new Pair<>(status, expandedTable);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(

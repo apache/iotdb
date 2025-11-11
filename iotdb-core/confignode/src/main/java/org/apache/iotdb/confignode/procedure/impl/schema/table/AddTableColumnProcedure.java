@@ -57,6 +57,9 @@ public class AddTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   protected List<TsTableColumnSchema> addedColumnList;
 
+  // May be lost when deserialized, but just cause some redundant check
+  private transient boolean needCheck4Object = false;
+
   public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
@@ -84,7 +87,7 @@ public class AddTableColumnProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
-          if (table.setNeedCheck4Object()) {
+          if (needCheck4Object && table.setNeedCheck4Object()) {
             checkObject(env, database, tableName);
           }
           setNextState(AddTableColumnState.ADD_COLUMN);
@@ -126,6 +129,7 @@ public class AddTableColumnProcedure
       }
       table = result.getRight();
       setNextState(AddTableColumnState.PRE_RELEASE);
+      needCheck4Object = status.isSetMessage();
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
