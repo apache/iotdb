@@ -812,7 +812,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute(String.format("alter table test add column %s object", illegal));
+        statement.execute(String.format("alter table test add column \"%s\" object", illegal));
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
