@@ -173,6 +173,12 @@ statement
     | loadModelStatement
     | unloadModelStatement
 
+    // Prepared Statement
+    | prepareStatement
+    | executeStatement
+    | executeImmediateStatement
+    | deallocateStatement
+
     // View, Trigger, CQ, Quota are not supported yet
     ;
 
@@ -850,6 +856,23 @@ loadModelStatement
 
 unloadModelStatement
     : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
+    ;
+
+// ------------------------------------------- Prepared Statement ---------------------------------------------------------
+prepareStatement
+    : PREPARE statementName=identifier FROM statement
+    ;
+
+executeStatement
+    : EXECUTE statementName=identifier (USING literalExpression (',' literalExpression)*)?
+    ;
+
+executeImmediateStatement
+    : EXECUTE IMMEDIATE sql=string (USING literalExpression (',' literalExpression)*)?
+    ;
+
+deallocateStatement
+    : DEALLOCATE PREPARE statementName=identifier
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------

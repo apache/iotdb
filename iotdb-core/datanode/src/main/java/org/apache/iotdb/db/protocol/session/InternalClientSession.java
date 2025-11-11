@@ -34,6 +34,9 @@ public class InternalClientSession extends IClientSession {
   private final String clientID;
 
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
+  
+  // Map from statement name to PreparedStatementInfo
+  private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 
   public InternalClientSession(String clientID) {
     this.clientID = clientID;
@@ -87,5 +90,25 @@ public class InternalClientSession extends IClientSession {
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
     ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    preparedStatements.put(statementName, info);
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    return preparedStatements.remove(statementName);
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    return preparedStatements.get(statementName);
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return preparedStatements.keySet();
   }
 }

@@ -93,6 +93,22 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitPrepare(Prepare node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitExecute(Execute node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitExecuteImmediate(ExecuteImmediate node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDeallocate(Deallocate node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitGenericLiteral(GenericLiteral node, C context) {
     return visitLiteral(node, context);
   }

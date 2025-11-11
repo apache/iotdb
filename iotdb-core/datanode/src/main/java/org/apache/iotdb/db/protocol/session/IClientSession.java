@@ -31,8 +31,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class IClientSession {
 
@@ -179,6 +181,39 @@ public abstract class IClientSession {
   public void setDatabaseName(@Nullable String databaseName) {
     this.databaseName = databaseName;
   }
+
+  /**
+   * Add a prepared statement to this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @param info the prepared statement information
+   */
+  public abstract void addPreparedStatement(String statementName, PreparedStatementInfo info);
+
+  /**
+   * Remove a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the removed prepared statement info, or null if not found
+   */
+  @Nullable
+  public abstract PreparedStatementInfo removePreparedStatement(String statementName);
+
+  /**
+   * Get a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the prepared statement info, or null if not found
+   */
+  @Nullable
+  public abstract PreparedStatementInfo getPreparedStatement(String statementName);
+
+  /**
+   * Get all prepared statement names in this session.
+   *
+   * @return set of prepared statement names
+   */
+  public abstract Set<String> getPreparedStatementNames();
 
   public enum SqlDialect {
     TREE((byte) 0),

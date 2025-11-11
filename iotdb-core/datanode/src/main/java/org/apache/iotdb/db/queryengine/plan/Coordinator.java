@@ -33,6 +33,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -72,12 +74,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -130,7 +140,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -471,7 +483,9 @@ public class Coordinator {
         || statement instanceof LoadModel
         || statement instanceof UnloadModel
         || statement instanceof ShowLoadedModels
-        || statement instanceof RemoveRegion) {
+        || statement instanceof RemoveRegion
+        || statement instanceof Prepare
+        || statement instanceof Deallocate) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -480,6 +494,90 @@ public class Coordinator {
               new TableConfigTaskVisitor(
                   clientSession, metadata, AuthorityChecker.getAccessControl()),
               queryContext));
+    }
+    // Handle EXECUTE and EXECUTE IMMEDIATE statements
+    // Reference: Trino's QueryPreparer - validate parameters before binding
+    if (statement instanceof Execute) {
+      Execute executeStatement = (Execute) statement;
+      String statementName = executeStatement.getStatementName().getValue();
+
+      // 1. Get prepared statement from session (contains cached AST)
+      PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
+      if (preparedInfo == null) {
+        throw new SemanticException(
+            String.format("Prepared statement '%s' does not exist", statementName));
+      }
+
+      // 2. Get cached AST (contains Parameter nodes)
+      Statement cachedStatement = preparedInfo.getSql();
+
+      // 3. Bind parameters: create parameterLookup map (similar to Trino's ParameterExtractor.bindParameters)
+      // This allows Analyzer to resolve Parameter nodes without re-parsing
+      // Note: bindParameters() internally validates parameter count
+      Map<NodeRef<Parameter>, Expression> parameterLookup =
+          ParameterExtractor.bindParameters(cachedStatement, executeStatement.getParameters());
+
+      // 5. Convert Literal parameters to Expression list for Analyzer
+      List<Expression> parameters = new ArrayList<>(executeStatement.getParameters());
+
+      // 6. Create QueryExecution with cached AST and parameterLookup (skips Parser phase)
+      final TableModelPlanner tableModelPlanner =
+          new TableModelPlanner(
+              cachedStatement, // Use cached AST (skips Parser)
+              sqlParser,
+              metadata,
+              scheduledExecutor,
+              SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+              ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+              statementRewrite,
+              logicalPlanOptimizers,
+              distributionPlanOptimizers,
+              AuthorityChecker.getAccessControl(),
+              dataNodeLocationSupplier,
+              parameters, // Parameters for Analyzer
+              parameterLookup); // Parameter lookup map for Analyzer
+      return new QueryExecution(tableModelPlanner, queryContext, executor);
+
+    } else if (statement instanceof ExecuteImmediate) {
+      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
+
+      // EXECUTE IMMEDIATE needs to parse SQL first (since it's a string)
+      String sql = executeImmediateStatement.getSqlString();
+      List<Literal> parameters = executeImmediateStatement.getParameters();
+
+      // Parse SQL to AST
+      Statement parsedStatement =
+          sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+
+      // If there are parameters, bind them
+      Map<NodeRef<Parameter>, Expression> parameterLookup;
+      List<Expression> parameterExpressions;
+      if (!parameters.isEmpty()) {
+        // Note: bindParameters() internally validates parameter count
+        parameterLookup = ParameterExtractor.bindParameters(parsedStatement, parameters);
+        parameterExpressions = new ArrayList<>(parameters);
+      } else {
+        parameterLookup = Collections.emptyMap();
+        parameterExpressions = Collections.emptyList();
+      }
+
+      // Create QueryExecution with parsed AST and parameterLookup
+      final TableModelPlanner tableModelPlanner =
+          new TableModelPlanner(
+              parsedStatement,
+              sqlParser,
+              metadata,
+              scheduledExecutor,
+              SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+              ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+              statementRewrite,
+              logicalPlanOptimizers,
+              distributionPlanOptimizers,
+              AuthorityChecker.getAccessControl(),
+              dataNodeLocationSupplier,
+              parameterExpressions,
+              parameterLookup);
+      return new QueryExecution(tableModelPlanner, queryContext, executor);
     }
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
