@@ -1057,7 +1057,7 @@ public class CommonConfig {
     } finally {
       if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorHandshakeTimeoutMs) {
         logger.info(
-            "pipeConnectorHandshakeTimeoutMs is set to {}.", fPipeConnectorHandshakeTimeoutMs);
+            "pipeConnectorHandshakeTimeoutMs is set to {}.", this.pipeConnectorHandshakeTimeoutMs);
       }
     }
   }
@@ -1135,7 +1135,7 @@ public class CommonConfig {
     this.pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold =
         pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold is set to {}.",
+        "pipeAsyncSinkForcedRetryTsFileEventQueueSize is set to {}.",
         pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold);
   }
 
@@ -1152,7 +1152,7 @@ public class CommonConfig {
     this.pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold =
         pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold is set to {}.",
+        "pipeAsyncSinkForcedRetryTabletEventQueueSize is set to {}.",
         pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold);
   }
 
@@ -1169,7 +1169,7 @@ public class CommonConfig {
     this.pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold =
         pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold is set to {}.",
+        "pipeAsyncSinkForcedRetryTotalEventQueueSize is set to {}.",
         pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold);
   }
 
