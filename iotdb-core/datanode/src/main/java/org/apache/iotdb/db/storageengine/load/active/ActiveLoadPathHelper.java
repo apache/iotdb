@@ -46,11 +46,13 @@ public final class ActiveLoadPathHelper {
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
           Arrays.asList(
+              LoadTsFileConfigurator.DATABASE_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
-              LoadTsFileConfigurator.VERIFY_KEY));
+              LoadTsFileConfigurator.VERIFY_KEY,
+              LoadTsFileConfigurator.PIPE_GENERATED_KEY));
 
   private ActiveLoadPathHelper() {
     throw new IllegalStateException("Utility class");
@@ -61,27 +63,35 @@ public final class ActiveLoadPathHelper {
       final Integer databaseLevel,
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
-      final Long tabletConversionThresholdBytes) {
-
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated) {
     final Map<String, String> attributes = new LinkedHashMap<>();
     if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
       attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
     }
+
     if (Objects.nonNull(databaseLevel)) {
       attributes.put(LoadTsFileConfigurator.DATABASE_LEVEL_KEY, databaseLevel.toString());
     }
+
     if (Objects.nonNull(convertOnTypeMismatch)) {
       attributes.put(
           LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
           Boolean.toString(convertOnTypeMismatch));
     }
+
     if (Objects.nonNull(tabletConversionThresholdBytes)) {
       attributes.put(
           LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
           tabletConversionThresholdBytes.toString());
     }
+
     if (Objects.nonNull(verify)) {
       attributes.put(LoadTsFileConfigurator.VERIFY_KEY, Boolean.toString(verify));
+    }
+
+    if (Objects.nonNull(pipeGenerated) && pipeGenerated) {
+      attributes.put(LoadTsFileConfigurator.PIPE_GENERATED_KEY, Boolean.TRUE.toString());
     }
     return attributes;
   }
@@ -94,22 +104,6 @@ public final class ActiveLoadPathHelper {
         continue;
       }
       current = new File(current, formatSegment(key, value));
-      // compatibility: keep placing tablet conversion and verify under convert folder
-      if (LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY.equals(key)) {
-        final String threshold =
-            attributes.get(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY);
-        if (threshold != null) {
-          current =
-              new File(
-                  current,
-                  formatSegment(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, threshold));
-        }
-        final String verify = attributes.get(LoadTsFileConfigurator.VERIFY_KEY);
-        if (verify != null) {
-          current = new File(current, formatSegment(LoadTsFileConfigurator.VERIFY_KEY, verify));
-        }
-        return current;
-      }
     }
     return current;
   }
@@ -165,6 +159,12 @@ public final class ActiveLoadPathHelper {
         .filter(name -> !name.isEmpty())
         .ifPresent(statement::setDatabase);
 
+    if (!statement.getDatabase().isEmpty()) {
+      Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_KEY))
+          .filter(name -> !name.isEmpty())
+          .ifPresent(statement::setDatabase);
+    }
+
     Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY))
         .ifPresent(
             level -> {
@@ -194,10 +194,16 @@ public final class ActiveLoadPathHelper {
     } else {
       statement.setVerifySchema(defaultVerify);
     }
+
+    if (attributes.containsKey(LoadTsFileConfigurator.PIPE_GENERATED_KEY)
+        && Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.PIPE_GENERATED_KEY))) {
+      statement.markIsGeneratedByPipe();
+    }
   }
 
   public static boolean containsDatabaseName(final Map<String, String> attributes) {
-    return attributes.containsKey(LoadTsFileConfigurator.DATABASE_NAME_KEY);
+    return attributes.containsKey(LoadTsFileConfigurator.DATABASE_NAME_KEY)
+        || attributes.containsKey(LoadTsFileConfigurator.DATABASE_KEY);
   }
 
   private static String formatSegment(final String key, final String value) {

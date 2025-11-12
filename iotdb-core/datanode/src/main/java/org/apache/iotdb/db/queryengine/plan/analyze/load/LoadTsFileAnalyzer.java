@@ -288,7 +288,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
-              tabletConversionThresholdBytes);
+              tabletConversionThresholdBytes,
+              isGeneratedByPipe);
 
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
           tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
