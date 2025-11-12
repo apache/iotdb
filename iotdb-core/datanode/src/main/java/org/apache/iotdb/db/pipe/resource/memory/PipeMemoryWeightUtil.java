@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -35,21 +36,28 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import static org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator.getBinarySize;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 import static org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize;
 
 public class PipeMemoryWeightUtil {
+  private static final long TABLET_SIZE = RamUsageEstimator.shallowSizeOfInstance(Tablet.class);
+  private static final long LOCAL_DATE_ARRAY_SIZE =
+      RamUsageEstimator.shallowSizeOf(LocalDate[].class);
+  private static final long LOCAL_DATE_SIZE = RamUsageEstimator.shallowSizeOf(LocalDate.class);
 
   /** Estimates memory usage of a {@link Map}<{@link IDeviceID}, {@link Boolean}>. */
   public static long memoryOfIDeviceId2Bool(Map<IDeviceID, Boolean> map) {
@@ -203,64 +211,96 @@ public class PipeMemoryWeightUtil {
     }
   }
 
-  public static long calculateTabletSizeInBytes(Tablet tablet) {
+  public static long calculateTabletSizeInBytes(final Tablet tablet) {
     long totalSizeInBytes = 0;
 
     if (tablet == null) {
       return totalSizeInBytes;
     }
+    totalSizeInBytes += TABLET_SIZE;
 
-    long[] timestamps = tablet.getTimestamps();
-    Object[] tabletValues = tablet.getValues();
+    final long[] timestamps = tablet.getTimestamps();
+    final Object[] tabletValues = tablet.getValues();
 
     // timestamps
     if (timestamps != null) {
-      totalSizeInBytes += timestamps.length * 8L;
+      totalSizeInBytes += RamUsageEstimator.sizeOf(timestamps);
     }
 
     // values
-    final List<IMeasurementSchema> timeseries = tablet.getSchemas();
-    if (timeseries != null) {
-      for (int column = 0; column < timeseries.size(); column++) {
-        final IMeasurementSchema measurementSchema = timeseries.get(column);
+    final List<IMeasurementSchema> timeSeries = tablet.getSchemas();
+
+    if (timeSeries != null) {
+      totalSizeInBytes +=
+          alignObjectSize(
+              UpdateDetailContainer.LIST_SIZE + (long) NUM_BYTES_OBJECT_REF * timeSeries.size());
+      for (int column = 0; column < timeSeries.size(); column++) {
+        final IMeasurementSchema measurementSchema = timeSeries.get(column);
         if (measurementSchema == null) {
           continue;
         }
+        // Measurement schema size, refer to SchemaCacheEntry
+        totalSizeInBytes += 75;
 
         final TSDataType tsDataType = measurementSchema.getType();
         if (tsDataType == null) {
           continue;
         }
 
-        if (tsDataType.isBinary()) {
-          if (tabletValues == null || tabletValues.length <= column) {
-            continue;
-          }
-          final Binary[] values = ((Binary[]) tabletValues[column]);
-          if (values == null) {
-            continue;
-          }
-          for (Binary value : values) {
-            totalSizeInBytes += value == null ? 8 : value.ramBytesUsed();
-          }
-        } else {
-          totalSizeInBytes += (long) tablet.getMaxRowNumber() * tsDataType.getDataTypeSize();
+        if (tabletValues == null || tabletValues.length <= column) {
+          continue;
+        }
+        switch (tsDataType) {
+          case INT64:
+          case TIMESTAMP:
+            totalSizeInBytes += RamUsageEstimator.sizeOf((long[]) tabletValues[column]);
+            break;
+          case DATE:
+            totalSizeInBytes += getLocalDateSize((LocalDate[]) tabletValues[column]);
+            break;
+          case INT32:
+            totalSizeInBytes += RamUsageEstimator.sizeOf((int[]) tabletValues[column]);
+            break;
+          case DOUBLE:
+            totalSizeInBytes += RamUsageEstimator.sizeOf((double[]) tabletValues[column]);
+            break;
+          case FLOAT:
+            totalSizeInBytes += RamUsageEstimator.sizeOf((float[]) tabletValues[column]);
+            break;
+          case BOOLEAN:
+            totalSizeInBytes += RamUsageEstimator.sizeOf((boolean[]) tabletValues[column]);
+            break;
+          case STRING:
+          case TEXT:
+          case BLOB:
+            totalSizeInBytes += getBinarySize((Binary[]) tabletValues[column]);
+            break;
         }
       }
     }
 
     // bitMaps
-    BitMap[] bitMaps = tablet.getBitMaps();
-    if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
-        totalSizeInBytes += bitMaps[i] == null ? 0 : bitMaps[i].getSize();
-      }
-    }
+    totalSizeInBytes += InsertNodeMemoryEstimator.sizeOfBitMapArray(tablet.getBitMaps());
 
     // estimate other dataStructures size
     totalSizeInBytes += 100;
 
     return totalSizeInBytes;
+  }
+
+  private static long getLocalDateSize(final LocalDate[] input) {
+    if (Objects.isNull(input)) {
+      return 0;
+    }
+    long size =
+        RamUsageEstimator.alignObjectSize(
+            LOCAL_DATE_ARRAY_SIZE + (long) input.length * NUM_BYTES_OBJECT_REF);
+    for (final LocalDate date : input) {
+      if (Objects.nonNull(date)) {
+        size += LOCAL_DATE_SIZE;
+      }
+    }
+    return size;
   }
 
   public static long calculateTableSchemaBytesUsed(TableSchema tableSchema) {

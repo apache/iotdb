@@ -645,7 +645,7 @@ public class InsertNodeMemoryEstimator {
         : RamUsageEstimator.sizeOfObject(obj);
   }
 
-  private static long getBinarySize(final Binary[] binaries) {
+  static long getBinarySize(final Binary[] binaries) {
     if (binaries == null) {
       return 0L;
     }
