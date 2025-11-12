@@ -290,17 +290,21 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
+    config.setPipeRetryLocallyForParallelOrUserConflict(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_retry_locally_for_user_conflict",
+                String.valueOf(config.isPipeRetryLocallyForParallelOrUserConflict()))));
 
-    config.setPipeExtractorAssignerDisruptorRingBufferSize(
+    config.setPipeSourceAssignerDisruptorRingBufferSize(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty("pipe_source_assigner_disruptor_ring_buffer_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_extractor_assigner_disruptor_ring_buffer_size",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
-    config.setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
+                        String.valueOf(config.getPipeSourceAssignerDisruptorRingBufferSize())))));
+    config.setPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty(
@@ -309,8 +313,7 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
                         String.valueOf(
-                            config
-                                .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
+                            config.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes())))));
 
     config.setPipeSourceMatcherCacheSize(
         Integer.parseInt(
