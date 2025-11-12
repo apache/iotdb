@@ -621,13 +621,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
-    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
-    cache.takeWriteLock();
+    if (req.needLock || !req.isSetNeedLock()) {
+      DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+    }
     try {
-      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
+      cache.takeWriteLock();
+      try {
+        cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
+      } finally {
+        cache.releaseWriteLock();
+      }
     } finally {
-      cache.releaseWriteLock();
-      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      if (req.needLock || !req.isSetNeedLock()) {
+        DataNodeSchemaLockManager.getInstance()
+            .releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
+      }
     }
     return RpcUtils.SUCCESS_STATUS;
   }
