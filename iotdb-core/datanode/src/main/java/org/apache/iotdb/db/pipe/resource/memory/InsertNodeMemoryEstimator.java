@@ -143,7 +143,7 @@ public class InsertNodeMemoryEstimator {
       RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
-  private static final long SIZE_OF_ARRAYLIST =
+  public static final long SIZE_OF_ARRAYLIST =
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different

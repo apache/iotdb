@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
-import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -233,7 +232,8 @@ public class PipeMemoryWeightUtil {
     if (timeSeries != null) {
       totalSizeInBytes +=
           alignObjectSize(
-              UpdateDetailContainer.LIST_SIZE + (long) NUM_BYTES_OBJECT_REF * timeSeries.size());
+              InsertNodeMemoryEstimator.SIZE_OF_ARRAYLIST
+                  + (long) NUM_BYTES_OBJECT_REF * timeSeries.size());
       for (int column = 0; column < timeSeries.size(); column++) {
         final IMeasurementSchema measurementSchema = timeSeries.get(column);
         if (measurementSchema == null) {
