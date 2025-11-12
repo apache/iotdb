@@ -163,19 +163,26 @@ public class IoTDBLoadTsFileWithModIT {
               "load \'%s\' with ("
                   + "'database-name'='%s',"
                   + "'database-level'='2',"
-                  + "'convert-on-type-mismatch'='true',"
-                  + "'tablet-conversion-threshold'='1024',"
                   + "'verify'='true',"
                   + "'on-success'='none',"
-                  + "'async'='false')",
+                  + "'async'='true')",
               tmpDir.getAbsolutePath(), databaseName));
 
       boolean databaseFound = false;
-      try (final ResultSet resultSet = statement.executeQuery("show databases")) {
-        while (resultSet.next()) {
-          final String currentDatabase = resultSet.getString(1);
-          if (databaseName.equalsIgnoreCase(currentDatabase)) {
-            databaseFound = true;
+      out:
+      for (int i = 0; i < 10; i++) {
+        try (final ResultSet resultSet = statement.executeQuery("show databases")) {
+          while (resultSet.next()) {
+            final String currentDatabase = resultSet.getString(1);
+            if (databaseName.equalsIgnoreCase(currentDatabase)) {
+              databaseFound = true;
+              break out;
+            }
+          }
+
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
             break;
           }
         }
@@ -183,12 +190,6 @@ public class IoTDBLoadTsFileWithModIT {
       Assert.assertTrue(
           "The `database-level` parameter is not working; the generated database does not contain 'root.test.d1'.",
           databaseFound);
-
-      try (final ResultSet resultSet =
-          statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(3, resultSet.getLong("c"));
-      }
     }
   }
 

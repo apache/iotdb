@@ -46,12 +46,12 @@ public final class ActiveLoadPathHelper {
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
           Arrays.asList(
-              LoadTsFileConfigurator.DATABASE_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
               LoadTsFileConfigurator.VERIFY_KEY,
+              LoadTsFileConfigurator.DATABASE_KEY,
               LoadTsFileConfigurator.PIPE_GENERATED_KEY));
 
   private ActiveLoadPathHelper() {
