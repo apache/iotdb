@@ -337,8 +337,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipePeriodicalLogMinIntervalSeconds();
   }
 
-  public boolean isPipeRetryLocallyForUserConflict() {
-    return COMMON_CONFIG.isPipeRetryLocallyForUserConflict();
+  public boolean isPipeRetryLocallyForParallelOrUserConflict() {
+    return COMMON_CONFIG.isPipeRetryLocallyForParallelOrUserConflict();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -596,7 +596,9 @@ public class PipeConfig {
     LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
     LOGGER.info(
         "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
-    LOGGER.info("PipeRetryLocallyForUserConflict: {}", isPipeRetryLocallyForUserConflict());
+    LOGGER.info(
+        "PipeRetryLocallyForParallelOrUserConflict: {}",
+        isPipeRetryLocallyForParallelOrUserConflict());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

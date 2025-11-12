@@ -290,11 +290,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
-    config.setPipeRetryLocallyForUserConflict(
+    config.setPipeRetryLocallyForParallelOrUserConflict(
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_retry_locally_for_user_conflict",
-                String.valueOf(config.isPipeRetryLocallyForUserConflict()))));
+                String.valueOf(config.isPipeRetryLocallyForParallelOrUserConflict()))));
 
     config.setPipeSourceAssignerDisruptorRingBufferSize(
         Integer.parseInt(

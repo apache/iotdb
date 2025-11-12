@@ -214,7 +214,7 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
-  private boolean pipeRetryLocallyForUserConflict = true;
+  private boolean pipeRetryLocallyForParallelOrUserConflict = true;
 
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
@@ -1401,16 +1401,19 @@ public class CommonConfig {
     logger.info("pipeSubtaskExecutorMaxThreadNum is set to {}.", pipeSubtaskExecutorMaxThreadNum);
   }
 
-  public boolean isPipeRetryLocallyForUserConflict() {
-    return pipeRetryLocallyForUserConflict;
+  public boolean isPipeRetryLocallyForParallelOrUserConflict() {
+    return pipeRetryLocallyForParallelOrUserConflict;
   }
 
-  public void setPipeRetryLocallyForUserConflict(boolean pipeRetryLocallyForUserConflict) {
-    if (this.pipeRetryLocallyForUserConflict == pipeRetryLocallyForUserConflict) {
+  public void setPipeRetryLocallyForParallelOrUserConflict(
+      boolean pipeRetryLocallyForParallelOrUserConflict) {
+    if (this.pipeRetryLocallyForParallelOrUserConflict
+        == pipeRetryLocallyForParallelOrUserConflict) {
       return;
     }
-    this.pipeRetryLocallyForUserConflict = pipeRetryLocallyForUserConflict;
-    logger.info("pipeRetryLocallyForUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+    this.pipeRetryLocallyForParallelOrUserConflict = pipeRetryLocallyForParallelOrUserConflict;
+    logger.info(
+        "pipeRetryLocallyForParallelOrUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {

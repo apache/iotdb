@@ -132,6 +132,7 @@ public class PipeReceiverStatusHandler {
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+      case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
               "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
@@ -166,7 +167,7 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw PipeConfig.getInstance().isPipeRetryLocallyForUserConflict()
+          throw PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
               ? new PipeNonReportException(exceptionMessage)
               : new PipeRuntimeSinkRetryTimesConfigurableException(
                   exceptionMessage,
