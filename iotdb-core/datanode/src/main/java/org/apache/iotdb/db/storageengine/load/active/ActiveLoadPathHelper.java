@@ -159,7 +159,7 @@ public final class ActiveLoadPathHelper {
         .filter(name -> !name.isEmpty())
         .ifPresent(statement::setDatabase);
 
-    if (!statement.getDatabase().isEmpty()) {
+    if (statement.getDatabase() == null || !statement.getDatabase().isEmpty()) {
       Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_KEY))
           .filter(name -> !name.isEmpty())
           .ifPresent(statement::setDatabase);
