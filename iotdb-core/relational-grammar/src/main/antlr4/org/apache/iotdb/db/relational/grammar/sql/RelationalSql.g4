@@ -1090,7 +1090,7 @@ selectHint
     ;
 
 hintItem
-    : identifier '(' ( identifier (',' identifier)* )? ')'  #parameterizedHint
+    : identifier '(' identifier (',' identifier)* ')'  #parameterizedHint
     | identifier                                            #simpleHint
     ;
 

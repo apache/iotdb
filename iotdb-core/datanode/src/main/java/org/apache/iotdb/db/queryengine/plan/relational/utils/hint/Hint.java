@@ -30,12 +30,8 @@ public abstract class Hint {
     this.hintName = Objects.requireNonNull(hintName, "hintName can not be null");
   }
 
-  protected void setHintName(String hintName) {
-    this.hintName = hintName;
-  }
-
-  protected String getHintName() {
-    return hintName;
+  public boolean appliesToAll() {
+    return true;
   }
 
   @Override

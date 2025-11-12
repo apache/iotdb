@@ -2410,16 +2410,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Map<String, Hint> hintMap = new HashMap<>();
     for (RelationalSqlParser.HintItemContext hiCtx : ctx.hintItem()) {
       if (hiCtx instanceof RelationalSqlParser.ParameterizedHintContext) {
-        //        RelationalSqlParser.ParameterizedHintContext paramHint =
-        //            (RelationalSqlParser.ParameterizedHintContext) hiCtx;
-        //        List<RelationalSqlParser.IdentifierContext> identifiers = paramHint.identifier();
-        //        String hintName = identifiers.get(0).getText();
-        //        List<String> params = new ArrayList<>();
-        //        for (int i = 1; i < identifiers.size(); i++) {
-        //          params.add(identifiers.get(i).getText());
-        //        }
-        //        Hint hint = new LeadingHint(params);
-        //        hintMap.put(hintName, hint);
+        RelationalSqlParser.ParameterizedHintContext paramHint =
+            (RelationalSqlParser.ParameterizedHintContext) hiCtx;
+        List<RelationalSqlParser.IdentifierContext> identifiers = paramHint.identifier();
+        String hintName = identifiers.get(0).getText();
+        String[] params =
+            identifiers.stream()
+                .skip(1)
+                .map(RelationalSqlParser.IdentifierContext::getText)
+                .toArray(String[]::new);
+        addParamHint(hintName.toUpperCase(), params, hintMap);
       } else if (hiCtx instanceof RelationalSqlParser.SimpleHintContext) {
         RelationalSqlParser.SimpleHintContext simpleHint =
             (RelationalSqlParser.SimpleHintContext) hiCtx;
@@ -2434,20 +2434,35 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   private static final Map<String, HintDefinition> HINT_DEFINITIONS =
       ImmutableMap.of(
           "LEADER",
-              new HintDefinition(LeaderHint.hintName, LeaderHint::new, ImmutableSet.of("Follower")),
+              new HintDefinition(
+                  LeaderHint.hintName, LeaderHint::new, ImmutableSet.of(FollowerHint.hintName)),
           "FOLLOWER",
               new HintDefinition(
-                  FollowerHint.hintName, FollowerHint::new, ImmutableSet.of("Leader"))
+                  FollowerHint.hintName, FollowerHint::new, ImmutableSet.of(LeaderHint.hintName))
           // "MERGE_JOIN", new HintDefinition("MergeJoin", MergeJoinHint::new,
           // ImmutableSet.of("NestLoopJoin", "HashJoin")),
           // "NL_JOIN", new HintDefinition("NestLoopJoin", NestLoopJoinHint::new,
           // ImmutableSet.of("MergeJoin", "HashJoin"))
           );
 
+  private void addParamHint(String hintName, String[] params, Map<String, Hint> hintMap) {
+    HintDefinition definition = HINT_DEFINITIONS.get(hintName);
+    if (definition != null) {
+      Hint hint = definition.createHint(params);
+      String hintKey = hint.toString();
+      if (!hintMap.containsKey(hintKey)) {
+        hintMap.put(hintKey, hint);
+      }
+    }
+  }
+
   private void addSimpleHint(String hintName, Map<String, Hint> hintMap) {
     HintDefinition definition = HINT_DEFINITIONS.get(hintName);
     if (definition != null) {
-      definition.addTo(hintMap);
+      Hint hint = definition.createHint();
+      if (definition.canAddTo(hintMap)) {
+        hintMap.put(hint.toString(), hint);
+      }
     }
   }
 
