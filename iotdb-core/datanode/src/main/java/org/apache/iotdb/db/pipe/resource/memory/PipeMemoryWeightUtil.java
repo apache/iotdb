@@ -216,24 +216,19 @@ public class PipeMemoryWeightUtil {
     if (tablet == null) {
       return totalSizeInBytes;
     }
-    totalSizeInBytes += TABLET_SIZE;
+    totalSizeInBytes +=
+        TABLET_SIZE
+            + RamUsageEstimator.sizeOf(tablet.getDeviceId())
+            + RamUsageEstimator.sizeOf(tablet.getTimestamps())
+            + getListSize(tablet.getColumnTypes());
 
-    final long[] timestamps = tablet.getTimestamps();
     final Object[] tabletValues = tablet.getValues();
-
-    // timestamps
-    if (timestamps != null) {
-      totalSizeInBytes += RamUsageEstimator.sizeOf(timestamps);
-    }
 
     // values
     final List<IMeasurementSchema> timeSeries = tablet.getSchemas();
 
     if (timeSeries != null) {
-      totalSizeInBytes +=
-          alignObjectSize(
-              InsertNodeMemoryEstimator.SIZE_OF_ARRAYLIST
-                  + (long) NUM_BYTES_OBJECT_REF * timeSeries.size());
+      totalSizeInBytes += getListSize(timeSeries);
       for (int column = 0; column < timeSeries.size(); column++) {
         final IMeasurementSchema measurementSchema = timeSeries.get(column);
         if (measurementSchema == null) {
@@ -282,10 +277,15 @@ public class PipeMemoryWeightUtil {
     // bitMaps
     totalSizeInBytes += InsertNodeMemoryEstimator.sizeOfBitMapArray(tablet.getBitMaps());
 
-    // estimate other dataStructures size
-    totalSizeInBytes += 100;
+    // estimate tag & columnIndexes size
+    totalSizeInBytes += 300;
 
     return totalSizeInBytes;
+  }
+
+  private static long getListSize(final List<?> input) {
+    return alignObjectSize(
+        InsertNodeMemoryEstimator.SIZE_OF_ARRAYLIST + (long) input.size() * NUM_BYTES_OBJECT_REF);
   }
 
   private static long getLocalDateSize(final LocalDate[] input) {
