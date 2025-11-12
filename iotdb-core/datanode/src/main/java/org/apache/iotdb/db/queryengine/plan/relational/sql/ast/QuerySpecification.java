@@ -45,6 +45,8 @@ public class QuerySpecification extends QueryBody {
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
 
+  private final Optional<SelectHint> selectHint;
+
   public QuerySpecification(
       Select select,
       Optional<Relation> from,
@@ -55,8 +57,21 @@ public class QuerySpecification extends QueryBody {
       List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
-      Optional<Node> limit) {
-    this(null, select, from, where, groupBy, having, fill, windows, orderBy, offset, limit);
+      Optional<Node> limit,
+      Optional<SelectHint> selectHint) {
+    this(
+        null,
+        select,
+        from,
+        where,
+        groupBy,
+        having,
+        fill,
+        windows,
+        orderBy,
+        offset,
+        limit,
+        selectHint);
   }
 
   public QuerySpecification(
@@ -70,7 +85,8 @@ public class QuerySpecification extends QueryBody {
       List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
-      Optional<Node> limit) {
+      Optional<Node> limit,
+      Optional<SelectHint> selectHint) {
     super(location);
 
     this.select = requireNonNull(select, "select is null");
@@ -83,6 +99,7 @@ public class QuerySpecification extends QueryBody {
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
     this.offset = requireNonNull(offset, "offset is null");
     this.limit = requireNonNull(limit, "limit is null");
+    this.selectHint = requireNonNull(selectHint, "hintMap is null");
   }
 
   public Select getSelect() {
@@ -123,6 +140,10 @@ public class QuerySpecification extends QueryBody {
 
   public Optional<Node> getLimit() {
     return limit;
+  }
+
+  public Optional<SelectHint> getHintMap() {
+    return selectHint;
   }
 
   @Override
