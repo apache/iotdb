@@ -23,7 +23,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Defines the properties and creation logic for a SQL hint. This class encapsulates the hint's key,
@@ -32,19 +32,20 @@ import java.util.function.Supplier;
 public final class HintDefinition {
 
   private final String key;
-  private final Supplier<Hint> supplier;
+  private final Function<String[], Hint> hintFactory;
   private final Set<String> mutuallyExclusive;
 
   /**
    * Creates a new hint definition.
    *
    * @param key the key to use when storing the hint in the hint map
-   * @param supplier factory method to create the hint instance, receives the key as parameter
+   * @param hintFactory factory method to create the hint instance, receives the key as parameter
    * @param mutuallyExclusive set of hint keys that are mutually exclusive with this hint
    */
-  public HintDefinition(String key, Supplier<Hint> supplier, Set<String> mutuallyExclusive) {
+  public HintDefinition(
+      String key, Function<String[], Hint> hintFactory, Set<String> mutuallyExclusive) {
     this.key = key;
-    this.supplier = supplier;
+    this.hintFactory = hintFactory;
     this.mutuallyExclusive = mutuallyExclusive;
   }
 
@@ -55,15 +56,6 @@ public final class HintDefinition {
    */
   public String getKey() {
     return key;
-  }
-
-  /**
-   * Gets the supplier that creates the hint instance.
-   *
-   * @return the hint supplier
-   */
-  public Supplier<Hint> getSupplier() {
-    return supplier;
   }
 
   /**
@@ -81,7 +73,11 @@ public final class HintDefinition {
    * @return the created hint
    */
   public Hint createHint() {
-    return supplier.get();
+    return hintFactory.apply(new String[0]);
+  }
+
+  public Hint createHint(String... parameters) {
+    return hintFactory.apply(parameters != null ? parameters : new String[0]);
   }
 
   /**
@@ -92,16 +88,5 @@ public final class HintDefinition {
    */
   public boolean canAddTo(Map<String, Hint> hintMap) {
     return mutuallyExclusive.stream().noneMatch(hintMap::containsKey);
-  }
-
-  /**
-   * Adds this hint to the hint map if no mutually exclusive hints exist.
-   *
-   * @param hintMap the hint map to add to
-   */
-  public void addTo(Map<String, Hint> hintMap) {
-    if (canAddTo(hintMap)) {
-      hintMap.put(key, createHint());
-    }
   }
 }

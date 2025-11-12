@@ -23,8 +23,22 @@ package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
 public class LeaderHint extends Hint {
   public static String hintName = "Leader";
+  private String targetTable = null;
 
-  public LeaderHint() {
+  public LeaderHint(String... tables) {
     super(hintName);
+    if (tables.length > 0) {
+      this.targetTable = tables[0];
+    }
+  }
+
+  @Override
+  public boolean appliesToAll() {
+    return targetTable == null;
+  }
+
+  @Override
+  public String toString() {
+    return targetTable == null ? hintName : hintName + "-" + targetTable;
   }
 }
