@@ -909,26 +909,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
-    // if the sql is an insert statement and the value is not a string literal, add single quotes
-    // The table model only supports single quotes, the tree model sql both single and double quotes
-    if ("table".equalsIgnoreCase(getSqlDialect())
-        || ((sql.trim().toUpperCase().startsWith("INSERT")
-            && !((x.startsWith("'") && x.endsWith("'"))
-                || ((x.startsWith("\"") && x.endsWith("\""))
-                    && "tree".equals(getSqlDialect())))))) {
-      String escaped = escapeSingleQuotes(x);
-      this.parameters.put(parameterIndex, "'" + escaped + "'");
-
-    } else { // dialect is tree
-      if (x.startsWith("'") && x.endsWith("'")) {
-        String inner = escapeSingleQuotes(x.substring(1, x.length() - 1));
-        this.parameters.put(parameterIndex, "'" + inner + "'");
-      } else if (x.startsWith("\"") && x.endsWith("\"")) {
-        String inner = escapeDoubleQuotes(x.substring(1, x.length() - 1));
-        this.parameters.put(parameterIndex, "\"" + inner + "\"");
-      } else {
-        this.parameters.put(parameterIndex, x);
-      }
+    if (x == null) {
+      this.parameters.put(parameterIndex, null);
+    } else {
+      this.parameters.put(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
     }
   }
 
@@ -938,14 +922,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
     // Escape single quotes with double single quotes
     return value.replace("'", "''");
-  }
-
-  private String escapeDoubleQuotes(String value) {
-    if (value == null) {
-      return null;
-    }
-    // Escape double quotes with double double quotes
-    return value.replace("\"", "\"\"");
   }
 
   @Override
