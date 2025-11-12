@@ -193,6 +193,7 @@ public class IoTDBSystemPermissionIT {
   @Test
   public void maintainOperationsTest() {
     executeQuery("show queries", "test6", "test123123456");
+    executeQuery("show version", "test6", "test123123456");
     assertNonQueryTestFail(
         "kill query '20250918_015728_00003_1'", "714: No such query", "test6", "test123123456");
     assertNonQueriesTestFail(
@@ -205,7 +206,6 @@ public class IoTDBSystemPermissionIT {
           "set configuration 'enable_seq_space_compaction'='true'",
           "start repair data",
           "stop repair data",
-          "show version"
         },
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test6",
@@ -220,7 +220,6 @@ public class IoTDBSystemPermissionIT {
     executeNonQuery("start repair data", "test6", "test123123456");
     executeNonQuery("stop repair data", "test6", "test123123456");
     executeQuery("show queries", "test6", "test123123456");
-    executeNonQuery("show version", "test6", "test123123456");
   }
 
   @Test
