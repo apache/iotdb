@@ -167,7 +167,8 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
+          throw status.getCode() == 1815
+                  && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
               ? new PipeNonReportException(exceptionMessage)
               : new PipeRuntimeSinkRetryTimesConfigurableException(
                   exceptionMessage,
