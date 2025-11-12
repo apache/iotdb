@@ -26,54 +26,12 @@ echo ```````````````````````````
 pushd %~dp0..\..
 if NOT DEFINED IOTDB_AINODE_HOME set IOTDB_AINODE_HOME=%cd%
 
-call %IOTDB_AINODE_HOME%\\conf\\windows\\ainode-env.bat %*
-if %errorlevel% neq 0 (
-    echo Environment check failed. Exiting...
-    exit /b 1
-)
+set ain_ainode_executable=%IOTDB_AINODE_HOME%\lib\ainode
 
-for /f "tokens=2 delims==" %%a in ('findstr /i /c:"^ain_interpreter_dir" "%IOTDB_AINODE_HOME%\\conf\\windows\\ainode-env.bat"') do (
-    set _ain_interpreter_dir=%%a
-    goto :done
-)
-
-:initial
-if "%1"=="" goto done
-set aux=%1
-if "%aux:~0,1%"=="-" (
-   set nome=%aux:~1,250%
-) else (
-   set "%nome%=%1"
-   set nome=
-)
-shift
-goto initial
-
-:done
-if "%i%"=="" (
-    if "%_ain_interpreter_dir%"=="" (
-        set _ain_interpreter_dir=%IOTDB_AINODE_HOME%\\venv\\Scripts\\python.exe
-    )
-) else (
-    set _ain_interpreter_dir=%i%
-)
-
-echo Script got parameter: ain_interpreter_dir: %_ain_interpreter_dir%
-
-cd %IOTDB_AINODE_HOME%
-
-for %%i in ("%_ain_interpreter_dir%") do set "parent=%%~dpi"
-
-set ain_ainode_dir=%parent%\ainode.exe
-
-set ain_ainode_dir_new=%parent%\Scripts\\ainode.exe
+echo Script got ainode executable: %ain_ainode_executable%
 
 echo Starting AINode...
 
-%ain_ainode_dir% start
-if %errorlevel% neq 0 (
-    echo ain_ainode_dir_new is %ain_ainode_dir_new%
-    %ain_ainode_dir_new% start
-)
+%$ain_ainode_executable% start
 
 pause
