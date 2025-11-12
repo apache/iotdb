@@ -180,7 +180,9 @@ public class IoTDBLoadTsFileWithModIT {
           }
         }
       }
-      Assert.assertTrue("database-name parameter should create or locate root.test", databaseFound);
+      Assert.assertTrue(
+          "The `database-level` parameter is not working; the generated database does not contain 'root.test.d1'.",
+          databaseFound);
 
       try (final ResultSet resultSet =
           statement.executeQuery("select count(s1) as c from root.test.d1.de")) {
