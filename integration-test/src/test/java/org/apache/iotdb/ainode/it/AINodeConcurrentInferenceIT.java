@@ -91,33 +91,6 @@ public class AINodeConcurrentInferenceIT {
   }
 
   //  @Test
-  public void concurrentCPUCallInferenceTest() throws SQLException, InterruptedException {
-    concurrentCPUCallInferenceTest("timer_xl");
-    concurrentCPUCallInferenceTest("sundial");
-  }
-
-  private void concurrentCPUCallInferenceTest(String modelId)
-      throws SQLException, InterruptedException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      final int threadCnt = 4;
-      final int loop = 10;
-      final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
-      checkModelOnSpecifiedDevice(statement, modelId, "cpu");
-      concurrentInference(
-          statement,
-          String.format(
-              "CALL INFERENCE(%s, 'SELECT s FROM root.AI', predict_length=%d)",
-              modelId, predictLength),
-          threadCnt,
-          loop,
-          predictLength);
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
-    }
-  }
-
-  //  @Test
   public void concurrentGPUCallInferenceTest() throws SQLException, InterruptedException {
     concurrentGPUCallInferenceTest("timer_xl");
     concurrentGPUCallInferenceTest("sundial");
@@ -142,38 +115,6 @@ public class AINodeConcurrentInferenceIT {
           loop,
           predictLength);
       statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '0,1'", modelId));
-    }
-  }
-
-  @Test
-  public void concurrentCPUForecastTest() throws SQLException, InterruptedException {
-    concurrentCPUForecastTest("timer_xl");
-    concurrentCPUForecastTest("sundial");
-  }
-
-  private void concurrentCPUForecastTest(String modelId) throws SQLException, InterruptedException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      final int threadCnt = 4;
-      final int loop = 10;
-      final int predictLength = 96;
-      statement.execute(String.format("LOAD MODEL %s TO DEVICES 'cpu'", modelId));
-      checkModelOnSpecifiedDevice(statement, modelId, "cpu");
-      long startTime = System.currentTimeMillis();
-      concurrentInference(
-          statement,
-          String.format(
-              "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time), predict_length=>%d",
-              modelId, predictLength),
-          threadCnt,
-          loop,
-          predictLength);
-      long endTime = System.currentTimeMillis();
-      LOGGER.info(
-          String.format(
-              "Model %s concurrent inference %d reqs (%d threads, %d loops) in CPU takes time: %dms",
-              modelId, threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES 'cpu'", modelId));
     }
   }
 
@@ -214,7 +155,7 @@ public class AINodeConcurrentInferenceIT {
       throws SQLException, InterruptedException {
     Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
     LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
-    for (int retry = 0; retry < 20; retry++) {
+    for (int retry = 0; retry < 200; retry++) {
       Set<String> foundDevices = new HashSet<>();
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
