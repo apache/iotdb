@@ -917,9 +917,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   private String escapeSingleQuotes(String value) {
-    if (value == null) {
-      return null;
-    }
     // Escape single quotes with double single quotes
     return value.replace("'", "''");
   }
