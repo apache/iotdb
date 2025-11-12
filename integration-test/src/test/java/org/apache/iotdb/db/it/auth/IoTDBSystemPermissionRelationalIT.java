@@ -65,6 +65,7 @@ public class IoTDBSystemPermissionRelationalIT {
   @Test
   public void maintainOperationsTest() {
     executeTableQuery("show queries", "test6", "test123123456");
+    executeTableNonQuery("show version", "test6", "test123123456");
     assertTableNonQueryTestFail(
         "kill query '20250918_015728_00003_1'", "714: No such query", "test6", "test123123456");
     assertTableNonQueriesTestFail(
@@ -77,7 +78,6 @@ public class IoTDBSystemPermissionRelationalIT {
           "set configuration enable_seq_space_compaction='true'",
           "start repair data",
           "stop repair data",
-          "show version"
         },
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test6",
@@ -92,7 +92,6 @@ public class IoTDBSystemPermissionRelationalIT {
     executeTableNonQuery("start repair data", "test6", "test123123456");
     executeTableNonQuery("stop repair data", "test6", "test123123456");
     executeTableQuery("show queries", "test6", "test123123456");
-    executeTableNonQuery("show version", "test6", "test123123456");
   }
 
   @Test
