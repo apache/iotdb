@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingI
 import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -165,12 +166,15 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeSinkRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+          throw PipeConfig.getInstance().isPipeRetryLocallyForUserConflict()
+              ? new PipeNonReportException(exceptionMessage)
+              : new PipeRuntimeSinkRetryTimesConfigurableException(
+                  exceptionMessage,
+                  (int)
+                      Math.max(
+                          PipeSubtask.MAX_RETRY_TIMES,
+                          Math.min(
+                              CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
         }
 
       case 803: // NO_PERMISSION
