@@ -124,7 +124,12 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         insertBaseStatement.getDataTypes(),
         index ->
             TypeInferenceUtils.getPredictedDataType(
-                insertBaseStatement.getFirstValueOfIndex(index), true));
+                insertBaseStatement.getFirstValueOfIndex(index), true),
+        insertBaseStatement::toLowerCase,
+        insertBaseStatement::semanticCheck,
+        insertBaseStatement::setAttributeColumnsPresent,
+        insertBaseStatement::setToLowerCaseApplied,
+        insertBaseStatement::setSemanticChecked);
   }
 
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {

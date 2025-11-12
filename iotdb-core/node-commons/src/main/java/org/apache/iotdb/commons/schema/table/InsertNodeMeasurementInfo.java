@@ -24,12 +24,13 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -44,9 +45,6 @@ public class InsertNodeMeasurementInfo {
   /** Column category list (TAG, ATTRIBUTE, FIELD, etc.) */
   private final TsTableColumnCategory[] columnCategories;
 
-  /** Measurement schema list */
-  private MeasurementSchema[] measurementSchemas;
-
   /** Measurement names */
   private final String[] measurements;
 
@@ -54,7 +52,22 @@ public class InsertNodeMeasurementInfo {
   private final TSDataType[] dataTypes;
 
   /** Function to get first value of index for type inference */
-  private final Function<Integer, TSDataType> getTypeForFirstValue;
+  private final Function<Integer, TSDataType> typeInferenceFunction;
+
+  /** Delegate to trigger lower-case conversion on the underlying InsertNode */
+  private final Runnable toLowerCaseAction;
+
+  /** Delegate to trigger semantic validation on the underlying InsertNode */
+  private final Runnable semanticCheckAction;
+
+  /** Setter to update the ATTRIBUTE column presence flag on InsertNode. */
+  private final Consumer<Boolean> attributeColumnsPresentSetter;
+
+  /** Setter to update the lower-case application state on InsertNode. */
+  private final Consumer<Boolean> lowerCaseAppliedSetter;
+
+  /** Setter to update the semantic-check state on InsertNode. */
+  private final Consumer<Boolean> semanticCheckedSetter;
 
   /**
    * Constructor with measurements and dataTypes for lazy schema building
@@ -70,13 +83,22 @@ public class InsertNodeMeasurementInfo {
       final TsTableColumnCategory[] columnCategories,
       final String[] measurements,
       final TSDataType[] dataTypes,
-      final Function<Integer, TSDataType> firstValueGetter) {
-    this.tableName = tableName;
+      final Function<Integer, TSDataType> firstValueGetter,
+      final Runnable toLowerCaseAction,
+      final Runnable semanticCheckAction,
+      final Consumer<Boolean> attributeColumnsPresentSetter,
+      final Consumer<Boolean> lowerCaseAppliedSetter,
+      final Consumer<Boolean> semanticCheckedSetter) {
+    this.tableName = tableName.toLowerCase();
     this.columnCategories = columnCategories;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
-    this.getTypeForFirstValue = firstValueGetter;
-    ;
+    this.typeInferenceFunction = firstValueGetter;
+    this.toLowerCaseAction = toLowerCaseAction;
+    this.semanticCheckAction = semanticCheckAction;
+    this.attributeColumnsPresentSetter = attributeColumnsPresentSetter;
+    this.lowerCaseAppliedSetter = lowerCaseAppliedSetter;
+    this.semanticCheckedSetter = semanticCheckedSetter;
   }
 
   /**
@@ -112,9 +134,6 @@ public class InsertNodeMeasurementInfo {
    * @return measurement count
    */
   public int getMeasurementCount() {
-    if (measurementSchemas != null) {
-      return measurementSchemas.length;
-    }
     if (measurements != null) {
       return measurements.length;
     }
@@ -135,11 +154,6 @@ public class InsertNodeMeasurementInfo {
    * @return measurement name or null
    */
   public String getMeasurementName(int index) {
-    if (measurementSchemas != null && index < measurementSchemas.length) {
-      return measurementSchemas[index] != null
-          ? measurementSchemas[index].getMeasurementName()
-          : null;
-    }
     if (measurements != null && index < measurements.length) {
       return measurements[index];
     }
@@ -153,7 +167,68 @@ public class InsertNodeMeasurementInfo {
    * @return measurement schema or null
    */
   public TSDataType getTypeForFirstValue(int index) {
-    return this.getTypeForFirstValue.apply(index);
+    return this.typeInferenceFunction.apply(index);
+  }
+
+  /**
+   * Apply lower-case transformation on the underlying InsertNode.
+   *
+   * <p>The delegate is optional. If absent, this method is a no-op.
+   */
+  public void toLowerCase() {
+    if (toLowerCaseAction != null) {
+      toLowerCaseAction.run();
+    }
+  }
+
+  /**
+   * Perform semantic validation on the underlying InsertNode.
+   *
+   * <p>The delegate is optional. If absent, this method is a no-op.
+   */
+  public void semanticCheck() {
+    if (semanticCheckAction != null) {
+      semanticCheckAction.run();
+    }
+  }
+
+  /**
+   * Update the ATTRIBUTE column presence flag.
+   *
+   * @param attributeColumnsPresent whether ATTRIBUTE columns should be treated as present
+   * @return current instance for chained operations
+   */
+  public InsertNodeMeasurementInfo setAttributeColumnsPresent(boolean attributeColumnsPresent) {
+    if (attributeColumnsPresentSetter != null) {
+      attributeColumnsPresentSetter.accept(attributeColumnsPresent);
+    }
+    return this;
+  }
+
+  /**
+   * Update the lower-case application flag.
+   *
+   * @param applied whether lower-case transformation has been applied
+   * @return current instance for chained operations
+   */
+  public InsertNodeMeasurementInfo setToLowerCaseApplied(boolean applied) {
+    if (lowerCaseAppliedSetter != null) {
+      lowerCaseAppliedSetter.accept(applied);
+    }
+    return this;
+  }
+
+  /**
+   * Update the semantic-check flag.
+   *
+   * @param checked whether semantic check has been completed
+   * @return current instance for chained operations
+   */
+  public InsertNodeMeasurementInfo setSemanticChecked(boolean checked) {
+    if (semanticCheckedSetter != null) {
+      semanticCheckedSetter.accept(checked);
+    }
+    return this;
   }
 
   /**
@@ -164,19 +239,21 @@ public class InsertNodeMeasurementInfo {
   public TsTable toTsTable() {
     final TsTable tsTable = new TsTable(tableName);
 
-    if (measurementSchemas == null || measurementSchemas.length == 0) {
+    if (measurements == null || measurements.length == 0) {
       return tsTable;
     }
 
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      if (measurementSchemas[i] == null) {
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
         continue;
       }
 
-      final String columnName = measurementSchemas[i].getMeasurementName();
-      final TSDataType dataType = measurementSchemas[i].getType();
-      final TSEncoding encoding = measurementSchemas[i].getEncodingType();
-      final CompressionType compressor = measurementSchemas[i].getCompressor();
+      final String columnName = measurements[i];
+      final TSDataType dataType = dataTypes[i];
+      final TSEncoding encoding =
+          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder(dataType));
+      final CompressionType compressor =
+          TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
 
       // Determine column category
       final TsTableColumnCategory columnCategory =
@@ -225,16 +302,5 @@ public class InsertNodeMeasurementInfo {
   @Override
   public int hashCode() {
     return Objects.hash(tableName);
-  }
-
-  @Override
-  public String toString() {
-    return "InsertNodeMeasurementInfo{"
-        + "tableName='"
-        + tableName
-        + '\''
-        + ", measurementSchemas="
-        + (measurementSchemas != null ? measurementSchemas.length : 0)
-        + '}';
   }
 }

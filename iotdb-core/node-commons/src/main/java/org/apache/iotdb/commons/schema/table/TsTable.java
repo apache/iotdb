@@ -55,6 +55,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -79,6 +80,10 @@ public class TsTable {
 
   private final AtomicLong version = new AtomicLong(0L);
   private final AtomicBoolean isNotWrite = new AtomicBoolean(true);
+
+  private final AtomicLong lastReadVersion = new AtomicLong(-1);
+  private final AtomicReference<List<TsTableColumnSchema>> tagColumnSchemas =
+      new AtomicReference<>();
 
   private Map<String, String> props = null;
 
@@ -154,9 +159,14 @@ public class TsTable {
   }
 
   public List<TsTableColumnSchema> getTagColumnSchemaList() {
+    List<TsTableColumnSchema> tagColumnSchemaList = tagColumnSchemas.get();
+    if (tagColumnSchemaList != null && lastReadVersion.get() == version.get() && isNotWrite.get()) {
+      return tagColumnSchemaList;
+    }
+
     readWriteLock.readLock().lock();
     try {
-      final List<TsTableColumnSchema> tagColumnSchemaList = new ArrayList<>();
+      tagColumnSchemaList = new ArrayList<>(tagColumnIndexMap.size());
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
         if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
           tagColumnSchemaList.add(columnSchema);
@@ -164,6 +174,8 @@ public class TsTable {
       }
       return tagColumnSchemaList;
     } finally {
+      tagColumnSchemas.set(tagColumnSchemaList);
+      lastReadVersion.set(version.get());
       readWriteLock.readLock().unlock();
     }
   }

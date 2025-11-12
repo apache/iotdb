@@ -332,6 +332,8 @@ public class TableHeaderSchemaValidator {
     if (table == null) {
       // Auto create missing table
       if (allowCreateTable && isAutoCreateSchemaEnabled) {
+        measurementInfo.toLowerCase();
+        measurementInfo.semanticCheck();
         autoCreateTableFromMeasurementInfo(context, database, measurementInfo);
         table =
             DataNodeTableCache.getInstance()
@@ -351,6 +353,7 @@ public class TableHeaderSchemaValidator {
 
     boolean refreshed = false;
     boolean noField = true;
+    boolean hasAttribute = false;
 
     // Track TAG column measurement indices for batch processing after validation loop
     // LinkedHashMap maintains insertion order, key is column name, value is measurement index
@@ -358,7 +361,7 @@ public class TableHeaderSchemaValidator {
 
     // Validate each measurement
     for (int i = 0; i < measurementCount; i++) {
-      final String measurementName = measurementInfo.getMeasurementName(i);
+      String measurementName = measurementInfo.getMeasurementName(i);
       if (measurementName == null) {
         continue;
       }
@@ -366,7 +369,15 @@ public class TableHeaderSchemaValidator {
       final TsTableColumnCategory category =
           columnCategories != null && i < columnCategories.length ? columnCategories[i] : null;
 
+      hasAttribute = hasAttribute || category == TsTableColumnCategory.ATTRIBUTE;
+
       TsTableColumnSchema existingColumn = table.getColumnSchema(measurementName);
+      if (existingColumn == null) {
+        measurementInfo.toLowerCase();
+        measurementInfo.semanticCheck();
+        measurementName = measurementInfo.getMeasurementName(i);
+        existingColumn = table.getColumnSchema(measurementName);
+      }
 
       if (Objects.isNull(existingColumn)) {
         if (!refreshed) {
@@ -388,7 +399,7 @@ public class TableHeaderSchemaValidator {
           missingMeasurementIndices.add(i);
         }
 
-        if (noField && category != null && category == TsTableColumnCategory.FIELD) {
+        if (noField && category == TsTableColumnCategory.FIELD) {
           noField = false;
         }
       } else {
@@ -418,6 +429,10 @@ public class TableHeaderSchemaValidator {
     if (noField) {
       throw new SemanticException("No Field column present, please check the request");
     }
+
+    measurementInfo.setAttributeColumnsPresent(hasAttribute);
+    measurementInfo.setToLowerCaseApplied(true);
+    measurementInfo.semanticCheck();
 
     // Auto create missing columns
     if (!missingMeasurementIndices.isEmpty() && isAutoCreateSchemaEnabled) {

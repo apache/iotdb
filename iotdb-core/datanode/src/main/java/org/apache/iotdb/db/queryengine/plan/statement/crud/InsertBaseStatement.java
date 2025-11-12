@@ -113,6 +113,12 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   /** Flag to indicate if semantic check has been performed */
   private boolean hasSemanticChecked = false;
 
+  /** Flag indicating whether ATTRIBUTE columns currently exist (default: true). */
+  private boolean attributeColumnsPresent = true;
+
+  /** Flag indicating whether the lower-case transformation has already been applied. */
+  private boolean toLowerCaseApplied = false;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -263,7 +269,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
 
     // Mark as checked to avoid redundant checks
-    hasSemanticChecked = true;
+    setSemanticChecked(true);
   }
 
   // region partial insert
@@ -341,6 +347,30 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return attrColumnIndices;
   }
 
+  public boolean isAttributeColumnsPresent() {
+    return attributeColumnsPresent;
+  }
+
+  public void setAttributeColumnsPresent(final boolean attributeColumnsPresent) {
+    this.attributeColumnsPresent = attributeColumnsPresent;
+  }
+
+  public boolean isToLowerCaseApplied() {
+    return toLowerCaseApplied;
+  }
+
+  public void setToLowerCaseApplied(final boolean toLowerCaseApplied) {
+    this.toLowerCaseApplied = toLowerCaseApplied;
+  }
+
+  public boolean isSemanticChecked() {
+    return hasSemanticChecked;
+  }
+
+  public void setSemanticChecked(final boolean semanticChecked) {
+    this.hasSemanticChecked = semanticChecked;
+  }
+
   public boolean hasFailedMeasurements() {
     return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
   }
@@ -386,7 +416,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void removeAttributeColumns() {
+    if (!attributeColumnsPresent) {
+      return;
+    }
     if (columnCategories == null) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -398,6 +432,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
 
     if (columnsToKeep.size() == columnCategories.length) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -429,6 +464,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     // to reconstruct indices
     tagColumnIndices = null;
     attrColumnIndices = null;
+    attributeColumnsPresent = false;
   }
 
   protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
@@ -668,6 +704,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void toLowerCase() {
+    if (toLowerCaseApplied) {
+      return;
+    }
     devicePath.toLowerCase();
     if (measurements == null) {
       return;
@@ -685,6 +724,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         }
       }
     }
+    toLowerCaseApplied = true;
   }
 
   @TableModel
