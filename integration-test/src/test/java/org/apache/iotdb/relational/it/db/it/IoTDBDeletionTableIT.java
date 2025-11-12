@@ -117,6 +117,8 @@ public class IoTDBDeletionTableIT {
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(5000);
+    // avoid inconsistency caused by leader migration
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
