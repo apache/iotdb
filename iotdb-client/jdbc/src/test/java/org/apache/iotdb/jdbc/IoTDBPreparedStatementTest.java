@@ -419,7 +419,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT * FROM users WHERE username = 'admin\\' --' AND password = 'password'",
+        "SELECT * FROM users WHERE username = 'admin'' --' AND password = 'password'",
         argument.getValue().getStatement());
   }
 
@@ -439,7 +439,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT * FROM users WHERE username = 'admin' AND password = '\\' OR \\'1\\'=\\'1'",
+        "SELECT * FROM users WHERE username = 'admin' AND password = ''' OR ''1''=''1'",
         argument.getValue().getStatement());
   }
 
@@ -457,7 +457,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT * FROM users WHERE email = '\\'; DROP TABLE users;'",
+        "SELECT * FROM users WHERE email = '''; DROP TABLE users;'",
         argument.getValue().getStatement());
   }
 
@@ -474,10 +474,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(Java literal in final SQL
-    // statement)
-    assertEquals(
-        "SELECT * FROM users WHERE password = 'a\\'b'", argument.getValue().getStatement());
+    assertEquals("SELECT * FROM users WHERE password = 'a''b'", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
@@ -493,10 +490,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\'b(Java literal) -> a'b(actual string) -> a\'b(escaped) -> a\\'b(Java literal in final SQL
-    // statement)
-    assertEquals(
-        "SELECT * FROM users WHERE password = 'a\\'b'", argument.getValue().getStatement());
+    assertEquals("SELECT * FROM users WHERE password = 'a''b'", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
@@ -512,10 +506,8 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(Java literal in final
-    // SQL statement)
     assertEquals(
-        "SELECT * FROM users WHERE password = 'a\\\\'b'", argument.getValue().getStatement());
+        "SELECT * FROM users WHERE password = 'a\\''b'", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
@@ -531,10 +523,7 @@ public class IoTDBPreparedStatementTest {
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
-    // a\\\'b(Java literal) -> a\'b(actual string) -> a\\'b(escaped) -> a\\\\'b(Java literal in
-    // final
-    // SQL statement)
     assertEquals(
-        "SELECT * FROM users WHERE password = 'a\\\\'b'", argument.getValue().getStatement());
+        "SELECT * FROM users WHERE password = 'a\\''b'", argument.getValue().getStatement());
   }
 }
