@@ -23,24 +23,12 @@ echo Starting IoTDB AINode
 echo ---------------------------
 
 IOTDB_AINODE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
-
+export IOTDB_AINODE_HOME
 echo "IOTDB_AINODE_HOME: $IOTDB_AINODE_HOME"
-chmod u+x $IOTDB_AINODE_HOME/conf/ainode-env.sh
-ain_interpreter_dir=$(sed -n 's/^ain_interpreter_dir=\(.*\)$/\1/p' $IOTDB_AINODE_HOME/conf/ainode-env.sh)
-bash $IOTDB_AINODE_HOME/conf/ainode-env.sh $*
-if [ $? -eq 1 ]; then
-  echo "Environment check failed. Exiting..."
-  exit 1
-fi
-
 
 # fetch parameters with names
 while getopts "i:rn" opt; do
   case $opt in
-    i) p_ain_interpreter_dir="$OPTARG"
-    ;;
-    r) p_ain_force_reinstall="$OPTARG"
-    ;;
     n)
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
@@ -49,31 +37,10 @@ while getopts "i:rn" opt; do
   esac
 done
 
-# If ain_interpreter_dir in parameters is empty:
-if [ -z "$p_ain_interpreter_dir" ]; then
-  # If ain_interpreter_dir in ../conf/ainode-env.sh is empty, set default value to ../venv/bin/python3
-  if [ -z "$ain_interpreter_dir" ]; then
-    ain_interpreter_dir="$IOTDB_AINODE_HOME/venv/bin/python3"
-  fi
-else
-  # If ain_interpreter_dir in parameters is not empty, set ain_interpreter_dir to the value in parameters
-  ain_interpreter_dir="$p_ain_interpreter_dir"
-fi
+ain_ainode_executable="$IOTDB_AINODE_HOME/lib/ainode"
 
-# check if ain_interpreter_dir is an absolute path
-if [[ "$ain_interpreter_dir" != /* ]]; then
-  ain_interpreter_dir="$IOTDB_AINODE_HOME/$ain_interpreter_dir"
-fi
-
-echo Script got parameter: ain_interpreter_dir: $ain_interpreter_dir
-
-# Change the working directory to the parent directory
-cd "$IOTDB_AINODE_HOME"
-
-ain_ainode_dir=$(dirname "$ain_interpreter_dir")/ainode
-
-echo Script got ainode dir: ain_ainode_dir: $ain_ainode_dir
+echo Script got ainode executable: "$ain_ainode_executable"
 
 echo Starting AINode...
 
-$ain_ainode_dir start
+$ain_ainode_executable start

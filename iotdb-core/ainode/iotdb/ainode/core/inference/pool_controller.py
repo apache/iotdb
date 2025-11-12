@@ -50,7 +50,6 @@ from iotdb.ainode.core.util.decorator import synchronized
 from iotdb.ainode.core.util.thread_name import ThreadName
 
 logger = Logger()
-MODEL_MANAGER = ModelManager()
 
 
 class PoolController:
@@ -59,6 +58,7 @@ class PoolController:
     """
 
     def __init__(self, result_queue: mp.Queue):
+        self._model_manager = ModelManager()
         # structure: {model_id: {device_id: PoolGroup}}
         self._request_pool_map: Dict[str, Dict[str, PoolGroup]] = {}
         self._new_pool_id = AtomicInt()
@@ -82,24 +82,25 @@ class PoolController:
         """
         Initialize the pools when the first request for the given model_id arrives.
         """
-        if not self.has_request_pools(model_id, device.index):
-            # TODO: choose a device based on some strategy
-            device = self.DEFAULT_DEVICE
-            actions = self._pool_scheduler.schedule(model_id, device)
-            for action in actions:
-                if action.action == ScaleActionType.SCALE_UP:
-                    # initialize the first pool
-                    self._first_pool_init(action.model_id, str(device))
-                    # start a background thread to expand pools
-                    expand_thread = threading.Thread(
-                        target=self._expand_pools_on_device,
-                        args=(action.model_id, str(device), action.amount - 1),
-                        daemon=True,
-                    )
-                    expand_thread.start()
-                elif action.action == ScaleActionType.SCALE_DOWN:
-                    # TODO: implement scale down logic
-                    pass
+        pass
+        # if not self.has_request_pools(model_id, device.index):
+        #     # TODO: choose a device based on some strategy
+        #     device = self.DEFAULT_DEVICE
+        #     actions = self._pool_scheduler.schedule(model_id, device)
+        #     for action in actions:
+        #         if action.action == ScaleActionType.SCALE_UP:
+        #             # initialize the first pool
+        #             self._first_pool_init(action.model_id, str(device))
+        #             # start a background thread to expand pools
+        #             expand_thread = threading.Thread(
+        #                 target=self._expand_pools_on_device,
+        #                 args=(action.model_id, str(device), action.amount - 1),
+        #                 daemon=True,
+        #             )
+        #             expand_thread.start()
+        #         elif action.action == ScaleActionType.SCALE_DOWN:
+        #             # TODO: implement scale down logic
+        #             pass
 
     def _first_pool_init(self, model_id: str, device_str: str):
         """
@@ -194,7 +195,7 @@ class PoolController:
         def _load_model_on_device_task(device_id: str):
             if not self.has_request_pools(model_id, device_id):
                 actions = self._pool_scheduler.schedule_load_model_to_device(
-                    MODEL_MANAGER.get_model_info(model_id), device_id
+                    self._model_manager.get_model_info(model_id), device_id
                 )
                 for action in actions:
                     if action.action == ScaleActionType.SCALE_UP:
@@ -221,7 +222,7 @@ class PoolController:
         def _unload_model_on_device_task(device_id: str):
             if self.has_request_pools(model_id, device_id):
                 actions = self._pool_scheduler.schedule_unload_model_from_device(
-                    MODEL_MANAGER.get_model_info(model_id), device_id
+                    self._model_manager.get_model_info(model_id), device_id
                 )
                 for action in actions:
                     if action.action == ScaleActionType.SCALE_DOWN:
@@ -256,7 +257,7 @@ class PoolController:
         def _expand_pool_on_device(*_):
             result_queue = mp.Queue()
             pool_id = self._new_pool_id.get_and_increment()
-            model_info = MODEL_MANAGER.get_model_info(model_id)
+            model_info = self._model_manager.get_model_info(model_id)
             model_type = model_info.model_type
             if model_type == BuiltInModelType.SUNDIAL.value:
                 config = SundialConfig()
@@ -277,7 +278,7 @@ class PoolController:
             )
             pool.start()
             self._register_pool(model_id, device_id, pool_id, pool, result_queue)
-            if not pool.ready_event.wait(timeout=30):
+            if not pool.ready_event.wait(timeout=300):
                 logger.error(
                     f"[Inference][Device-{device_id}][Pool-{pool_id}] Pool failed to be ready in time"
                 )
