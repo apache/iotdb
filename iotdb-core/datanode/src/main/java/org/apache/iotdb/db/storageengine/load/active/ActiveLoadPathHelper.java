@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
@@ -170,11 +170,13 @@ public final class ActiveLoadPathHelper {
     if (file == null) {
       return null;
     }
-    File current = file.getParentFile();
+    String[] dirs = IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs();
+    File current = file;
     while (current != null) {
-      if (IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME.equals(
-          current.getName())) {
-        return current;
+      for (final String dir : dirs) {
+        if (current.isDirectory() && current.getAbsolutePath().equals(dir)) {
+          return current;
+        }
       }
       current = current.getParentFile();
     }
