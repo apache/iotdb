@@ -855,7 +855,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
