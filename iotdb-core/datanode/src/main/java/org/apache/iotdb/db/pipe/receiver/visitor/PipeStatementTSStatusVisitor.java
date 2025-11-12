@@ -106,11 +106,22 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     } else if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-        && (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
-            && config.isEnablePartialInsert())) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+    } else if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      if (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
+          && config.isEnablePartialInsert()) {
+        return new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      }
+      if (context.getMessage().contains("does not exist")) {
+        return new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      }
     }
     return visitStatement(insertBaseStatement, context);
   }
@@ -226,14 +237,24 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateStatement batchActivateTemplateStatement, final TSStatus context) {
+    boolean userConflict = false;
     if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (final TSStatus status : context.getSubStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
           return visitStatement(batchActivateTemplateStatement, context);
         }
+        if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+            && context.isSetMessage()
+            && context.getMessage().contains("has not been set any template")) {
+          userConflict = true;
+        }
       }
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+      return (userConflict
+              ? new TSStatus(
+                  TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
+              : new TSStatus(
+                  TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()))
           .setMessage(context.getMessage());
     }
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
@@ -243,6 +264,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
       final Statement activateTemplateStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+        && context.isSetMessage()
+        && context.getMessage().contains("has not been set any template")) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitStatement(activateTemplateStatement, context);

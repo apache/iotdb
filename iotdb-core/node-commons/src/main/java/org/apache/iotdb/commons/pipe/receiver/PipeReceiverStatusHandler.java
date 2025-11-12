@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingI
 import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -131,6 +132,7 @@ public class PipeReceiverStatusHandler {
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+      case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
               "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
@@ -165,12 +167,16 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeSinkRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+          throw status.getCode() == 1815
+                  && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
+              ? new PipeNonReportException(exceptionMessage)
+              : new PipeRuntimeSinkRetryTimesConfigurableException(
+                  exceptionMessage,
+                  (int)
+                      Math.max(
+                          PipeSubtask.MAX_RETRY_TIMES,
+                          Math.min(
+                              CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
         }
 
       case 803: // NO_PERMISSION
