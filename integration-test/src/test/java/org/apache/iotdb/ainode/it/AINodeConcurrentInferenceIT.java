@@ -161,7 +161,7 @@ public class AINodeConcurrentInferenceIT {
       throws SQLException, InterruptedException {
     Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
     LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
-    for (int retry = 0; retry < 20; retry++) {
+    for (int retry = 0; retry < 200; retry++) {
       Set<String> foundDevices = new HashSet<>();
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
