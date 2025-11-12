@@ -874,7 +874,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
