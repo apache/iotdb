@@ -160,6 +160,7 @@ public final class QueryUtil {
             ImmutableList.of(),
             Optional.empty(),
             Optional.empty(),
+            Optional.empty(),
             Optional.empty()));
   }
 
@@ -214,7 +215,8 @@ public final class QueryUtil {
             ImmutableList.of(),
             orderBy,
             offset,
-            limit));
+            limit,
+            Optional.empty()));
   }
 
   public static Query simpleQuery(
@@ -239,7 +241,8 @@ public final class QueryUtil {
             windows,
             orderBy,
             offset,
-            limit));
+            limit,
+            Optional.empty()));
   }
 
   public static Query query(QueryBody body) {

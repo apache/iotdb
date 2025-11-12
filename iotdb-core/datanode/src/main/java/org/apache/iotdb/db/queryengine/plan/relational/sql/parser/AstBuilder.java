@@ -171,6 +171,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectHint;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
@@ -248,6 +249,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantif
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -267,6 +272,8 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -2234,7 +2241,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getWindows(),
               orderBy,
               offset,
-              limit),
+              limit,
+              query.getHintMap()),
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
@@ -2350,6 +2358,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       from = Optional.of(relation);
     }
 
+    // Hint Map
+    Optional<SelectHint> selectHint =
+        ctx.selectHint() != null
+            ? Optional.of((SelectHint) visitSelectHint(ctx.selectHint()))
+            : Optional.empty();
+
     return new QuerySpecification(
         getLocation(ctx),
         new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
@@ -2361,7 +2375,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visit(ctx.windowDefinition(), WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
-        Optional.empty());
+        Optional.empty(),
+        selectHint);
   }
 
   @Override
@@ -2387,6 +2402,52 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       return new AllColumns(getLocation(ctx), (Expression) visit(ctx.primaryExpression()), aliases);
     } else {
       return new AllColumns(getLocation(ctx), aliases);
+    }
+  }
+
+  @Override
+  public Node visitSelectHint(RelationalSqlParser.SelectHintContext ctx) {
+    Map<String, Hint> hintMap = new HashMap<>();
+    for (RelationalSqlParser.HintItemContext hiCtx : ctx.hintItem()) {
+      if (hiCtx instanceof RelationalSqlParser.ParameterizedHintContext) {
+        //        RelationalSqlParser.ParameterizedHintContext paramHint =
+        //            (RelationalSqlParser.ParameterizedHintContext) hiCtx;
+        //        List<RelationalSqlParser.IdentifierContext> identifiers = paramHint.identifier();
+        //        String hintName = identifiers.get(0).getText();
+        //        List<String> params = new ArrayList<>();
+        //        for (int i = 1; i < identifiers.size(); i++) {
+        //          params.add(identifiers.get(i).getText());
+        //        }
+        //        Hint hint = new LeadingHint(params);
+        //        hintMap.put(hintName, hint);
+      } else if (hiCtx instanceof RelationalSqlParser.SimpleHintContext) {
+        RelationalSqlParser.SimpleHintContext simpleHint =
+            (RelationalSqlParser.SimpleHintContext) hiCtx;
+        String hintName = simpleHint.identifier().getText();
+        addSimpleHint(hintName.toUpperCase(), hintMap);
+      }
+    }
+
+    return new SelectHint(hintMap);
+  }
+
+  private static final Map<String, HintDefinition> HINT_DEFINITIONS =
+      ImmutableMap.of(
+          "LEADER",
+              new HintDefinition(LeaderHint.hintName, LeaderHint::new, ImmutableSet.of("Follower")),
+          "FOLLOWER",
+              new HintDefinition(
+                  FollowerHint.hintName, FollowerHint::new, ImmutableSet.of("Leader"))
+          // "MERGE_JOIN", new HintDefinition("MergeJoin", MergeJoinHint::new,
+          // ImmutableSet.of("NestLoopJoin", "HashJoin")),
+          // "NL_JOIN", new HintDefinition("NestLoopJoin", NestLoopJoinHint::new,
+          // ImmutableSet.of("MergeJoin", "HashJoin"))
+          );
+
+  private void addSimpleHint(String hintName, Map<String, Hint> hintMap) {
+    HintDefinition definition = HINT_DEFINITIONS.get(hintName);
+    if (definition != null) {
+      definition.addTo(hintMap);
     }
   }
 

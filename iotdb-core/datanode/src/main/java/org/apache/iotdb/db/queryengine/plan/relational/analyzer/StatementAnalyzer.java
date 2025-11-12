@@ -146,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectHint;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -193,6 +194,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1153,6 +1155,10 @@ public class StatementAnalyzer {
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
       List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
+
+      Map<String, Hint> hintMap = analyzeHint(node);
+      queryContext.setHintMap(hintMap);
+
       Analysis.GroupingSetAnalysis groupByAnalysis =
           analyzeGroupBy(node, sourceScope, outputExpressions);
       analyzeHaving(node, sourceScope);
@@ -1489,6 +1495,14 @@ public class StatementAnalyzer {
       }
 
       analysis.setWhere(node, predicate);
+    }
+
+    private Map<String, Hint> analyzeHint(QuerySpecification node) {
+      Optional<SelectHint> selectHint = node.getHintMap();
+      if (selectHint.isPresent()) {
+        return selectHint.get().getHintMap();
+      }
+      return ImmutableMap.of();
     }
 
     private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {

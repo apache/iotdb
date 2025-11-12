@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
@@ -125,6 +126,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
+  private Map<String, Hint> hintMap = new HashMap<>();
+
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
@@ -181,6 +184,14 @@ public class MPPQueryContext implements IAuditEntity {
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
     this.initResultNodeContext();
+  }
+
+  public void setHintMap(Map<String, Hint> hintMap) {
+    this.hintMap = hintMap;
+  }
+
+  public Map<String, Hint> getHintMap() {
+    return hintMap;
   }
 
   public void setReserveMemoryForSchemaTreeFunc(LongConsumer reserveMemoryForSchemaTreeFunc) {
