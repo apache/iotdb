@@ -168,8 +168,7 @@ public class IoTDBLoadTsFileWithModIT {
                   + "'verify'='true',"
                   + "'on-success'='none',"
                   + "'async'='false')",
-              tmpDir.getAbsolutePath(),
-              databaseName));
+              tmpDir.getAbsolutePath(), databaseName));
 
       boolean databaseFound = false;
       try (final ResultSet resultSet = statement.executeQuery("show databases")) {

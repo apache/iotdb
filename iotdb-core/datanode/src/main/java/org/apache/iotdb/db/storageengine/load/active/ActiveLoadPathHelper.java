@@ -121,7 +121,6 @@ public final class ActiveLoadPathHelper {
 
     final Map<String, String> attributes = new HashMap<>();
     File current = file.getParentFile();
-    boolean convertFolderVisited = false;
     while (current != null) {
       final String dirName = current.getName();
       if (pendingDir != null && current.equals(pendingDir)) {
@@ -132,34 +131,8 @@ public final class ActiveLoadPathHelper {
         if (dirName.startsWith(prefix)) {
           extractAndValidateAttributeValue(key, dirName, prefix.length())
               .ifPresent(value -> attributes.putIfAbsent(key, value));
-          if (LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY.equals(key)) {
-            convertFolderVisited = true;
-          }
           break;
         }
-      }
-      if (convertFolderVisited
-          && !attributes.containsKey(LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY)
-          && dirName.startsWith(
-              LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY + SEGMENT_SEPARATOR)) {
-        extractAndValidateAttributeValue(
-                LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
-                dirName,
-                (LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY + SEGMENT_SEPARATOR)
-                    .length())
-            .ifPresent(
-                value ->
-                    attributes.putIfAbsent(
-                        LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY, value));
-      }
-      if (convertFolderVisited
-          && !attributes.containsKey(LoadTsFileConfigurator.VERIFY_KEY)
-          && dirName.startsWith(LoadTsFileConfigurator.VERIFY_KEY + SEGMENT_SEPARATOR)) {
-        extractAndValidateAttributeValue(
-                LoadTsFileConfigurator.VERIFY_KEY,
-                dirName,
-                (LoadTsFileConfigurator.VERIFY_KEY + SEGMENT_SEPARATOR).length())
-            .ifPresent(value -> attributes.putIfAbsent(LoadTsFileConfigurator.VERIFY_KEY, value));
       }
       current = current.getParentFile();
     }
