@@ -214,6 +214,8 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
+  private boolean pipeRetryLocallyForUserConflict = true;
+
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
@@ -256,8 +258,8 @@ public class CommonConfig {
 
   private long pipeMaxWaitFinishTime = 10 * 1000;
 
-  private int pipeExtractorAssignerDisruptorRingBufferSize = 128;
-  private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
+  private int pipeSourceAssignerDisruptorRingBufferSize = 128;
+  private long pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
   private long pipeSourceMatcherCacheSize = 1024;
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
@@ -996,38 +998,37 @@ public class CommonConfig {
         "pipeTotalFloatingMemoryProportion is set to {}.", pipeTotalFloatingMemoryProportion);
   }
 
-  public int getPipeExtractorAssignerDisruptorRingBufferSize() {
-    return pipeExtractorAssignerDisruptorRingBufferSize;
+  public int getPipeSourceAssignerDisruptorRingBufferSize() {
+    return pipeSourceAssignerDisruptorRingBufferSize;
   }
 
-  public void setPipeExtractorAssignerDisruptorRingBufferSize(
-      int pipeExtractorAssignerDisruptorRingBufferSize) {
-    if (this.pipeExtractorAssignerDisruptorRingBufferSize
-        == pipeExtractorAssignerDisruptorRingBufferSize) {
+  public void setPipeSourceAssignerDisruptorRingBufferSize(
+      int pipeSourceAssignerDisruptorRingBufferSize) {
+    if (this.pipeSourceAssignerDisruptorRingBufferSize
+        == pipeSourceAssignerDisruptorRingBufferSize) {
       return;
     }
-    this.pipeExtractorAssignerDisruptorRingBufferSize =
-        pipeExtractorAssignerDisruptorRingBufferSize;
+    this.pipeSourceAssignerDisruptorRingBufferSize = pipeSourceAssignerDisruptorRingBufferSize;
     logger.info(
-        "pipeExtractorAssignerDisruptorRingBufferSize is set to {}.",
-        pipeExtractorAssignerDisruptorRingBufferSize);
+        "pipeSourceAssignerDisruptorRingBufferSize is set to {}.",
+        pipeSourceAssignerDisruptorRingBufferSize);
   }
 
-  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
-    return pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes;
+  public long getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes;
   }
 
-  public void setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes(
-      long pipeExtractorAssignerDisruptorRingBufferEntrySize) {
-    if (pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes
-        == pipeExtractorAssignerDisruptorRingBufferEntrySize) {
+  public void setPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes(
+      long pipeSourceAssignerDisruptorRingBufferEntrySize) {
+    if (pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes
+        == pipeSourceAssignerDisruptorRingBufferEntrySize) {
       return;
     }
-    this.pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes =
-        pipeExtractorAssignerDisruptorRingBufferEntrySize;
+    this.pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes =
+        pipeSourceAssignerDisruptorRingBufferEntrySize;
     logger.info(
-        "pipeExtractorAssignerDisruptorRingBufferEntrySize is set to {}.",
-        pipeExtractorAssignerDisruptorRingBufferEntrySize);
+        "pipeSourceAssignerDisruptorRingBufferEntrySize is set to {}.",
+        pipeSourceAssignerDisruptorRingBufferEntrySize);
   }
 
   public long getPipeSourceMatcherCacheSize() {
@@ -1398,6 +1399,18 @@ public class CommonConfig {
     }
     this.pipeSubtaskExecutorMaxThreadNum = pipeSubtaskExecutorMaxThreadNum;
     logger.info("pipeSubtaskExecutorMaxThreadNum is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+  }
+
+  public boolean isPipeRetryLocallyForUserConflict() {
+    return pipeRetryLocallyForUserConflict;
+  }
+
+  public void setPipeRetryLocallyForUserConflict(boolean pipeRetryLocallyForUserConflict) {
+    if (this.pipeRetryLocallyForUserConflict == pipeRetryLocallyForUserConflict) {
+      return;
+    }
+    this.pipeRetryLocallyForUserConflict = pipeRetryLocallyForUserConflict;
+    logger.info("pipeRetryLocallyForUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
