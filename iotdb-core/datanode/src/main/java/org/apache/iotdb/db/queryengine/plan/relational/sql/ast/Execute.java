@@ -30,10 +30,7 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-/**
- * EXECUTE statement AST node.
- * Example: EXECUTE stmt1 USING 100, 'test'
- */
+/** EXECUTE statement AST node. Example: EXECUTE stmt1 USING 100, 'test' */
 public final class Execute extends Statement {
 
   private final Identifier statementName;
@@ -103,5 +100,3 @@ public final class Execute extends Statement {
         .toString();
   }
 }
-
-

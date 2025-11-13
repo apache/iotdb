@@ -32,7 +32,7 @@ public class ClientSession extends IClientSession {
   private final Socket clientSocket;
 
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
-  
+
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 

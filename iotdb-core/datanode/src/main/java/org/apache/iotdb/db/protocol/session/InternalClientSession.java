@@ -34,7 +34,7 @@ public class InternalClientSession extends IClientSession {
   private final String clientID;
 
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
-  
+
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 

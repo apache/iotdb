@@ -35,9 +35,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 /**
- * Task for executing PREPARE statement. Stores the prepared statement AST in the session.
- * The AST is cached to avoid re-parsing on EXECUTE (skipping Parser phase).
- * Memory is allocated from CoordinatorMemoryManager and shared across all sessions.
+ * Task for executing PREPARE statement. Stores the prepared statement AST in the session. The AST
+ * is cached to avoid re-parsing on EXECUTE (skipping Parser phase). Memory is allocated from
+ * CoordinatorMemoryManager and shared across all sessions.
  */
 public class PrepareTask implements IConfigTask {
 
@@ -92,5 +92,3 @@ public class PrepareTask implements IConfigTask {
     return future;
   }
 }
-
-

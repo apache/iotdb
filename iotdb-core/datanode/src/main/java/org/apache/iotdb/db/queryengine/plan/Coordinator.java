@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -57,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
@@ -73,19 +76,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
@@ -509,9 +510,11 @@ public class Coordinator {
       }
 
       // 2. Get cached AST (contains Parameter nodes)
-      Statement cachedStatement = preparedInfo.getSql();
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement cachedStatement =
+          preparedInfo.getSql();
 
-      // 3. Bind parameters: create parameterLookup map (similar to Trino's ParameterExtractor.bindParameters)
+      // 3. Bind parameters: create parameterLookup map (similar to Trino's
+      // ParameterExtractor.bindParameters)
       // This allows Analyzer to resolve Parameter nodes without re-parsing
       // Note: bindParameters() internally validates parameter count
       Map<NodeRef<Parameter>, Expression> parameterLookup =
@@ -546,7 +549,7 @@ public class Coordinator {
       List<Literal> parameters = executeImmediateStatement.getParameters();
 
       // Parse SQL to AST
-      Statement parsedStatement =
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement parsedStatement =
           sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
       // If there are parameters, bind them

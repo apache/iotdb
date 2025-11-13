@@ -30,10 +30,7 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-/**
- * DEALLOCATE PREPARE statement AST node.
- * Example: DEALLOCATE PREPARE stmt1
- */
+/** DEALLOCATE PREPARE statement AST node. Example: DEALLOCATE PREPARE stmt1 */
 public final class Deallocate extends Statement {
 
   private final Identifier statementName;
@@ -83,5 +80,3 @@ public final class Deallocate extends Statement {
     return toStringHelper(this).add("statementName", statementName).toString();
   }
 }
-
-

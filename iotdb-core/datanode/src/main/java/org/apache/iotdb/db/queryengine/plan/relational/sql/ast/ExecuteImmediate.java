@@ -31,8 +31,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 /**
- * EXECUTE IMMEDIATE statement AST node.
- * Example: EXECUTE IMMEDIATE 'SELECT * FROM table WHERE id = 100'
+ * EXECUTE IMMEDIATE statement AST node. Example: EXECUTE IMMEDIATE 'SELECT * FROM table WHERE id =
+ * 100'
  */
 public final class ExecuteImmediate extends Statement {
 
@@ -103,5 +103,3 @@ public final class ExecuteImmediate extends Statement {
     return toStringHelper(this).add("sql", sql).add("parameters", parameters).toString();
   }
 }
-
-

@@ -30,10 +30,7 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-/**
- * PREPARE statement AST node.
- * Example: PREPARE stmt1 FROM SELECT * FROM table WHERE id = ?
- */
+/** PREPARE statement AST node. Example: PREPARE stmt1 FROM SELECT * FROM table WHERE id = ? */
 public final class Prepare extends Statement {
 
   private final Identifier statementName;
@@ -46,9 +43,7 @@ public final class Prepare extends Statement {
   }
 
   public Prepare(
-      @Nullable NodeLocation location,
-      @Nonnull Identifier statementName,
-      @Nonnull Statement sql) {
+      @Nullable NodeLocation location, @Nonnull Identifier statementName, @Nonnull Statement sql) {
     super(location);
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
@@ -94,5 +89,3 @@ public final class Prepare extends Statement {
     return toStringHelper(this).add("statementName", statementName).add("sql", sql).toString();
   }
 }
-
-

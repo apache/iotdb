@@ -30,8 +30,8 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Information about a prepared statement stored in a session.
- * The AST is cached here to avoid re-parsing on EXECUTE.
+ * Information about a prepared statement stored in a session. The AST is cached here to avoid
+ * re-parsing on EXECUTE.
  */
 public class PreparedStatementInfo {
 
@@ -41,9 +41,7 @@ public class PreparedStatementInfo {
   private final IMemoryBlock memoryBlock; // Memory block allocated for this PreparedStatement
 
   public PreparedStatementInfo(
-      @Nonnull String statementName,
-      @Nonnull Statement sql,
-      @Nullable IMemoryBlock memoryBlock) {
+      @Nonnull String statementName, @Nonnull Statement sql, @Nullable IMemoryBlock memoryBlock) {
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
     this.createTime = System.currentTimeMillis();
@@ -107,5 +105,3 @@ public class PreparedStatementInfo {
         + '}';
   }
 }
-
-

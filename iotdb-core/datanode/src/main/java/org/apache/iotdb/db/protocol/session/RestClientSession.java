@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RestClientSession extends IClientSession {
 
   private final String clientID;
-  
+
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 

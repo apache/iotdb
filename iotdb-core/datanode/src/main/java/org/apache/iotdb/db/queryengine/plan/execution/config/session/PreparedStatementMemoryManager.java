@@ -37,7 +37,8 @@ public class PreparedStatementMemoryManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PreparedStatementMemoryManager.class);
 
-  private static final PreparedStatementMemoryManager INSTANCE = new PreparedStatementMemoryManager();
+  private static final PreparedStatementMemoryManager INSTANCE =
+      new PreparedStatementMemoryManager();
 
   private PreparedStatementMemoryManager() {
     // singleton
@@ -77,8 +78,7 @@ public class PreparedStatementMemoryManager {
           String.format(
               "Insufficient memory for PreparedStatement '%s'. "
                   + "Please deallocate some PreparedStatements and try again.",
-              statementName),
-          e);
+              statementName));
     }
   }
 
@@ -89,12 +89,19 @@ public class PreparedStatementMemoryManager {
    */
   public void release(IMemoryBlock memoryBlock) {
     if (memoryBlock != null) {
-      memoryBlock.release();
-      LOGGER.debug("Released memory block for PreparedStatement");
+      try {
+        memoryBlock.close();
+        LOGGER.debug(
+            "Released memory block '{}' ({} bytes) for PreparedStatement",
+            memoryBlock.getName(),
+            memoryBlock.getTotalMemorySizeInBytes());
+      } catch (Exception e) {
+        LOGGER.error(
+            "Failed to release memory block '{}' for PreparedStatement: {}",
+            memoryBlock.getName(),
+            e.getMessage(),
+            e);
+      }
     }
   }
 }
-
-
-
-

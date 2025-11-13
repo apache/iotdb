@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.visitor.AstVisitor;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,8 +37,8 @@ import java.util.Map;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
- * Utility class for extracting and binding parameters in prepared statements.
- * Similar to Trino's ParameterExtractor.
+ * Utility class for extracting and binding parameters in prepared statements. Similar to Trino's
+ * ParameterExtractor.
  */
 public final class ParameterExtractor {
   private ParameterExtractor() {}
@@ -65,11 +66,10 @@ public final class ParameterExtractor {
         .sorted(
             Comparator.comparing(
                 parameter ->
-                    parameter.getLocation()
+                    parameter
+                        .getLocation()
                         .orElseThrow(
-                            () ->
-                                new SemanticException(
-                                    "Parameter node must have a location")),
+                            () -> new SemanticException("Parameter node must have a location")),
                 Comparator.comparing(
                         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation
                             ::getLineNumber)
@@ -80,8 +80,8 @@ public final class ParameterExtractor {
   }
 
   /**
-   * Bind parameter values to Parameter nodes in a statement.
-   * Creates a map from Parameter node references to their corresponding Expression values.
+   * Bind parameter values to Parameter nodes in a statement. Creates a map from Parameter node
+   * references to their corresponding Expression values.
    *
    * @param statement the statement containing Parameter nodes
    * @param values the parameter values (in order)
@@ -122,4 +122,3 @@ public final class ParameterExtractor {
     }
   }
 }
-

@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MqttClientSession extends IClientSession {
 
   private final String clientID;
-  
+
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 

@@ -90,8 +90,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExcludedPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -3801,7 +3801,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitExecuteImmediateStatement(RelationalSqlParser.ExecuteImmediateStatementContext ctx) {
+  public Node visitExecuteImmediateStatement(
+      RelationalSqlParser.ExecuteImmediateStatementContext ctx) {
     StringLiteral sql = (StringLiteral) visit(ctx.sql);
     List<Literal> parameters =
         ctx.literalExpression() != null && !ctx.literalExpression().isEmpty()

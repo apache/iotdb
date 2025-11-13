@@ -860,7 +860,7 @@ unloadModelStatement
 
 // ------------------------------------------- Prepared Statement ---------------------------------------------------------
 prepareStatement
-    : PREPARE statementName=identifier FROM statement
+    : PREPARE statementName=identifier FROM sql=statement
     ;
 
 executeStatement

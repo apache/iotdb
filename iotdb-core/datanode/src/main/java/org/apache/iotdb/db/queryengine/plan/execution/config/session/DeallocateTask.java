@@ -31,8 +31,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 /**
- * Task for executing DEALLOCATE PREPARE statement. Removes the prepared statement from the
- * session and releases its allocated memory.
+ * Task for executing DEALLOCATE PREPARE statement. Removes the prepared statement from the session
+ * and releases its allocated memory.
  */
 public class DeallocateTask implements IConfigTask {
 
@@ -71,5 +71,3 @@ public class DeallocateTask implements IConfigTask {
     return future;
   }
 }
-
-

@@ -27,8 +27,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.write.record.Tablet;
 
 /**
- * Utility class for formatting parameter values as SQL literals for PreparedStatement.
- * Handles escaping of special characters (e.g., single quotes in strings).
+ * Utility class for formatting parameter values as SQL literals for PreparedStatement. Handles
+ * escaping of special characters (e.g., single quotes in strings).
  */
 class ParameterFormatter {
   private ParameterFormatter() {}
@@ -37,11 +37,13 @@ class ParameterFormatter {
    * Formats a parameter value as a SQL literal string.
    *
    * <p>Special handling:
+   *
    * <ul>
-   *   <li>String values: Single quotes are escaped by doubling them (e.g., "It's" becomes "'It''s'")</li>
-   *   <li>null values: Converted to "NULL"</li>
-   *   <li>Numbers: Used directly without quotes</li>
-   *   <li>Booleans: Converted to "TRUE" or "FALSE"</li>
+   *   <li>String values: Single quotes are escaped by doubling them (e.g., "It's" becomes
+   *       "'It''s'")
+   *   <li>null values: Converted to "NULL"
+   *   <li>Numbers: Used directly without quotes
+   *   <li>Booleans: Converted to "TRUE" or "FALSE"
    * </ul>
    *
    * @param value the parameter value
@@ -76,12 +78,17 @@ class ParameterFormatter {
 
     if (value instanceof java.time.LocalDateTime) {
       // LocalDateTime: format as ISO string
-      return "'" + ((java.time.LocalDateTime) value).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "'";
+      return "'"
+          + ((java.time.LocalDateTime) value)
+              .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+          + "'";
     }
 
     if (value instanceof java.time.LocalDate) {
       // LocalDate: format as ISO string
-      return "'" + ((java.time.LocalDate) value).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + "'";
+      return "'"
+          + ((java.time.LocalDate) value).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+          + "'";
     }
 
     // For other types, convert to string and quote
@@ -139,89 +146,89 @@ public class TableSession implements ITableSession {
     return session.executeQueryStatement(sql, timeoutInMs);
   }
 
-  @Override
-  public void prepare(String statementName, String sql)
-      throws IoTDBConnectionException, StatementExecutionException {
-    // Build PREPARE statement: PREPARE statementName FROM 'sql'
-    // Escape single quotes in SQL by doubling them
-    String escapedSql = sql.replace("'", "''");
-    String prepareSql = String.format("PREPARE %s FROM '%s'", statementName, escapedSql);
-    session.executeNonQueryStatement(prepareSql);
-  }
-
-  @Override
-  public SessionDataSet execute(String statementName, Object... parameters)
-      throws StatementExecutionException, IoTDBConnectionException {
-    return execute(statementName, 0, parameters);
-  }
-
-  @Override
-  public SessionDataSet execute(String statementName, long timeoutInMs, Object... parameters)
-      throws StatementExecutionException, IoTDBConnectionException {
-    // Build EXECUTE statement: EXECUTE statementName USING param1, param2, ...
-    String executeSql;
-    if (parameters == null || parameters.length == 0) {
-      executeSql = String.format("EXECUTE %s", statementName);
-    } else {
-      String params = ParameterFormatter.formatParameters(parameters);
-      executeSql = String.format("EXECUTE %s USING %s", statementName, params);
-    }
-
-    // Try to execute as query first, fall back to non-query if needed
-    try {
-      if (timeoutInMs > 0) {
-        return session.executeQueryStatement(executeSql, timeoutInMs);
-      } else {
-        return session.executeQueryStatement(executeSql);
-      }
-    } catch (StatementExecutionException e) {
-      // If it's not a query statement, execute as non-query
-      session.executeNonQueryStatement(executeSql);
-      return null;
-    }
-  }
-
-  @Override
-  public SessionDataSet executeImmediate(String sql, Object... parameters)
-      throws StatementExecutionException, IoTDBConnectionException {
-    return executeImmediate(sql, 0, parameters);
-  }
-
-  @Override
-  public SessionDataSet executeImmediate(String sql, long timeoutInMs, Object... parameters)
-      throws StatementExecutionException, IoTDBConnectionException {
-    // Build EXECUTE IMMEDIATE statement: EXECUTE IMMEDIATE 'sql' USING param1, param2, ...
-    // Escape single quotes in SQL by doubling them
-    String escapedSql = sql.replace("'", "''");
-    String executeSql;
-    if (parameters == null || parameters.length == 0) {
-      executeSql = String.format("EXECUTE IMMEDIATE '%s'", escapedSql);
-    } else {
-      String params = ParameterFormatter.formatParameters(parameters);
-      executeSql = String.format("EXECUTE IMMEDIATE '%s' USING %s", escapedSql, params);
-    }
-
-    // Try to execute as query first, fall back to non-query if needed
-    try {
-      if (timeoutInMs > 0) {
-        return session.executeQueryStatement(executeSql, timeoutInMs);
-      } else {
-        return session.executeQueryStatement(executeSql);
-      }
-    } catch (StatementExecutionException e) {
-      // If it's not a query statement, execute as non-query
-      session.executeNonQueryStatement(executeSql);
-      return null;
-    }
-  }
-
-  @Override
-  public void deallocate(String statementName)
-      throws IoTDBConnectionException, StatementExecutionException {
-    // Build DEALLOCATE statement: DEALLOCATE PREPARE statementName
-    String deallocateSql = String.format("DEALLOCATE PREPARE %s", statementName);
-    session.executeNonQueryStatement(deallocateSql);
-  }
+  //  @Override
+  //  public void prepare(String statementName, String sql)
+  //      throws IoTDBConnectionException, StatementExecutionException {
+  //    // Build PREPARE statement: PREPARE statementName FROM 'sql'
+  //    // Escape single quotes in SQL by doubling them
+  //    String escapedSql = sql.replace("'", "''");
+  //    String prepareSql = String.format("PREPARE %s FROM '%s'", statementName, escapedSql);
+  //    session.executeNonQueryStatement(prepareSql);
+  //  }
+  //
+  //  @Override
+  //  public SessionDataSet execute(String statementName, Object... parameters)
+  //      throws StatementExecutionException, IoTDBConnectionException {
+  //    return execute(statementName, 0, parameters);
+  //  }
+  //
+  //  @Override
+  //  public SessionDataSet execute(String statementName, long timeoutInMs, Object... parameters)
+  //      throws StatementExecutionException, IoTDBConnectionException {
+  //    // Build EXECUTE statement: EXECUTE statementName USING param1, param2, ...
+  //    String executeSql;
+  //    if (parameters == null || parameters.length == 0) {
+  //      executeSql = String.format("EXECUTE %s", statementName);
+  //    } else {
+  //      String params = ParameterFormatter.formatParameters(parameters);
+  //      executeSql = String.format("EXECUTE %s USING %s", statementName, params);
+  //    }
+  //
+  //    // Try to execute as query first, fall back to non-query if needed
+  //    try {
+  //      if (timeoutInMs > 0) {
+  //        return session.executeQueryStatement(executeSql, timeoutInMs);
+  //      } else {
+  //        return session.executeQueryStatement(executeSql);
+  //      }
+  //    } catch (StatementExecutionException e) {
+  //      // If it's not a query statement, execute as non-query
+  //      session.executeNonQueryStatement(executeSql);
+  //      return null;
+  //    }
+  //  }
+  //
+  //  @Override
+  //  public SessionDataSet executeImmediate(String sql, Object... parameters)
+  //      throws StatementExecutionException, IoTDBConnectionException {
+  //    return executeImmediate(sql, 0, parameters);
+  //  }
+  //
+  //  @Override
+  //  public SessionDataSet executeImmediate(String sql, long timeoutInMs, Object... parameters)
+  //      throws StatementExecutionException, IoTDBConnectionException {
+  //    // Build EXECUTE IMMEDIATE statement: EXECUTE IMMEDIATE 'sql' USING param1, param2, ...
+  //    // Escape single quotes in SQL by doubling them
+  //    String escapedSql = sql.replace("'", "''");
+  //    String executeSql;
+  //    if (parameters == null || parameters.length == 0) {
+  //      executeSql = String.format("EXECUTE IMMEDIATE '%s'", escapedSql);
+  //    } else {
+  //      String params = ParameterFormatter.formatParameters(parameters);
+  //      executeSql = String.format("EXECUTE IMMEDIATE '%s' USING %s", escapedSql, params);
+  //    }
+  //
+  //    // Try to execute as query first, fall back to non-query if needed
+  //    try {
+  //      if (timeoutInMs > 0) {
+  //        return session.executeQueryStatement(executeSql, timeoutInMs);
+  //      } else {
+  //        return session.executeQueryStatement(executeSql);
+  //      }
+  //    } catch (StatementExecutionException e) {
+  //      // If it's not a query statement, execute as non-query
+  //      session.executeNonQueryStatement(executeSql);
+  //      return null;
+  //    }
+  //  }
+  //
+  //  @Override
+  //  public void deallocate(String statementName)
+  //      throws IoTDBConnectionException, StatementExecutionException {
+  //    // Build DEALLOCATE statement: DEALLOCATE PREPARE statementName
+  //    String deallocateSql = String.format("DEALLOCATE PREPARE %s", statementName);
+  //    session.executeNonQueryStatement(deallocateSql);
+  //  }
 
   @Override
   public void close() throws IoTDBConnectionException {
