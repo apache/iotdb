@@ -400,9 +400,9 @@ public class FileUtils {
 
   private static void moveFile(File sourceFile, File targetDir) throws IOException {
     String sourceFileName = sourceFile.getName();
-    final File exitsFile = new File(targetDir, sourceFileName);
+    final File existsFile = new File(targetDir, sourceFileName);
     try (final FileInputStream is1 = new FileInputStream(sourceFile);
-        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+        final FileInputStream is2 = new FileInputStream(existsFile); ) {
       long sourceFileSize = is1.getChannel().size();
       long exitsFileSize = is2.getChannel().size();
       if (sourceFileSize != exitsFileSize) {
@@ -414,9 +414,9 @@ public class FileUtils {
       }
 
       String sourceFileMD5 = DigestUtils.md5Hex(is1);
-      String exitsFileMD5 = DigestUtils.md5Hex(is2);
+      String existsFileMD5 = DigestUtils.md5Hex(is2);
 
-      if (sourceFileMD5.equals(exitsFileMD5)) {
+      if (sourceFileMD5.equals(existsFileMD5)) {
         org.apache.commons.io.FileUtils.forceDelete(sourceFile);
         LOGGER.info(
             "Deleted the file {} because it already exists in the target directory: {}",
