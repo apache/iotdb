@@ -21,12 +21,12 @@ package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestManager;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,8 @@ public class DataNodeExternalServiceAsyncRequestManager
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeExternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeExternalServiceClientPoolFactory());
+                new ConfigNodeClientManager.ClientPoolFactory
+                    .AsyncDataNodeExternalServiceClientPoolFactory());
   }
 
   @Override

@@ -1108,42 +1108,6 @@ struct TDropModelReq {
   1: required string modelId
 }
 
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: optional list<string> modelIdList
-  3: optional map<string, string> modelTypeMap
-  4: optional map<string, string> categoryMap
-  5: optional map<string, string> stateMap
-}
-
-struct TShowLoadedModelReq {
-    1: required list<string> deviceIdList
-}
-
-struct TShowLoadedModelResp {
-  1: required common.TSStatus status
-  2: required map<string, map<string, i32>> deviceLoadedModelsMap
-}
-
-struct TShowAIDevicesResp {
-    1: required common.TSStatus status
-    2: required list<string> deviceIdList
-}
-
-struct TLoadModelReq {
-  1: required string existingModelId
-  2: required list<string> deviceIdList
-}
-
-struct TUnloadModelReq {
-  1: required string modelId
-  2: required list<string> deviceIdList
-}
-
 struct TGetModelInfoReq {
   1: required string modelId
 }
@@ -2064,35 +2028,11 @@ service IConfigNodeRPCService {
   common.TSStatus dropModel(TDropModelReq req)
 
   /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-  /**
-   * Return the loaded model table
-   */
-  TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req)
-
-  /**
-   * Return the available ai devices
-   */
-  TShowAIDevicesResp showAIDevices()
-
-  /**
-   * Unload an existing model to specific devices
-   *
-   * @return SUCCESS_STATUS if the model unloading task was submitted successfully
-   */
-  common.TSStatus unloadModel(TUnloadModelReq req)
-
-   /**
-   * Return the model info by model_id
-   */
+  * Return the model info by model_id
+  */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
@@ -35,6 +34,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHand
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -134,9 +134,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     isTSFileUsed
-                        ? new ClientPoolFactory
+                        ? new ConfigNodeClientManager.ClientPoolFactory
                             .AsyncPipeTsFileDataTransferServiceClientPoolFactory()
-                        : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+                        : new ConfigNodeClientManager.ClientPoolFactory
+                            .AsyncPipeDataTransferServiceClientPoolFactory()));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 

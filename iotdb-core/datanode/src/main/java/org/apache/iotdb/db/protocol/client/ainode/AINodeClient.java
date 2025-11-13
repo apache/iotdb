@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.db.protocol.client.ainode;
 
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.ainode.rpc.thrift.TConfigs;
@@ -41,13 +41,19 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.ainode.LoadModelException;
 import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -68,7 +74,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
@@ -99,27 +104,78 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
 
   ClientManager<TEndPoint, AINodeClient> clientManager;
 
-  private static final AtomicReference<TAINodeLocation> CURRENT_LOCATION = new AtomicReference<>();
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
-  /**
-   * Update global AINode location. DataNode/ConfigNode should call this when resolving the latest
-   * AINode location.
-   */
+  private static final java.util.concurrent.atomic.AtomicReference<TAINodeLocation>
+      CURRENT_LOCATION = new java.util.concurrent.atomic.AtomicReference<>();
+
+  public static TEndPoint getCurrentEndpoint() {
+    TAINodeLocation loc = CURRENT_LOCATION.get();
+    if (loc == null) {
+      loc = refreshFromConfigNode();
+    }
+    return (loc == null) ? null : pickEndpointFrom(loc);
+  }
+
   public static void updateGlobalAINodeLocation(final TAINodeLocation loc) {
     if (loc != null) {
       CURRENT_LOCATION.set(loc);
     }
   }
 
-  /** Derive current RPC endpoint from global AINode location (may be null). */
-  public static TEndPoint getCurrentEndpoint() {
-    final TAINodeLocation loc = CURRENT_LOCATION.get();
-    return (loc == null) ? null : toRpcEndPoint(loc);
+  private <R> R executeRemoteCallWithRetry(RemoteCall<R> call) throws TException {
+    TException last = null;
+    for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      try {
+        if (transport == null || !transport.isOpen()) {
+          final TEndPoint ep = getCurrentEndpoint();
+          if (ep == null) {
+            throw new TException("AINode endpoint unavailable");
+          }
+          this.endPoint = ep;
+          init();
+        }
+        return call.apply(client);
+      } catch (TException e) {
+        last = e;
+        invalidate();
+        final TAINodeLocation loc = refreshFromConfigNode();
+        if (loc != null) {
+          this.endPoint = pickEndpointFrom(loc);
+        }
+        try {
+          Thread.sleep(100L * attempt);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    throw (last != null ? last : new TException(MSG_CONNECTION_FAIL));
   }
 
-  /** Convert TAINodeLocation to the RPC TEndPoint used for client connection. */
-  private static TEndPoint toRpcEndPoint(final TAINodeLocation loc) {
-    return loc.getInternalEndPoint();
+  private static TAINodeLocation refreshFromConfigNode() {
+    try (final ConfigNodeClient cn =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetAINodeLocationResp resp = cn.getAINodeLocation();
+      if (resp != null && resp.isSetAiNodeLocation()) {
+        final TAINodeLocation loc = resp.getAiNodeLocation();
+        CURRENT_LOCATION.set(loc);
+        return loc;
+      }
+    } catch (Exception e) {
+      LoggerFactory.getLogger(AINodeClient.class)
+          .debug("[AINodeClient] refreshFromConfigNode failed: {}", e.toString());
+    }
+    return null;
+  }
+
+  private static TEndPoint pickEndpointFrom(final TAINodeLocation loc) {
+    if (loc == null) return null;
+    if (loc.isSetInternalEndPoint() && loc.getInternalEndPoint() != null) {
+      return loc.getInternalEndPoint();
+    }
+    return null;
   }
 
   public AINodeClient(
@@ -132,47 +188,6 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
     // Instance default endpoint (pool key). Global location can override it on retries.
     this.endPoint = endPoint;
     init();
-  }
-
-  private <R> R executeRemoteCallWithRetry(RemoteCall<R> call) throws TException {
-    TException last = null;
-    for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
-      try {
-        // ensure transport ready
-        if (transport == null || !transport.isOpen()) {
-          // If someone has updated global location, rebind to that endpoint first
-          final TEndPoint globalEp = getCurrentEndpoint();
-          if (globalEp != null) {
-            this.endPoint = globalEp;
-          }
-          init();
-        }
-        return call.apply(client);
-      } catch (TException e) {
-        last = e;
-        // hard reset transport
-        try {
-          invalidate();
-        } catch (Exception ignore) {
-          // ignore
-        }
-        // brief linear backoff
-        try {
-          Thread.sleep(100L * attempt);
-        } catch (InterruptedException ignore) {
-          Thread.currentThread().interrupt();
-        }
-        // try to rebind to latest global endpoint if available
-        final TEndPoint globalEp = getCurrentEndpoint();
-        if (globalEp != null) {
-          this.endPoint = globalEp;
-        }
-      }
-    }
-    if (last != null) {
-      throw last;
-    }
-    throw new TException(MSG_CONNECTION_FAIL);
   }
 
   private void init() throws TException {
