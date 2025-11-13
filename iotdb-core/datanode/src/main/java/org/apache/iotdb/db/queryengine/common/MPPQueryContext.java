@@ -47,11 +47,9 @@ import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -184,14 +182,6 @@ public class MPPQueryContext implements IAuditEntity {
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
     this.initResultNodeContext();
-  }
-
-  public void setHintMap(Map<String, Hint> hintMap) {
-    this.hintMap = hintMap;
-  }
-
-  public Map<String, Hint> getHintMap() {
-    return hintMap;
   }
 
   public void setReserveMemoryForSchemaTreeFunc(LongConsumer reserveMemoryForSchemaTreeFunc) {

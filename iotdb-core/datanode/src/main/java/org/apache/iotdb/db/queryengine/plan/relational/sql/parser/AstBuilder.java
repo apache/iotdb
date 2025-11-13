@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OneOrMoreQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParameterizedHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternAlternation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternConcatenation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternPermutation;
@@ -210,6 +211,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -249,10 +251,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantif
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -272,8 +270,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -2242,7 +2238,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               orderBy,
               offset,
               limit,
-              query.getHintMap()),
+              query.getSelectHint()),
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
@@ -2407,63 +2403,29 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitSelectHint(RelationalSqlParser.SelectHintContext ctx) {
-    Map<String, Hint> hintMap = new HashMap<>();
-    for (RelationalSqlParser.HintItemContext hiCtx : ctx.hintItem()) {
-      if (hiCtx instanceof RelationalSqlParser.ParameterizedHintContext) {
-        RelationalSqlParser.ParameterizedHintContext paramHint =
-            (RelationalSqlParser.ParameterizedHintContext) hiCtx;
-        List<RelationalSqlParser.IdentifierContext> identifiers = paramHint.identifier();
-        String hintName = identifiers.get(0).getText();
-        String[] params =
-            identifiers.stream()
-                .skip(1)
-                .map(RelationalSqlParser.IdentifierContext::getText)
-                .toArray(String[]::new);
-        addParamHint(hintName.toUpperCase(), params, hintMap);
-      } else if (hiCtx instanceof RelationalSqlParser.SimpleHintContext) {
-        RelationalSqlParser.SimpleHintContext simpleHint =
-            (RelationalSqlParser.SimpleHintContext) hiCtx;
-        String hintName = simpleHint.identifier().getText();
-        addSimpleHint(hintName.toUpperCase(), hintMap);
-      }
+    List<Node> hintItems = new ArrayList<>();
+    for (RelationalSqlParser.HintItemContext hintItemCtx : ctx.hintItem()) {
+      hintItems.add(visit(hintItemCtx));
     }
-
-    return new SelectHint(hintMap);
+    return new SelectHint(hintItems);
   }
 
-  private static final Map<String, HintDefinition> HINT_DEFINITIONS =
-      ImmutableMap.of(
-          "LEADER",
-              new HintDefinition(
-                  LeaderHint.hintName, LeaderHint::new, ImmutableSet.of(FollowerHint.hintName)),
-          "FOLLOWER",
-              new HintDefinition(
-                  FollowerHint.hintName, FollowerHint::new, ImmutableSet.of(LeaderHint.hintName))
-          // "MERGE_JOIN", new HintDefinition("MergeJoin", MergeJoinHint::new,
-          // ImmutableSet.of("NestLoopJoin", "HashJoin")),
-          // "NL_JOIN", new HintDefinition("NestLoopJoin", NestLoopJoinHint::new,
-          // ImmutableSet.of("MergeJoin", "HashJoin"))
-          );
-
-  private void addParamHint(String hintName, String[] params, Map<String, Hint> hintMap) {
-    HintDefinition definition = HINT_DEFINITIONS.get(hintName);
-    if (definition != null) {
-      Hint hint = definition.createHint(params);
-      String hintKey = hint.toString();
-      if (!hintMap.containsKey(hintKey)) {
-        hintMap.put(hintKey, hint);
-      }
-    }
+  @Override
+  public Node visitParameterizedHint(RelationalSqlParser.ParameterizedHintContext ctx) {
+    List<RelationalSqlParser.IdentifierContext> identifiers = ctx.identifier();
+    String hintName = identifiers.get(0).getText();
+    List<String> params =
+        identifiers.stream()
+            .skip(1)
+            .map(x -> x.getText().toLowerCase())
+            .collect(Collectors.toList());
+    return new ParameterizedHintItem(hintName, params);
   }
 
-  private void addSimpleHint(String hintName, Map<String, Hint> hintMap) {
-    HintDefinition definition = HINT_DEFINITIONS.get(hintName);
-    if (definition != null) {
-      Hint hint = definition.createHint();
-      if (definition.canAddTo(hintMap)) {
-        hintMap.put(hint.toString(), hint);
-      }
-    }
+  @Override
+  public Node visitSimpleHint(RelationalSqlParser.SimpleHintContext ctx) {
+    String hintName = ctx.identifier().getText();
+    return new SimpleHintItem(hintName);
   }
 
   @Override

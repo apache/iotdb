@@ -26,31 +26,32 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Objects;
 
-public class SelectHint extends Node {
-  private final List<Node> hintItems;
+/** Represents a simple hint without parameters, e.g., "LEADER". */
+public class SimpleHintItem extends Node {
+  private final String hintName;
 
-  public SelectHint(List<Node> hintItems) {
+  public SimpleHintItem(String hintName) {
     super(null);
-    this.hintItems = ImmutableList.copyOf(hintItems);
+    this.hintName = hintName.toUpperCase();
   }
 
-  public List<Node> getHintItems() {
-    return hintItems;
+  public String getHintName() {
+    return hintName;
   }
 
   @Override
   public List<? extends Node> getChildren() {
-    return hintItems;
+    return ImmutableList.of();
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitSelectHint(this, context);
+    return visitor.visitSimpleHintItem(this, context);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(hintItems);
+    return Objects.hash(hintName);
   }
 
   @Override
@@ -61,27 +62,12 @@ public class SelectHint extends Node {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SelectHint other = (SelectHint) obj;
-    return Objects.equals(this.hintItems, other.hintItems);
+    SimpleHintItem other = (SimpleHintItem) obj;
+    return Objects.equals(this.hintName, other.hintName);
   }
 
   @Override
   public String toString() {
-    if (hintItems == null || hintItems.isEmpty()) {
-      return "";
-    }
-
-    StringBuilder sb = new StringBuilder();
-    sb.append("/*+ ");
-
-    for (int i = 0; i < hintItems.size(); i++) {
-      if (i > 0) {
-        sb.append(" ");
-      }
-      sb.append(hintItems.get(i).toString());
-    }
-
-    sb.append(" */");
-    return sb.toString();
+    return hintName;
   }
 }
