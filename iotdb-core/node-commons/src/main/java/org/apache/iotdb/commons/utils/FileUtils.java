@@ -431,8 +431,8 @@ public class FileUtils {
     try (final FileInputStream is1 = new FileInputStream(sourceFile);
         final FileInputStream is2 = new FileInputStream(exitsFile); ) {
       long sourceFileSize = is1.getChannel().size();
-      long exitsFileSize = is2.getChannel().size();
-      if (sourceFileSize != exitsFileSize) {
+      long existsFileSize = is2.getChannel().size();
+      if (sourceFileSize != existsFileSize) {
         File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
         if (!file.exists()) {
           moveFileRename(sourceFile, file);
@@ -441,9 +441,9 @@ public class FileUtils {
       }
 
       String sourceFileMD5 = DigestUtils.md5Hex(is1);
-      String exitsFileMD5 = DigestUtils.md5Hex(is2);
+      String existsFileMD5 = DigestUtils.md5Hex(is2);
 
-      if (sourceFileMD5.equals(exitsFileMD5)) {
+      if (sourceFileMD5.equals(existsFileMD5)) {
         org.apache.tsfile.external.commons.io.FileUtils.forceDelete(sourceFile);
         LOGGER.info(
             "Deleted the file {} because it already exists in the target directory: {}",
