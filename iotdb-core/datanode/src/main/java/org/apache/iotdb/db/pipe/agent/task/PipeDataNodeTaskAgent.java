@@ -895,8 +895,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               .getLeft()) {
         return 0;
       }
-      return PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize()
-          * PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()
+      return PipeConfig.getInstance().getPipeSourceAssignerDisruptorRingBufferSize()
+          * PipeConfig.getInstance().getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes()
           * Math.min(StorageEngine.getInstance().getDataRegionNumber(), 10);
     } catch (final IllegalPathException e) {
       return 0;
