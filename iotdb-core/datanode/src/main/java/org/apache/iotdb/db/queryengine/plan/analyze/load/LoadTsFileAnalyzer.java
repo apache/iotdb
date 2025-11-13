@@ -96,6 +96,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -297,10 +298,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                "Loading file %s failed. Detail: %s",
                 tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
