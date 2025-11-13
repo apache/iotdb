@@ -232,6 +232,13 @@ public class IoTDBDeviceIT {
         assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
       }
 
+      try {
+        statement.execute("update table0 set model = humidity");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
+      }
+
       // Test filter with no effect
       statement.execute("update table0 set model = null where model = 'A' and model = 'B'");
 
