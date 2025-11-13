@@ -617,7 +617,10 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
           new ColumnHeader(SIZE_IN_BYTES, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =

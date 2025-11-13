@@ -138,6 +138,7 @@ public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
   public static IInformationSchemaContentSupplier getSupplier(
+      final OperatorContext context,
       final String tableName,
       final List<TSDataType> dataTypes,
       final UserEntity userEntity,
@@ -181,7 +182,7 @@ public class InformationSchemaContentSupplierFactory {
           return new DataNodesSupplier(dataTypes, userEntity);
         case InformationSchema.TABLE_DISK_USAGE:
           return new TableDiskUsageSupplier(
-              dataTypes, userEntity, pushDownFilter, paginationController);
+              dataTypes, userEntity, pushDownFilter, paginationController, context);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -1246,6 +1247,7 @@ public class InformationSchemaContentSupplierFactory {
     private final Map<String, List<TTableInfo>> databaseTableInfoMap;
     private final Filter pushDownFilter;
     private final PaginationController paginationController;
+    private final OperatorContext operatorContext;
 
     private DataRegion currentDataRegion;
     private long currentTimePartition;
@@ -1257,12 +1259,14 @@ public class InformationSchemaContentSupplierFactory {
     private TableDiskUsageSupplier(
         final List<TSDataType> dataTypes,
         final UserEntity userEntity,
-        Filter pushDownFilter,
-        PaginationController paginationController)
+        final Filter pushDownFilter,
+        final PaginationController paginationController,
+        final OperatorContext operatorContext)
         throws TException, ClientManagerException {
       this.dataTypes = dataTypes;
       this.pushDownFilter = pushDownFilter;
       this.paginationController = paginationController;
+      this.operatorContext = operatorContext;
       AuthorityChecker.getAccessControl().checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1288,11 +1292,11 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public boolean hasNext() {
-      if (!paginationController.hasCurLimit()) {
-        return false;
-      }
       if (statisticUtil != null) {
         return true;
+      }
+      if (!paginationController.hasCurLimit()) {
+        return false;
       }
       try {
         if (timePartitionIterator.next()) {
@@ -1300,7 +1304,10 @@ public class InformationSchemaContentSupplierFactory {
           currentTimePartition = timePartitionIterator.currentTimePartition();
           statisticUtil =
               new TableDiskUsageStatisticUtil(
-                  currentDataRegion.getTsFileManager(), currentTimePartition, currentTablesToScan);
+                  currentDataRegion.getTsFileManager(),
+                  currentTimePartition,
+                  currentTablesToScan,
+                  Optional.ofNullable(operatorContext.getInstanceContext()));
           return true;
         }
         return false;
@@ -1317,21 +1324,28 @@ public class InformationSchemaContentSupplierFactory {
         return Collections.emptyList();
       }
 
-      if (pushDownFilter == null) {
-        return tTableInfos.stream().map(TTableInfo::getTableName).collect(Collectors.toList());
-      }
-
       List<String> tablesToScan = new ArrayList<>(tTableInfos.size());
       for (TTableInfo tTableInfo : tTableInfos) {
-        Object[] row = new Object[5];
-        row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
-        row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
-        row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-        row[3] = Integer.parseInt(dataRegion.getDataRegionId());
-        row[4] = timePartition;
-        if (pushDownFilter.satisfyRow(0, row)) {
-          tablesToScan.add(tTableInfo.getTableName());
+        if (pushDownFilter != null) {
+          Object[] row = new Object[5];
+          row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
+          row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
+          row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+          row[3] = Integer.parseInt(dataRegion.getDataRegionId());
+          row[4] = timePartition;
+          if (!pushDownFilter.satisfyRow(0, row)) {
+            continue;
+          }
         }
+        if (!paginationController.hasCurLimit()) {
+          break;
+        }
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          continue;
+        }
+        paginationController.consumeLimit();
+        tablesToScan.add(tTableInfo.getTableName());
       }
       return tablesToScan;
     }
@@ -1358,13 +1372,6 @@ public class InformationSchemaContentSupplierFactory {
       long[] resultArr = statisticUtil.getResult();
 
       for (int i = 0; i < currentTablesToScan.size(); i++) {
-        if (paginationController.hasCurOffset()) {
-          paginationController.consumeOffset();
-          continue;
-        }
-        if (!paginationController.hasCurLimit()) {
-          break;
-        }
         builder.getTimeColumnBuilder().writeLong(0);
         ColumnBuilder[] columns = builder.getValueColumnBuilders();
 
@@ -1376,7 +1383,6 @@ public class InformationSchemaContentSupplierFactory {
         columns[4].writeLong(currentTimePartition);
         columns[5].writeLong(resultArr[i]);
         builder.declarePosition();
-        paginationController.consumeLimit();
       }
       closeStatisticUtil();
       return builder.build();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   public static final long SHALLOW_SIZE =
@@ -44,8 +46,11 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   private final long[] resultArr;
 
   public TableDiskUsageStatisticUtil(
-      TsFileManager tsFileManager, long timePartition, List<String> tableNames) {
-    super(tsFileManager, timePartition);
+      TsFileManager tsFileManager,
+      long timePartition,
+      List<String> tableNames,
+      Optional<FragmentInstanceContext> context) {
+    super(tsFileManager, timePartition, context);
     this.tableIndexMap = new HashMap<>();
     for (int i = 0; i < tableNames.size(); i++) {
       tableIndexMap.put(tableNames.get(i), i);
@@ -59,32 +64,25 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   @Override
-  public void calculateNextFile() {
-    TsFileResource tsFileResource = iterator.next();
-    if (tsFileResource.isDeleted()) {
+  protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
+      throws IOException {
+    TsFileMetadata tsFileMetadata = reader.readFileMetadata();
+    if (!hasSatisfiedData(tsFileMetadata)) {
       return;
     }
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      if (!hasSatisfiedData(tsFileMetadata)) {
-        return;
-      }
-      int allSatisfiedTableIndex = getAllSatisfiedTableIndex(tsFileMetadata);
-      if (allSatisfiedTableIndex > 0) {
-        // size of tsfile - size of (tsfile magic string + version number + all metadata + metadata
-        // marker)
-        resultArr[allSatisfiedTableIndex] +=
-            (tsFileResource.getTsFileSize()
-                - reader.getAllMetadataSize()
-                - 1
-                - TSFileConfig.MAGIC_STRING.getBytes().length
-                - 1);
-        return;
-      }
-      calculateDiskUsageInBytesByOffset(reader);
-    } catch (Exception e) {
-      logger.error("Failed to scan file {}", tsFileResource.getTsFile().getAbsolutePath(), e);
+    int allSatisfiedTableIndex = getAllSatisfiedTableIndex(tsFileMetadata);
+    if (allSatisfiedTableIndex > 0) {
+      // size of tsfile - size of (tsfile magic string + version number + all metadata + metadata
+      // marker)
+      resultArr[allSatisfiedTableIndex] +=
+          (tsFileResource.getTsFileSize()
+              - reader.getAllMetadataSize()
+              - 1
+              - TSFileConfig.MAGIC_STRING.getBytes().length
+              - 1);
+      return;
     }
+    calculateDiskUsageInBytesByOffset(reader);
   }
 
   private boolean hasSatisfiedData(TsFileMetadata tsFileMetadata) {
@@ -143,7 +141,8 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
         tableName,
         k -> {
           try {
-            TsFileDeviceIterator deviceIterator = reader.getTableDevicesIteratorWithIsAligned(k);
+            TsFileDeviceIterator deviceIterator =
+                reader.getTableDevicesIteratorWithIsAligned(k, timeSeriesMetadataIoSizeRecorder);
             Pair<IDeviceID, Boolean> pair = deviceIterator.next();
             return calculateStartOffsetOfChunkGroup(
                 reader, deviceIterator.getFirstMeasurementNodeOfCurrentDevice(), pair);

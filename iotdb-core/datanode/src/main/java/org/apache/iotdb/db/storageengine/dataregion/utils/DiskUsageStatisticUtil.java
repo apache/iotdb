@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -37,17 +40,31 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class DiskUsageStatisticUtil implements Closeable {
 
   protected static final Logger logger = LoggerFactory.getLogger(DiskUsageStatisticUtil.class);
-  protected List<TsFileResource> resourcesWithReadLock;
+  protected Queue<TsFileResource> resourcesWithReadLock;
   protected final Iterator<TsFileResource> iterator;
+  protected final LongConsumer timeSeriesMetadataIoSizeRecorder;
 
-  public DiskUsageStatisticUtil(TsFileManager tsFileManager, long timePartition) {
+  public DiskUsageStatisticUtil(
+      TsFileManager tsFileManager,
+      long timePartition,
+      Optional<FragmentInstanceContext> operatorContext) {
+    this.timeSeriesMetadataIoSizeRecorder =
+        operatorContext
+            .<LongConsumer>map(
+                context ->
+                    context.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet)
+            .orElse(null);
     List<TsFileResource> seqResources = tsFileManager.getTsFileListSnapshot(timePartition, true);
     List<TsFileResource> unseqResources = tsFileManager.getTsFileListSnapshot(timePartition, false);
     List<TsFileResource> resources =
@@ -63,7 +80,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
   public abstract long[] getResult();
 
   protected void acquireReadLocks(List<TsFileResource> resources) {
-    this.resourcesWithReadLock = new ArrayList<>(resources.size());
+    this.resourcesWithReadLock = new LinkedList<>();
     try {
       for (TsFileResource resource : resources) {
         resource.readLock();
@@ -89,7 +106,32 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     resourcesWithReadLock = null;
   }
 
-  public abstract void calculateNextFile();
+  public void calculateNextFile() {
+    TsFileResource tsFileResource = iterator.next();
+    try {
+      if (tsFileResource.isDeleted()) {
+        return;
+      }
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance()
+              .get(
+                  tsFileResource.getTsFilePath(),
+                  tsFileResource.getTsFileID(),
+                  true,
+                  timeSeriesMetadataIoSizeRecorder);
+      calculateNextFile(tsFileResource, reader);
+    } catch (Exception e) {
+      logger.error("Failed to scan file {}", tsFileResource.getTsFile().getAbsolutePath(), e);
+    } finally {
+      // this operation including readUnlock
+      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
+      iterator.remove();
+    }
+  }
+
+  protected abstract void calculateNextFile(
+      TsFileResource tsFileResource, TsFileSequenceReader reader)
+      throws IOException, IllegalPathException;
 
   protected long calculateStartOffsetOfChunkGroup(
       TsFileSequenceReader reader,
@@ -99,11 +141,10 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     int chunkGroupHeaderSize =
         new ChunkGroupHeader(deviceIsAlignedPair.getLeft()).getSerializedSize();
     if (deviceIsAlignedPair.getRight()) {
-      List<TimeseriesMetadata> timeColumnTimeseriesMetadata = new ArrayList<>(1);
-      reader.readITimeseriesMetadata(
-          timeColumnTimeseriesMetadata, firstMeasurementNodeOfCurrentDevice, "");
-      IChunkMetadata iChunkMetadata =
-          timeColumnTimeseriesMetadata.get(0).getChunkMetadataList().get(0);
+      TimeseriesMetadata timeColumnTimeseriesMetadata =
+          reader.getTimeColumnMetadata(
+              firstMeasurementNodeOfCurrentDevice, timeSeriesMetadataIoSizeRecorder);
+      IChunkMetadata iChunkMetadata = timeColumnTimeseriesMetadata.getChunkMetadataList().get(0);
       return iChunkMetadata.getOffsetOfChunkHeader() - chunkGroupHeaderSize;
     } else {
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
@@ -111,7 +152,8 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
           timeseriesMetadataList,
           firstMeasurementNodeOfCurrentDevice,
           Collections.emptySet(),
-          true);
+          true,
+          timeSeriesMetadataIoSizeRecorder);
       long minOffset = Long.MAX_VALUE;
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {

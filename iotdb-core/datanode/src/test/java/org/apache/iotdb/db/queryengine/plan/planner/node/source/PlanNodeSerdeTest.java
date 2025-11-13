@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -34,9 +35,9 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
-public class LastQueryScanNodeSerdeTest {
+public class PlanNodeSerdeTest {
   @Test
-  public void test() throws IllegalPathException {
+  public void testLastQueryScanNode() throws IllegalPathException {
     LastQueryScanNode node =
         new LastQueryScanNode(
             new PlanNodeId("test"),
@@ -64,6 +65,22 @@ public class LastQueryScanNodeSerdeTest {
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
                 new MeasurementSchema("s0", TSDataType.BOOLEAN)));
+    byteBuffer = ByteBuffer.allocate(2048);
+    node.serialize(byteBuffer);
+    byteBuffer.flip();
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
+  }
+
+  @Test
+  public void testShowDiskUsageNode() throws IllegalPathException {
+    ShowDiskUsageNode node =
+        new ShowDiskUsageNode(new PlanNodeId("test"), null, new PartialPath("root.test.d1"));
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
+    node.serialize(byteBuffer);
+    byteBuffer.flip();
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
+    node = new ShowDiskUsageNode(new PlanNodeId("test"), null, new PartialPath("root.test.d1"));
     byteBuffer = ByteBuffer.allocate(2048);
     node.serialize(byteBuffer);
     byteBuffer.flip();

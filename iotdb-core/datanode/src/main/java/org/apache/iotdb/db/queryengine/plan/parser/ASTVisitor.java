@@ -3660,14 +3660,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // parse ORDER BY
     if (ctx.orderByClause() != null) {
       showQueriesStatement.setOrderByComponent(
-          parseOrderByClause(
-              ctx.orderByClause(),
-              ImmutableSet.of(
-                  OrderByKey.TIME,
-                  OrderByKey.QUERYID,
-                  OrderByKey.DATANODEID,
-                  OrderByKey.ELAPSEDTIME,
-                  OrderByKey.STATEMENT)));
+          parseOrderByClause(ctx.orderByClause(), ImmutableSet.of(OrderByKey.TIME)));
     }
 
     // parse LIMIT & OFFSET
@@ -3687,7 +3680,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowDiskUsage(IoTDBSqlParser.ShowDiskUsageContext ctx) {
     PartialPath pathPattern = parsePrefixPath(ctx.prefixPath());
-    return new ShowDiskUsageStatement(pathPattern);
+    ShowDiskUsageStatement showDiskUsageStatement = new ShowDiskUsageStatement(pathPattern);
+    if (ctx.whereClause() != null) {
+      showDiskUsageStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      showDiskUsageStatement.setOrderByComponent(
+          parseOrderByClause(ctx.orderByClause(), ImmutableSet.of()));
+    }
+
+    // parse LIMIT & OFFSET
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showDiskUsageStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showDiskUsageStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showDiskUsageStatement;
   }
 
   // show region

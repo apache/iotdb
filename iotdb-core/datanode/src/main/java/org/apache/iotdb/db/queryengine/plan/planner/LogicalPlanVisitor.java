@@ -960,7 +960,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowDiskUsage(
       ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    planBuilder = planBuilder.planShowDiskUsage(analysis, showDiskUsageStatement.getPathPattern());
+    planBuilder =
+        planBuilder
+            .planShowDiskUsage(analysis, showDiskUsageStatement.getPathPattern())
+            .planOffset(showDiskUsageStatement.getOffset())
+            .planLimit(showDiskUsageStatement.getLimit());
     return planBuilder.getRoot();
   }
 

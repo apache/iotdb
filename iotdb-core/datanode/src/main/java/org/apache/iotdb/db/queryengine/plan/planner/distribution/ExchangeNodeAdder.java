@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TreeCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
@@ -236,6 +237,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitCollect(TreeCollectNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
@@ -567,10 +573,12 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     PlanNode newNode = node.clone();
     PlanNode child = visit(node.getChildren().get(0), context);
     newNode.addChild(child);
-    TRegionReplicaSet dataRegion = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
+    NodeDistribution nodeDistribution = context.getNodeDistribution(child.getPlanNodeId());
     context.putNodeDistribution(
         newNode.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+            nodeDistribution == null ? null : nodeDistribution.getRegion()));
     return newNode;
   }
 

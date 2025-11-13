@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -49,19 +48,12 @@ public final class StatementRewrite {
       Statement node,
       List<Expression> parameters,
       Map<NodeRef<Parameter>, Expression> parameterLookup,
-      WarningCollector warningCollector,
-      MPPQueryContext queryContext) {
+      WarningCollector warningCollector) {
     for (Rewrite rewrite : rewrites) {
       node =
           requireNonNull(
               rewrite.rewrite(
-                  analyzerFactory,
-                  session,
-                  node,
-                  parameters,
-                  parameterLookup,
-                  warningCollector,
-                  queryContext),
+                  analyzerFactory, session, node, parameters, parameterLookup, warningCollector),
               "Statement rewrite returned null");
     }
     return node;
@@ -74,8 +66,7 @@ public final class StatementRewrite {
         Statement node,
         List<Expression> parameters,
         Map<NodeRef<Parameter>, Expression> parameterLookup,
-        WarningCollector warningCollector,
-        MPPQueryContext queryContext);
+        WarningCollector warningCollector);
   }
 
   public static final StatementRewrite NOOP = new StatementRewrite(ImmutableSet.of());

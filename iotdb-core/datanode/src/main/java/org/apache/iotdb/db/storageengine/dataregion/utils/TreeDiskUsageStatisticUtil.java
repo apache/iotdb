@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -34,6 +35,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
+import java.util.Optional;
 
 public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
 
@@ -45,8 +47,11 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   private long result;
 
   public TreeDiskUsageStatisticUtil(
-      TsFileManager tsFileManager, long timePartition, PartialPath pathPattern) {
-    super(tsFileManager, timePartition);
+      TsFileManager tsFileManager,
+      long timePartition,
+      PartialPath pathPattern,
+      Optional<FragmentInstanceContext> context) {
+    super(tsFileManager, timePartition, context);
     this.pathPattern = pathPattern;
     this.result = 0;
     String[] nodes = pathPattern.getNodes();
@@ -71,44 +76,36 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   @Override
-  public void calculateNextFile() {
-    TsFileResource tsFileResource = iterator.next();
-    if (tsFileResource.isDeleted()) {
-      return;
-    }
-
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
-      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+  protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
+      throws IOException, IllegalPathException {
+    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIterator.hasNext()) {
+      Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
+      if (!matchPathPattern(deviceIsAlignedPair.getLeft())) {
+        continue;
+      }
+      MetadataIndexNode nodeOfFirstMatchedDevice =
+          deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
+      Pair<IDeviceID, Boolean> nextNotMatchedDevice = null;
+      MetadataIndexNode nodeOfNextNotMatchedDevice = null;
       while (deviceIterator.hasNext()) {
-        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
-        if (!matchPathPattern(deviceIsAlignedPair.getLeft())) {
-          continue;
-        }
-        MetadataIndexNode nodeOfFirstMatchedDevice =
-            deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
-        Pair<IDeviceID, Boolean> nextNotMatchedDevice = null;
-        MetadataIndexNode nodeOfNextNotMatchedDevice = null;
-        while (deviceIterator.hasNext()) {
-          Pair<IDeviceID, Boolean> currentDevice = deviceIterator.next();
-          if (!matchPathPattern(currentDevice.getLeft())) {
-            nextNotMatchedDevice = currentDevice;
-            nodeOfNextNotMatchedDevice = deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
-            break;
-          }
-        }
-        result +=
-            calculatePathPatternSize(
-                reader,
-                deviceIsAlignedPair,
-                nodeOfFirstMatchedDevice,
-                nextNotMatchedDevice,
-                nodeOfNextNotMatchedDevice);
-        if (isMatchedDeviceSequential) {
+        Pair<IDeviceID, Boolean> currentDevice = deviceIterator.next();
+        if (!matchPathPattern(currentDevice.getLeft())) {
+          nextNotMatchedDevice = currentDevice;
+          nodeOfNextNotMatchedDevice = deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
           break;
         }
       }
-    } catch (Exception e) {
-      logger.error("Failed to scan file {}", tsFileResource.getTsFile().getAbsolutePath(), e);
+      result +=
+          calculatePathPatternSize(
+              reader,
+              deviceIsAlignedPair,
+              nodeOfFirstMatchedDevice,
+              nextNotMatchedDevice,
+              nodeOfNextNotMatchedDevice);
+      if (isMatchedDeviceSequential) {
+        break;
+      }
     }
   }
 

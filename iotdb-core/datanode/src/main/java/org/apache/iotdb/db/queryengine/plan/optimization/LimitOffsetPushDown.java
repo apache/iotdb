@@ -33,10 +33,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TreeCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
@@ -69,7 +71,11 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
+    StatementType statementType = analysis.getTreeStatement().getType();
+    if (statementType == StatementType.SHOW_DISK_USAGE) {
+      return plan.accept(new Rewriter(), new RewriterContext(analysis));
+    }
+    if (statementType != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -175,6 +181,21 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitCollect(TreeCollectNode node, RewriterContext context) {
+      PlanNode newNode = node.clone();
+      RewriterContext subContext = new RewriterContext(context.getAnalysis());
+      subContext.setLimit(context.getLimit() + context.getOffset());
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, subContext));
+      }
+      if (node.getChildren().size() > 1) {
+        // keep parent limit/offset node
+        context.setEnablePushDown(false);
+      }
+      return newNode;
+    }
+
+    @Override
     public PlanNode visitTwoChildProcess(TwoChildProcessNode node, RewriterContext context) {
       context.setEnablePushDown(false);
       return node;
@@ -198,6 +219,15 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, RewriterContext context) {
+      if (context.isEnablePushDown()) {
+        node.setPushDownLimit(context.getLimit());
+        node.setPushDownOffset(context.getOffset());
+      }
+      return node;
+    }
+
+    @Override
+    public PlanNode visitShowDiskUsage(ShowDiskUsageNode node, RewriterContext context) {
       if (context.isEnablePushDown()) {
         node.setPushDownLimit(context.getLimit());
         node.setPushDownOffset(context.getOffset());

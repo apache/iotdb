@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -31,17 +28,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDiskUsageOfTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
@@ -64,52 +58,20 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
       final Statement node,
       final List<Expression> parameters,
       final Map<NodeRef<Parameter>, Expression> parameterLookup,
-      final WarningCollector warningCollector,
-      final MPPQueryContext queryContext) {
+      final WarningCollector warningCollector) {
     final Visitor visitor = new Visitor();
-    return (Statement) visitor.process(node, null);
+    return (Statement) visitor.process(node);
   }
 
-  private static class Visitor extends AstVisitor<Node, MPPQueryContext> {
+  private static class Visitor extends AstVisitor<Node, Void> {
 
     @Override
-    protected Node visitShowQueriesStatement(ShowQueriesStatement node, MPPQueryContext context) {
+    protected Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
       return visitShowStatement(node, context);
     }
 
     @Override
-    protected Node visitShowDiskUsageOfTable(ShowDiskUsageOfTable node, MPPQueryContext context) {
-      if (context != null) {
-        context.setTimeOut(Long.MAX_VALUE);
-      }
-      return simpleQuery(
-          selectList(
-              new SingleColumn(new Identifier(ColumnHeaderConstant.NODE_ID_TABLE_MODEL)),
-              new SingleColumn(
-                  new FunctionCall(
-                      QualifiedName.of(TableBuiltinAggregationFunction.SUM.getFunctionName()),
-                      Collections.singletonList(
-                          new Identifier(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL))),
-                  new Identifier(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL))),
-          from(INFORMATION_DATABASE, node.getTableName()),
-          node.getWhere(),
-          Optional.of(
-              new GroupBy(
-                  false,
-                  Collections.singletonList(
-                      new SimpleGroupBy(
-                          Collections.singletonList(
-                              new Identifier(ColumnHeaderConstant.NODE_ID_TABLE_MODEL)))))),
-          Optional.empty(),
-          Optional.empty(),
-          node.getOrderBy(),
-          node.getOffset(),
-          node.getLimit());
-    }
-
-    @Override
-    protected Node visitShowStatement(
-        final ShowStatement showStatement, final MPPQueryContext context) {
+    protected Node visitShowStatement(final ShowStatement showStatement, final Void context) {
       return simpleQuery(
           selectList(new AllColumns()),
           from(INFORMATION_DATABASE, showStatement.getTableName()),
@@ -123,8 +85,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitCountStatement(
-        final CountStatement countStatement, final MPPQueryContext context) {
+    protected Node visitCountStatement(final CountStatement countStatement, Void context) {
       return simpleQuery(
           new Select(
               false,
@@ -149,7 +110,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitNode(final Node node, final MPPQueryContext context) {
+    protected Node visitNode(final Node node, final Void context) {
       return node;
     }
   }

@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TreeCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
@@ -1288,8 +1289,31 @@ public class LogicalPlanBuilder {
     List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
-          new ShowDiskUsageNode(
-              context.getQueryId().genPlanNodeId(), dataNodeLocations.get(0), pathPattern);
+          planSingleShowDiskUsage(dataNodeLocations.get(0), pathPattern)
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  Ordering.ASC,
+                  true)
+              .getRoot();
+    } else if (analysis.getMergeOrderParameter().isEmpty()) {
+      TreeCollectNode collectNode =
+          new TreeCollectNode(
+              context.getQueryId().genPlanNodeId(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              collectNode.addChild(
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .getRoot()));
+      this.root = collectNode;
     } else {
       MergeSortNode mergeSortNode =
           new MergeSortNode(
@@ -1299,8 +1323,15 @@ public class LogicalPlanBuilder {
       dataNodeLocations.forEach(
           dataNodeLocation ->
               mergeSortNode.addChild(
-                  new ShowDiskUsageNode(
-                      context.getQueryId().genPlanNodeId(), dataNodeLocation, pathPattern)));
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
       this.root = mergeSortNode;
     }
 
@@ -1309,6 +1340,13 @@ public class LogicalPlanBuilder {
             context
                 .getTypeProvider()
                 .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowDiskUsage(
+      TDataNodeLocation dataNodeLocation, PartialPath pathPattern) {
+    this.root =
+        new ShowDiskUsageNode(context.getQueryId().genPlanNodeId(), dataNodeLocation, pathPattern);
     return this;
   }
 

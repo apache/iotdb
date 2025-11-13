@@ -959,10 +959,6 @@ sortKey
     : TIME
     | TIMESERIES
     | DEVICE
-    | QUERYID
-    | DATANODEID
-    | ELAPSEDTIME
-    | STATEMENT
     ;
 
 // ---- Fill Clause
@@ -1235,6 +1231,9 @@ showQueries
 
 showDiskUsage
     : SHOW DISK_USAGE FROM prefixPath
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
     ;
 
 // Show Current Timestamp

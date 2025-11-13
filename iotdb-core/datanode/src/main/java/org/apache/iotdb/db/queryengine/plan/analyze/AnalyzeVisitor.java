@@ -3780,7 +3780,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    analyzeWhere(analysis, showQueriesStatement);
+    if (!analyzeWhere(
+        analysis,
+        showQueriesStatement.getWhereCondition(),
+        ColumnHeaderConstant.showQueriesColumnHeaders)) {
+      showQueriesStatement.setWhereCondition(null);
+    }
 
     analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
 
@@ -3790,7 +3795,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitShowDiskUsage(
       ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
-    context.setTimeOut(Long.MAX_VALUE);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(showDiskUsageStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowDiskUsageHeader());
@@ -3811,27 +3815,47 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
+    if (!analyzeWhere(
+        analysis,
+        showDiskUsageStatement.getWhereCondition(),
+        ColumnHeaderConstant.showDiskUsageColumnHeaders)) {
+      showDiskUsageStatement.setWhereCondition(null);
+    }
+
     analysis.setMergeOrderParameter(new OrderByParameter(showDiskUsageStatement.getSortItemList()));
 
     return analysis;
   }
 
-  private void analyzeWhere(Analysis analysis, ShowQueriesStatement showQueriesStatement) {
-    WhereCondition whereCondition = showQueriesStatement.getWhereCondition();
+  private boolean analyzeWhere(
+      Analysis analysis, WhereCondition whereCondition, List<ColumnHeader> statementColumnHeaders) {
     if (whereCondition == null) {
-      return;
+      return true;
     }
 
-    Expression whereExpression =
+    Expression predicate =
         ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
-            whereCondition.getPredicate(), ColumnHeaderConstant.showQueriesColumnHeaders);
+            whereCondition.getPredicate(), statementColumnHeaders);
+    Pair<Expression, Boolean> resultPair =
+        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
+    boolean hasValueFilter = resultPair.getRight();
 
-    TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
+    predicate = PredicateUtils.simplifyPredicate(predicate);
+
+    // set where condition to null if predicate is true or don't have value filter
+    if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
+      return false;
+    } else {
+      whereCondition.setPredicate(predicate);
+    }
+    TSDataType outputType = analyzeExpressionType(analysis, predicate);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
     }
 
-    analysis.setWhereExpression(whereExpression);
+    analysis.setWhereExpression(predicate);
+    analysis.setHasValueFilter(true);
+    return true;
   }
 
   // Region view

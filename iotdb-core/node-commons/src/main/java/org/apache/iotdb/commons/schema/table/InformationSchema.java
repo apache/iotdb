@@ -414,10 +414,6 @@ public class InformationSchema {
     return columnsThatSupportPushDownPredicate.containsKey(tableName);
   }
 
-  public static boolean hasUnlimitedQueryTimeOut(String tableName) {
-    return tableName.equals(TABLE_DISK_USAGE);
-  }
-
   private InformationSchema() {
     // Utils
   }

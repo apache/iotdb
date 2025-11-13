@@ -30,9 +30,13 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TreeDiskUsageStatisticUtil;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.NoSuchElementException;
@@ -48,15 +52,22 @@ public class ShowDiskUsageOperator implements SourceOperator {
   private final PlanNodeId sourceId;
   private final PartialPath pathPattern;
   private final StorageEngineTimePartitionIterator timePartitionIterator;
+  private final PaginationController paginationController;
+  private final TsBlockBuilder tsBlockBuilder =
+      new TsBlockBuilder(DatasetHeaderFactory.getShowDiskUsageHeader().getRespDataTypes());
   private TreeDiskUsageStatisticUtil statisticUtil;
   private boolean allConsumed = false;
-  private long result = 0;
 
   public ShowDiskUsageOperator(
-      OperatorContext operatorContext, PlanNodeId sourceId, PartialPath pathPattern) {
+      OperatorContext operatorContext,
+      PlanNodeId sourceId,
+      PartialPath pathPattern,
+      Filter pushDownFilter,
+      PaginationController paginationController) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.pathPattern = pathPattern;
+    this.paginationController = paginationController;
     this.timePartitionIterator =
         new StorageEngineTimePartitionIterator(
             Optional.of(
@@ -65,7 +76,24 @@ public class ShowDiskUsageOperator implements SourceOperator {
                   return !PathUtils.isTableModelDatabase(databaseName)
                       && pathPattern.matchPrefixPath(new PartialPath(databaseName));
                 }),
-            Optional.empty());
+            Optional.of(
+                (dataRegion, timePartition) -> {
+                  if (pushDownFilter != null) {
+                    Object[] row = new Object[4];
+                    row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
+                    row[1] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+                    row[2] = Integer.parseInt(dataRegion.getDataRegionId());
+                    row[3] = timePartition;
+                    if (!pushDownFilter.satisfyRow(0, row)) {
+                      return false;
+                    }
+                  }
+                  if (paginationController.hasCurOffset()) {
+                    paginationController.consumeOffset();
+                    return false;
+                  }
+                  return paginationController.hasCurLimit();
+                }));
   }
 
   @Override
@@ -91,15 +119,31 @@ public class ShowDiskUsageOperator implements SourceOperator {
         continue;
       }
       if (statisticUtil != null) {
-        result += statisticUtil.getResult()[0];
+        tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
+        tsBlockBuilder.getValueColumnBuilders()[0].writeBinary(
+            new Binary(
+                timePartitionIterator.currentDataRegion().getDatabaseName(),
+                TSFileConfig.STRING_CHARSET));
+        tsBlockBuilder.getValueColumnBuilders()[1].writeInt(
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+        tsBlockBuilder.getValueColumnBuilders()[2].writeInt(
+            Integer.parseInt(timePartitionIterator.currentDataRegion().getDataRegionId()));
+        tsBlockBuilder.getValueColumnBuilders()[3].writeLong(
+            timePartitionIterator.currentTimePartition());
+        tsBlockBuilder.getValueColumnBuilders()[4].writeLong(statisticUtil.getResult()[0]);
+        tsBlockBuilder.declarePosition();
+        paginationController.consumeLimit();
         statisticUtil.close();
       }
-      if (timePartitionIterator.next()) {
+      if (paginationController.hasCurLimit() && timePartitionIterator.next()) {
         DataRegion dataRegion = timePartitionIterator.currentDataRegion();
         long timePartition = timePartitionIterator.currentTimePartition();
         statisticUtil =
             new TreeDiskUsageStatisticUtil(
-                dataRegion.getTsFileManager(), timePartition, pathPattern);
+                dataRegion.getTsFileManager(),
+                timePartition,
+                pathPattern,
+                Optional.ofNullable(operatorContext.getInstanceContext()));
       } else {
         allConsumed = true;
       }
@@ -108,13 +152,6 @@ public class ShowDiskUsageOperator implements SourceOperator {
     if (!allConsumed) {
       return null;
     }
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(1, DatasetHeaderFactory.getShowDiskUsageHeader().getRespDataTypes());
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
-    tsBlockBuilder.getValueColumnBuilders()[0].writeInt(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-    tsBlockBuilder.getValueColumnBuilders()[1].writeLong(result);
-    tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
 

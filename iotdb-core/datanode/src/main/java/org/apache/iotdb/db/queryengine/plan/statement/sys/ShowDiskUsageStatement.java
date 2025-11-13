@@ -22,16 +22,18 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
 import java.util.Collections;
 import java.util.List;
 
 public class ShowDiskUsageStatement extends ShowStatement {
-  private PartialPath pathPattern;
+  private final PartialPath pathPattern;
+  private WhereCondition whereCondition;
+  private OrderByComponent orderByComponent;
 
   public ShowDiskUsageStatement(PartialPath pathPattern) {
     this.statementType = StatementType.SHOW_DISK_USAGE;
@@ -42,8 +44,20 @@ public class ShowDiskUsageStatement extends ShowStatement {
     return pathPattern;
   }
 
+  public void setWhereCondition(WhereCondition whereCondition) {
+    this.whereCondition = whereCondition;
+  }
+
+  public WhereCondition getWhereCondition() {
+    return whereCondition;
+  }
+
+  public void setOrderByComponent(OrderByComponent orderByComponent) {
+    this.orderByComponent = orderByComponent;
+  }
+
   public List<SortItem> getSortItemList() {
-    return Collections.singletonList(new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    return orderByComponent == null ? Collections.emptyList() : orderByComponent.getSortItemList();
   }
 
   @Override
