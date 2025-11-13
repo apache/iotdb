@@ -98,8 +98,9 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+    // If the system is read-only, we shall not classify it into temporary unavailable exception to
+    // avoid to many logs
+    if (context.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
       return new TSStatus(
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
