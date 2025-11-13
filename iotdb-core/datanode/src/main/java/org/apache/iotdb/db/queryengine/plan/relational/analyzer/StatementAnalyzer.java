@@ -550,9 +550,20 @@ public class StatementAnalyzer {
                       }
                       attributeNames.add((SymbolReference) parsedColumn);
 
-                      final Pair<Type, Expression> expressionPair =
-                          analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue());
+                      final Pair<Type, Expression> expressionPair;
+                      try {
+                        expressionPair =
+                            analyzeAndRewriteExpression(
+                                translationMap, translationMap.getScope(), assignment.getValue());
+                      } catch (final Exception e) {
+                        if (e.getMessage().contains("cannot be resolved")) {
+                          throw new SemanticException(
+                              e.getMessage()
+                                  .replace(
+                                      "cannot be resolved", "is not an attribute or tag column"));
+                        }
+                        throw e;
+                      }
                       if (!expressionPair.getLeft().equals(StringType.STRING)
                           && !expressionPair.getLeft().equals(BinaryType.TEXT)
                           && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
@@ -4549,7 +4560,18 @@ public class StatementAnalyzer {
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
+                new TableSchema(
+                    originalSchema.getTableName(),
+                    originalSchema.getColumns().stream()
+                        .filter(
+                            columnSchema ->
+                                columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.ATTRIBUTE)
+                                    || columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.TAG))
+                        .collect(Collectors.toList()))));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
@@ -4563,7 +4585,16 @@ public class StatementAnalyzer {
                 new PlannerContext(metadata, null));
 
         if (node.getWhere().isPresent()) {
-          analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          try {
+            analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          } catch (final Throwable e) {
+            if (e instanceof SemanticException && e.getMessage().contains("cannot be resolved")) {
+              throw new SemanticException(
+                  e.getMessage()
+                      .replace("cannot be resolved", "is not an attribute or tag column"));
+            }
+            throw e;
+          }
           node.setWhere(translationMap.rewrite(analysis.getWhere(node)));
         }
       }

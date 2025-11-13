@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -222,6 +223,13 @@ public class IoTDBDeviceIT {
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals("701: Update's attribute value must be STRING, TEXT or null.", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set model = '1' where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
       }
 
       // Test filter with no effect
