@@ -25,17 +25,14 @@ import java.util.Objects;
 
 public abstract class Hint {
   protected String hintName;
+  protected String category;
 
-  protected Hint(String hintName) {
+  protected Hint(String hintName, String category) {
     this.hintName = Objects.requireNonNull(hintName, "hintName can not be null");
+    this.category = Objects.requireNonNull(category, "category can not be null");
   }
 
-  public boolean appliesToAll() {
-    return true;
-  }
+  public abstract String getKey();
 
-  @Override
-  public String toString() {
-    return hintName;
-  }
+  public abstract String toString();
 }

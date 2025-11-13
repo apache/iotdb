@@ -133,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParameterizedHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -162,6 +163,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -196,7 +198,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -363,6 +368,14 @@ public class StatementAnalyzer {
     UPDATE,
     MERGE,
   }
+
+  // Hint definition and processing methods
+  private static final Map<String, HintFactory> HINT_DEFINITIONS =
+      ImmutableMap.of(
+          "LEADER",
+          new HintFactory(LeaderHint.hintName, LeaderHint::new, true),
+          "FOLLOWER",
+          new HintFactory(FollowerHint.hintName, FollowerHint::new, true));
 
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
@@ -1165,10 +1178,6 @@ public class StatementAnalyzer {
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
       List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
-
-      Map<String, Hint> hintMap = analyzeHint(node);
-      queryContext.setHintMap(hintMap);
-
       Analysis.GroupingSetAnalysis groupByAnalysis =
           analyzeGroupBy(node, sourceScope, outputExpressions);
       analyzeHaving(node, sourceScope);
@@ -1254,6 +1263,8 @@ public class StatementAnalyzer {
             orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
       }
 
+      // select hint
+      analyzeHint(node, sourceScope);
       return outputScope;
     }
 
@@ -1507,12 +1518,76 @@ public class StatementAnalyzer {
       analysis.setWhere(node, predicate);
     }
 
-    private Map<String, Hint> analyzeHint(QuerySpecification node) {
-      Optional<SelectHint> selectHint = node.getHintMap();
-      if (selectHint.isPresent()) {
-        return selectHint.get().getHintMap();
+    private void analyzeHint(QuerySpecification node, Scope scope) {
+      Optional<SelectHint> selectHint = node.getSelectHint();
+      selectHint.ifPresent(hint -> process(hint, scope));
+    }
+
+    @Override
+    public Scope visitSelectHint(SelectHint node, final Optional<Scope> context) {
+      Map<String, Hint> hintMap = new HashMap<>();
+      for (Node hintItem : node.getHintItems()) {
+        if (hintItem instanceof ParameterizedHintItem) {
+          ParameterizedHintItem paramHint = (ParameterizedHintItem) hintItem;
+          String hintName = paramHint.getHintName();
+          List<String> params = paramHint.getParameters();
+          addHint(hintName, params.toArray(new String[0]), hintMap);
+        } else if (hintItem instanceof SimpleHintItem) {
+          SimpleHintItem simpleHint = (SimpleHintItem) hintItem;
+          String hintName = simpleHint.getHintName();
+          addHint(hintName, null, hintMap);
+        }
       }
-      return ImmutableMap.of();
+      analysis.setHintMap(hintMap);
+      return createAndAssignScope(node, context);
+    }
+
+    private boolean invalidHintParameters(String... params) {
+      if (params.length == 0) {
+        return false;
+      }
+
+      List<String> validTables =
+          analysis.getRelationNames().stream()
+              .map(QualifiedName::getSuffix)
+              .collect(toImmutableList());
+      for (String tableName : params) {
+        if (!validTables.contains(tableName)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private void addHint(String hintName, String[] params, Map<String, Hint> hintMap) {
+      HintFactory definition = HINT_DEFINITIONS.get(hintName);
+      if (definition != null) {
+        // If this hint supports parameter expansion and has multiple parameters
+        if (params != null && definition.shouldExpandParameters()) {
+          for (String param : params) {
+            if (invalidHintParameters(param)) {
+              return;
+            }
+
+            Hint hint = definition.createHint(param);
+            String hintKey = hint.getKey();
+            if (!hintMap.containsKey(hintKey)) {
+              hintMap.put(hintKey, hint);
+            }
+          }
+        } else {
+          // Default behavior for single parameter or non-expanding hints
+          if (params != null && invalidHintParameters(params)) {
+            return;
+          }
+
+          Hint hint = definition.createHint(params);
+          String hintKey = hint.getKey();
+          if (!hintMap.containsKey(hintKey)) {
+            hintMap.put(hintKey, hint);
+          }
+        }
+      }
     }
 
     private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {

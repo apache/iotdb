@@ -26,31 +26,38 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Objects;
 
-public class SelectHint extends Node {
-  private final List<Node> hintItems;
+/** Represents a parameterized hint, e.g., "LEADER(table1)" or "FOLLOWER(table2)". */
+public class ParameterizedHintItem extends Node {
+  private final String hintName;
+  private final List<String> parameters;
 
-  public SelectHint(List<Node> hintItems) {
+  public ParameterizedHintItem(String hintName, List<String> parameters) {
     super(null);
-    this.hintItems = ImmutableList.copyOf(hintItems);
+    this.hintName = hintName.toUpperCase();
+    this.parameters = ImmutableList.copyOf(parameters);
   }
 
-  public List<Node> getHintItems() {
-    return hintItems;
+  public String getHintName() {
+    return hintName;
+  }
+
+  public List<String> getParameters() {
+    return parameters;
   }
 
   @Override
   public List<? extends Node> getChildren() {
-    return hintItems;
+    return ImmutableList.of();
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitSelectHint(this, context);
+    return visitor.visitParameterizedHintItem(this, context);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(hintItems);
+    return Objects.hash(hintName, parameters);
   }
 
   @Override
@@ -61,27 +68,13 @@ public class SelectHint extends Node {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SelectHint other = (SelectHint) obj;
-    return Objects.equals(this.hintItems, other.hintItems);
+    ParameterizedHintItem other = (ParameterizedHintItem) obj;
+    return Objects.equals(this.hintName, other.hintName)
+        && Objects.equals(this.parameters, other.parameters);
   }
 
   @Override
   public String toString() {
-    if (hintItems == null || hintItems.isEmpty()) {
-      return "";
-    }
-
-    StringBuilder sb = new StringBuilder();
-    sb.append("/*+ ");
-
-    for (int i = 0; i < hintItems.size(); i++) {
-      if (i > 0) {
-        sb.append(" ");
-      }
-      sb.append(hintItems.get(i).toString());
-    }
-
-    sb.append(" */");
-    return sb.toString();
+    return hintName + "(" + String.join(", ", parameters) + ")";
   }
 }

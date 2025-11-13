@@ -142,7 +142,7 @@ public class QuerySpecification extends QueryBody {
     return limit;
   }
 
-  public Optional<SelectHint> getHintMap() {
+  public Optional<SelectHint> getSelectHint() {
     return selectHint;
   }
 
