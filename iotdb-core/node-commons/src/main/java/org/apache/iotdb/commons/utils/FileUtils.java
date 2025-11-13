@@ -418,7 +418,7 @@ public class FileUtils {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
     if (targetFile.exists()) {
-      moveFile(sourceFile, targetFile);
+      moveFile(sourceFile, targetDir);
     } else {
       org.apache.tsfile.external.commons.io.FileUtils.moveFileToDirectory(
           sourceFile, targetDir, true);
