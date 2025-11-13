@@ -170,15 +170,17 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
+      final String filePath = tsFileResource.getTsFile().getAbsolutePath();
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.serialize();
+        TsFileResource cloneTsFileResource = tsFileResource.shallowClone();
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
-                tsFileResource,
+                cloneTsFileResource,
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
                 isGeneratedByPipe,
                 false);
@@ -189,8 +191,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         resultStatus.setMessage(e.getMessage());
         throw new FragmentInstanceDispatchException(resultStatus);
       } catch (IOException e) {
-        LOGGER.warn(
-            "Serialize TsFileResource {} error.", tsFileResource.getTsFile().getAbsolutePath(), e);
+        LOGGER.warn("Serialize TsFileResource {} error.", filePath, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
