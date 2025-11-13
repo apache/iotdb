@@ -226,6 +226,20 @@ public class IoTDBDeviceIT {
       }
 
       try {
+        statement.execute("show devices from table0 where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
+      }
+
+      try {
+        statement.execute("count devices from table0 where humidity = 1");
+        fail("Update shall fail for non-tag/attribute columns");
+      } catch (final Exception e) {
+        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
+      }
+
+      try {
         statement.execute("update table0 set model = '1' where humidity = 1");
         fail("Update shall fail for non-tag/attribute columns");
       } catch (final Exception e) {
