@@ -70,7 +70,7 @@ public class LoadTsFileStatement extends Statement {
   private List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
-    this.file = new File(filePath);
+    this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
