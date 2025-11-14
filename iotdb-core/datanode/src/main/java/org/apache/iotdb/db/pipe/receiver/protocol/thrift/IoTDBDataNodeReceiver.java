@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -570,7 +571,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (!ActiveLoadUtil.loadFilesToActiveDir(dataBaseName, absolutePaths, true)) {
+    final Map<String, String> loadAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            dataBaseName,
+            null,
+            shouldConvertDataTypeOnTypeMismatch,
+            validateTsFile.get(),
+            null,
+            shouldMarkAsPipeRequest.get());
+
+    if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
