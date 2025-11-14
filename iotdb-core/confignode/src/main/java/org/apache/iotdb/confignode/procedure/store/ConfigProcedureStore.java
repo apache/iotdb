@@ -99,6 +99,8 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
           "pid={} Failed in the write update API executing the consensus layer due to: ",
           procedure.getProcId(),
           e);
+      // In consensus layer API, do nothing but just throw an exception to let upper caller handle
+      // it.
       throw e;
     }
   }
@@ -121,6 +123,8 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
           "pid={} Failed in the write delete API executing the consensus layer due to: ",
           procId,
           e);
+      // In consensus layer API, do nothing but just throw an exception to let upper caller handle
+      // it.
       throw e;
     }
   }

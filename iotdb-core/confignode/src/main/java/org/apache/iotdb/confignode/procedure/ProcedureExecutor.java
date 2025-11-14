@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -221,7 +222,8 @@ public class ProcedureExecutor<Env> {
 
   private void releaseLock(Procedure<Env> procedure, boolean force) {
     if (force || !procedure.holdLock(this.environment) || procedure.isFinished()) {
-      procedure.doReleaseLock(this.environment, store);
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> procedure.doReleaseLock(this.environment, store), "procedure release lock");
     }
   }
 
@@ -477,17 +479,16 @@ public class ProcedureExecutor<Env> {
     }
     if (parent != null && parent.tryRunnable()) {
       // If success, means all its children have completed, move parent to front of the queue.
-      try {
-        store.update(parent);
-        // do not add this procedure when exception occurred
-        scheduler.addFront(parent);
-        LOG.info(
-            "Finished subprocedure pid={}, resume processing ppid={}",
-            proc.getProcId(),
-            parent.getProcId());
-      } catch (Exception e) {
-        LOG.warn("Failed to update parent on countdown", e);
-      }
+      // Must endless retry here, since this step is not idempotency and can not be reexecute
+      // correctly in new CN leader.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(parent), "count down children procedure");
+      // do not add this procedure when exception occurred
+      scheduler.addFront(parent);
+      LOG.info(
+          "Finished subprocedure pid={}, resume processing ppid={}",
+          proc.getProcId(),
+          parent.getProcId());
     }
   }
 
@@ -514,6 +515,8 @@ public class ProcedureExecutor<Env> {
       try {
         store.update(subprocs);
       } catch (Exception e) {
+        // Do nothing since this step is idempotency. New CN leader can converge to the correct
+        // state when restore this procedure.
         LOG.warn("Failed to update subprocs on execution", e);
       }
     } else {
@@ -528,6 +531,8 @@ public class ProcedureExecutor<Env> {
               procedures.remove(childProcId);
             }
           } catch (Exception e) {
+            // Do nothing since this step is idempotency. New CN leader can converge to the correct
+            // state when restore this procedure.
             LOG.warn("Failed to delete subprocedures on execution", e);
           }
         } else {
@@ -541,6 +546,8 @@ public class ProcedureExecutor<Env> {
         try {
           store.update(proc);
         } catch (Exception e) {
+          // Do nothing since this step is idempotency. New CN leader can converge to the correct
+          // state when restore this procedure.
           LOG.warn("Failed to update procedure on execution", e);
         }
       }
@@ -599,13 +606,9 @@ public class ProcedureExecutor<Env> {
     if (exception == null) {
       exception = procedureStack.getException();
       rootProcedure.setFailure(exception);
-      try {
-        store.update(rootProcedure);
-      } catch (Exception e) {
-        LOG.warn("Failed to update root procedure on rollback", e);
-        // roll back
-        rootProcedure.setFailure(null);
-      }
+      // Endless retry since this step is not idempotency.
+      RetryUtils.executeWithEndlessBackoffRetry(
+          () -> store.update(rootProcedure), "root procedure rollback");
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
     int stackTail = subprocStack.size();
@@ -686,6 +689,8 @@ public class ProcedureExecutor<Env> {
           // do not remove this procedure when exception occurred
           procedures.remove(procedure.getProcId());
         } catch (Exception e) {
+          // Do nothing since this step is idempotency. New CN leader can converge to the correct
+          // state when restore this procedure.
           LOG.warn("Failed to delete procedure on rollback", e);
         }
       } else {
@@ -697,6 +702,8 @@ public class ProcedureExecutor<Env> {
             store.update(procedure);
           }
         } catch (Exception e) {
+          // Do nothing since this step is idempotency. New CN leader can converge to the correct
+          // state when restore this procedure.
           LOG.warn("Failed to delete procedure on rollback", e);
         }
       }
@@ -704,6 +711,8 @@ public class ProcedureExecutor<Env> {
       try {
         store.update(procedure);
       } catch (Exception e) {
+        // Do nothing since this step is idempotency. New CN leader can converge to the correct
+        // state when restore this procedure.
         LOG.warn("Failed to update procedure on rollback", e);
       }
     }

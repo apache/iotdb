@@ -78,6 +78,8 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
           try {
             executor.getStore().update(procedure);
           } catch (Exception e) {
+            // Do nothing since new CN leader can converge to the correct state when restore this
+            // procedure.
             LOGGER.warn("Failed to update procedure {}", procedure, e);
           }
           executor.getScheduler().addFront(procedure);
