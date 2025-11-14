@@ -323,13 +323,13 @@ public class PipeDescriptor {
                         "pipe_extractor_matcher_cache_size",
                         String.valueOf(config.getPipeSourceMatcherCacheSize())))));
 
-    config.setPipeConnectorHandshakeTimeoutMs(
+    config.setPipeSinkHandshakeTimeoutMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_handshake_timeout_ms"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_handshake_timeout_ms",
-                        String.valueOf(config.getPipeConnectorHandshakeTimeoutMs())))));
+                        String.valueOf(config.getPipeSinkHandshakeTimeoutMs())))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_size"))

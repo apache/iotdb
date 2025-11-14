@@ -259,7 +259,7 @@ public class CommonConfig {
   private long pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
   private long pipeSourceMatcherCacheSize = 1024;
 
-  private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
+  private int pipeSinkHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
@@ -988,22 +988,21 @@ public class CommonConfig {
     logger.info("pipeExtractorMatcherCacheSize is set to {}.", pipeSourceMatcherCacheSize);
   }
 
-  public int getPipeConnectorHandshakeTimeoutMs() {
-    return pipeConnectorHandshakeTimeoutMs;
+  public int getPipeSinkHandshakeTimeoutMs() {
+    return pipeSinkHandshakeTimeoutMs;
   }
 
-  public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
-    final int fPipeConnectorHandshakeTimeoutMs = this.pipeConnectorHandshakeTimeoutMs;
+  public void setPipeSinkHandshakeTimeoutMs(long pipeSinkHandshakeTimeoutMs) {
+    final int fPipeConnectorHandshakeTimeoutMs = this.pipeSinkHandshakeTimeoutMs;
     try {
-      this.pipeConnectorHandshakeTimeoutMs = Math.toIntExact(pipeConnectorHandshakeTimeoutMs);
+      this.pipeSinkHandshakeTimeoutMs = Math.toIntExact(pipeSinkHandshakeTimeoutMs);
     } catch (ArithmeticException e) {
-      this.pipeConnectorHandshakeTimeoutMs = Integer.MAX_VALUE;
+      this.pipeSinkHandshakeTimeoutMs = Integer.MAX_VALUE;
       logger.warn(
           "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
-      if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorHandshakeTimeoutMs) {
-        logger.info(
-            "pipeConnectorHandshakeTimeoutMs is set to {}.", this.pipeConnectorHandshakeTimeoutMs);
+      if (fPipeConnectorHandshakeTimeoutMs != this.pipeSinkHandshakeTimeoutMs) {
+        logger.info("pipeSinkHandshakeTimeoutMs is set to {}.", this.pipeSinkHandshakeTimeoutMs);
       }
     }
   }
