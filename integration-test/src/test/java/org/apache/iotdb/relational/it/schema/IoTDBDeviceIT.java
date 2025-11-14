@@ -168,7 +168,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
-        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
+        assertTrue(e.getMessage().contains("Column 'a' is not an attribute or tag column"));
       }
 
       // Test fully qualified name
