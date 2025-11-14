@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -558,9 +559,13 @@ public class StatementAnalyzer {
                       } catch (final Exception e) {
                         if (e.getMessage().contains("cannot be resolved")) {
                           throw new SemanticException(
-                              e.getMessage()
-                                  .replace(
-                                      "cannot be resolved", "is not an attribute or tag column"));
+                              new IoTDBException(
+                                  e.getCause()
+                                      .getMessage()
+                                      .replace(
+                                          "cannot be resolved",
+                                          "is not an attribute or tag column"),
+                                  TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
                         }
                         throw e;
                       }
@@ -4590,8 +4595,11 @@ public class StatementAnalyzer {
           } catch (final Throwable e) {
             if (e instanceof SemanticException && e.getMessage().contains("cannot be resolved")) {
               throw new SemanticException(
-                  e.getMessage()
-                      .replace("cannot be resolved", "is not an attribute or tag column"));
+                  new IoTDBException(
+                      e.getCause()
+                          .getMessage()
+                          .replace("cannot be resolved", "is not an attribute or tag column"),
+                      TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
             }
             throw e;
           }
