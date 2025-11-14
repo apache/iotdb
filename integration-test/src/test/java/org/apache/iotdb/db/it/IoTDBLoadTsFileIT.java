@@ -68,6 +68,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -752,14 +753,15 @@ public class IoTDBLoadTsFileIT {
     final long writtenPoint1;
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
-        new TsFileGenerator(new File(dataNodeWrapper.getDataNodeDir(), "1-0-0-0.tsfile"))) {
+        new TsFileGenerator(new File(System.getProperty(USER_DIR), "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
       generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
         final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", "1-0-0-0.tsfile"));
