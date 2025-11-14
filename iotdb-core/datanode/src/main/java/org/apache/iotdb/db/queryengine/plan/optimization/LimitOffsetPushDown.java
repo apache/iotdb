@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TreeCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -181,10 +181,12 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitCollect(TreeCollectNode node, RewriterContext context) {
+    public PlanNode visitCollect(CollectNode node, RewriterContext context) {
       PlanNode newNode = node.clone();
       RewriterContext subContext = new RewriterContext(context.getAnalysis());
-      subContext.setLimit(context.getLimit() + context.getOffset());
+      if (context.getLimit() > 0) {
+        subContext.setLimit(context.getLimit() + context.getOffset());
+      }
       for (PlanNode child : node.getChildren()) {
         newNode.addChild(child.accept(this, subContext));
       }

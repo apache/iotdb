@@ -35,16 +35,16 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class TreeCollectNode extends MultiChildProcessNode {
+public class CollectNode extends MultiChildProcessNode {
 
   private final List<String> outputColumnNames;
 
-  public TreeCollectNode(PlanNodeId id, List<String> outputColumnNames) {
+  public CollectNode(PlanNodeId id, List<String> outputColumnNames) {
     super(id);
     this.outputColumnNames = outputColumnNames;
   }
 
-  public TreeCollectNode(PlanNodeId id, List<PlanNode> children, List<String> outputColumnNames) {
+  public CollectNode(PlanNodeId id, List<PlanNode> children, List<String> outputColumnNames) {
     super(id, children);
     this.outputColumnNames = outputColumnNames;
   }
@@ -56,7 +56,7 @@ public class TreeCollectNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TreeCollectNode(id, outputColumnNames);
+    return new CollectNode(id, outputColumnNames);
   }
 
   @Override
@@ -72,7 +72,7 @@ public class TreeCollectNode extends MultiChildProcessNode {
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     checkArgument(children.size() == newChildren.size(), "wrong number of new children");
-    return new TreeCollectNode(id, newChildren, outputColumnNames);
+    return new CollectNode(id, newChildren, outputColumnNames);
   }
 
   @Override
@@ -91,14 +91,14 @@ public class TreeCollectNode extends MultiChildProcessNode {
     }
   }
 
-  public static TreeCollectNode deserialize(ByteBuffer byteBuffer) {
+  public static CollectNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>(size);
     while (size-- > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TreeCollectNode(planNodeId, outputColumnNames);
+    return new CollectNode(planNodeId, outputColumnNames);
   }
 
   @Override

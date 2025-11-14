@@ -1326,6 +1326,9 @@ public class InformationSchemaContentSupplierFactory {
 
       List<String> tablesToScan = new ArrayList<>(tTableInfos.size());
       for (TTableInfo tTableInfo : tTableInfos) {
+        if (tTableInfo.getType() != TableType.BASE_TABLE.ordinal()) {
+          continue;
+        }
         if (pushDownFilter != null) {
           Object[] row = new Object[5];
           row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
