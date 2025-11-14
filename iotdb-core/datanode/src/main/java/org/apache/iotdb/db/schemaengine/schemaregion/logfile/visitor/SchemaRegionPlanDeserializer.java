@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -394,6 +396,12 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       alterLogicalViewPlan.setViewPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
       alterLogicalViewPlan.setSourceExpression(ViewExpression.deserialize(buffer));
       return alterLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode, final ByteBuffer buffer) {
+      return (AlterEncodingCompressorNode) PlanNodeType.deserialize(buffer);
     }
   }
 }
