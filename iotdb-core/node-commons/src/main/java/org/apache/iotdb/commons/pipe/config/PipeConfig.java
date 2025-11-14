@@ -183,16 +183,16 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTsFileEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTsFileEventQueueSize();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTabletEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTabletEventQueueSize();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTotalEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTotalEventQueueSize();
   }
 
   public long getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall() {
@@ -541,13 +541,13 @@ public class PipeConfig {
 
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTsFileEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTabletEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTotalEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorMaxRetryExecutionTimeMsPerCall: {}",
         getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
