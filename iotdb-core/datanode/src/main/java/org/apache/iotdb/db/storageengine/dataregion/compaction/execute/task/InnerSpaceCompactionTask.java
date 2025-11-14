@@ -116,14 +116,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   protected static class InnerCompactionTaskFilesView {
-    protected List<TsFileResource> sortedAllSourceFilesInTask;
-    protected List<TsFileResource> sourceFilesInCompactionPerformer;
-    protected List<TsFileResource> skippedSourceFiles;
+    protected List<TsFileResource> sortedAllSourceFilesInTask = Collections.emptyList();
+    protected List<TsFileResource> sourceFilesInCompactionPerformer = Collections.emptyList();
+    protected List<TsFileResource> skippedSourceFiles = Collections.emptyList();
     protected boolean sequence;
-    protected List<TsFileResource> sourceFilesInLog;
-    protected List<TsFileResource> targetFilesInLog;
-    protected List<TsFileResource> targetFilesInPerformer;
-    protected List<TsFileResource> renamedTargetFiles;
+    protected List<TsFileResource> sourceFilesInLog = Collections.emptyList();
+    protected List<TsFileResource> targetFilesInLog = Collections.emptyList();
+    protected List<TsFileResource> targetFilesInPerformer = Collections.emptyList();
+    protected List<TsFileResource> renamedTargetFiles = Collections.emptyList();
 
     protected long selectedFileSize;
     protected int sumOfCompactionCount;
