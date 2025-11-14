@@ -47,7 +47,7 @@ public class IoTDBDeviceIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultSchemaRegionGroupNumPerDatabase(2);
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
   @AfterClass
@@ -290,9 +290,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("delete devices from table0 where time = 1");
         fail("Delete devices shall fail when specifies non tag column");
       } catch (final Exception e) {
-        assertEquals(
-            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
-            e.getMessage());
+        assertTrue(e.getMessage().contains("Column 'time' is not an attribute or tag column"));
       }
     }
   }
