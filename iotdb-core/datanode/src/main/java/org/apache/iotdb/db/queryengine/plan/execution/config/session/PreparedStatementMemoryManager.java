@@ -24,9 +24,14 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.memory.MemoryException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Memory manager for PreparedStatement. All PreparedStatements from all sessions share the memory
@@ -102,6 +107,66 @@ public class PreparedStatementMemoryManager {
             e.getMessage(),
             e);
       }
+    }
+  }
+
+  /**
+   * Release all PreparedStatements for a session. This method should be called when a session is
+   * closed or connection is lost.
+   *
+   * @param session the session whose PreparedStatements should be released
+   */
+  public void releaseAllForSession(IClientSession session) {
+    if (session == null) {
+      return;
+    }
+
+    try {
+      Set<String> preparedStatementNames = session.getPreparedStatementNames();
+      if (preparedStatementNames == null || preparedStatementNames.isEmpty()) {
+        return;
+      }
+
+      int releasedCount = 0;
+      long totalReleasedBytes = 0;
+
+      // Create a copy of the set to avoid concurrent modification
+      Set<String> statementNamesCopy = new HashSet<>(preparedStatementNames);
+
+      for (String statementName : statementNamesCopy) {
+        try {
+          PreparedStatementInfo info = session.getPreparedStatement(statementName);
+          if (info != null && info.getMemoryBlock() != null) {
+            IMemoryBlock memoryBlock = info.getMemoryBlock();
+            if (!memoryBlock.isReleased()) {
+              long memorySize = memoryBlock.getTotalMemorySizeInBytes();
+              release(memoryBlock);
+              releasedCount++;
+              totalReleasedBytes += memorySize;
+            }
+          }
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to release PreparedStatement '{}' during session cleanup: {}",
+              statementName,
+              e.getMessage(),
+              e);
+        }
+      }
+
+      if (releasedCount > 0) {
+        LOGGER.debug(
+            "Released {} PreparedStatement(s) ({} bytes total) for session {}",
+            releasedCount,
+            totalReleasedBytes,
+            session);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to release PreparedStatement resources for session {}: {}",
+          session,
+          e.getMessage(),
+          e);
     }
   }
 }

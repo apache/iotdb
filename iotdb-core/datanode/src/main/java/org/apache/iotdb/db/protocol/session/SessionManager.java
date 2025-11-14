@@ -39,6 +39,7 @@ import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -274,6 +275,7 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {
+    // Release query resources
     Iterable<Long> statementIds = session.getStatementIds();
     if (statementIds != null) {
       for (Long statementId : statementIds) {
@@ -284,6 +286,17 @@ public class SessionManager implements SessionManagerMBean {
           }
         }
       }
+    }
+
+    // Release PreparedStatement memory resources
+    try {
+      PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to release PreparedStatement resources for session {}: {}",
+          session,
+          e.getMessage(),
+          e);
     }
   }
 
