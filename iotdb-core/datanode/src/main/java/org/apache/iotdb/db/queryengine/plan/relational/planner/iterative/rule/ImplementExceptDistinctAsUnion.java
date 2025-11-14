@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -39,24 +39,23 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
 
-public class ImplementIntersectDistinctAsUnion implements Rule<IntersectNode> {
-
-  private static final Pattern<IntersectNode> PATTERN =
-      Patterns.intersect().with(Patterns.Intersect.distinct().equalTo(true));
+public class ImplementExceptDistinctAsUnion implements Rule<ExceptNode> {
 
   private final Metadata metadata;
+  private static final Pattern<ExceptNode> PATTERN =
+      Patterns.except().with(Patterns.Except.distinct().equalTo(true));
 
-  @Override
-  public Pattern<IntersectNode> getPattern() {
-    return PATTERN;
-  }
-
-  public ImplementIntersectDistinctAsUnion(Metadata metadata) {
+  public ImplementExceptDistinctAsUnion(Metadata metadata) {
     this.metadata = requireNonNull(metadata, "metadata is null");
   }
 
   @Override
-  public Result apply(IntersectNode node, Captures captures, Context context) {
+  public Pattern<ExceptNode> getPattern() {
+    return PATTERN;
+  }
+
+  @Override
+  public Result apply(ExceptNode node, Captures captures, Context context) {
 
     SetOperationNodeTranslator translator =
         new SetOperationNodeTranslator(
@@ -65,20 +64,26 @@ public class ImplementIntersectDistinctAsUnion implements Rule<IntersectNode> {
     SetOperationNodeTranslator.TranslationResult result =
         translator.makeSetContainmentPlanForDistinct(node);
 
-    // add the filterNode above the aggregation node
-    Expression predicate =
-        and(
-            result.getCountSymbols().stream()
-                .map(
-                    symbol ->
-                        new ComparisonExpression(
-                            GREATER_THAN_OR_EQUAL,
-                            symbol.toSymbolReference(),
-                            new GenericLiteral(LongType.INT64.getDisplayName(), "1")))
-                .collect(ImmutableList.toImmutableList()));
+    ImmutableList.Builder<Expression> predicatesBuilder = ImmutableList.builder();
+    predicatesBuilder.add(
+        new ComparisonExpression(
+            GREATER_THAN_OR_EQUAL,
+            result.getCountSymbols().get(0).toSymbolReference(),
+            new GenericLiteral(LongType.INT64.getDisplayName(), "1")));
+
+    for (int i = 1; i < node.getChildren().size(); i++) {
+      predicatesBuilder.add(
+          new ComparisonExpression(
+              ComparisonExpression.Operator.EQUAL,
+              result.getCountSymbols().get(i).toSymbolReference(),
+              new GenericLiteral(LongType.INT64.getDisplayName(), "0")));
+    }
 
     FilterNode filterNode =
-        new FilterNode(context.getIdAllocator().genPlanNodeId(), result.getPlanNode(), predicate);
+        new FilterNode(
+            context.getIdAllocator().genPlanNodeId(),
+            result.getPlanNode(),
+            and(predicatesBuilder.build()));
 
     return Result.ofPlanNode(
         new ProjectNode(
