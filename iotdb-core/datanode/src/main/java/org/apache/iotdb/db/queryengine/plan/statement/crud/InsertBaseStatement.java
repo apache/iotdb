@@ -686,7 +686,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     ramBytesUsed =
         InsertNodeMemoryEstimator.sizeOfPartialPath(devicePath)
             + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
-            + InsertNodeMemoryEstimator.sizeOfStringArray(measurements)
+            + RamUsageEstimator.sizeOf(measurements)
             + RamUsageEstimator.shallowSizeOf(dataTypes)
             + RamUsageEstimator.shallowSizeOf(columnCategories)
             // We assume that the integers are all cached by JVM

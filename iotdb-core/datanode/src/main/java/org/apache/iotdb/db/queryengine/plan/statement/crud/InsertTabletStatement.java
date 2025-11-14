@@ -615,7 +615,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(times)
-        + InsertNodeMemoryEstimator.sizeOfBitMapArray(nullBitMaps)
+        + RamUsageEstimator.sizeOf(nullBitMaps)
         + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas)
         + (Objects.nonNull(deviceIDs)
             ? Arrays.stream(deviceIDs)
