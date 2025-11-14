@@ -32,7 +32,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
@@ -45,14 +47,16 @@ public class ActiveLoadUtil {
   private static volatile ILoadDiskSelector loadDiskSelector = updateLoadDiskSelector();
 
   public static boolean loadTsFileAsyncToActiveDir(
-      final List<File> tsFiles, final String dataBaseName, final boolean isDeleteAfterLoad) {
+      final List<File> tsFiles,
+      final Map<String, String> loadAttributes,
+      final boolean isDeleteAfterLoad) {
     if (tsFiles == null || tsFiles.isEmpty()) {
       return true;
     }
 
     try {
       for (File file : tsFiles) {
-        if (!loadTsFilesToActiveDir(dataBaseName, file, isDeleteAfterLoad)) {
+        if (!loadTsFilesToActiveDir(loadAttributes, file, isDeleteAfterLoad)) {
           return false;
         }
       }
@@ -65,7 +69,7 @@ public class ActiveLoadUtil {
   }
 
   private static boolean loadTsFilesToActiveDir(
-      final String dataBaseName, final File file, final boolean isDeleteAfterLoad)
+      final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
       throws IOException {
     if (file == null) {
       return true;
@@ -84,12 +88,9 @@ public class ActiveLoadUtil {
       LOGGER.warn("Load active listening dir is not set.");
       return false;
     }
-    final File targetDir;
-    if (Objects.nonNull(dataBaseName)) {
-      targetDir = new File(targetFilePath, dataBaseName);
-    } else {
-      targetDir = targetFilePath;
-    }
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     loadTsFileAsyncToTargetDir(
         targetDir, new File(file.getAbsolutePath() + ".resource"), isDeleteAfterLoad);
@@ -100,7 +101,9 @@ public class ActiveLoadUtil {
   }
 
   public static boolean loadFilesToActiveDir(
-      final String dataBaseName, final List<String> files, final boolean isDeleteAfterLoad)
+      final Map<String, String> loadAttributes,
+      final List<String> files,
+      final boolean isDeleteAfterLoad)
       throws IOException {
     if (files == null || files.isEmpty()) {
       return true;
@@ -120,12 +123,9 @@ public class ActiveLoadUtil {
       LOGGER.warn("Load active listening dir is not set.");
       return false;
     }
-    final File targetDir;
-    if (Objects.nonNull(dataBaseName)) {
-      targetDir = new File(targetFilePath, dataBaseName);
-    } else {
-      targetDir = targetFilePath;
-    }
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     for (final String file : files) {
       loadTsFileAsyncToTargetDir(targetDir, new File(file), isDeleteAfterLoad);
@@ -137,6 +137,11 @@ public class ActiveLoadUtil {
       final File targetDir, final File file, final boolean isDeleteAfterLoad) throws IOException {
     if (!file.exists()) {
       return;
+    }
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      if (!targetDir.exists()) {
+        throw new IOException("Failed to create target directory " + targetDir.getAbsolutePath());
+      }
     }
     RetryUtils.retryOnException(
         () -> {

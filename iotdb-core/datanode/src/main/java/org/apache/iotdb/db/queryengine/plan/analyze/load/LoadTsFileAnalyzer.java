@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -281,7 +282,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } else {
         databaseName = null;
       }
-      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, databaseName, isDeleteAfterLoad)) {
+      final Map<String, String> activeLoadAttributes =
+          ActiveLoadPathHelper.buildAttributes(
+              databaseName,
+              databaseLevel,
+              isConvertOnTypeMismatch,
+              isVerifySchema,
+              tabletConversionThresholdBytes,
+              isGeneratedByPipe);
+
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
+          tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
         setRealStatement(analysis);
         return true;
