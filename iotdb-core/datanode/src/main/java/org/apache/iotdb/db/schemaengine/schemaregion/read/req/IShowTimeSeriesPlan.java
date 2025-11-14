@@ -21,7 +21,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.commons.schema.template.Template;
 
 import java.util.Map;
 

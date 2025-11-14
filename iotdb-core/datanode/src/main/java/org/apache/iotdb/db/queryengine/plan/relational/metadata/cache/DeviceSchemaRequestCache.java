@@ -44,11 +44,11 @@ public class DeviceSchemaRequestCache {
     return INSTANCE;
   }
 
-  public FetchMissingDeviceSchema getOrCreatePendingRequest(FetchDevice statement) {
+  public FetchMissingDeviceSchema getOrCreatePendingRequest(final FetchDevice statement) {
     return pendingRequests.get(statement, k -> new FetchMissingDeviceSchema());
   }
 
-  public void removeCompletedRequest(FetchDevice statement) {
+  public void removeCompletedRequest(final FetchDevice statement) {
     pendingRequests.invalidate(statement);
   }
 
@@ -61,11 +61,11 @@ public class DeviceSchemaRequestCache {
       return result;
     }
 
-    public void setResult(Map<IDeviceID, Map<String, Binary>> result) {
+    public void setResult(final Map<IDeviceID, Map<String, Binary>> result) {
       this.result = result;
     }
 
-    public synchronized void waitForQuery(long queryId) {
+    public synchronized void waitForQuery(final long queryId) {
       if (this.queryId != -1) {
         if (!done) {
           try {
