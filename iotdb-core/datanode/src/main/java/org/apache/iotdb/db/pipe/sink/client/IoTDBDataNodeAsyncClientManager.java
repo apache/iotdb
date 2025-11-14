@@ -300,7 +300,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
           Boolean.toString(shouldMarkAsPipeRequest));
 
-      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
+      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
       waitHandshakeFinished(isHandshakeFinished);
 
@@ -319,7 +319,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         resp.set(null);
         exception.set(null);
 
-        client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
+        client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
         client.pipeTransfer(
             PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),

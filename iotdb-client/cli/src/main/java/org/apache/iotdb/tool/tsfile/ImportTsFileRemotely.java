@@ -295,8 +295,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       this.client =
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(
-                      PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PipeConfig.getInstance().isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
