@@ -36,27 +36,20 @@ import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator.getBinarySize;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 import static org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize;
 
 public class PipeMemoryWeightUtil {
-  private static final long TABLET_SIZE = RamUsageEstimator.shallowSizeOfInstance(Tablet.class);
-  private static final long LOCAL_DATE_ARRAY_SIZE =
-      RamUsageEstimator.shallowSizeOf(LocalDate[].class);
-  private static final long LOCAL_DATE_SIZE = RamUsageEstimator.shallowSizeOf(LocalDate.class);
 
   /** Estimates memory usage of a {@link Map}<{@link IDeviceID}, {@link Boolean}>. */
   public static long memoryOfIDeviceId2Bool(Map<IDeviceID, Boolean> map) {
