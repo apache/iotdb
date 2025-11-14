@@ -65,7 +65,7 @@ public class TsTable {
 
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
-  private String tableName;
+  protected String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
@@ -331,10 +331,13 @@ public class TsTable {
     ReadWriteIOUtils.write(props, stream);
   }
 
-  public static TsTable deserialize(InputStream inputStream) throws IOException {
-    String name = ReadWriteIOUtils.readString(inputStream);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(inputStream);
+  public static TsTable deserialize(final InputStream inputStream) throws IOException {
+    final String name = ReadWriteIOUtils.readString(inputStream);
+    final int columnNum = ReadWriteIOUtils.readInt(inputStream);
+    if (columnNum < 0) {
+      return new NonCommittableTsTable(name);
+    }
+    final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(inputStream));
     }
@@ -342,10 +345,13 @@ public class TsTable {
     return table;
   }
 
-  public static TsTable deserialize(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
-    TsTable table = new TsTable(name);
-    int columnNum = ReadWriteIOUtils.readInt(buffer);
+  public static TsTable deserialize(final ByteBuffer buffer) {
+    final String name = ReadWriteIOUtils.readString(buffer);
+    final int columnNum = ReadWriteIOUtils.readInt(buffer);
+    if (columnNum < 0) {
+      return new NonCommittableTsTable(name);
+    }
+    final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
       table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(buffer));
     }

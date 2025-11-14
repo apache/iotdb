@@ -440,6 +440,7 @@ struct TRollbackSchemaBlackListReq {
 
 struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
+  2: optional bool needLock
 }
 
 struct TFetchSchemaBlackListReq {
@@ -462,6 +463,14 @@ struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+}
+
+struct TAlterEncodingCompressorReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+  3: required bool ifExists
+  4: optional byte encoding
+  5: optional byte compressor
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -1071,6 +1080,11 @@ service IDataNodeRPCService {
    * Delete matched timeseries and remove according schema black list in target schemRegion
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter matched timeseries to specific encoding and compressor in target schemaRegions
+   */
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template

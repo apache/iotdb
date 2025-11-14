@@ -48,6 +48,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
@@ -62,8 +63,6 @@ public class LoadTsFileStatement extends Statement {
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
   private boolean isAsyncLoad = false;
-
-  private Map<String, String> loadAttributes;
 
   private List<File> tsFiles;
   private List<Boolean> isTableModel;
@@ -245,15 +244,14 @@ public class LoadTsFileStatement extends Statement {
   }
 
   public void setLoadAttributes(final Map<String, String> loadAttributes) {
-    this.loadAttributes = loadAttributes;
-    initAttributes();
+    initAttributes(loadAttributes);
   }
 
   public boolean isAsyncLoad() {
     return isAsyncLoad;
   }
 
-  private void initAttributes() {
+  private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
@@ -263,6 +261,9 @@ public class LoadTsFileStatement extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
+      markIsGeneratedByPipe();
+    }
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -314,7 +315,7 @@ public class LoadTsFileStatement extends Statement {
   @Override
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
-    loadAttributes = new HashMap<>();
+    final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
     if (database != null) {
@@ -326,6 +327,9 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
+    if (isGeneratedByPipe) {
+      loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
+    }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }

@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -281,7 +281,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   public static Optional<ConfigPhysicalPlan> parseConfigPlan(
       final ConfigPhysicalPlan plan,
-      final UnionIoTDBTreePattern treePattern,
+      final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     Optional<ConfigPhysicalPlan> result = Optional.of(plan);
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
@@ -324,7 +324,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   public static boolean isTypeListened(
       final ConfigPhysicalPlan plan,
       final Set<ConfigPhysicalPlanType> listenedTypeSet,
-      final UnionIoTDBTreePattern treePattern,
+      final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     return listenedTypeSet.contains(plan.getType())

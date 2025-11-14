@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,11 +39,6 @@ public class UnionTreePattern extends TreePattern {
       final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
     super(isTreeModelDataAllowedToBeCaptured);
     this.patterns = patterns;
-  }
-
-  @Override
-  public boolean isSingle() {
-    return patterns.size() == 1;
   }
 
   @Override
@@ -81,6 +79,15 @@ public class UnionTreePattern extends TreePattern {
   @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
+  }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    final List<PartialPath> paths = new ArrayList<>();
+    for (final TreePattern p : patterns) {
+      paths.addAll(p.getBaseInclusionPaths());
+    }
+    return paths;
   }
 
   @Override

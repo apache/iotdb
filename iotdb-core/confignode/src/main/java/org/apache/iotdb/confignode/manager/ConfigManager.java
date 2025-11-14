@@ -144,6 +144,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -2236,6 +2237,23 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.alterEncodingCompressor(
+          req.getQueryId(),
+          PathPatternTree.deserialize(req.pathPatternTree),
+          req.getEncoding(),
+          req.getCompressor(),
+          req.isIfExists(),
+          req.isIsGeneratedByPipe(),
+          req.isMayAlterAudit());
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -3044,23 +3062,17 @@ public class ConfigManager implements IManager {
   @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     final TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.fetchTables(
-            fetchTableMap.entrySet().stream()
-                .filter(
-                    entry -> {
-                      entry
-                          .getValue()
-                          .removeIf(
-                              table ->
-                                  procedureManager
-                                      .checkDuplicateTableTask(
-                                          entry.getKey(), null, table, null, null, null)
-                                      .getRight());
-                      return true;
-                    })
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-        : new TFetchTableResp(status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TFetchTableResp(status);
+    }
+    fetchTableMap.forEach(
+        (key, value) ->
+            value.removeIf(
+                table ->
+                    procedureManager
+                        .checkDuplicateTableTask(key, null, table, null, null, null)
+                        .getRight()));
+    return clusterSchemaManager.fetchTables(fetchTableMap);
   }
 
   @Override

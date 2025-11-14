@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -170,6 +173,7 @@ import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATAB
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
+import static org.apache.iotdb.db.auth.AuthorityChecker.getAuthorizedPathTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
 
 public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAccessCheckContext> {
@@ -1459,6 +1463,56 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitAlterEncodingCompressor(
+      final AlterEncodingCompressorStatement alterEncodingCompressorStatement,
+      final TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
+    final boolean audit =
+        checkHasGlobalAuth(
+            context, PrivilegeType.AUDIT, alterEncodingCompressorStatement.getPaths()::toString);
+    if (audit) {
+      alterEncodingCompressorStatement.setWithAudit(true);
+    }
+    if (alterEncodingCompressorStatement.ifPermitted()) {
+      try {
+        final PathPatternTree authTree =
+            getAuthorizedPathTree(context.getUsername(), PrivilegeType.WRITE_SCHEMA);
+        if (audit) {
+          authTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+          authTree.constructTree();
+        }
+        alterEncodingCompressorStatement.setPatternTree(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                alterEncodingCompressorStatement.getPatternTree(), authTree));
+        return StatusUtils.OK;
+      } catch (final AuthException e) {
+        recordObjectAuthenticationAuditLog(
+            context.setResult(false),
+            () ->
+                alterEncodingCompressorStatement.getPaths().stream()
+                    .distinct()
+                    .collect(Collectors.toList())
+                    .toString());
+        return new TSStatus(e.getCode().getStatusCode());
+      }
+    }
+    // Check audit privilege
+    if (!audit) {
+      for (final PartialPath path : alterEncodingCompressorStatement.getPaths()) {
+        if (includeByAuditTreeDB(path)) {
+          return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+              .setMessage(
+                  String.format(
+                      "'AUDIT' permission is needed to alter the encoding and compressor of database %s",
+                      TREE_MODEL_AUDIT_DATABASE));
+        }
+      }
+    }
+    return checkTimeSeriesPermission(
+        context, alterEncodingCompressorStatement::getPaths, PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
   public TSStatus visitDeleteTimeSeries(
       DeleteTimeSeriesStatement statement, TreeAccessCheckContext context) {
     context.setAuditLogOperation(AuditLogOperation.DDL);
@@ -1718,7 +1772,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return SUCCEED;
   }
 
   @Override

@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -570,7 +571,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (!ActiveLoadUtil.loadFilesToActiveDir(dataBaseName, absolutePaths, true)) {
+    final Map<String, String> loadAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            dataBaseName,
+            null,
+            shouldConvertDataTypeOnTypeMismatch,
+            validateTsFile.get(),
+            null,
+            shouldMarkAsPipeRequest.get());
+
+    if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -609,12 +619,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             parameters.get(ColumnHeaderConstant.TYPE));
     final boolean isTreeModelDataAllowedToBeCaptured =
         parameters.containsKey(PipeTransferFileSealReqV2.TREE);
-    final List<TreePattern> treePatterns =
-        TreePattern.parseMultiplePatterns(
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
-            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TreePattern treePattern =
-        TreePattern.buildUnionPattern(isTreeModelDataAllowedToBeCaptured, treePatterns);
+        TreePattern.parsePatternFromString(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
+            isTreeModelDataAllowedToBeCaptured,
+            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
             parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
@@ -636,7 +645,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Here we apply the statements as many as possible
         // Even if there are failed statements
         STATEMENT_TREE_PATTERN_PARSE_VISITOR
-            .process(originalStatement, (UnionIoTDBTreePattern) treePattern)
+            .process(originalStatement, (IoTDBTreePatternOperations) treePattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement

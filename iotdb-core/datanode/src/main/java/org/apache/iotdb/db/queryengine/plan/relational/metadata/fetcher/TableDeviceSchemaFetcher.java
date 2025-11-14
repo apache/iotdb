@@ -459,11 +459,11 @@ public class TableDeviceSchemaFetcher {
   }
 
   public static IDeviceID convertTagValuesToDeviceID(
-      final String tableName, final String[] idValues) {
+      final String tableName, final String[] tagValues) {
     // Convert to IDeviceID
-    final String[] deviceIdNodes = new String[idValues.length + 1];
+    final String[] deviceIdNodes = new String[tagValues.length + 1];
     deviceIdNodes[0] = tableName;
-    System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
+    System.arraycopy(tagValues, 0, deviceIdNodes, 1, tagValues.length);
     return IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes);
   }
 

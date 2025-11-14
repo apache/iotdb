@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -176,7 +176,7 @@ public class PipeEventCollector implements EventCollector {
             ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
                 .process(
                     deleteDataEvent.getDeleteDataNode(),
-                    (UnionIoTDBTreePattern) deleteDataEvent.getTreePattern())
+                    (IoTDBTreePatternOperations) deleteDataEvent.getTreePattern())
                 .flatMap(
                     planNode ->
                         new PipePlanTreePrivilegeParseVisitor(
