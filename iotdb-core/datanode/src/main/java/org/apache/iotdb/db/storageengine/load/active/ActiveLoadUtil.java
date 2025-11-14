@@ -92,11 +92,11 @@ public class ActiveLoadUtil {
         Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
-    loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
         targetDir, new File(file.getAbsolutePath() + ".resource"), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
         targetDir, new File(file.getAbsolutePath() + ".mods"), isDeleteAfterLoad);
+    loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
     return true;
   }
 
