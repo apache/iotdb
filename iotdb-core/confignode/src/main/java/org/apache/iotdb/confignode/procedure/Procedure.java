@@ -307,7 +307,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       } catch (Exception e) {
         // Do not need to do anything else. New leader which restore this procedure from a wrong
         // state will reexecute it and converge to the correct state since procedures are
-        // idempotency.
+        // idempotent.
         LOG.warn("pid={} Failed to persist lock state to store.", this.procId, e);
       }
     }

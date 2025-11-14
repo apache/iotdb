@@ -76,7 +76,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
             LOG.error("Error deleting completed procedures {}.", proc, e);
             // Do not remove from the completed map. Even this procedure may be restored
             // unexpectedly in another new CN leader, we do not need to do anything else since
-            // procedures are idempotency.
+            // procedures are idempotent.
             continue;
           } finally {
             batchCount = 0;
@@ -91,7 +91,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
         store.delete(batchIds, 0, batchCount);
       } catch (Exception e) {
         // Even this procedure may be restored unexpectedly in another new CN leader, we do not need
-        // to do anything else since procedures are idempotency.
+        // to do anything else since procedures are idempotent.
         LOG.error("Error deleting completed procedures {}.", batchIds, e);
       }
     }
