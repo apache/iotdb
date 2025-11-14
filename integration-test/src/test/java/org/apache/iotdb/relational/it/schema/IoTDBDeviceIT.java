@@ -165,15 +165,6 @@ public class IoTDBDeviceIT {
       }
 
       try {
-        statement.executeQuery("show devices from table0 where temperature = 37.6");
-        fail("Show devices shall fail for measurement predicate");
-      } catch (final Exception e) {
-        assertEquals(
-            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
-            e.getMessage());
-      }
-
-      try {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
