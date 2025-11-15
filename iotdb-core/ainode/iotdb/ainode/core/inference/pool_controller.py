@@ -504,7 +504,7 @@ class PoolController:
             return pool_group.get_load(pool_id)
         return -1
 
-    def shutdown(self):
+    def stop(self):
         self._stop_event.set()
 
         # shutdown pool controller
