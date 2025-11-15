@@ -745,8 +745,8 @@ public class StatementAnalyzer {
       final MPPQueryContext context = insert.getContext();
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
-      innerInsert.semanticCheck();
       innerInsert.toLowerCase();
+      innerInsert.semanticCheck();
 
       innerInsert =
           AnalyzeUtils.analyzeInsert(

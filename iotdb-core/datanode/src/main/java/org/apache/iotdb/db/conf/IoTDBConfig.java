@@ -1943,17 +1943,6 @@ public class IoTDBConfig {
     this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
-  public long getDataNodeTableSchemaCacheSize() {
-    return dataNodeTableSchemaCacheSize;
-  }
-
-  public void setDataNodeTableSchemaCacheSize(long dataNodeTableSchemaCacheSize) {
-    if (dataNodeTableSchemaCacheSize < 0) {
-      return;
-    }
-    this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
-  }
-
   public int getDeviceSchemaRequestCacheMaxSize() {
     return deviceSchemaRequestCacheMaxSize;
   }
@@ -1974,6 +1963,17 @@ public class IoTDBConfig {
       return;
     }
     this.deviceSchemaRequestCacheWaitTimeMs = deviceSchemaRequestCacheWaitTimeMs;
+  }
+
+  public long getDataNodeTableSchemaCacheSize() {
+    return dataNodeTableSchemaCacheSize;
+  }
+
+  public void setDataNodeTableSchemaCacheSize(long dataNodeTableSchemaCacheSize) {
+    if (dataNodeTableSchemaCacheSize < 0) {
+      return;
+    }
+    this.dataNodeTableSchemaCacheSize = dataNodeTableSchemaCacheSize;
   }
 
   public long getWalMemTableSnapshotThreshold() {

@@ -31,8 +31,11 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -50,6 +53,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -71,6 +77,13 @@ public class TsTable {
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+
+  private final AtomicLong version = new AtomicLong(0L);
+  private final AtomicBoolean isNotWrite = new AtomicBoolean(true);
+
+  private final AtomicLong lastReadVersion = new AtomicLong(-1);
+  private final AtomicReference<List<TsTableColumnSchema>> tagColumnSchemas =
+      new AtomicReference<>();
 
   private Map<String, String> props = null;
 
@@ -95,12 +108,44 @@ public class TsTable {
     return tableName;
   }
 
+  /**
+   * Get column schema with optimistic lock for fast reads. This method uses a lock-free fast path
+   * when there's no concurrent write operation, significantly improving read performance.
+   *
+   * @param columnName the column name to query
+   * @return the column schema, or null if not found
+   */
   public TsTableColumnSchema getColumnSchema(final String columnName) {
+    long versionBefore = version.get();
+    TsTableColumnSchema result = columnSchemaMap.get(columnName);
+    if (isNotWrite.get() && version.get() == versionBefore) {
+      return result;
+    }
+
+    // Slow path: write in progress or version changed, acquire read lock
     readWriteLock.readLock().lock();
     try {
       return columnSchemaMap.get(columnName);
     } finally {
       readWriteLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Execute a write operation with optimistic lock support. This method handles the write flag and
+   * version increment automatically.
+   *
+   * @param writeOperation the write operation to execute
+   */
+  private void executeWrite(Runnable writeOperation) {
+    readWriteLock.writeLock().lock();
+    isNotWrite.set(false);
+    try {
+      writeOperation.run();
+    } finally {
+      version.incrementAndGet();
+      isNotWrite.set(true);
+      readWriteLock.writeLock().unlock();
     }
   }
 
@@ -114,9 +159,14 @@ public class TsTable {
   }
 
   public List<TsTableColumnSchema> getTagColumnSchemaList() {
+    List<TsTableColumnSchema> tagColumnSchemaList = tagColumnSchemas.get();
+    if (tagColumnSchemaList != null && lastReadVersion.get() == version.get() && isNotWrite.get()) {
+      return tagColumnSchemaList;
+    }
+
     readWriteLock.readLock().lock();
     try {
-      final List<TsTableColumnSchema> tagColumnSchemaList = new ArrayList<>();
+      tagColumnSchemaList = new ArrayList<>(tagColumnIndexMap.size());
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
         if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
           tagColumnSchemaList.add(columnSchema);
@@ -124,89 +174,80 @@ public class TsTable {
       }
       return tagColumnSchemaList;
     } finally {
+      tagColumnSchemas.set(tagColumnSchemaList);
+      lastReadVersion.set(version.get());
       readWriteLock.readLock().unlock();
     }
   }
 
   // Currently only supports device view
   public void renameTable(final String newName) {
-    readWriteLock.writeLock().lock();
-    try {
-      tableName = newName;
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(() -> tableName = newName);
   }
 
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
-    readWriteLock.writeLock().lock();
-    try {
-      columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        tagNums++;
-        tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
-      } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-        fieldNum++;
-      }
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(
+        () -> {
+          columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+          if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+            tagNums++;
+            tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
+          } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
+            fieldNum++;
+          }
+        });
   }
 
   public void renameColumnSchema(final String oldName, final String newName) {
-    readWriteLock.writeLock().lock();
-    try {
-      // Ensures idempotency
-      if (columnSchemaMap.containsKey(oldName)) {
-        final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
-        final Map<String, String> oldProps = schema.getProps();
-        oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
-        switch (schema.getColumnCategory()) {
-          case TAG:
-            columnSchemaMap.put(
-                newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
-            break;
-          case FIELD:
-            columnSchemaMap.put(
-                newName,
-                new FieldColumnSchema(
+    executeWrite(
+        () -> {
+          // Ensures idempotency
+          if (columnSchemaMap.containsKey(oldName)) {
+            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+            final Map<String, String> oldProps = schema.getProps();
+            oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+            switch (schema.getColumnCategory()) {
+              case TAG:
+                columnSchemaMap.put(
+                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
+                break;
+              case FIELD:
+                columnSchemaMap.put(
                     newName,
-                    schema.getDataType(),
-                    ((FieldColumnSchema) schema).getEncoding(),
-                    ((FieldColumnSchema) schema).getCompressor(),
-                    oldProps));
-            break;
-          case ATTRIBUTE:
-            columnSchemaMap.put(
-                newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
-            break;
-          case TIME:
-          default:
-            // Do nothing
-            columnSchemaMap.put(oldName, schema);
-        }
-      }
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+                    new FieldColumnSchema(
+                        newName,
+                        schema.getDataType(),
+                        ((FieldColumnSchema) schema).getEncoding(),
+                        ((FieldColumnSchema) schema).getCompressor(),
+                        oldProps));
+                break;
+              case ATTRIBUTE:
+                columnSchemaMap.put(
+                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
+                break;
+              case TIME:
+              default:
+                // Do nothing
+                columnSchemaMap.put(oldName, schema);
+            }
+          }
+        });
   }
 
   public void removeColumnSchema(final String columnName) {
-    readWriteLock.writeLock().lock();
-    try {
-      final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
-      if (columnSchema != null
-          && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
-      } else if (columnSchema != null) {
-        columnSchemaMap.remove(columnName);
-        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-          fieldNum--;
-        }
-      }
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(
+        () -> {
+          final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
+          if (columnSchema != null
+              && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+            throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
+          } else if (columnSchema != null) {
+            columnSchemaMap.remove(columnName);
+            if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
+              fieldNum--;
+            }
+          }
+        });
   }
 
   public int getColumnNum() {
@@ -240,6 +281,38 @@ public class TsTable {
     readWriteLock.readLock().lock();
     try {
       return new ArrayList<>(columnSchemaMap.values());
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public TableSchema convertToTableSchemaNoAttribute() {
+    readWriteLock.readLock().lock();
+    try {
+      final List<IMeasurementSchema> measurementSchemas = new ArrayList<>(columnSchemaMap.size());
+      final HashMap<String, Integer> columnPosIndex = new HashMap<>(columnSchemaMap.size());
+      final List<ColumnCategory> columnTypes = new ArrayList<>(columnSchemaMap.size());
+
+      // Directly iterate through columns and filter out TIME and ATTRIBUTE columns
+      int columnIndex = 0;
+      for (final Map.Entry<String, TsTableColumnSchema> columnSchema : columnSchemaMap.entrySet()) {
+        final TsTableColumnCategory category = columnSchema.getValue().getColumnCategory();
+        final String columnName = columnSchema.getKey();
+        final TsTableColumnSchema tableSchema = columnSchema.getValue();
+
+        // Skip TIME and ATTRIBUTE columns (only include TAG and FIELD)
+        if (category == TsTableColumnCategory.TIME || category == TsTableColumnCategory.ATTRIBUTE) {
+          continue;
+        }
+
+        // Add column to schema and record its position
+        measurementSchemas.add(tableSchema.getMeasurementSchema());
+        columnTypes.add(category.toTsFileColumnType());
+        columnPosIndex.put(columnName, columnIndex);
+        columnIndex++;
+      }
+
+      return new TableSchema(tableName, measurementSchemas, columnTypes, columnPosIndex);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -289,27 +362,23 @@ public class TsTable {
   }
 
   public void addProp(final String key, final String value) {
-    readWriteLock.writeLock().lock();
-    try {
-      if (props == null) {
-        props = new HashMap<>();
-      }
-      props.put(key, value);
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(
+        () -> {
+          if (props == null) {
+            props = new HashMap<>();
+          }
+          props.put(key, value);
+        });
   }
 
   public void removeProp(final String key) {
-    readWriteLock.writeLock().lock();
-    try {
-      if (props == null) {
-        return;
-      }
-      props.remove(key);
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(
+        () -> {
+          if (props == null) {
+            return;
+          }
+          props.remove(key);
+        });
   }
 
   public byte[] serialize() {

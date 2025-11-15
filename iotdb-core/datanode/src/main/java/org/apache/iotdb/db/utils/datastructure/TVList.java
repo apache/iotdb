@@ -970,7 +970,7 @@ public abstract class TVList implements WALEntryValue {
       TSDataType dataType = getDataType();
       int maxRowCountOfCurrentBatch =
           Math.min(
-              paginationController.hasLimit()
+              paginationController.hasSetLimit()
                   ? (int) paginationController.getCurLimit()
                   : Integer.MAX_VALUE,
               Math.min(maxNumberOfPointsInPage, rows - index));

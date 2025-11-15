@@ -534,6 +534,26 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     CommonUtils.swapArray(values, src, target);
   }
 
+  @TableModel
+  @Override
+  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
+    final int oldLength = oldToNewMapping.length;
+    final int newLength = measurements.length;
+
+    // Save old values array
+    final Object[] oldValues = values;
+
+    // Create new values array: [TAG area: 0~totalTagCount] + [non-TAG area:
+    // totalTagCount~newLength]
+    values = new Object[newLength];
+
+    // Copy values using the mapping: newValues[oldToNewMapping[oldIdx]] = oldValues[oldIdx]
+    for (int oldIdx = 0; oldIdx < oldLength; oldIdx++) {
+      values[oldToNewMapping[oldIdx]] = oldValues[oldIdx];
+    }
+    // TAG area values for missing columns remain null by default
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE

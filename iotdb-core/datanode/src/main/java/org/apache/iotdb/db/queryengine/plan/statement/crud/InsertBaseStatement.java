@@ -110,6 +110,15 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   protected long ramBytesUsed = Long.MIN_VALUE;
 
+  /** Flag to indicate if semantic check has been performed */
+  private boolean hasSemanticChecked = false;
+
+  /** Flag indicating whether ATTRIBUTE columns currently exist (default: true). */
+  private boolean attributeColumnsPresent = true;
+
+  /** Flag indicating whether the lower-case transformation has already been applied. */
+  private boolean toLowerCaseApplied = false;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -240,18 +249,27 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   public abstract Object getFirstValueOfIndex(int index);
 
   public void semanticCheck() {
-    Set<String> deduplicatedMeasurements = new HashSet<>();
+    // Skip if semantic check has already been performed
+    if (hasSemanticChecked) {
+      return;
+    }
+
+    Set<String> deduplicatedMeasurements = new HashSet<>(measurements.length);
+    int index = 0;
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         throw new SemanticException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
-      if (deduplicatedMeasurements.contains(measurement)) {
+      index++;
+      deduplicatedMeasurements.add(measurement);
+      if (deduplicatedMeasurements.size() != index) {
         throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
-      } else {
-        deduplicatedMeasurements.add(measurement);
       }
     }
+
+    // Mark as checked to avoid redundant checks
+    setSemanticChecked(true);
   }
 
   // region partial insert
@@ -329,6 +347,30 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return attrColumnIndices;
   }
 
+  public boolean isAttributeColumnsPresent() {
+    return attributeColumnsPresent;
+  }
+
+  public void setAttributeColumnsPresent(final boolean attributeColumnsPresent) {
+    this.attributeColumnsPresent = attributeColumnsPresent;
+  }
+
+  public boolean isToLowerCaseApplied() {
+    return toLowerCaseApplied;
+  }
+
+  public void setToLowerCaseApplied(final boolean toLowerCaseApplied) {
+    this.toLowerCaseApplied = toLowerCaseApplied;
+  }
+
+  public boolean isSemanticChecked() {
+    return hasSemanticChecked;
+  }
+
+  public void setSemanticChecked(final boolean semanticChecked) {
+    this.hasSemanticChecked = semanticChecked;
+  }
+
   public boolean hasFailedMeasurements() {
     return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
   }
@@ -374,7 +416,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void removeAttributeColumns() {
+    if (!attributeColumnsPresent) {
+      return;
+    }
     if (columnCategories == null) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -386,6 +432,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
 
     if (columnsToKeep.size() == columnCategories.length) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -417,6 +464,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     // to reconstruct indices
     tagColumnIndices = null;
     attrColumnIndices = null;
+    attributeColumnsPresent = false;
   }
 
   protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
@@ -612,6 +660,25 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     tagColumnIndices = null;
   }
 
+  /**
+   * Rebuild subclass-specific arrays after TAG column expansion. The base arrays (measurements,
+   * dataTypes, etc.) have already been reorganized into [TAG area: 0~totalTagCount] + [non-TAG
+   * area: totalTagCount~newLength]. Subclasses should override this method to reorganize their
+   * specific arrays (e.g., values[] in InsertRowStatement, columns[]/bitMaps[] in
+   * InsertTabletStatement) to match the new layout.
+   *
+   * <p>The oldToNewMapping array provides the mapping from old array positions to new array
+   * positions: newArray[oldToNewMapping[oldIdx]] = oldArray[oldIdx]
+   *
+   * @param oldToNewMapping maps each old index to its new position in the reorganized array
+   * @param totalTagCount total number of TAG columns (all at front in NEW array: 0~totalTagCount)
+   */
+  @TableModel
+  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
+    // Default implementation does nothing
+    // Subclasses should override this method to handle their specific arrays
+  }
+
   public boolean isWriteToTable() {
     return writeToTable;
   }
@@ -637,6 +704,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void toLowerCase() {
+    if (toLowerCaseApplied) {
+      return;
+    }
     devicePath.toLowerCase();
     if (measurements == null) {
       return;
@@ -654,6 +724,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         }
       }
     }
+    toLowerCaseApplied = true;
   }
 
   @TableModel
