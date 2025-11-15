@@ -21,7 +21,7 @@ package org.apache.iotdb.db.protocol.client.ainode;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.AINodeClientFactory;
 
 public class AINodeClientManager {
   private AINodeClientManager() {
@@ -31,8 +31,7 @@ public class AINodeClientManager {
   private static final class AINodeClientManagerHolder {
     private static final IClientManager<TEndPoint, AINodeClient> INSTANCE =
         new IClientManager.Factory<TEndPoint, AINodeClient>()
-            .createClientManager(
-                new ConfigNodeClientManager.ClientPoolFactory.AINodeClientPoolFactory());
+            .createClientManager(new AINodeClientFactory.AINodeClientPoolFactory());
   }
 
   public static IClientManager<TEndPoint, AINodeClient> getInstance() {

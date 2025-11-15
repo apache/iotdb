@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -31,7 +32,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -164,15 +164,13 @@ public class Coordinator {
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ConfigNodeClientManager.ClientPoolFactory
-                      .SyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private static final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ConfigNodeClientManager.ClientPoolFactory
-                      .AsyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
 
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;

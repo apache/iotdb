@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
@@ -67,8 +67,7 @@ public class MPPDataExchangeManagerTest {
             Executors.newSingleThreadExecutor(),
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new ConfigNodeClientManager.ClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISinkHandle shuffleSinkHandle =
         mppDataExchangeManager.createShuffleSinkHandle(
@@ -125,8 +124,7 @@ public class MPPDataExchangeManagerTest {
             Executors.newSingleThreadExecutor(),
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new ConfigNodeClientManager.ClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
