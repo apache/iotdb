@@ -30,8 +30,20 @@ set ain_ainode_executable=%IOTDB_AINODE_HOME%\lib\ainode
 
 echo Script got ainode executable: %ain_ainode_executable%
 
-echo Starting AINode...
+set daemon_mode=false
+:parse_args
+if "%~1"=="" goto end_parse
+if /i "%~1"=="-d" set daemon_mode=true
+shift
+goto parse_args
+:end_parse
 
-%$ain_ainode_executable% start
-
-pause
+if "%daemon_mode%"=="true" (
+  echo Starting AINode in daemon mode...
+  start /B "" %ain_ainode_executable% start
+  echo AINode started in background
+) else (
+  echo Starting AINode...
+  %ain_ainode_executable% start
+  pause
+)
