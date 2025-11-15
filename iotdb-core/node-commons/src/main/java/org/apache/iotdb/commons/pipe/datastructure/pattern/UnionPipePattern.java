@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,11 +35,6 @@ public class UnionPipePattern extends PipePattern {
 
   public UnionPipePattern(final List<PipePattern> patterns) {
     this.patterns = patterns;
-  }
-
-  @Override
-  public boolean isSingle() {
-    return patterns.size() == 1;
   }
 
   @Override
@@ -77,6 +75,15 @@ public class UnionPipePattern extends PipePattern {
   @Override
   public boolean matchesMeasurement(final String device, final String measurement) {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
+  }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    final List<PartialPath> paths = new ArrayList<>();
+    for (final PipePattern p : patterns) {
+      paths.addAll(p.getBaseInclusionPaths());
+    }
+    return paths;
   }
 
   @Override

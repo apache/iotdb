@@ -33,14 +33,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class IoTDBPipePattern extends SinglePipePattern {
+public class IoTDBPipePattern extends IoTDBPipePatternOperations {
 
+  private final String pattern;
   private final PartialPath patternPartialPath;
   private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
   private static volatile MeasurementPathGetter measurementPathGetter = PartialPath::new;
 
   public IoTDBPipePattern(final String pattern) {
-    super(pattern);
+    this.pattern = pattern != null ? pattern : getDefaultPattern();
 
     try {
       patternPartialPath = new PartialPath(getPattern());
@@ -49,9 +50,20 @@ public class IoTDBPipePattern extends SinglePipePattern {
     }
   }
 
-  @Override
-  public String getDefaultPattern() {
+  private String getDefaultPattern() {
     return PipeSourceConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
+  }
+
+  //////////////////////////// Pipe Pattern Operations ////////////////////////////
+
+  @Override
+  public String getPattern() {
+    return pattern;
+  }
+
+  @Override
+  public boolean isRoot() {
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   @Override
@@ -122,6 +134,13 @@ public class IoTDBPipePattern extends SinglePipePattern {
     }
   }
 
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    return Collections.singletonList(patternPartialPath);
+  }
+
+  //////////////////////////// IoTDB Pipe Pattern Operations ////////////////////////////
+
   /**
    * Check if the {@link PipePattern} matches the given prefix path.
    *
@@ -129,6 +148,7 @@ public class IoTDBPipePattern extends SinglePipePattern {
    * whether the given path can act as a parent path of the {@link PipePattern}, and to transmit
    * possibly used schemas like database creation and template setting.
    */
+  @Override
   public boolean matchPrefixPath(final String path) {
     return mayOverlapWithDevice(path);
   }
@@ -136,6 +156,7 @@ public class IoTDBPipePattern extends SinglePipePattern {
   /**
    * This is the precise form of the device overlap and is used only be device template transfer.
    */
+  @Override
   public boolean matchDevice(final String devicePath) {
     try {
       return patternPartialPath.overlapWith(new PartialPath(devicePath, "*"));
@@ -148,6 +169,7 @@ public class IoTDBPipePattern extends SinglePipePattern {
    * Return if the given tail node matches the pattern's tail node. Caller shall ensure that it is a
    * prefix or full path pattern.
    */
+  @Override
   public boolean matchTailNode(final String tailNode) {
     return !isFullPath() || patternPartialPath.getTailNode().equals(tailNode);
   }
@@ -156,6 +178,7 @@ public class IoTDBPipePattern extends SinglePipePattern {
    * Get the intersection of the given {@link PartialPath} and the {@link PipePattern}, Only used by
    * schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
+  @Override
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
@@ -169,6 +192,7 @@ public class IoTDBPipePattern extends SinglePipePattern {
    * Get the intersection of the given {@link PathPatternTree} and the {@link PipePattern}. Only
    * used by schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
+  @Override
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(patternPartialPath);
@@ -176,7 +200,17 @@ public class IoTDBPipePattern extends SinglePipePattern {
     return patternTree.intersectWithFullPathPrefixTree(thisPatternTree);
   }
 
-  public boolean isPrefix() {
+  @Override
+  public boolean isPrefixOrFullPath() {
+    return isPrefix() || isFullPath();
+  }
+
+  @Override
+  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
+    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
+  }
+
+  private boolean isPrefix() {
     return PathPatternUtil.isMultiLevelMatchWildcard(patternPartialPath.getTailNode())
         && !new PartialPath(
                 Arrays.copyOfRange(
@@ -184,13 +218,11 @@ public class IoTDBPipePattern extends SinglePipePattern {
             .hasWildcard();
   }
 
-  public boolean isFullPath() {
+  private boolean isFullPath() {
     return !patternPartialPath.hasWildcard();
   }
 
-  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
-    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
-  }
+  //////////////////////////// Getter ////////////////////////////
 
   public static void setDevicePathGetter(final DevicePathGetter devicePathGetter) {
     IoTDBPipePattern.devicePathGetter = devicePathGetter;
@@ -200,16 +232,18 @@ public class IoTDBPipePattern extends SinglePipePattern {
     IoTDBPipePattern.measurementPathGetter = measurementPathGetter;
   }
 
-  @Override
-  public String toString() {
-    return "IoTDBPipePattern" + super.toString();
-  }
-
   public interface DevicePathGetter {
     PartialPath apply(final String deviceId) throws IllegalPathException;
   }
 
   public interface MeasurementPathGetter {
     PartialPath apply(final String deviceId, final String measurement) throws IllegalPathException;
+  }
+
+  //////////////////////////// Object ////////////////////////////
+
+  @Override
+  public String toString() {
+    return "IoTDBPipePattern{pattern='" + pattern + "'}";
   }
 }

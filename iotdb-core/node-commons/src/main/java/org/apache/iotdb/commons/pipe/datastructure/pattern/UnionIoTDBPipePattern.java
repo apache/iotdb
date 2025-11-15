@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * Represents a union of multiple {@link IoTDBPipePattern}s. This specialized class ensures type
  * safety and provides access to methods specific to IoTDBPipePattern, such as getIntersection.
  */
-public class UnionIoTDBPipePattern extends PipePattern {
+public class UnionIoTDBPipePattern extends IoTDBPipePatternOperations {
 
   private final List<IoTDBPipePattern> patterns;
 
@@ -45,59 +45,7 @@ public class UnionIoTDBPipePattern extends PipePattern {
     this.patterns = Collections.singletonList(pattern);
   }
 
-  // **********************************************************************
-  // IoTDBPipePattern-specific aggregated methods
-  // **********************************************************************
-
-  public boolean matchPrefixPath(final String path) {
-    return patterns.stream().anyMatch(p -> p.matchPrefixPath(path));
-  }
-
-  public boolean matchDevice(final String devicePath) {
-    return patterns.stream().anyMatch(p -> p.matchDevice(devicePath));
-  }
-
-  public boolean matchTailNode(final String tailNode) {
-    return patterns.stream().anyMatch(p -> p.matchTailNode(tailNode));
-  }
-
-  public List<PartialPath> getIntersection(final PartialPath partialPath) {
-    final Set<PartialPath> uniqueIntersections = new LinkedHashSet<>();
-    for (final IoTDBPipePattern pattern : patterns) {
-      uniqueIntersections.addAll(pattern.getIntersection(partialPath));
-    }
-    return new ArrayList<>(uniqueIntersections);
-  }
-
-  public PathPatternTree getIntersection(final PathPatternTree patternTree) {
-    final PathPatternTree resultTree = new PathPatternTree();
-    for (final IoTDBPipePattern pattern : patterns) {
-      final PathPatternTree intersection = pattern.getIntersection(patternTree);
-      if (intersection.isEmpty()) {
-        continue;
-      }
-      intersection.getAllPathPatterns().forEach(resultTree::appendPathPattern);
-    }
-    resultTree.constructTree();
-    return resultTree;
-  }
-
-  public boolean isPrefixOrFullPath() {
-    return patterns.stream().allMatch(p -> p.isPrefix() || p.isFullPath());
-  }
-
-  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
-    return patterns.stream().anyMatch(IoTDBPipePattern::mayMatchMultipleTimeSeriesInOneDevice);
-  }
-
-  // **********************************************************************
-  // Implementation of abstract methods from PipePattern
-  // **********************************************************************
-
-  @Override
-  public boolean isSingle() {
-    return patterns.size() == 1;
-  }
+  //////////////////////////// Pipe Pattern Operations ////////////////////////////
 
   @Override
   public String getPattern() {
@@ -138,6 +86,67 @@ public class UnionIoTDBPipePattern extends PipePattern {
   public boolean matchesMeasurement(final String device, final String measurement) {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
   }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    final List<PartialPath> paths = new ArrayList<>();
+    for (final PipePattern p : patterns) {
+      paths.addAll(p.getBaseInclusionPaths());
+    }
+    return paths;
+  }
+
+  //////////////////////////// IoTDB Pipe Pattern Operations ////////////////////////////
+
+  @Override
+  public boolean matchPrefixPath(final String path) {
+    return patterns.stream().anyMatch(p -> p.matchPrefixPath(path));
+  }
+
+  @Override
+  public boolean matchDevice(final String devicePath) {
+    return patterns.stream().anyMatch(p -> p.matchDevice(devicePath));
+  }
+
+  @Override
+  public boolean matchTailNode(final String tailNode) {
+    return patterns.stream().anyMatch(p -> p.matchTailNode(tailNode));
+  }
+
+  @Override
+  public List<PartialPath> getIntersection(final PartialPath partialPath) {
+    final Set<PartialPath> uniqueIntersections = new LinkedHashSet<>();
+    for (final IoTDBPipePattern pattern : patterns) {
+      uniqueIntersections.addAll(pattern.getIntersection(partialPath));
+    }
+    return new ArrayList<>(uniqueIntersections);
+  }
+
+  @Override
+  public PathPatternTree getIntersection(final PathPatternTree patternTree) {
+    final PathPatternTree resultTree = new PathPatternTree();
+    for (final IoTDBPipePattern pattern : patterns) {
+      final PathPatternTree intersection = pattern.getIntersection(patternTree);
+      if (intersection.isEmpty()) {
+        continue;
+      }
+      intersection.getAllPathPatterns().forEach(resultTree::appendPathPattern);
+    }
+    resultTree.constructTree();
+    return resultTree;
+  }
+
+  @Override
+  public boolean isPrefixOrFullPath() {
+    return patterns.stream().allMatch(IoTDBPipePattern::isPrefixOrFullPath);
+  }
+
+  @Override
+  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
+    return patterns.stream().anyMatch(IoTDBPipePattern::mayMatchMultipleTimeSeriesInOneDevice);
+  }
+
+  //////////////////////////// Object ////////////////////////////
 
   @Override
   public String toString() {

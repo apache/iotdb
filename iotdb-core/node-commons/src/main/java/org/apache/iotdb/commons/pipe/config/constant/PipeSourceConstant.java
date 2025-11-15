@@ -50,6 +50,10 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
   public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
   public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
+  public static final String EXTRACTOR_PATTERN_EXCLUSION_KEY = "extractor.pattern.exclusion";
+  public static final String SOURCE_PATTERN_EXCLUSION_KEY = "source.pattern.exclusion";
+  public static final String EXTRACTOR_PATH_EXCLUSION_KEY = "extractor.path.exclusion";
+  public static final String SOURCE_PATH_EXCLUSION_KEY = "source.path.exclusion";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";
