@@ -179,12 +179,6 @@
             <groupId>com.timecho.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-ainode</artifactId>
-            <version>2.0.6-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
     <build>
         <resources>

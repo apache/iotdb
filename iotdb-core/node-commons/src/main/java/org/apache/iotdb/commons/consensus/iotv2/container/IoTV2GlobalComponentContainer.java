@@ -20,8 +20,7 @@
 package org.apache.iotdb.commons.consensus.iotv2.container;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory.AsyncPipeConsensusServiceClientPoolFactory;
-import org.apache.iotdb.commons.client.ClientPoolFactory.SyncPipeConsensusServiceClientPoolFactory;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
@@ -65,10 +64,12 @@ public class IoTV2GlobalComponentContainer {
             .build();
     this.asyncClientManager =
         new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
-            .createClientManager(new AsyncPipeConsensusServiceClientPoolFactory(config));
+            .createClientManager(
+                new ClientPoolFactory.AsyncPipeConsensusServiceClientPoolFactory(config));
     this.syncClientManager =
         new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
-            .createClientManager(new SyncPipeConsensusServiceClientPoolFactory(config));
+            .createClientManager(
+                new ClientPoolFactory.SyncPipeConsensusServiceClientPoolFactory(config));
     this.backgroundTaskService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR.getName());
