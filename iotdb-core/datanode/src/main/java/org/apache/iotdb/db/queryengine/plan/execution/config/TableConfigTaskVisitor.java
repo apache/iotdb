@@ -1355,14 +1355,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitPrepare(Prepare node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    // Create PrepareTask with statement name and SQL AST (zoneId is not needed)
     return new PrepareTask(node.getStatementName().getValue(), node.getSql());
   }
 
   @Override
   protected IConfigTask visitDeallocate(Deallocate node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    // Create DeallocateTask with statement name
     return new DeallocateTask(node.getStatementName().getValue());
   }
 
