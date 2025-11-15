@@ -22,9 +22,6 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -40,8 +37,7 @@ public class PreparedStatementInfo {
   private final long createTime;
   private final IMemoryBlock memoryBlock; // Memory block allocated for this PreparedStatement
 
-  public PreparedStatementInfo(
-      @Nonnull String statementName, @Nonnull Statement sql, @Nullable IMemoryBlock memoryBlock) {
+  public PreparedStatementInfo(String statementName, Statement sql, IMemoryBlock memoryBlock) {
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
     this.createTime = System.currentTimeMillis();
@@ -49,10 +45,7 @@ public class PreparedStatementInfo {
   }
 
   public PreparedStatementInfo(
-      @Nonnull String statementName,
-      @Nonnull Statement sql,
-      long createTime,
-      @Nullable IMemoryBlock memoryBlock) {
+      String statementName, Statement sql, long createTime, IMemoryBlock memoryBlock) {
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
     this.createTime = createTime;

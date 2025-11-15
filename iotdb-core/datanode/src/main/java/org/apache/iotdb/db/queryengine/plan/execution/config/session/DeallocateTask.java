@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -57,8 +58,8 @@ public class DeallocateTask implements IConfigTask {
       // Remove the prepared statement
       PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
       if (removedInfo == null) {
-        // Prepared statement not found - this is not an error in most SQL implementations
-        // but we could optionally log a warning
+        throw new SemanticException(
+            String.format("Prepared statement '%s' does not exist", statementName));
       } else {
         // Release the memory allocated for this PreparedStatement
         PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemoryBlock());

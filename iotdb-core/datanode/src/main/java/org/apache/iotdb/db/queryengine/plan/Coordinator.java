@@ -411,7 +411,9 @@ public class Coordinator {
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
-            dataNodeLocationSupplier);
+            dataNodeLocationSupplier,
+            Collections.emptyList(),
+            Collections.emptyMap());
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -496,98 +498,54 @@ public class Coordinator {
                   clientSession, metadata, AuthorityChecker.getAccessControl()),
               queryContext));
     }
-    // Handle EXECUTE and EXECUTE IMMEDIATE statements
-    // Reference: Trino's QueryPreparer - validate parameters before binding
+    // Initialize variables for TableModelPlanner
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statementToUse = statement;
+    List<Expression> parameters = Collections.emptyList();
+    Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
+
     if (statement instanceof Execute) {
       Execute executeStatement = (Execute) statement;
       String statementName = executeStatement.getStatementName().getValue();
 
-      // 1. Get prepared statement from session (contains cached AST)
+      // Get prepared statement from session (contains cached AST)
       PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
       if (preparedInfo == null) {
         throw new SemanticException(
             String.format("Prepared statement '%s' does not exist", statementName));
       }
 
-      // 2. Get cached AST (contains Parameter nodes)
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement cachedStatement =
-          preparedInfo.getSql();
+      // Use cached AST
+      statementToUse = preparedInfo.getSql();
 
-      // 3. Bind parameters: create parameterLookup map (similar to Trino's
-      // ParameterExtractor.bindParameters)
-      // This allows Analyzer to resolve Parameter nodes without re-parsing
+      // Bind parameters: create parameterLookup map
       // Note: bindParameters() internally validates parameter count
-      Map<NodeRef<Parameter>, Expression> parameterLookup =
-          ParameterExtractor.bindParameters(cachedStatement, executeStatement.getParameters());
-
-      // 5. Convert Literal parameters to Expression list for Analyzer
-      List<Expression> parameters = new ArrayList<>(executeStatement.getParameters());
-
-      // 6. Create QueryExecution with cached AST and parameterLookup (skips Parser phase)
-      final TableModelPlanner tableModelPlanner =
-          new TableModelPlanner(
-              cachedStatement, // Use cached AST (skips Parser)
-              sqlParser,
-              metadata,
-              scheduledExecutor,
-              SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-              ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-              statementRewrite,
-              logicalPlanOptimizers,
-              distributionPlanOptimizers,
-              AuthorityChecker.getAccessControl(),
-              dataNodeLocationSupplier,
-              parameters, // Parameters for Analyzer
-              parameterLookup); // Parameter lookup map for Analyzer
-      return new QueryExecution(tableModelPlanner, queryContext, executor);
+      parameterLookup =
+          ParameterExtractor.bindParameters(statementToUse, executeStatement.getParameters());
+      parameters = new ArrayList<>(executeStatement.getParameters());
 
     } else if (statement instanceof ExecuteImmediate) {
       ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
 
-      // EXECUTE IMMEDIATE needs to parse SQL first (since it's a string)
+      // EXECUTE IMMEDIATE needs to parse SQL first
       String sql = executeImmediateStatement.getSqlString();
-      List<Literal> parameters = executeImmediateStatement.getParameters();
+      List<Literal> literalParameters = executeImmediateStatement.getParameters();
 
-      // Parse SQL to AST
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement parsedStatement =
-          sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+      statementToUse = sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
-      // If there are parameters, bind them
-      Map<NodeRef<Parameter>, Expression> parameterLookup;
-      List<Expression> parameterExpressions;
-      if (!parameters.isEmpty()) {
-        // Note: bindParameters() internally validates parameter count
-        parameterLookup = ParameterExtractor.bindParameters(parsedStatement, parameters);
-        parameterExpressions = new ArrayList<>(parameters);
-      } else {
-        parameterLookup = Collections.emptyMap();
-        parameterExpressions = Collections.emptyList();
+      if (!literalParameters.isEmpty()) {
+        parameterLookup = ParameterExtractor.bindParameters(statementToUse, literalParameters);
+        parameters = new ArrayList<>(literalParameters);
       }
-
-      // Create QueryExecution with parsed AST and parameterLookup
-      final TableModelPlanner tableModelPlanner =
-          new TableModelPlanner(
-              parsedStatement,
-              sqlParser,
-              metadata,
-              scheduledExecutor,
-              SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-              ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-              statementRewrite,
-              logicalPlanOptimizers,
-              distributionPlanOptimizers,
-              AuthorityChecker.getAccessControl(),
-              dataNodeLocationSupplier,
-              parameterExpressions,
-              parameterLookup);
-      return new QueryExecution(tableModelPlanner, queryContext, executor);
     }
+
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    final TableModelPlanner tableModelPlanner =
+
+    // Create QueryExecution with TableModelPlanner
+    TableModelPlanner tableModelPlanner =
         new TableModelPlanner(
-            statement,
+            statementToUse,
             sqlParser,
             metadata,
             scheduledExecutor,
@@ -597,7 +555,9 @@ public class Coordinator {
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
-            dataNodeLocationSupplier);
+            dataNodeLocationSupplier,
+            parameters,
+            parameterLookup);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 

@@ -36,10 +36,7 @@ import java.util.Map;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-/**
- * Utility class for extracting and binding parameters in prepared statements. Similar to Trino's
- * ParameterExtractor.
- */
+/** Utility class for extracting and binding parameters in prepared statements. */
 public final class ParameterExtractor {
   private ParameterExtractor() {}
 

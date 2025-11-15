@@ -59,7 +59,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -94,36 +93,6 @@ public class TableModelPlanner implements IPlanner {
   // Parameters for prepared statements (optional)
   private final List<Expression> parameters;
   private final Map<NodeRef<Parameter>, Expression> parameterLookup;
-
-  public TableModelPlanner(
-      final Statement statement,
-      final SqlParser sqlParser,
-      final Metadata metadata,
-      final ScheduledExecutorService scheduledExecutor,
-      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-          syncInternalServiceClientManager,
-      final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-          asyncInternalServiceClientManager,
-      final StatementRewrite statementRewrite,
-      final List<PlanOptimizer> logicalPlanOptimizers,
-      final List<PlanOptimizer> distributionPlanOptimizers,
-      final AccessControl accessControl,
-      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
-    this(
-        statement,
-        sqlParser,
-        metadata,
-        scheduledExecutor,
-        syncInternalServiceClientManager,
-        asyncInternalServiceClientManager,
-        statementRewrite,
-        logicalPlanOptimizers,
-        distributionPlanOptimizers,
-        accessControl,
-        dataNodeLocationSupplier,
-        Collections.emptyList(),
-        Collections.emptyMap());
-  }
 
   public TableModelPlanner(
       final Statement statement,
