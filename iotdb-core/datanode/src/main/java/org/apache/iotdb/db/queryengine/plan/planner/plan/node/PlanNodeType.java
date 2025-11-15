@@ -119,6 +119,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -314,6 +315,7 @@ public enum PlanNodeType {
   TABLE_INTO_NODE((short) 1033),
   TABLE_UNION_NODE((short) 1034),
   TABLE_INTERSECT_NODE((short) 1035),
+  TABLE_EXCEPT_NODE((short) 1036),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -705,6 +707,8 @@ public enum PlanNodeType {
         return UnionNode.deserialize(buffer);
       case 1035:
         return IntersectNode.deserialize(buffer);
+      case 1036:
+        return ExceptNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

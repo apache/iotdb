@@ -145,8 +145,8 @@ public class SetOperationNodeTranslator {
   }
 
   /**
-   * only for transforming the intersection (all) node, add the window node and group node above the
-   * union node
+   * for transforming the intersectNode (all) and exceptNode(all), add the window node and group
+   * node above the union node
    */
   private WindowNode appendCounts(
       UnionNode union,
