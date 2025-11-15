@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.protocol.thrift.handler;
 
 import org.apache.iotdb.db.protocol.session.ClientSession;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.external.api.thrift.JudgableServerContext;
 import org.apache.iotdb.external.api.thrift.ServerContextFactory;
 import org.apache.iotdb.rpc.TElasticFramedTransport;
@@ -70,7 +72,22 @@ public class BaseServerContextHandler {
   }
 
   public void deleteContext(ServerContext context, TProtocol in, TProtocol out) {
+    IClientSession session = getSessionManager().getCurrSession();
+
+    // Release session resources (including PreparedStatement memory)
+    // This handles TCP connection loss scenarios
+    if (session != null) {
+      try {
+        getSessionManager().closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+      } catch (Exception e) {
+        logger.warn(
+            "Failed to close session during TCP connection disconnect: {}", e.getMessage(), e);
+      }
+    }
+
+    // Remove the session from the current thread
     getSessionManager().removeCurrSession();
+
     if (context != null && factory != null) {
       ((JudgableServerContext) context).whenDisconnect();
     }
