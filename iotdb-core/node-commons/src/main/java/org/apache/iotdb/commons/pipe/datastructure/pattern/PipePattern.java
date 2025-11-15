@@ -27,9 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
@@ -106,6 +109,13 @@ public abstract class PipePattern {
 
   //////////////////////////// Utilities ////////////////////////////
 
+  public static <T> List<T> applyIndexesOnList(
+      final int[] filteredIndexes, final List<T> originalList) {
+    return Objects.nonNull(originalList)
+        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
+        : null;
+  }
+
   /**
    * Interpret from source parameters and get a {@link PipePattern}. This method parses both
    * inclusion and exclusion patterns.
@@ -151,14 +161,14 @@ public abstract class PipePattern {
       return inclusionPattern;
     } else {
       // If both inclusion and exclusion patterns support IoTDB operations,
-      // use the specialized ExclusionIoTDBTreePattern
+      // use the specialized ExclusionIoTDBPipePattern
       if (inclusionPattern instanceof IoTDBPipePatternOperations
           && exclusionPattern instanceof IoTDBPipePatternOperations) {
         return new WithExclusionIoTDBPipePattern(
             (IoTDBPipePatternOperations) inclusionPattern,
             (IoTDBPipePatternOperations) exclusionPattern);
       }
-      // Both are defined, wrap them in an ExclusionTreePattern
+      // Both are defined, wrap them in an ExclusionPipePattern
       return new WithExclusionPipePattern(inclusionPattern, exclusionPattern);
     }
   }
@@ -208,7 +218,7 @@ public abstract class PipePattern {
         final PipePattern exclusionPattern =
             parsePatternFromString(exclusionSubstring, basePatternSupplier);
 
-        // 3. Build ExclusionTreePattern
+        // 3. Build ExclusionPipePattern
         if (inclusionPattern instanceof IoTDBPipePatternOperations
             && exclusionPattern instanceof IoTDBPipePatternOperations) {
           return new WithExclusionIoTDBPipePattern(

@@ -102,7 +102,7 @@ public class WithExclusionPipePattern extends PipePattern {
 
   @Override
   public String toString() {
-    return "ExclusionTreePattern{"
+    return "ExclusionPipePattern{"
         + "inclusionPattern="
         + inclusionPattern
         + ", exclusionPattern="
