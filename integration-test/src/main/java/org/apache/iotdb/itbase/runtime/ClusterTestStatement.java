@@ -78,6 +78,13 @@ public class ClusterTestStatement implements Statement {
     statement.setQueryTimeout(timeout);
   }
 
+  /**
+   * Executes a SQL query on all read statements in parallel.
+   *
+   * <p>Note: For PreparedStatement EXECUTE queries, use the write connection directly instead,
+   * because PreparedStatements are session-scoped and this method may route queries to different
+   * nodes where the PreparedStatement doesn't exist.
+   */
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
     return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
