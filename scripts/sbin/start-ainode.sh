@@ -27,9 +27,13 @@ export IOTDB_AINODE_HOME
 echo "IOTDB_AINODE_HOME: $IOTDB_AINODE_HOME"
 
 # fetch parameters with names
-while getopts "i:rn" opt; do
+daemon_mode=false
+while getopts "i:rnd" opt; do
   case $opt in
     n)
+    ;;
+    d)
+      daemon_mode=true
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
     exit 1
@@ -41,6 +45,11 @@ ain_ainode_executable="$IOTDB_AINODE_HOME/lib/ainode"
 
 echo Script got ainode executable: "$ain_ainode_executable"
 
-echo Starting AINode...
-
-$ain_ainode_executable start
+if [ "$daemon_mode" = true ]; then
+  echo Starting AINode in daemon mode...
+  nohup $ain_ainode_executable start > /dev/null 2>&1 &
+  echo AINode started in background
+else
+  echo Starting AINode...
+  $ain_ainode_executable start
+fi
