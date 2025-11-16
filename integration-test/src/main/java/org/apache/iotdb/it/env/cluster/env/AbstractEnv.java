@@ -22,6 +22,7 @@ package org.apache.iotdb.it.env.cluster.env;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -181,7 +182,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(new ConfigNodeClientManager.ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
 
     final String testClassName = getTestClassName();
 

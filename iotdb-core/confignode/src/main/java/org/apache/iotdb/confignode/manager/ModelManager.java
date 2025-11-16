@@ -232,7 +232,11 @@ public class ModelManager {
     }
     TEndPoint targetAINodeEndPoint =
         new TEndPoint(aiNodeInfo.get(0).getInternalAddress(), aiNodeInfo.get(0).getInternalPort());
-    return AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint);
+    try {
+      return AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public List<Integer> getModelDistributions(String modelName) {

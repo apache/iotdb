@@ -660,7 +660,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       }
 
       final TAINodeConfiguration cfg = registeredAINodes.get(0);
-      final TAINodeLocation loc = (cfg == null) ? null : cfg.getLocation();
+      final TAINodeLocation loc = cfg.getLocation();
 
       boolean hasEndpoint = false;
       if (loc != null) {

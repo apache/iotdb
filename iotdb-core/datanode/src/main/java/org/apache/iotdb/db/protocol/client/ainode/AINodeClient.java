@@ -74,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
@@ -107,8 +108,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final java.util.concurrent.atomic.AtomicReference<TAINodeLocation>
-      CURRENT_LOCATION = new java.util.concurrent.atomic.AtomicReference<>();
+  private static final AtomicReference<TAINodeLocation> CURRENT_LOCATION = new AtomicReference<>();
 
   public static TEndPoint getCurrentEndpoint() {
     TAINodeLocation loc = CURRENT_LOCATION.get();
@@ -145,7 +145,7 @@ public class AINodeClient implements AutoCloseable, ThriftClient {
           this.endPoint = pickEndpointFrom(loc);
         }
         try {
-          Thread.sleep(100L * attempt);
+          Thread.sleep(1000L * attempt);
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
         }

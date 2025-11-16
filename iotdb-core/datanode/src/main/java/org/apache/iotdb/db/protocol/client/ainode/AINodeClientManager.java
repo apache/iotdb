@@ -24,17 +24,52 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.db.protocol.client.AINodeClientFactory;
 
 public class AINodeClientManager {
-  private AINodeClientManager() {
-    // Empty constructor
-  }
 
-  private static final class AINodeClientManagerHolder {
-    private static final IClientManager<TEndPoint, AINodeClient> INSTANCE =
+  public static final int DEFAULT_AINODE_ID = 0;
+
+  private static final AINodeClientManager INSTANCE = new AINodeClientManager();
+
+  private final IClientManager<TEndPoint, AINodeClient> clientManager;
+
+  private volatile TEndPoint defaultAINodeEndPoint;
+
+  private AINodeClientManager() {
+    this.clientManager =
         new IClientManager.Factory<TEndPoint, AINodeClient>()
             .createClientManager(new AINodeClientFactory.AINodeClientPoolFactory());
   }
 
-  public static IClientManager<TEndPoint, AINodeClient> getInstance() {
-    return AINodeClientManagerHolder.INSTANCE;
+  public static AINodeClientManager getInstance() {
+    return INSTANCE;
+  }
+
+  public void updateDefaultAINodeLocation(TEndPoint endPoint) {
+    this.defaultAINodeEndPoint = endPoint;
+  }
+
+  public AINodeClient borrowClient(TEndPoint endPoint) throws Exception {
+    return clientManager.borrowClient(endPoint);
+  }
+
+  public AINodeClient borrowClient(int aiNodeId) throws Exception {
+    if (aiNodeId != DEFAULT_AINODE_ID) {
+      throw new IllegalArgumentException("Unsupported AINodeId: " + aiNodeId);
+    }
+    if (defaultAINodeEndPoint == null) {
+      defaultAINodeEndPoint = AINodeClient.getCurrentEndpoint();
+    }
+    return clientManager.borrowClient(defaultAINodeEndPoint);
+  }
+
+  public void clear(TEndPoint endPoint) {
+    clientManager.clear(endPoint);
+  }
+
+  public void clearAll() {
+    clientManager.close();
+  }
+
+  public IClientManager<TEndPoint, AINodeClient> getRawClientManager() {
+    return clientManager;
   }
 }

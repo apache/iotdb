@@ -660,9 +660,6 @@ struct TAINodeInfo {
 }
 
 // ----------- New messages -----------
-struct TGetAINodeLocationReq {
-  1: optional string deviceId
-}
 
 struct TGetAINodeLocationResp {
   1: required common.TSStatus status

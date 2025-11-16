@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
@@ -457,8 +456,7 @@ public class ForecastTableFunction implements TableFunction {
   private static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final IClientManager<TEndPoint, AINodeClient> CLIENT_MANAGER =
-        AINodeClientManager.getInstance();
+    private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
 
     private final TEndPoint targetAINode;
     private final String modelId;

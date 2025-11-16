@@ -32,7 +32,6 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -45,7 +44,6 @@ import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -375,9 +373,6 @@ import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECT
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
-
-  // NOTE: AINode location is now maintained globally inside AINodeClient.
-  // We only resolve via ConfigNode when needed, then publish it back to AINodeClient.
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfigTaskExecutor.class);
 
@@ -3611,8 +3606,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showModels(final String modelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TShowModelsReq req = new TShowModelsReq();
       if (modelId != null) {
         req.setModelId(modelId);
@@ -3632,8 +3627,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showLoadedModels(List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TShowLoadedModelsReq req = new TShowLoadedModelsReq();
       req.setDeviceIdList(deviceIdList != null ? deviceIdList : new ArrayList<>());
       final TShowLoadedModelsResp resp = ai.showLoadedModels(req);
@@ -3651,8 +3646,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showAIDevices() {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TShowAIDevicesResp resp = ai.showAIDevices();
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus()));
@@ -3669,12 +3664,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    if (ep == null) {
-      future.setException(new BorrowNullClientManagerException());
-      return future;
-    }
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TLoadModelReq req = new TLoadModelReq(existingModelId, deviceIdList);
       final TSStatus result = ai.loadModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
@@ -3692,12 +3683,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> unloadModel(
       String existingModelId, List<String> deviceIdList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    if (ep == null) {
-      future.setException(new BorrowNullClientManagerException());
-      return future;
-    }
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TUnloadModelReq req = new TUnloadModelReq(existingModelId, deviceIdList);
       final TSStatus result = ai.unloadModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
@@ -3721,8 +3708,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       @Nullable String targetSql,
       @Nullable List<String> pathList) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    final TEndPoint ep = AINodeClient.getCurrentEndpoint();
-    try (final AINodeClient ai = AINodeClientManager.getInstance().borrowClient(ep)) {
+    try (final AINodeClient ai =
+        AINodeClientManager.getInstance().borrowClient(AINodeClientManager.DEFAULT_AINODE_ID)) {
       final TTrainingReq req = new TTrainingReq();
       req.setModelId(modelId);
       req.setParameters(parameters);
