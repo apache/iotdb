@@ -448,49 +448,6 @@ public class TestUtils {
     }
   }
 
-  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(
-        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
-  }
-
-  public static boolean tryExecuteNonQueryWithRetry(
-      BaseEnv env, String sql, String userName, String password) {
-    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
-  }
-
-  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(
-        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
-  }
-
-  // This method will not throw failure given that a failure is encountered.
-  // Instead, it returns a flag to indicate the result of the execution.
-  public static boolean tryExecuteNonQueriesWithRetry(
-      BaseEnv env, List<String> sqlList, String userName, String password) {
-    int lastIndex = 0;
-    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection(userName, password);
-          Statement statement = connection.createStatement()) {
-        for (int i = lastIndex; i < sqlList.size(); ++i) {
-          lastIndex = i;
-          statement.execute(sqlList.get(i));
-        }
-        return true;
-      } catch (SQLException e) {
-        if (retryCountLeft > 0) {
-          try {
-            Thread.sleep(10000);
-          } catch (InterruptedException ignored) {
-          }
-        } else {
-          e.printStackTrace();
-          return false;
-        }
-      }
-    }
-    return false;
-  }
-
   public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
     executeNonQuery(
         env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
