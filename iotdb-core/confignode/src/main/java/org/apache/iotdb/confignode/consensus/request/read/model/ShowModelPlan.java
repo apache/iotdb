@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
+import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 
 import java.util.Objects;
 
@@ -33,7 +33,7 @@ public class ShowModelPlan extends ConfigPhysicalReadPlan {
     super(ConfigPhysicalPlanType.ShowModel);
   }
 
-  public ShowModelPlan(final TShowModelReq showModelReq) {
+  public ShowModelPlan(final TShowModelsReq showModelReq) {
     super(ConfigPhysicalPlanType.ShowModel);
     if (showModelReq.isSetModelId()) {
       this.modelName = showModelReq.getModelId();
