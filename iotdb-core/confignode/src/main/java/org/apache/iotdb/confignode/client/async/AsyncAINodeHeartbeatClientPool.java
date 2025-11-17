@@ -21,10 +21,10 @@ package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.ainode.AsyncAINodeServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
+import org.apache.iotdb.db.protocol.client.AINodeClientFactory;
+import org.apache.iotdb.db.protocol.client.ainode.AsyncAINodeServiceClient;
 
 public class AsyncAINodeHeartbeatClientPool {
 
@@ -33,8 +33,7 @@ public class AsyncAINodeHeartbeatClientPool {
   private AsyncAINodeHeartbeatClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncAINodeServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory());
+            .createClientManager(new AINodeClientFactory.AINodeHeartbeatClientPoolFactory());
   }
 
   public void getAINodeHeartBeat(
