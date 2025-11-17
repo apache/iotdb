@@ -385,7 +385,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
         String.format(
             "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
             diff, measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(env, Collections.singletonList(timeSeriesCreation));
+    TestUtils.executeNonQueries(env, Collections.singletonList(timeSeriesCreation), null);
   }
 
   private void createDataPipe(String diff, boolean isTSFile) {
@@ -402,7 +402,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.executeNonQueries(senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(

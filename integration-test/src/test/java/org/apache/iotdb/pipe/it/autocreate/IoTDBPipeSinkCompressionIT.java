@@ -140,14 +140,13 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s1) values (2010-01-01T10:00:00+08:00,1)",
+              "insert into root.db.d1(time,s1) values (2010-01-02T10:00:00+08:00,2)",
+              "flush"),
+          null);
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -182,18 +181,17 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"),
           handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (now(), 3)",
-              "insert into root.db.d1(time, s1) values (now(), 4)",
-              "insert into root.db.d1(time, s1) values (now(), 5)",
-              "insert into root.db.d1(time, s1) values (now(), 6)",
-              "insert into root.db.d1(time, s1) values (now(), 7)",
-              "insert into root.db.d1(time, s1) values (now(), 8)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s1) values (now(),3)",
+              "insert into root.db.d1(time,s1) values (now(),4)",
+              "insert into root.db.d1(time,s1) values (now(),5)",
+              "insert into root.db.d1(time,s1) values (now(),6)",
+              "insert into root.db.d1(time,s1) values (now(),7)",
+              "insert into root.db.d1(time,s1) values (now(),8)",
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -219,17 +217,16 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (1, 1)",
-              "insert into root.db.d1(time, s2) values (1, 1)",
-              "insert into root.db.d1(time, s3) values (1, 1)",
-              "insert into root.db.d1(time, s4) values (1, 1)",
-              "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s1) values (1,1)",
+              "insert into root.db.d1(time,s2) values (1,1)",
+              "insert into root.db.d1(time,s3) values (1,1)",
+              "insert into root.db.d1(time,s4) values (1,1)",
+              "insert into root.db.d1(time,s5) values (1,1)",
+              "flush"),
+          null);
 
       // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
 

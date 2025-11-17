@@ -436,18 +436,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, beforeSqlList)) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, beforeSqlList, null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, testSql)) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, testSql, null);
 
     // Create an idempotent conflict, after sql shall be executed on the same region as testSql
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Arrays.asList(testSql, afterSql))) {
-      return;
-    }
+    TestUtils.executeNonQueries(senderEnv, Arrays.asList(testSql, afterSql), null);
 
     // Assume that the afterSql is executed on receiverEnv
     TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);

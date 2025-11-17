@@ -91,14 +91,10 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
     final int receiverPort = receiverDataNode.getPort();
 
     for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -127,24 +123,16 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
     for (int i = 100; i < 200; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     for (int i = 200; i < 300; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
@@ -173,14 +161,10 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
     for (int i = 300; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
@@ -201,23 +185,15 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
     }
 
     for (int i = 400; i < 500; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
     for (int i = 500; i < 600; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");
@@ -290,37 +266,28 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    // Auto extend s1
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            // Auto extend s1
-            "create schema template t1 (s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create schema template t1 (s2 INT64 encoding=RLE,s3 INT64 encoding=RLE compression=SNAPPY)",
             "create database root.db",
-            "set device template t1 to root.db"))) {
-      return;
-    }
+            "set device template t1 to root.db"),
+        null);
 
     for (int i = 0; i < 200; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
 
     for (int i = 200; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, String.format("insert into root.db.d1(time,s1) values (%s,1)", i), null);
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
     final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
@@ -363,16 +330,13 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN")) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          receiverEnv, "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN", null);
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      TestUtils.executeNonQuery(
           senderEnv,
-          "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN tags (tag3=v3) attributes (attr4=v4)")) {
-        return;
-      }
+          "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN tags (tag3=v3) attributes (attr4=v4)",
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

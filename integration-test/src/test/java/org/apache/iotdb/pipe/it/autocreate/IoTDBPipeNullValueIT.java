@@ -178,25 +178,23 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
         InsertType.SQL_INSERT,
         (isAligned) -> {
           // Partial null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
+                      "insert into root.sg.d1(time,s0,s1) aligned values (3,null,25.34)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
-            fail();
-          }
+                      "insert into root.sg.d1(time,s0,s1) values (3,null,25.34)"),
+              null);
           // All null
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
+                      "insert into root.sg.d1(time,s0,s1) aligned values (4,null,null)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"))) {
-            fail();
-          }
+                      "insert into root.sg.d1(time,s0,s1) values (4,null,null)"),
+              null);
         });
   }
 
@@ -232,20 +230,14 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(
+        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      fail();
-    }
+    TestUtils.executeNonQueries(
+        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      fail();
-    }
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,

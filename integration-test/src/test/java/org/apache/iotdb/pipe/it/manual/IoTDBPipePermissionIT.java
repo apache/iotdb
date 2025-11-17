@@ -95,15 +95,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
   }
 
   private void testWithConnector(final String connector) throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"))) {
-      return;
-    }
+            "grant WRITE,READ,MANAGE_DATABASE,MANAGE_USER on root.** to role `admin`"),
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -171,15 +170,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testNoPermission() throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"))) {
-      return;
-    }
+            "grant READ,MANAGE_DATABASE on root.ln.** to role `admin`"),
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();

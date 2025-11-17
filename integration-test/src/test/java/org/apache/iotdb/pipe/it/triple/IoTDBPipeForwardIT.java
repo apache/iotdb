@@ -101,12 +101,13 @@ public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         env1,
         Arrays.asList(
             "create database root.sg",
             "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN",
-            "insert into root.sg.wf01.GPS (time, status0) values (0, 1)"));
+            "insert into root.sg.wf01.GPS (time, status0) values (0, 1)"),
+        null);
     TestUtils.assertDataEventuallyOnEnv(
         env3,
         "select status0 from root.sg.**",
