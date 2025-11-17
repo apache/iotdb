@@ -175,7 +175,12 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.serialize();
-        TsFileResource cloneTsFileResource = tsFileResource.shallowClone();
+        TsFileResource cloneTsFileResource = null;
+        try {
+          cloneTsFileResource = tsFileResource.shallowCloneForNative();
+        } catch (CloneNotSupportedException e) {
+          cloneTsFileResource = tsFileResource.shallowClone();
+        }
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)

@@ -96,7 +96,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource implements PersistentResource {
+public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
@@ -1621,5 +1621,9 @@ public class TsFileResource implements PersistentResource {
     cloned.prev = null;
     cloned.next = null;
     return cloned;
+  }
+
+  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+    return (TsFileResource) clone();
   }
 }
