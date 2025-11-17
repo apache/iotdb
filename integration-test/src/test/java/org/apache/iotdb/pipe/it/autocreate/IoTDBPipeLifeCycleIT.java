@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
@@ -502,8 +501,10 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
               () -> {
                 try {
                   for (int i = 0; i < 100; ++i) {
-                    TestUtils.executeNonQuery(senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), null);
+                    TestUtils.executeNonQuery(
+                        senderEnv,
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+                        null);
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {
