@@ -63,7 +63,7 @@
         </fileSet>
         <fileSet>
             <outputDirectory>lib</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/ainode/dist/</directory>
+            <directory>${project.basedir}/../iotdb-core/ainode/dist/ainode/</directory>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>

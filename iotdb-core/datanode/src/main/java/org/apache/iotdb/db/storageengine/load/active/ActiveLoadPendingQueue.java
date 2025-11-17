@@ -34,9 +34,13 @@ public class ActiveLoadPendingQueue {
   private final Set<String> loadingFileSet = new HashSet<>();
 
   public synchronized boolean enqueue(
-      final String file, final boolean isGeneratedByPipe, final boolean isTableModel) {
+      final String file,
+      final String pendingDir,
+      final boolean isGeneratedByPipe,
+      final boolean isTableModel) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
-      pendingFileQueue.offer(new ActiveLoadEntry(file, isGeneratedByPipe, isTableModel));
+      pendingFileQueue.offer(
+          new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, isTableModel));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
@@ -76,17 +80,24 @@ public class ActiveLoadPendingQueue {
 
   public static class ActiveLoadEntry {
     private final String file;
+    private final String pendingDir;
     private final boolean isGeneratedByPipe;
     private final boolean isTableModel;
 
-    public ActiveLoadEntry(String file, boolean isGeneratedByPipe, boolean isTableModel) {
+    public ActiveLoadEntry(
+        String file, String pendingDir, boolean isGeneratedByPipe, boolean isTableModel) {
       this.file = file;
+      this.pendingDir = pendingDir;
       this.isGeneratedByPipe = isGeneratedByPipe;
       this.isTableModel = isTableModel;
     }
 
     public String getFile() {
       return file;
+    }
+
+    public String getPendingDir() {
+      return pendingDir;
     }
 
     public boolean isGeneratedByPipe() {

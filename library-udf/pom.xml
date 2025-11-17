@@ -31,8 +31,6 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <commons-math3.version>3.6.1</commons-math3.version>
-        <commons-lang3.version>3.18.0</commons-lang3.version>
     </properties>
     <dependencies>
         <dependency>

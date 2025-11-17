@@ -320,14 +320,21 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    // bind any address
-    return new TServerSocket(new InetSocketAddress(port));
+    if (bindAddress == null) {
+      // bind any address
+      return new TServerSocket(new InetSocketAddress(port));
+    }
+    return new TServerSocket(new InetSocketAddress(bindAddress, port));
   }
 
   private TServerTransport openNonblockingTransport(
       String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
-    // bind any address
-    return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    if (bindAddress == null) {
+      // bind any address
+      return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    }
+    return new TNonblockingServerSocket(
+        new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
