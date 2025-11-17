@@ -752,28 +752,35 @@ public class IoTDBLoadTsFileIT {
 
     final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (final TsFileGenerator generator =
-        new TsFileGenerator(new File(System.getProperty(USER_DIR), "1-0-0-0.tsfile"))) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
-      generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
-      writtenPoint1 = generator.getTotalNumber();
-    }
+    File relativePathFile = new File(System.getProperty(USER_DIR), "1-0-0-0.tsfile");
+    try {
+      try (final TsFileGenerator generator = new TsFileGenerator(relativePathFile)) {
+        generator.registerTimeseries(
+            SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+        generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
+        writtenPoint1 = generator.getTotalNumber();
+      }
 
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
-        final Statement statement = connection.createStatement()) {
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+          final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("load \"%s\" sglevel=2", "1-0-0-0.tsfile"));
+        statement.execute(String.format("load \"%s\" sglevel=2", "1-0-0-0.tsfile"));
 
-      try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
-        if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
-          Assert.assertEquals(writtenPoint1, sg1Count);
-        } else {
-          Assert.fail("This ResultSet is empty.");
+        try (final ResultSet resultSet =
+            statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          if (resultSet.next()) {
+            final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+            Assert.assertEquals(writtenPoint1, sg1Count);
+          } else {
+            Assert.fail("This ResultSet is empty.");
+          }
         }
+      }
+
+    } finally {
+      if (relativePathFile.exists()) {
+        relativePathFile.delete();
       }
     }
   }
