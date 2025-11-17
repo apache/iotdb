@@ -415,4 +415,8 @@ public class IoTDBStartCheck {
       }
     }
   }
+
+  public Properties getProperties() {
+    return properties;
+  }
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Seri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingl
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -263,8 +265,9 @@ public enum PlanNodeType {
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
   LAST_QUERY_SCAN((short) 98),
-  SHOW_DISK_USAGE((short) 99),
-  TREE_COLLECT((short) 100),
+  ALTER_ENCODING_COMPRESSOR((short) 99),
+  SHOW_DISK_USAGE((short) 100),
+  TREE_COLLECT((short) 101),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -314,6 +317,7 @@ public enum PlanNodeType {
   TABLE_WINDOW_FUNCTION((short) 1032),
   TABLE_INTO_NODE((short) 1033),
   TABLE_UNION_NODE((short) 1034),
+  TABLE_INTERSECT_NODE((short) 1035),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -592,8 +596,10 @@ public enum PlanNodeType {
       case 98:
         return LastQueryScanNode.deserialize(buffer);
       case 99:
-        return ShowDiskUsageNode.deserialize(buffer);
+        return AlterEncodingCompressorNode.deserialize(buffer);
       case 100:
+        return ShowDiskUsageNode.deserialize(buffer);
+      case 101:
         return CollectNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
@@ -705,6 +711,8 @@ public enum PlanNodeType {
             buffer);
       case 1034:
         return UnionNode.deserialize(buffer);
+      case 1035:
+        return IntersectNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

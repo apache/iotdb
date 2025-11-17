@@ -116,7 +116,9 @@ class BaseLogger:
             file_handler.setFormatter(self.logger_format)
             self.logger.addHandler(file_handler)
 
-        self.info(f"Logger init successfully.")
+        self.info(
+            f"Logger init successfully, log file prefix name {log_file_name_prefix}."
+        )
 
     # interfaces
     def debug(self, *msg):

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -172,7 +172,7 @@ public class PipeEventCollector implements EventCollector {
     (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
             ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR.process(
                 deleteDataEvent.getDeleteDataNode(),
-                (UnionIoTDBTreePattern) deleteDataEvent.getTreePattern())
+                (IoTDBTreePatternOperations) deleteDataEvent.getTreePattern())
             : IoTDBSchemaRegionSource.TABLE_PATTERN_PARSE_VISITOR
                 .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
                 .flatMap(

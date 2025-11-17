@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -1253,8 +1254,31 @@ public class ClusterSchemaManager {
   }
 
   public byte[] getAllTableInfoForDataNodeActivation() {
+    // To guarantee the safety of fetched tables
+    // If DataNode discovered that the table is being altered, it will fetch it from configNode, and
+    // if it's still in execution, it can use the table temporarily
+    // However, if the database is deleting then it must fetch it from configNode, or else the table
+    // is considered to be non exist
+    final Map<String, List<String>> alteringTables =
+        configManager.getProcedureManager().getAllExecutingTables();
+    final Map<String, List<TsTable>> usingTableMap = clusterSchemaInfo.getAllUsingTables();
+    final Map<String, List<TsTable>> preCreateTableMap = clusterSchemaInfo.getAllPreCreateTables();
+    alteringTables.forEach(
+        (k, v) -> {
+          final List<TsTable> preCreateList =
+              preCreateTableMap.computeIfAbsent(k, database -> new ArrayList<>());
+          if (Objects.isNull(v)) {
+            usingTableMap
+                .remove(k)
+                .forEach(
+                    table -> preCreateList.add(new NonCommittableTsTable(table.getTableName())));
+          } else {
+            preCreateList.addAll(
+                v.stream().map(NonCommittableTsTable::new).collect(Collectors.toList()));
+          }
+        });
     return TsTableInternalRPCUtil.serializeTableInitializationInfo(
-        clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
+        usingTableMap, preCreateTableMap);
   }
 
   // endregion

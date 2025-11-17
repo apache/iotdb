@@ -43,7 +43,17 @@ public class ExportSchemaTree extends AbstractExportSchema {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    session = new Session(host, Integer.parseInt(port), username, password);
+    Session.Builder sessionBuilder =
+        new Session.Builder()
+            .host(host)
+            .port(Integer.parseInt(port))
+            .username(username)
+            .password(password);
+    if (useSsl) {
+      sessionBuilder =
+          sessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    session = sessionBuilder.build();
     session.open(false);
   }
 

@@ -52,7 +52,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 
 /**
- * <b>Optimization phase:</b> Distributed plan planning.
+ * <b>Optimization phase:</b> Logical plan planning.
  *
  * <p>The LIMIT OFFSET condition can be pushed down to the TableScanNode, when the following
  * conditions are met:
