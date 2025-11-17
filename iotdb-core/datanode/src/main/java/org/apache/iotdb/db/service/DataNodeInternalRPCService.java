@@ -74,10 +74,10 @@ public class DataNodeInternalRPCService extends ThriftService
                   config.getThriftServerAwaitTimeForStopService(),
                   new InternalServiceThriftHandler(),
                   config.isRpcThriftCompressionEnable(),
-                  commonConfig.getKeyStorePath(),
-                  commonConfig.getKeyStorePwd(),
-                  commonConfig.getTrustStorePath(),
-                  commonConfig.getTrustStorePwd(),
+                  commonConfig.getInternalKeyStorePath(),
+                  commonConfig.getInternalKeyStorePwd(),
+                  commonConfig.getInternalTrustStorePath(),
+                  commonConfig.getInternalTrustStorePwd(),
                   DeepCopyRpcTransportFactory.INSTANCE)
               : new ThriftServiceThread(
                   processor,
