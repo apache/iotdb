@@ -540,13 +540,13 @@ public class PipeConfig {
         getPipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold());
 
     LOGGER.info(
-        "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
+        "PipeAsyncSinkForcedRetryTsFileEventQueueSize: {}",
         getPipeAsyncSinkForcedRetryTsFileEventQueueSize());
     LOGGER.info(
-        "PipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold: {}",
+        "PipeAsyncSinkForcedRetryTabletEventQueueSize: {}",
         getPipeAsyncSinkForcedRetryTabletEventQueueSize());
     LOGGER.info(
-        "PipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold: {}",
+        "PipeAsyncSinkForcedRetryTotalEventQueueSize: {}",
         getPipeAsyncSinkForcedRetryTotalEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorMaxRetryExecutionTimeMsPerCall: {}",
