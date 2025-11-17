@@ -479,7 +479,7 @@ public class ProcedureExecutor<Env> {
     }
     if (parent != null && parent.tryRunnable()) {
       // If success, means all its children have completed, move parent to front of the queue.
-      // Must endless retry here, since this step is not idempotent and can not be reexecute
+      // Must endless retry here, since this step is not idempotent and can not be re-execute
       // correctly in new CN leader.
       RetryUtils.executeWithEndlessBackoffRetry(
           () -> store.update(parent), "count down children procedure");
