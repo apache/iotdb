@@ -324,7 +324,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
                         shutil.rmtree(poetry_venv_path, ignore_errors=True)
                 poetry_venv_path.parent.mkdir(parents=True, exist_ok=True)
                 poetry_venv_path.symlink_to(venv_dir)
-                print(f"✓ Symlink created successfully")
+                print(f"Symlink created successfully")
             except Exception as e:
                 print(f"WARNING: Failed to create symlink: {e}")
                 print("Will try to use poetry install directly with VIRTUAL_ENV set")
@@ -386,9 +386,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
             print("The symlink approach may not have worked. Please check the symlink.")
             sys.exit(1)
         else:
-            print(
-                f"✓ Poetry is correctly using virtual environment: {poetry_venv_path}"
-            )
+            print(f"Poetry is correctly using virtual environment: {poetry_venv_path}")
     else:
         print("Warning: Could not verify poetry virtual environment path")
         print(
@@ -465,12 +463,12 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         )
         if test_result.returncode == 0:
             version = test_result.stdout.strip()
-            print(f"  ✓ {package} {version} installed")
+            print(f"{package} {version} installed")
         else:
             error_msg = (
                 test_result.stderr.strip() if test_result.stderr else "Unknown error"
             )
-            print(f"  ✗ {package} NOT found in virtual environment: {error_msg}")
+            print(f"{package} NOT found in virtual environment: {error_msg}")
             missing_packages.append(package)
 
     if missing_packages:
