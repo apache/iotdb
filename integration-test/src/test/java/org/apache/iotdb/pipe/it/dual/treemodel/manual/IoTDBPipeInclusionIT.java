@@ -56,6 +56,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "schema");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
