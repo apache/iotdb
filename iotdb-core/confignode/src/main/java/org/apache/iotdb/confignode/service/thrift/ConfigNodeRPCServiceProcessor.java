@@ -659,25 +659,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         return resp;
       }
 
-      final TAINodeConfiguration cfg = registeredAINodes.get(0);
-      final TAINodeLocation loc = cfg.getLocation();
+      final TAINodeLocation loc = registeredAINodes.get(0).getLocation();
+      resp.setAiNodeLocation(loc);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setMessage("AINode location resolved");
 
-      boolean hasEndpoint = false;
-      if (loc != null) {
-        try {
-          hasEndpoint = (loc.isSetInternalEndPoint() && loc.getInternalEndPoint() != null);
-        } catch (Throwable ignore) {
-        }
-      }
-
-      if (loc != null && hasEndpoint) {
-        resp.setAiNodeLocation(loc);
-        status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        status.setMessage("AINode location resolved");
-      } else {
-        status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
-        status.setMessage("No valid AINode endpoint extracted from registry");
-      }
     } catch (Exception e) {
       status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage("getAINodeLocation failed: " + e.getMessage());
