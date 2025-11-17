@@ -386,9 +386,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
             print("The symlink approach may not have worked. Please check the symlink.")
             sys.exit(1)
         else:
-            print(
-                f"Poetry is correctly using virtual environment: {poetry_venv_path}"
-            )
+            print(f"Poetry is correctly using virtual environment: {poetry_venv_path}")
     else:
         print("Warning: Could not verify poetry virtual environment path")
         print(
