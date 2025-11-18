@@ -431,7 +431,11 @@ public class TableHeaderSchemaValidator {
     }
 
     measurementInfo.setAttributeColumnsPresent(hasAttribute);
-    measurementInfo.setToLowerCaseApplied(true);
+    if (missingMeasurementIndices.isEmpty()) {
+      measurementInfo.setToLowerCaseApplied(true);
+    } else {
+      measurementInfo.toLowerCase();
+    }
     measurementInfo.semanticCheck();
 
     // Auto create missing columns
