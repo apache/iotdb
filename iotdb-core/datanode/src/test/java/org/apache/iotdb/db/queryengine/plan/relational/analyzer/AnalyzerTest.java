@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
@@ -1050,6 +1052,23 @@ public class AnalyzerTest {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);
+      }
+
+      public void validateInsertNodeMeasurements(
+          final String database,
+          final InsertNodeMeasurementInfo measurementInfo,
+          final MPPQueryContext context,
+          final boolean allowCreateTable,
+          final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+          final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+        TableHeaderSchemaValidator.getInstance()
+            .validateInsertNodeMeasurements(
+                database,
+                measurementInfo,
+                context,
+                allowCreateTable,
+                measurementValidator,
+                tagColumnHandler);
       }
 
       @Override
