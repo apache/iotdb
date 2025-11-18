@@ -46,6 +46,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -397,6 +398,19 @@ public class LoadTsFileManager {
               dataRegion.getDataRegionId(),
               Tag.TYPE.toString(),
               Metric.LOAD_POINT_COUNT.toString());
+    }
+  }
+
+  public static void cleanTsFile(final File tsFile) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    } catch (final IOException e) {
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 
