@@ -100,7 +100,7 @@ public class TableDistributedPlanner {
 
   public DistributedQueryPlan plan() {
     TableDistributedPlanGenerator.PlanContext planContext =
-        new TableDistributedPlanGenerator.PlanContext();
+        new TableDistributedPlanGenerator.PlanContext(analysis.getHintMap());
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     List<String> planText = null;
     if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {

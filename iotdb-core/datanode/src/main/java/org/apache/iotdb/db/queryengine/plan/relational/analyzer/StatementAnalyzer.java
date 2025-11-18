@@ -1521,7 +1521,7 @@ public class StatementAnalyzer {
           ParameterizedHintItem paramHint = (ParameterizedHintItem) hintItem;
           String hintName = paramHint.getHintName();
           List<String> params = paramHint.getParameters();
-          addHint(hintName, params.toArray(new String[0]), hintMap);
+          addHint(hintName, params, hintMap);
         } else if (hintItem instanceof SimpleHintItem) {
           SimpleHintItem simpleHint = (SimpleHintItem) hintItem;
           String hintName = simpleHint.getHintName();
@@ -1532,46 +1532,31 @@ public class StatementAnalyzer {
       return createAndAssignScope(node, context);
     }
 
-    private boolean invalidHintParameters(String... params) {
-      if (params.length == 0) {
-        return false;
-      }
-
-      List<String> validTables =
-          analysis.getRelationNames().stream()
-              .map(QualifiedName::getSuffix)
-              .collect(toImmutableList());
-      for (String tableName : params) {
-        if (!validTables.contains(tableName)) {
-          return true;
-        }
-      }
-      return false;
+    private List<String> intersect(List<String> a, List<String> b) {
+      return a.stream().filter(b::contains).collect(toImmutableList());
     }
 
-    private void addHint(String hintName, String[] params, Map<String, Hint> hintMap) {
+    private void addHint(String hintName, List<String> paramTables, Map<String, Hint> hintMap) {
       HintFactory definition = HINT_DEFINITIONS.get(hintName);
       if (definition != null) {
-        // If this hint supports parameter expansion and has multiple parameters
-        if (params != null && definition.shouldExpandParameters()) {
-          for (String param : params) {
-            if (invalidHintParameters(param)) {
-              return;
-            }
+        List<String> existingTables =
+            analysis.getRelationNames().stream()
+                .map(QualifiedName::getSuffix)
+                .collect(toImmutableList());
 
-            Hint hint = definition.createHint(param);
+        List<String> validTables =
+            paramTables != null ? intersect(paramTables, existingTables) : ImmutableList.of();
+
+        if (definition.shouldExpandParameters()) {
+          for (String table : validTables) {
+            Hint hint = definition.createHint(ImmutableList.of(table));
             String hintKey = hint.getKey();
             if (!hintMap.containsKey(hintKey)) {
               hintMap.put(hintKey, hint);
             }
           }
         } else {
-          // Default behavior for single parameter or non-expanding hints
-          if (params != null && invalidHintParameters(params)) {
-            return;
-          }
-
-          Hint hint = definition.createHint(params);
+          Hint hint = definition.createHint(validTables);
           String hintKey = hint.getKey();
           if (!hintMap.containsKey(hintKey)) {
             hintMap.put(hintKey, hint);

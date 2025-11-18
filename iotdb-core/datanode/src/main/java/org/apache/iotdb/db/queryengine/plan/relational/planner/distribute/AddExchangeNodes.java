@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -35,6 +37,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ReplicaHint;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.NO_CHILD;
@@ -95,9 +102,30 @@ public class AddExchangeNodes
   @Override
   public PlanNode visitTableScan(
       TableScanNode node, TableDistributedPlanGenerator.PlanContext context) {
+    // Original region replica set
+    TRegionReplicaSet regionReplicaSet = node.getRegionReplicaSet();
+    // Find applicable hint
+    ReplicaHint hint = findReplicaHint(node, context.hintMap);
+
+    // Early return for simple cases
+    if (context.hintMap == null || regionReplicaSet == null || hint == null) {
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(), new NodeDistribution(SAME_WITH_ALL_CHILDREN, regionReplicaSet));
+      return node;
+    }
+
+    // Determine optimized locations based on hint
+    List<TDataNodeLocation> optimizedLocations =
+        selectLocations(regionReplicaSet.getDataNodeLocations(), hint);
+
+    // Create optimized region replica set
+    TRegionReplicaSet optimizedRegionReplicaSet =
+        new TRegionReplicaSet(regionReplicaSet.getRegionId(), optimizedLocations);
+
     context.nodeDistributionMap.put(
         node.getPlanNodeId(),
-        new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
+        new NodeDistribution(SAME_WITH_ALL_CHILDREN, optimizedRegionReplicaSet));
+
     return node;
   }
 
@@ -205,5 +233,30 @@ public class AddExchangeNodes
         node.getPlanNodeId(),
         new NodeDistribution(SAME_WITH_ALL_CHILDREN, node.getRegionReplicaSet()));
     return node;
+  }
+
+  /**
+   * Finds the applicable replica hint for the given table scan node. First checks for
+   * table-specific hint, then falls back to global hint.
+   */
+  private ReplicaHint findReplicaHint(TableScanNode node, Map<String, Hint> hintMap) {
+    if (hintMap == null || hintMap.isEmpty()) {
+      return null;
+    }
+
+    String tableName = node.getQualifiedObjectName().getObjectName();
+    String tableSpecificKey = "replica-" + tableName;
+    String globalKey = "replica-*";
+
+    return (ReplicaHint) hintMap.getOrDefault(tableSpecificKey, hintMap.get(globalKey));
+  }
+
+  /**
+   * Selects data node locations based on the provided hint using polymorphism. - ReplicaHint: Uses
+   * the hint's own selectLocations strategy - Other hints or null: Returns all original locations
+   */
+  private List<TDataNodeLocation> selectLocations(
+      List<TDataNodeLocation> dataNodeLocations, ReplicaHint hint) {
+    return hint.selectLocations(dataNodeLocations);
   }
 }
