@@ -33,4 +33,10 @@ public class PipeRuntimeSinkRetryTimesConfigurableException
   public int getRetryTimes() {
     return retryTimes;
   }
+
+  // We do not record the timestamp here for logger reduction detection
+  @Override
+  public String toString() {
+    return "PipeRuntimeSinkRetryTimesConfigurableException{" + "message='" + getMessage() + "}";
+  }
 }

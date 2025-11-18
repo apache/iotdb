@@ -803,10 +803,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
-    if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
-      conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
-    }
-
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1060,6 +1056,12 @@ public class IoTDBDescriptor {
     conf.setDataNodeSchemaCacheEvictionPolicy(
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+
+    conf.setCacheEvictionMemoryComputationThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "cache_eviction_memory_computation_threshold",
+                String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
     conf.setDataNodeTableCacheSemaphorePermitNum(
         Integer.parseInt(
@@ -2130,6 +2132,13 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
+
+      // update cache_eviction_memory_computation_threshold
+      conf.setCacheEvictionMemoryComputationThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cache_eviction_memory_computation_threshold",
+                  String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(

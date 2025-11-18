@@ -56,6 +56,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -84,12 +85,12 @@ public class ActiveLoadTsFileLoader {
   }
 
   public void tryTriggerTsFileLoad(
-      String absolutePath, boolean isTabletMode, boolean isGeneratedByPipe) {
+      String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe, isTabletMode)) {
+    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -216,24 +217,29 @@ public class ActiveLoadTsFileLoader {
   private TSStatus loadTsFile(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
       throws FileNotFoundException {
-    final LoadTsFileStatement statement = new LoadTsFileStatement(entry.getFile());
+    final File tsFile = new File(entry.getFile());
+    final LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
     final List<File> files = statement.getTsFiles();
 
-    // It should be noted here that the instructions in this code block do not need to use the
-    // DataBase, so the DataBase is assigned a value of null. If the DataBase is used later, an
-    // exception will be thrown.
-    final File parentFile;
-    statement.setDatabase(
-        files.isEmpty()
-                || !entry.isTableModel()
-                || (parentFile = files.get(0).getParentFile()) == null
-            ? null
-            : parentFile.getName());
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(isVerify);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
+
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
+            : new File(entry.getPendingDir());
+    final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+
+    final File parentFile;
+    if (statement.getDatabase() == null && entry.isTableModel()) {
+      statement.setDatabase(
+          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+              ? null
+              : parentFile.getName());
+    }
+
     return executeStatement(
         entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
   }

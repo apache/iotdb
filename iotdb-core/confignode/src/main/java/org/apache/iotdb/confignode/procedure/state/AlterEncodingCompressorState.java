@@ -17,24 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-
-public class AINodeClientManager {
-  private AINodeClientManager() {
-    // Empty constructor
-  }
-
-  private static final class AINodeClientManagerHolder {
-    private static final IClientManager<TEndPoint, AINodeClient> INSTANCE =
-        new IClientManager.Factory<TEndPoint, AINodeClient>()
-            .createClientManager(new ClientPoolFactory.AINodeClientPoolFactory());
-  }
-
-  public static IClientManager<TEndPoint, AINodeClient> getInstance() {
-    return AINodeClientManagerHolder.INSTANCE;
-  }
+public enum AlterEncodingCompressorState {
+  ALTER_SCHEMA_REGION,
+  CLEAR_CACHE
 }

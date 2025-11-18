@@ -54,6 +54,9 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case PIPE_GENERATED_KEY:
+        validatePipeGeneratedParam(value);
+        break;
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
         break;
@@ -181,6 +184,21 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+  }
+
+  public static final String PIPE_GENERATED_KEY = "pipe-generated";
+
+  public static void validatePipeGeneratedParam(final String pipeGenerated) {
+    if (!"true".equalsIgnoreCase(pipeGenerated) && !"false".equalsIgnoreCase(pipeGenerated)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              PIPE_GENERATED_KEY, pipeGenerated));
+    }
+  }
+
+  public static boolean parseOrGetDefaultPipeGenerated(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(loadAttributes.getOrDefault(PIPE_GENERATED_KEY, "false"));
   }
 
   public static final String ASYNC_LOAD_KEY = "async";
