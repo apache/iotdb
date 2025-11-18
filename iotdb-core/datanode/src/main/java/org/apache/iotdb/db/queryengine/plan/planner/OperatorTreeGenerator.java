@@ -156,6 +156,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -2983,7 +2984,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (timeValuePair.getValue() == null) {
+      } else if (timeValuePair.getValue() == DeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
         // cached last value is not satisfied
