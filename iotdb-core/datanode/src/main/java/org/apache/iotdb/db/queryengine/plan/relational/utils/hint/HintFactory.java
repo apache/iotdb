@@ -21,6 +21,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
+import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -30,7 +31,7 @@ import java.util.function.Function;
 public final class HintFactory {
 
   private final String key;
-  private final Function<String[], Hint> factory;
+  private final Function<List<String>, Hint> factory;
   private final boolean expandParameters;
 
   /**
@@ -39,7 +40,7 @@ public final class HintFactory {
    * @param key the key to use when storing the hint in the hint map
    * @param hintFactory factory method to create the hint instance, receives the key as parameter
    */
-  public HintFactory(String key, Function<String[], Hint> hintFactory) {
+  public HintFactory(String key, Function<List<String>, Hint> hintFactory) {
     this(key, hintFactory, false);
   }
 
@@ -50,7 +51,8 @@ public final class HintFactory {
    * @param hintFactory factory method to create the hint instance
    * @param expandParameters whether to expand array parameters into multiple hints
    */
-  public HintFactory(String key, Function<String[], Hint> hintFactory, boolean expandParameters) {
+  public HintFactory(
+      String key, Function<List<String>, Hint> hintFactory, boolean expandParameters) {
     this.key = key;
     this.factory = hintFactory;
     this.expandParameters = expandParameters;
@@ -70,8 +72,8 @@ public final class HintFactory {
    *
    * @return the created hint
    */
-  public Hint createHint(String... parameters) {
-    return factory.apply(parameters != null ? parameters : new String[0]);
+  public Hint createHint(List<String> parameters) {
+    return factory.apply(parameters);
   }
 
   /**

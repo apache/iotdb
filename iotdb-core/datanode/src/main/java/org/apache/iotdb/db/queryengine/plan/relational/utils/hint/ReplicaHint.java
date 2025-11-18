@@ -25,34 +25,24 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 
 import java.util.List;
 
-public class FollowerHint extends ReplicaHint {
-  public static String hintName = "follower";
-  private final String targetTable;
+/**
+ * Abstract base class for replica-related hints. Provides common functionality for hints that deal
+ * with data node replica selection.
+ */
+public abstract class ReplicaHint extends Hint {
+  public static String category = "replica";
 
-  public FollowerHint(List<String> tables) {
-    super(hintName);
-    if (tables == null || tables.size() > 1) {
-      throw new IllegalArgumentException("FollowerHint accepts empty or exactly one table");
-    }
-    targetTable = tables.isEmpty() ? "*" : tables.get(0);
+  protected ReplicaHint(String hintName) {
+    super(hintName, category);
   }
 
-  @Override
-  public String getKey() {
-    return category + "-" + targetTable;
-  }
-
-  @Override
-  public String toString() {
-    return hintName + "-" + targetTable;
-  }
-
-  @Override
-  public List<TDataNodeLocation> selectLocations(List<TDataNodeLocation> dataNodeLocations) {
-    if (dataNodeLocations == null || dataNodeLocations.size() <= 1) {
-      return dataNodeLocations;
-    }
-    // Return only followers (all locations except the first/leader)
-    return dataNodeLocations.subList(1, dataNodeLocations.size());
-  }
+  /**
+   * Selects data node locations based on the replica strategy. Each replica hint implementation
+   * defines its own location selection logic.
+   *
+   * @param dataNodeLocations the available data node locations
+   * @return the selected locations based on replica hint strategy
+   */
+  public abstract List<TDataNodeLocation> selectLocations(
+      List<TDataNodeLocation> dataNodeLocations);
 }

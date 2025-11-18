@@ -118,11 +118,6 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     }
     boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
 
-    //    if (ReadConsistencyLevel.STRONG == this.readConsistencyLevel
-    //        && queryContext.getHintMap().containsKey("Follower")) {
-    //      selectRandomDataNode = true;
-    //    }
-
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
     List<TDataNodeLocation> availableDataNodes =

@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -2213,6 +2214,7 @@ public class TableDistributedPlanGenerator
 
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+    final Map<String, Hint> hintMap;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
     boolean pushDownGrouping = false;
@@ -2222,6 +2224,12 @@ public class TableDistributedPlanGenerator
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();
+      this.hintMap = new HashMap<>();
+    }
+
+    public PlanContext(Map<String, Hint> hintMap) {
+      this.nodeDistributionMap = new HashMap<>();
+      this.hintMap = hintMap;
     }
 
     public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {

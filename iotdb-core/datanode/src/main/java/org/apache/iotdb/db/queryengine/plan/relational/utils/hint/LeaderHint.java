@@ -21,24 +21,39 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
-public class LeaderHint extends Hint {
-  public static String hintName = "leader";
-  public static String category = "replica";
-  private String targetTable = null;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 
-  public LeaderHint(String... tables) {
-    super(hintName, category);
-    if (tables.length > 0) {
-      this.targetTable = tables[0];
+import java.util.Collections;
+import java.util.List;
+
+public class LeaderHint extends ReplicaHint {
+  public static String hintName = "leader";
+  private final String targetTable;
+
+  public LeaderHint(List<String> tables) {
+    super(hintName);
+    if (tables == null || tables.size() > 1) {
+      throw new IllegalArgumentException("LeaderHint accepts empty or exactly one table");
     }
+    targetTable = tables.isEmpty() ? "*" : tables.get(0);
   }
 
+  @Override
   public String getKey() {
-    return targetTable == null ? category : category + "-" + targetTable;
+    return category + "-" + targetTable;
   }
 
   @Override
   public String toString() {
-    return targetTable == null ? hintName : hintName + "-" + targetTable;
+    return hintName + "-" + targetTable;
+  }
+
+  @Override
+  public List<TDataNodeLocation> selectLocations(List<TDataNodeLocation> dataNodeLocations) {
+    if (dataNodeLocations == null || dataNodeLocations.size() <= 1) {
+      return dataNodeLocations;
+    }
+    // Return only the leader (first location)
+    return Collections.singletonList(dataNodeLocations.get(0));
   }
 }
