@@ -41,8 +41,10 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String TABLE_DEVICE_NUMBER = "schema_region_table_device_cnt";
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
+  private static final String TABLE = "table";
 
   private final MemSchemaEngineStatistics engineStatistics;
+  private AbstractMetricService metricService;
 
   public SchemaEngineMemMetric(final MemSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
@@ -50,6 +52,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
+    this.metricService = metricService;
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
@@ -100,14 +103,16 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         SCHEMA_CONSENSUS);
   }
 
-  public void bindTableMetrics(final AbstractMetricService metricService, final String tableName) {
+  public void bindTableMetrics(final String tableName) {
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         statistics -> statistics.getTableDeviceNumber(tableName),
         Tag.NAME.toString(),
-        DEVICE_NUMBER);
+        TABLE_DEVICE_NUMBER,
+        TABLE,
+        tableName);
   }
 
   @Override
@@ -134,10 +139,14 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
 
-  public static void unbindTableMetrics(
-      final AbstractMetricService metricService, final String tableName) {
+  public void unbindTableMetrics(final String tableName) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        TABLE_DEVICE_NUMBER,
+        TABLE,
+        tableName);
   }
 
   /**

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaEngineMetric;
+import org.apache.iotdb.db.schemaengine.metric.SchemaEngineMemMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import org.slf4j.Logger;
@@ -197,7 +199,18 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void addTableDevice(final String table) {
-    tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+    tableDeviceNumber.compute(
+        table,
+        (tableName, num) -> {
+          if (Objects.nonNull(num)) {
+            return num + 1;
+          }
+          final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
+          if (metric instanceof SchemaEngineMemMetric) {
+            ((SchemaEngineMemMetric) metric).bindTableMetrics(table);
+          }
+          return 1L;
+        });
   }
 
   public void decreaseTableDevice(final String table, final long decrease) {
@@ -206,8 +219,15 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   // Reset table device, will alter the schema statistics as well
   public void resetTableDevice(final @Nonnull String table) {
-    final long num = tableDeviceNumber.remove(table);
+    final Long num = tableDeviceNumber.remove(table);
+    if (Objects.isNull(num)) {
+      return;
+    }
     totalDeviceNumber.addAndGet(-num);
+    final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
+    if (metric instanceof SchemaEngineMemMetric) {
+      ((SchemaEngineMemMetric) metric).unbindTableMetrics(table);
+    }
   }
 
   @Override
