@@ -162,6 +162,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.lang3.tuple.ImmutableTriple;
+import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -313,16 +315,17 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
 
-  private static final Cache<TableSchemaCacheKey, Pair<Long, TableSchema>> TABLE_SCHEMA_CACHE =
-      Caffeine.newBuilder()
-          .maximumWeight(
-              IoTDBDescriptor.getInstance().getConfig().getDataNodeTableSchemaCacheSize())
-          .weigher(
-              (TableSchemaCacheKey k, Pair<Long, TableSchema> v) ->
-                  (int)
-                      (PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v.getRight())
-                          + Long.BYTES))
-          .build();
+  private static final Cache<TableSchemaCacheKey, Triple<Long, Long, TableSchema>>
+      TABLE_SCHEMA_CACHE =
+          Caffeine.newBuilder()
+              .maximumWeight(
+                  IoTDBDescriptor.getInstance().getConfig().getDataNodeTableSchemaCacheSize())
+              .weigher(
+                  (TableSchemaCacheKey k, Triple<Long, Long, TableSchema> v) ->
+                      (int)
+                          (PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v.getRight())
+                              + Long.BYTES * 2))
+              .build();
 
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
@@ -1425,14 +1428,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private TableSchema getTableSchemaFromCache(
-      final String database, final String tableName, final long currentVersion) {
+      final String database, final String tableName, final Pair<Long, Long> currentVersion) {
     final TableSchemaCacheKey key = new TableSchemaCacheKey(database, tableName);
-    final Pair<Long, TableSchema> cached = TABLE_SCHEMA_CACHE.getIfPresent(key);
+    final Triple<Long, Long, TableSchema> cached = TABLE_SCHEMA_CACHE.getIfPresent(key);
     if (cached == null) {
       return null;
     }
-    final Long cachedVersion = cached.getLeft();
-    if (cachedVersion != null && cachedVersion == currentVersion) {
+    final Long cachedCreationId = cached.getLeft();
+    final Long cachedInstanceVersion = cached.getMiddle();
+    if (cachedCreationId != null
+        && cachedInstanceVersion != null
+        && cachedCreationId.equals(currentVersion.getLeft())
+        && cachedInstanceVersion.equals(currentVersion.getRight())) {
       return cached.getRight();
     }
     // remove stale entry to avoid unbounded growth
@@ -1443,14 +1450,15 @@ public class DataRegion implements IDataRegionForQuery {
   private void cacheTableSchema(
       final String database,
       final String tableName,
-      final long version,
+      final Pair<Long, Long> version,
       final TableSchema tableSchema) {
     if (tableSchema == null) {
       TABLE_SCHEMA_CACHE.invalidate(new TableSchemaCacheKey(database, tableName));
       return;
     }
     TABLE_SCHEMA_CACHE.put(
-        new TableSchemaCacheKey(database, tableName), new Pair<>(version, tableSchema));
+        new TableSchemaCacheKey(database, tableName),
+        new ImmutableTriple<>(version.getLeft(), version.getRight(), tableSchema));
   }
 
   private static final class TableSchemaCacheKey {
@@ -1487,7 +1495,8 @@ public class DataRegion implements IDataRegionForQuery {
           tableName,
           t -> {
             final String database = getDatabaseName();
-            final long currentVersion = DataNodeTableCache.getInstance().getVersion();
+            final Pair<Long, Long> currentVersion =
+                DataNodeTableCache.getInstance().getInstanceVersion();
 
             final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
             if (cachedSchema != null) {
