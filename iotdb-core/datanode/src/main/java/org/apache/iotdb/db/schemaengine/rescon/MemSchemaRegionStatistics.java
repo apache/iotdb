@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.rescon;
 
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -126,7 +129,19 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   }
 
   public void addTableDevice(final String table) {
-    tableDeviceNumber.compute(table, (tableName, num) -> Objects.nonNull(num) ? num + 1 : 1L);
+    tableDeviceNumber.compute(
+        table,
+        (tableName, num) -> {
+          if (Objects.nonNull(num)) {
+            return num + 1;
+          }
+          final ISchemaRegionMetric metric =
+              SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
+          if (metric instanceof SchemaRegionMemMetric) {
+            ((SchemaRegionMemMetric) metric).bindTableMetrics(table);
+          }
+          return 1L;
+        });
     schemaEngineStatistics.addTableDevice(table);
   }
 
@@ -139,6 +154,11 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   public void resetTableDevice(final String table) {
     final long num = tableDeviceNumber.remove(table);
     devicesNumber.addAndGet(-num);
+    final ISchemaRegionMetric metric =
+        SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
+    if (metric instanceof SchemaRegionMemMetric) {
+      ((SchemaRegionMemMetric) metric).unbindTableMetrics(table);
+    }
     schemaEngineStatistics.resetTableDevice(table);
   }
 

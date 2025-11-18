@@ -38,10 +38,10 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
   private static final String REGION_NUMBER = "schema_region_number";
   private static final String DEVICE_NUMBER = "schema_region_total_device_cnt";
-  private static final String TABLE_DEVICE_NUMBER = "schema_region_table_device_cnt";
+  private static final String TABLE_DEVICE_NUMBER = "schema_region_total_table_device_cnt";
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-  private static final String TABLE = "table";
+  public static final String TABLE = "table";
 
   private final MemSchemaEngineStatistics engineStatistics;
   private AbstractMetricService metricService;
