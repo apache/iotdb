@@ -647,6 +647,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
+    if (node.getAlias() != null) {
+      boxValue.add(String.format("Alias: %s", node.getAlias().getValue()));
+    }
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
 
     if (deviceTableScanNode != null) {
@@ -727,6 +730,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(node.toString());
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
+    if (node.getAlias() != null) {
+      boxValue.add(String.format("Alias: %s", node.getAlias().getValue()));
+    }
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation

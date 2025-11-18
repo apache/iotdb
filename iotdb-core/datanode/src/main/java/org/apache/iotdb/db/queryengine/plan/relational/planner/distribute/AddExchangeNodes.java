@@ -244,7 +244,10 @@ public class AddExchangeNodes
       return null;
     }
 
-    String tableName = node.getQualifiedObjectName().getObjectName();
+    String tableName =
+        node.getAlias() != null
+            ? node.getAlias().getValue()
+            : node.getQualifiedObjectName().getObjectName();
     String tableSpecificKey = "replica-" + tableName;
     String globalKey = "replica-*";
 

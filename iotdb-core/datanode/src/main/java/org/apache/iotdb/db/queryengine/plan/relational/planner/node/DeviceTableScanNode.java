@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -94,6 +95,18 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
+      Identifier alias) {
+    super(id, qualifiedObjectName, outputSymbols, assignments);
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
+    this.alias = alias;
+  }
+
+  public DeviceTableScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
       List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
@@ -120,6 +133,39 @@ public class DeviceTableScanNode extends TableScanNode {
     this.containsNonAlignedDevice = containsNonAlignedDevice;
   }
 
+  public DeviceTableScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      List<DeviceEntry> deviceEntries,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
+      Ordering scanOrder,
+      Expression timePredicate,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice,
+      Identifier alias) {
+    super(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset);
+    this.deviceEntries = deviceEntries;
+    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
+    this.scanOrder = scanOrder;
+    this.timePredicate = timePredicate;
+    this.pushDownPredicate = pushDownPredicate;
+    this.pushLimitToEachDevice = pushLimitToEachDevice;
+    this.containsNonAlignedDevice = containsNonAlignedDevice;
+    this.alias = alias;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitDeviceTableScan(this, context);
@@ -140,7 +186,8 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        containsNonAlignedDevice,
+        alias);
   }
 
   protected static void serializeMemberVariables(

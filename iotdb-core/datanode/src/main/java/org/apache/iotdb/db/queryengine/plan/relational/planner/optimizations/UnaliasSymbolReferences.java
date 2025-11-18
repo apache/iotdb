@@ -237,7 +237,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownLimit(),
               node.getPushDownOffset(),
               node.isPushLimitToEachDevice(),
-              node.containsNonAlignedDevice()),
+              node.containsNonAlignedDevice(),
+              node.getAlias()),
           mapping);
     }
 

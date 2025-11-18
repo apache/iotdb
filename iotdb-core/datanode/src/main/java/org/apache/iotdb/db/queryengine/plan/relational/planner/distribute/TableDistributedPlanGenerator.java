@@ -743,7 +743,8 @@ public class TableDistributedPlanGenerator
                         node.getPushDownLimit(),
                         node.getPushDownOffset(),
                         node.isPushLimitToEachDevice(),
-                        node.containsNonAlignedDevice());
+                        node.containsNonAlignedDevice(),
+                        node.getAlias());
                 scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
                 return scanNode;
               });
@@ -829,7 +830,8 @@ public class TableDistributedPlanGenerator
                           node.getPushDownLimit(),
                           node.getPushDownOffset(),
                           node.isPushLimitToEachDevice(),
-                          node.containsNonAlignedDevice());
+                          node.containsNonAlignedDevice(),
+                          node.getAlias());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -1442,7 +1444,8 @@ public class TableDistributedPlanGenerator
                               partialAggTableScanNode.getGroupingSets(),
                               partialAggTableScanNode.getPreGroupedSymbols(),
                               partialAggTableScanNode.getStep(),
-                              partialAggTableScanNode.getGroupIdSymbol())
+                              partialAggTableScanNode.getGroupIdSymbol(),
+                              partialAggTableScanNode.getAlias())
                           : new AggregationTreeDeviceViewScanNode(
                               queryId.genPlanNodeId(),
                               partialAggTableScanNode.getQualifiedObjectName(),
@@ -1960,11 +1963,6 @@ public class TableDistributedPlanGenerator
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
     boolean deviceCrossRegion;
-
-    public PlanContext() {
-      this.nodeDistributionMap = new HashMap<>();
-      this.hintMap = new HashMap<>();
-    }
 
     public PlanContext(Map<String, Hint> hintMap) {
       this.nodeDistributionMap = new HashMap<>();
