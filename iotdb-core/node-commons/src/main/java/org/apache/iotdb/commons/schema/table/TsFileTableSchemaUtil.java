@@ -93,8 +93,17 @@ public class TsFileTableSchemaUtil {
         ReadWriteIOUtils.readEncoding(tsTableBuffer);
         ReadWriteIOUtils.readCompressionType(tsTableBuffer);
       }
+      // Skip Map
+      int length = ReadWriteIOUtils.readInt(tsTableBuffer);
+      for (int j = 0; j < length; ++j) {
+        // Skip String
+        int size = ReadWriteIOUtils.readInt(tsTableBuffer);
+        tsTableBuffer.position(tsTableBuffer.position() + size);
 
-      ReadWriteIOUtils.readMap(tsTableBuffer); // Column props
+        // Skip String
+        size = ReadWriteIOUtils.readInt(tsTableBuffer);
+        tsTableBuffer.position(tsTableBuffer.position() + size);
+      }
 
       measurementSchemas.add(new MeasurementSchema(columnName, dataType));
       columnTypes.add(category.toTsFileColumnType());
