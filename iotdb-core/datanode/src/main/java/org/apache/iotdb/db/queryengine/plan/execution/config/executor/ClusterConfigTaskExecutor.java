@@ -3903,7 +3903,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> countDatabases(final Predicate<String> canSeenDB) {
+  public SettableFuture<ConfigTaskResult> countDatabases(final Predicate<String> canSeeDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
@@ -3914,9 +3914,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
-      // build TSBlock
+      // build TSBlock, here we consider the information_schema
       CountDatabaseTask.buildTSBlock(
-          (int) resp.getDatabaseInfoMap().keySet().stream().filter(canSeenDB).count() + 1, future);
+          (int) resp.getDatabaseInfoMap().keySet().stream().filter(canSeeDB).count() + 1, future);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }

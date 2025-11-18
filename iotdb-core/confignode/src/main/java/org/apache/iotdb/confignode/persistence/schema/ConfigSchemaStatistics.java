@@ -80,7 +80,7 @@ public class ConfigSchemaStatistics {
   }
 
   public void increaseTreeViewTableNum(final String database) {
-    treeViewTableNum.compute(database, (db, num) -> num == null ? 0 : num + 1);
+    treeViewTableNum.compute(database, (db, num) -> num == null ? 1 : num + 1);
   }
 
   public void decreaseTreeViewTableNum(final String database) {
@@ -88,7 +88,7 @@ public class ConfigSchemaStatistics {
   }
 
   public void increaseBaseTableNum(final String database) {
-    baseTableNum.compute(database, (db, num) -> num == null ? 0 : num + 1);
+    baseTableNum.compute(database, (db, num) -> num == null ? 1 : num + 1);
   }
 
   public void decreaseBaseTableNum(final String database) {

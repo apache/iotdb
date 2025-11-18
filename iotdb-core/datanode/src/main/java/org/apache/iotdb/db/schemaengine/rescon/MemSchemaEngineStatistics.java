@@ -28,6 +28,7 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -134,7 +135,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public long getTableDeviceNumber(final String tableName) {
-    return tableDeviceNumber.get(tableName);
+    return tableDeviceNumber.getOrDefault(tableName, 0L);
   }
 
   @Override
@@ -203,7 +204,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   // Reset table device, will alter the schema statistics as well
-  public void resetTableDevice(final String table) {
+  public void resetTableDevice(final @Nonnull String table) {
     final long num = tableDeviceNumber.remove(table);
     totalDeviceNumber.addAndGet(-num);
   }

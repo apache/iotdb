@@ -134,7 +134,11 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), SCHEMA_CONSENSUS);
   }
 
-  public static void unbindTableMetrics() {}
+  public static void unbindTableMetrics(
+      final AbstractMetricService metricService, final String tableName) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
+  }
 
   /**
    * Encode SchemaRegionConsensusProtocol to ordinal.
