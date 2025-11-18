@@ -266,7 +266,7 @@ public abstract class TableScanNode extends SourceNode {
 
     if (node.alias != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      Identifier.serialize(node.alias, byteBuffer);
+      node.alias.serialize(byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
@@ -308,7 +308,7 @@ public abstract class TableScanNode extends SourceNode {
 
     if (node.alias != null) {
       ReadWriteIOUtils.write(true, stream);
-      Identifier.serialize(node.alias, stream);
+      node.alias.serialize(stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
