@@ -21,10 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.udf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
@@ -55,8 +54,7 @@ import java.util.stream.Collectors;
 
 public class UDTFForecast implements UDTF {
   private static final TsBlockSerde serde = new TsBlockSerde();
-  private static final IClientManager<TEndPoint, AINodeClient> CLIENT_MANAGER =
-      AINodeClientManager.getInstance();
+  private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
   private TEndPoint targetAINode = new TEndPoint("127.0.0.1", 10810);
   private String model_id;
   private int maxInputLength;

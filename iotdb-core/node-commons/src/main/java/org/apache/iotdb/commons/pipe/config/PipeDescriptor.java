@@ -368,7 +368,7 @@ public class PipeDescriptor {
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
                         String.valueOf(
                             config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
-    config.setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
+    config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_forced_retry_tsfile_event_queue_size"))
@@ -376,9 +376,8 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_forced_retry_tsfile_event_queue_size",
                         String.valueOf(
-                            config
-                                .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold())))));
-    config.setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
+                            config.getPipeAsyncSinkForcedRetryTsFileEventQueueSize())))));
+    config.setPipeAsyncSinkForcedRetryTabletEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_forced_retry_tablet_event_queue_size"))
@@ -386,18 +385,15 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_forced_retry_tablet_event_queue_size",
                         String.valueOf(
-                            config
-                                .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold())))));
-    config.setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
+                            config.getPipeAsyncSinkForcedRetryTabletEventQueueSize())))));
+    config.setPipeAsyncSinkForcedRetryTotalEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_forced_retry_total_event_queue_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_forced_retry_total_event_queue_size",
-                        String.valueOf(
-                            config
-                                .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())))));
+                        String.valueOf(config.getPipeAsyncSinkForcedRetryTotalEventQueueSize())))));
     config.setRateLimiterHotReloadCheckIntervalMs(
         Integer.parseInt(
             properties.getProperty(
