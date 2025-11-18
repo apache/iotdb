@@ -632,7 +632,7 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             # create position_ids on the fly for batch generation
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
-            if past_key_values is not None:
+            if past_key_values:
                 token_num = (
                     input_ids.shape[1] + self.config.input_token_len - 1
                 ) // self.config.input_token_len
