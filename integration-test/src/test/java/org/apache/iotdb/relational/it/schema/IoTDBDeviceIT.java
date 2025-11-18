@@ -47,7 +47,7 @@ public class IoTDBDeviceIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultSchemaRegionGroupNumPerDatabase(2);
-    EnvFactory.getEnv().initClusterEnvironment(1, 1);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @AfterClass
