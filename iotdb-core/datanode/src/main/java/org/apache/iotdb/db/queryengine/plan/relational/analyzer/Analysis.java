@@ -218,7 +218,7 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
-  private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+  private final Map<NodeRef<Relation>, Identifier> aliasedRelations = new LinkedHashMap<>();
 
   private final Map<NodeRef<TableFunctionInvocation>, TableFunctionInvocationAnalysis>
       tableFunctionAnalyses = new LinkedHashMap<>();
@@ -866,12 +866,16 @@ public class Analysis implements IAnalysis {
     return relationNames.values().stream().collect(toImmutableList());
   }
 
-  public void addAliased(final Relation relation) {
-    aliasedRelations.add(NodeRef.of(relation));
+  public void addAliased(final Relation relation, Identifier alias) {
+    aliasedRelations.put(NodeRef.of(relation), alias);
+  }
+
+  public Identifier getAliased(Relation relation) {
+    return aliasedRelations.get(NodeRef.of(relation));
   }
 
   public boolean isAliased(Relation relation) {
-    return aliasedRelations.contains(NodeRef.of(relation));
+    return aliasedRelations.containsKey(NodeRef.of(relation));
   }
 
   public void addTableSchema(

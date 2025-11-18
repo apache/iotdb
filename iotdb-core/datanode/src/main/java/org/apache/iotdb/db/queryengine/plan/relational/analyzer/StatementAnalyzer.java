@@ -3676,7 +3676,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
       analysis.setRelationName(relation, QualifiedName.of(ImmutableList.of(relation.getAlias())));
-      analysis.addAliased(relation.getRelation());
+      analysis.addAliased(relation.getRelation(), relation.getAlias());
       Scope relationScope = process(relation.getRelation(), scope);
       RelationType relationType = relationScope.getRelationType();
 

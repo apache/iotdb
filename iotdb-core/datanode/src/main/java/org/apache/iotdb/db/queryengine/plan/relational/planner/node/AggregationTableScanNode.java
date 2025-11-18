@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -146,6 +147,50 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
     this.setOutputSymbols(constructOutputSymbols(groupingSets, aggregations));
+  }
+
+  public AggregationTableScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      List<DeviceEntry> deviceEntries,
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
+      Ordering scanOrder,
+      Expression timePredicate,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice,
+      Assignments projection,
+      Map<Symbol, AggregationNode.Aggregation> aggregations,
+      AggregationNode.GroupingSetDescriptor groupingSets,
+      List<Symbol> preGroupedSymbols,
+      AggregationNode.Step step,
+      Optional<Symbol> groupIdSymbol,
+      Identifier alias) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        tagAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        projection,
+        aggregations,
+        groupingSets,
+        preGroupedSymbols,
+        step,
+        groupIdSymbol);
+    this.alias = alias;
   }
 
   protected AggregationTableScanNode() {}
@@ -278,7 +323,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         groupingSets,
         preGroupedSymbols,
         step,
-        groupIdSymbol);
+        groupIdSymbol,
+        alias);
   }
 
   @Override
@@ -336,7 +382,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
         aggregationNode.getStep(),
-        aggregationNode.getGroupIdSymbol());
+        aggregationNode.getGroupIdSymbol(),
+        tableScanNode.getAlias());
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
@@ -390,7 +437,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
         step,
-        aggregationNode.getGroupIdSymbol());
+        aggregationNode.getGroupIdSymbol(),
+        tableScanNode.getAlias());
   }
 
   public boolean mayUseLastCache() {
