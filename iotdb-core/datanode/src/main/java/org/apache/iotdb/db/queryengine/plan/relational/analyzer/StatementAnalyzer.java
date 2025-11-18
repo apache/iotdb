@@ -4561,6 +4561,8 @@ public class StatementAnalyzer {
 
         final TableSchema originalSchema = tableSchema.get();
         final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        // We only leave attribute & tag here because the others are not allowed in device related
+        // SQLs
         fields.addAll(
             analyzeTableOutputFields(
                 node.getTable(),
