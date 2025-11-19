@@ -249,9 +249,8 @@ public class AddExchangeNodes
             ? node.getAlias().getValue()
             : node.getQualifiedObjectName().getObjectName();
     String tableSpecificKey = "replica-" + tableName;
-    String globalKey = "replica-*";
 
-    return (ReplicaHint) hintMap.getOrDefault(tableSpecificKey, hintMap.get(globalKey));
+    return (ReplicaHint) hintMap.getOrDefault(tableSpecificKey, null);
   }
 
   /**
