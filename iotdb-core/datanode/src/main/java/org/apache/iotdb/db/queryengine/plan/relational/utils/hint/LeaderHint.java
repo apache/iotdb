@@ -32,10 +32,10 @@ public class LeaderHint extends ReplicaHint {
 
   public LeaderHint(List<String> tables) {
     super(hintName);
-    if (tables == null || tables.size() > 1) {
-      throw new IllegalArgumentException("LeaderHint accepts empty or exactly one table");
+    if (tables == null || tables.size() != 1) {
+      throw new IllegalArgumentException("LeaderHint accepts exactly one table");
     }
-    targetTable = tables.isEmpty() ? "*" : tables.get(0);
+    targetTable = tables.get(0);
   }
 
   @Override

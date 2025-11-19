@@ -1555,7 +1555,7 @@ public class StatementAnalyzer {
                 .collect(toImmutableList());
 
         List<String> validTables =
-            paramTables != null ? intersect(paramTables, existingTables) : ImmutableList.of();
+            paramTables != null ? intersect(paramTables, existingTables) : existingTables;
 
         if (definition.shouldExpandParameters()) {
           for (String table : validTables) {
