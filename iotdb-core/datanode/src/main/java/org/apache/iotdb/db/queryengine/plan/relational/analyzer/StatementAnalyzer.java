@@ -1539,9 +1539,11 @@ public class StatementAnalyzer {
     private void addHint(String hintName, List<String> paramTables, Map<String, Hint> hintMap) {
       HintFactory definition = HINT_DEFINITIONS.get(hintName);
       if (definition != null) {
+        // filter the relation of aliased relation
         List<String> existingTables =
-            analysis.getRelationNames().stream()
-                .map(QualifiedName::getSuffix)
+            analysis.getRelationNames().entrySet().stream()
+                .filter(entry -> !analysis.isAliased(entry.getKey().getNode()))
+                .map(entry -> entry.getValue().getSuffix())
                 .collect(toImmutableList());
 
         List<String> validTables =

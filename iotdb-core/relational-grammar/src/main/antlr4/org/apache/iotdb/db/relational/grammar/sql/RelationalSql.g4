@@ -1086,12 +1086,18 @@ joinCriteria
     ;
 
 selectHint
-    : HINT_START hintItem (',' hintItem)* HINT_END
+    : HINT_START hintItem+ HINT_END
     ;
 
 hintItem
-    : identifier '(' identifier (',' identifier)* ')'  #parameterizedHint
+    : identifier '(' hintParameter+ ')'                     #parameterizedHint
     | identifier                                            #simpleHint
+    ;
+
+hintParameter
+    : identifier
+    | '{'
+    | '}'
     ;
 
 patternRecognition

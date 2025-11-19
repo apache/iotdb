@@ -2412,13 +2412,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitParameterizedHint(RelationalSqlParser.ParameterizedHintContext ctx) {
-    List<RelationalSqlParser.IdentifierContext> identifiers = ctx.identifier();
-    String hintName = identifiers.get(0).getText();
+    String hintName = ctx.identifier().getText();
+    List<RelationalSqlParser.HintParameterContext> identifiers = ctx.hintParameter();
     List<String> params =
-        identifiers.stream()
-            .skip(1)
-            .map(x -> x.getText().toLowerCase())
-            .collect(Collectors.toList());
+        identifiers.stream().map(x -> x.getText().toLowerCase()).collect(Collectors.toList());
     return new ParameterizedHintItem(hintName, params);
   }
 

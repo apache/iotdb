@@ -862,8 +862,8 @@ public class Analysis implements IAnalysis {
     return relationNames.get(NodeRef.of(relation));
   }
 
-  public List<QualifiedName> getRelationNames() {
-    return relationNames.values().stream().collect(toImmutableList());
+  public Map<NodeRef<Relation>, QualifiedName> getRelationNames() {
+    return relationNames;
   }
 
   public void addAliased(final Relation relation, Identifier alias) {
