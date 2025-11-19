@@ -379,6 +379,18 @@ public class LoadTsFileManager {
     }
   }
 
+  public static void cleanTsFile(final File tsFile) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+    } catch (final IOException e) {
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+    }
+  }
+
   private static class TsFileWriterManager {
 
     private final File taskDir;
