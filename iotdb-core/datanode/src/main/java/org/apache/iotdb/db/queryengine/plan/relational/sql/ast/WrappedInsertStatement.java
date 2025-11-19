@@ -114,7 +114,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   protected InsertNodeMeasurementInfo toInsertNodeMeasurementInfo(
       InsertBaseStatement insertBaseStatement) {
-    String tableName = insertBaseStatement.getDevicePath().getFullPath();
+    String tableName = insertBaseStatement.getDevicePath().getFullPath().toLowerCase();
 
     // Use lazy initialization with measurements and dataTypes
     return new InsertNodeMeasurementInfo(

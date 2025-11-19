@@ -52,9 +52,10 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.io.File;
@@ -79,13 +80,12 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionRelationalIT {
 
-  @BeforeClass
-  public static void classSetUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
+  @Rule public TestName testName = new TestName();
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().setTestMethodName(testName.getMethodName());
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");
@@ -110,6 +110,7 @@ public class IoTDBSessionRelationalIT {
   // for manual debugging
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
+    EnvFactory.getEnv().initClusterEnvironment();
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
       session.executeNonQueryStatement("CREATE DATABASE \"db2\"");

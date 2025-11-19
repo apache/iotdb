@@ -42,11 +42,13 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.io.File;
@@ -81,12 +83,15 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBInsertTableIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Rule public TestName testName = new TestName();
+
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeCommonConfig()
         .setWriteMemoryProportion("10000000:1");
+    EnvFactory.getEnv().setTestMethodName(testName.getMethodName());
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -99,8 +104,8 @@ public class IoTDBInsertTableIT {
     }
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
