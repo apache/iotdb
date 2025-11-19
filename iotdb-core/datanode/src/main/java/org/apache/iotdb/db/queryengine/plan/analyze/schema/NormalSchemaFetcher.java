@@ -348,10 +348,9 @@ class NormalSchemaFetcher {
       List<Pair<PartialPath, Consumer<Boolean>>> devicePath2AlignedSetter =
           schemaComputationWithAutoCreationList.stream()
               .map(
-                  schema -> {
-                    final Consumer<Boolean> consumer = schema::computeDevice;
-                    return new Pair<>(schema.getDevicePath(), consumer);
-                  })
+                  schema ->
+                      new Pair<PartialPath, Consumer<Boolean>>(
+                          schema.getDevicePath(), schema::computeDevice))
               .collect(Collectors.toList());
 
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
