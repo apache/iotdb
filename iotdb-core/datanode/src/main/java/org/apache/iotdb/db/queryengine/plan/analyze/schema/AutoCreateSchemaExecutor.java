@@ -64,7 +64,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
@@ -466,10 +465,11 @@ class AutoCreateSchemaExecutor {
       List<CompressionType> compressors,
       boolean isAligned,
       MPPQueryContext context) {
-    final AtomicBoolean aligned = new AtomicBoolean(isAligned);
+    final Map<PartialPath, Pair<Boolean, MeasurementGroup>> input =
+        Collections.singletonMap(devicePath, new Pair<>(isAligned, null));
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeSeriesStatement(
-            Collections.singletonMap(devicePath, new Pair<>(isAligned, null)),
+            input,
             new InternalCreateTimeSeriesStatement(
                 devicePath, measurements, tsDataTypes, encodings, compressors, isAligned),
             context,
@@ -494,7 +494,7 @@ class AutoCreateSchemaExecutor {
           null,
           null,
           null,
-          aligned.get());
+          input.get(devicePath).getLeft());
     }
   }
 
