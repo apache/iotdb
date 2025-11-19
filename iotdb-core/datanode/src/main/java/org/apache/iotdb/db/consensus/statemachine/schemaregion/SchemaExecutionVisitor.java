@@ -189,7 +189,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final PartialPath devicePath = node.getDevicePath();
     final MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
-    final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
+    final List<TSStatus> alreadyExistingTimeSeriesAndAlignmentMismatchDevices = new ArrayList<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
 
     if (node.isAligned()) {
@@ -197,7 +197,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           devicePath,
           measurementGroup,
           schemaRegion,
-          alreadyExistingTimeSeries,
+          alreadyExistingTimeSeriesAndAlignmentMismatchDevices,
           failingStatus,
           node.isGeneratedByPipe());
     } else {
@@ -205,7 +205,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           devicePath,
           measurementGroup,
           schemaRegion,
-          alreadyExistingTimeSeries,
+          alreadyExistingTimeSeriesAndAlignmentMismatchDevices,
           failingStatus,
           node.isGeneratedByPipe());
     }
@@ -214,8 +214,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeSeries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeSeries);
+    if (!alreadyExistingTimeSeriesAndAlignmentMismatchDevices.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeSeriesAndAlignmentMismatchDevices);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -287,7 +287,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // There's no need to internal create time series.
         alreadyExistingTimeSeries.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
+                e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
       } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -299,7 +299,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       final PartialPath devicePath,
       final MeasurementGroup measurementGroup,
       final ISchemaRegion schemaRegion,
-      final List<TSStatus> alreadyExistingTimeSeries,
+      final List<TSStatus> alreadyExistingTimeSeriesAndAlignmentMismatchDevices,
       final List<TSStatus> failingStatus,
       final boolean withMerge) {
     final List<String> measurementList = measurementGroup.getMeasurements();
@@ -336,9 +336,9 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // The existence check will be executed before truly creation
         // There's no need to internal create time series.
         final MeasurementPath measurementPath = e.getMeasurementPath();
-        alreadyExistingTimeSeries.add(
+        alreadyExistingTimeSeriesAndAlignmentMismatchDevices.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
+                e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
 
         // remove the existing time series from plan
         final int index = measurementList.indexOf(measurementPath.getMeasurement());
@@ -388,6 +388,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         shouldRetry = false;
       }
+    }
+    if (!((CreateAlignedTimeSeriesPlanImpl) createAlignedTimeSeriesPlan).getAligned().get()) {
+      alreadyExistingTimeSeriesAndAlignmentMismatchDevices.add(
+          new TSStatus(TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode())
+              .setMessage(PartialPath.transformDataToString(devicePath)));
     }
   }
 

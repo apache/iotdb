@@ -516,7 +516,7 @@ class AutoCreateSchemaExecutor {
     for (final TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
-            MeasurementPath.parseDataFromString(subStatus.getMessage()));
+            (MeasurementPath) PartialPath.parseDataFromString(subStatus.getMessage()));
       } else {
         failedCreationSet.add(subStatus);
       }
