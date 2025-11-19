@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -62,7 +63,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
@@ -99,6 +102,7 @@ class AutoCreateSchemaExecutor {
   void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
+      Consumer<Boolean> setter,
       List<Integer> indexOfTargetMeasurements,
       String[] measurements,
       IntFunction<TSDataType> getDataType,
@@ -130,6 +134,7 @@ class AutoCreateSchemaExecutor {
       internalCreateTimeSeries(
           schemaTree,
           devicePath,
+          setter,
           missingMeasurements,
           dataTypesOfMissingMeasurement,
           encodingsOfMissingMeasurement,
@@ -141,7 +146,7 @@ class AutoCreateSchemaExecutor {
 
   void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
-      List<PartialPath> devicePathList,
+      List<Pair<PartialPath, Consumer<Boolean>>> devicePath2AlignedSetter,
       List<Integer> indexOfTargetDevices,
       List<List<Integer>> indexOfTargetMeasurementsList,
       List<String[]> measurementsList,
@@ -149,14 +154,15 @@ class AutoCreateSchemaExecutor {
       List<Boolean> isAlignedList,
       MPPQueryContext context) {
     // Check whether there is template should be activated
-    Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
-        new HashMap<>();
+    Map<PartialPath, Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>>>
+        devicesNeedAutoCreateTimeSeries = new HashMap<>();
     int deviceIndex;
     PartialPath devicePath;
     List<Integer> indexOfTargetMeasurements;
     for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
       deviceIndex = indexOfTargetDevices.get(i);
-      devicePath = devicePathList.get(deviceIndex);
+      devicePath = devicePath2AlignedSetter.get(deviceIndex).getLeft();
+      Consumer<Boolean> setter = devicePath2AlignedSetter.get(deviceIndex).getRight();
       indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
 
       // There are measurements need to be created as normal timeseries
@@ -166,9 +172,12 @@ class AutoCreateSchemaExecutor {
           devicePath,
           (k, v) -> {
             if (v == null) {
-              v = new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup());
+              v =
+                  new Pair<>(
+                      setter,
+                      new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup()));
             }
-            MeasurementGroup measurementGroup = v.right;
+            MeasurementGroup measurementGroup = v.right.right;
             String[] measurements = measurementsList.get(finalDeviceIndex);
             TSDataType[] tsDataTypes = tsDataTypesList.get(finalDeviceIndex);
             for (int measurementIndex : finalIndexOfMeasurementsNotInTemplate) {
@@ -291,8 +300,8 @@ class AutoCreateSchemaExecutor {
     // Check whether there is template should be activated
 
     Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
-    Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
-        new HashMap<>();
+    Map<PartialPath, Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>>>
+        devicesNeedAutoCreateTimeSeries = new HashMap<>();
     int deviceIndex;
     PartialPath devicePath;
     List<Integer> indexOfTargetMeasurements;
@@ -318,9 +327,13 @@ class AutoCreateSchemaExecutor {
             devicePath,
             (k, v) -> {
               if (v == null) {
-                v = new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup());
+                // Load does not tolerate the device alignment mismatch
+                v =
+                    new Pair<>(
+                        null,
+                        new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup()));
               }
-              MeasurementGroup measurementGroup = v.right;
+              MeasurementGroup measurementGroup = v.right.right;
               String[] measurements = measurementsList.get(finalDeviceIndex);
               TSDataType[] tsDataTypes = tsDataTypesList.get(finalDeviceIndex);
               TSEncoding[] encodings =
@@ -457,6 +470,7 @@ class AutoCreateSchemaExecutor {
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
+      Consumer<Boolean> setter,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
       List<TSEncoding> encodings,
@@ -464,7 +478,8 @@ class AutoCreateSchemaExecutor {
       boolean isAligned,
       MPPQueryContext context) {
     List<MeasurementPath> measurementPathList =
-        executeInternalCreateTimeseriesStatement(
+        executeInternalCreateTimeSeriesStatement(
+            Collections.singletonMap(devicePath, new Pair<>(setter, null)),
             new InternalCreateTimeSeriesStatement(
                 devicePath, measurements, tsDataTypes, encodings, compressors, isAligned),
             context);
@@ -492,9 +507,12 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // Auto create timeseries and return the existing timeseries info
-  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
-      final Statement statement, final MPPQueryContext context) {
+  // Auto create timeSeries and return the existing timeSeries info
+  private List<MeasurementPath> executeInternalCreateTimeSeriesStatement(
+      final Map<PartialPath, Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>>>
+          devicesNeedAutoCreateTimeSeries,
+      final Statement statement,
+      final MPPQueryContext context) {
     final TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
@@ -517,6 +535,18 @@ class AutoCreateSchemaExecutor {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
             (MeasurementPath) PartialPath.parseDataFromString(subStatus.getMessage()));
+      } else if (subStatus.code == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()) {
+        final PartialPath devicePath = PartialPath.parseDataFromString(subStatus.getMessage());
+        final Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>> pair =
+            devicesNeedAutoCreateTimeSeries.get(devicePath);
+        if (Objects.nonNull(pair.getLeft())) {
+          pair.getLeft().accept(!pair.getRight().left);
+        } else {
+          throw new SemanticException(
+              new AlignedTimeseriesException(
+                  "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",
+                  devicePath.getFullPath()));
+        }
       } else {
         failedCreationSet.add(subStatus);
       }
@@ -582,12 +612,14 @@ class AutoCreateSchemaExecutor {
 
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
-      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
+      Map<PartialPath, Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>>>
+          devicesNeedAutoCreateTimeSeries,
       MPPQueryContext context) {
 
     // Deep copy to avoid changes to the original map
     final List<MeasurementPath> measurementPathList =
-        executeInternalCreateTimeseriesStatement(
+        executeInternalCreateTimeSeriesStatement(
+            devicesNeedAutoCreateTimeSeries,
             new InternalCreateMultiTimeSeriesStatement(
                 devicesNeedAutoCreateTimeSeries.entrySet().stream()
                     .collect(
@@ -595,8 +627,8 @@ class AutoCreateSchemaExecutor {
                             Map.Entry::getKey,
                             entry ->
                                 new Pair<>(
-                                    entry.getValue().getLeft(),
-                                    entry.getValue().getRight().deepCopy())))),
+                                    entry.getValue().getRight().getLeft(),
+                                    entry.getValue().getRight().getRight().deepCopy())))),
             context);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
@@ -609,10 +641,10 @@ class AutoCreateSchemaExecutor {
     }
     Set<String> measurementSet;
     MeasurementGroup measurementGroup;
-    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+    for (Map.Entry<PartialPath, Pair<Consumer<Boolean>, Pair<Boolean, MeasurementGroup>>> entry :
         devicesNeedAutoCreateTimeSeries.entrySet()) {
       measurementSet = alreadyExistingMeasurementMap.get(entry.getKey());
-      measurementGroup = entry.getValue().right;
+      measurementGroup = entry.getValue().right.right;
       for (int i = 0, size = measurementGroup.size(); i < size; i++) {
         if (measurementSet != null
             && measurementSet.contains(measurementGroup.getMeasurements().get(i))) {
@@ -628,7 +660,7 @@ class AutoCreateSchemaExecutor {
             null,
             null,
             null,
-            entry.getValue().left);
+            entry.getValue().right.left);
       }
     }
   }
