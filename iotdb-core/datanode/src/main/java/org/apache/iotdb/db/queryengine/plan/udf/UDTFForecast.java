@@ -114,7 +114,6 @@ public class UDTFForecast implements UDTF {
     }
     ModelInferenceDescriptor descriptor = modelFetcher.fetchModel(this.model_id);
     this.targetAINode = descriptor.getTargetAINode();
-    this.maxInputLength = descriptor.getModelInformation().getInputShape()[0];
 
     this.outputInterval = parameters.getLongOrDefault(OUTPUT_INTERVAL, DEFAULT_OUTPUT_INTERVAL);
     this.outputLength =
