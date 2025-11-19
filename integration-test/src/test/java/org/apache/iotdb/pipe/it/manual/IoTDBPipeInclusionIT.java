@@ -79,9 +79,9 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           Arrays.asList(
               // TODO: add database creation after the database auto creating on receiver can be
               // banned
-              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"))) {
+              "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeSeries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"))) {
         return;
       }
 
@@ -95,9 +95,18 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"))) {
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)",
+              "flush"))) {
         return;
       }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
