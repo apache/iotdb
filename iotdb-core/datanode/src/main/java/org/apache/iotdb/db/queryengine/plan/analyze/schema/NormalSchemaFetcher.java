@@ -35,7 +35,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 class NormalSchemaFetcher {
@@ -185,7 +184,6 @@ class NormalSchemaFetcher {
       autoCreateSchemaExecutor.autoCreateTimeSeries(
           schemaTree,
           devicePath,
-          schemaComputationWithAutoCreation::computeDevice,
           indexOfMissingMeasurements,
           schemaComputationWithAutoCreation.getMeasurements(),
           schemaComputationWithAutoCreation::getDataType,
@@ -345,13 +343,9 @@ class NormalSchemaFetcher {
 
     // [Step 5] Auto Create and process the missing schema
     if (!indexOfMeasurementsNeedAutoCreate.isEmpty()) {
-      // Do not use :: or the compilation will fail
-      List<Pair<PartialPath, Consumer<Boolean>>> devicePath2AlignedSetter =
+      List<PartialPath> devicePath2AlignedSetter =
           schemaComputationWithAutoCreationList.stream()
-              .map(
-                  schema ->
-                      new Pair<PartialPath, Consumer<Boolean>>(
-                          schema.getDevicePath(), aligned -> schema.computeDevice(aligned)))
+              .map(ISchemaComputationWithAutoCreation::getDevicePath)
               .collect(Collectors.toList());
 
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
