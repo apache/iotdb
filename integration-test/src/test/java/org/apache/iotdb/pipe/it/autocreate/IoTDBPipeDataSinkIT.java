@@ -504,9 +504,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create timeSeries root.vehicle.d0.s1 int32",
-              "insert into root.vehicle.d0(time,s1) values (2,1)",
-              "flush"),
+              // "create timeSeries root.vehicle.d0.s1 int32",
+              "insert into root.vehicle.d0(time,s1) values (2,1)", "flush"),
           null);
 
       TestUtils.assertDataEventuallyOnEnv(
