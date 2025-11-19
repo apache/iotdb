@@ -2140,10 +2140,17 @@ public abstract class AlignedTVList extends TVList {
 
     @Override
     public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      int maxRowCountOfCurrentBatch =
+          Math.min(
+              rows - index,
+              (int)
+                  Math.min(
+                      encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk,
+                      encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
       // duplicated time or deleted time are all invalid, true if we don't need this row
-      BitMap timeDuplicateInfo = null;
+      LazyBitMap timeDuplicateInfo = null;
 
       int startIndex = index;
       // time column
@@ -2172,7 +2179,7 @@ public abstract class AlignedTVList extends TVList {
           encodeInfo.pointNumInChunk++;
         } else {
           if (Objects.isNull(timeDuplicateInfo)) {
-            timeDuplicateInfo = new BitMap(rows);
+            timeDuplicateInfo = new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1);
           }
           timeDuplicateInfo.mark(index);
         }
