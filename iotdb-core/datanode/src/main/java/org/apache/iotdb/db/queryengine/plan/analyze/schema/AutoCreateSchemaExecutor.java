@@ -479,7 +479,7 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeSeriesStatement(
-            Collections.singletonMap(devicePath, new Pair<>(setter, null)),
+            Collections.singletonMap(devicePath, new Pair<>(setter, new Pair<>(isAligned, null))),
             new InternalCreateTimeSeriesStatement(
                 devicePath, measurements, tsDataTypes, encodings, compressors, isAligned),
             context);

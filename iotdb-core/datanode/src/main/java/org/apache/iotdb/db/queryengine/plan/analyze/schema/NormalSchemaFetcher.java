@@ -345,12 +345,13 @@ class NormalSchemaFetcher {
 
     // [Step 5] Auto Create and process the missing schema
     if (!indexOfMeasurementsNeedAutoCreate.isEmpty()) {
+      // Do not use :: or the compilation will fail
       List<Pair<PartialPath, Consumer<Boolean>>> devicePath2AlignedSetter =
           schemaComputationWithAutoCreationList.stream()
               .map(
                   schema ->
                       new Pair<PartialPath, Consumer<Boolean>>(
-                          schema.getDevicePath(), schema::computeDevice))
+                          schema.getDevicePath(), aligned -> schema.computeDevice(aligned)))
               .collect(Collectors.toList());
 
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
