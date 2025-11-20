@@ -42,7 +42,7 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
   private transient boolean withMerge;
-  private final transient AtomicBoolean aligned = new AtomicBoolean(true);
+  private final transient AtomicBoolean aligned = new AtomicBoolean(false);
 
   public CreateTimeSeriesPlanImpl() {}
 

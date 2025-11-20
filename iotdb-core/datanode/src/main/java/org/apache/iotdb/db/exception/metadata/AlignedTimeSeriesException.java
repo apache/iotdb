@@ -27,8 +27,8 @@ public class AlignedTimeSeriesException extends MetadataException {
   public AlignedTimeSeriesException(final boolean aligned, final String path) {
     super(
         String.format(
-            "TimeSeries under this device is %s aligned, please use createTimeSeries or change device. (Path: %s)",
-            aligned ? "" : "not", path),
+            "TimeSeries under this device is%s aligned, please use createTimeSeries or change device. (Path: %s)",
+            aligned ? "" : " not", path),
         TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode(),
         true);
   }
