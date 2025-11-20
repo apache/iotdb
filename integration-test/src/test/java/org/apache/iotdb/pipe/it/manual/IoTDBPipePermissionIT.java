@@ -95,15 +95,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
   }
 
   private void testWithConnector(final String connector) throws Exception {
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"))) {
-      return;
-    }
+            "grant WRITE,READ,MANAGE_DATABASE,MANAGE_USER on root.** to role `admin`"),
+        null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -111,16 +110,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create user user 'passwd'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
-        fail();
-        return;
-      }
+              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

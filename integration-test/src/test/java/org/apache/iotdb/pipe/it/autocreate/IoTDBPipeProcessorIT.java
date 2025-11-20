@@ -93,12 +93,10 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       // the subsequent data processing
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)", "delete from root.**"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (0,1)", "delete from root.**"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -126,18 +124,17 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)",
-              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
-              "insert into root.vehicle.d0(time, s1) values (19999, 3)",
-              "insert into root.vehicle.d0(time, s1) values (20000, 4)",
-              "insert into root.vehicle.d0(time, s1) values (20001, 5)",
-              "insert into root.vehicle.d0(time, s1) values (45000, 6)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.vehicle.d0(time,s1) values (0,1)",
+              "insert into root.vehicle.d0(time,s1) values (10000,2)",
+              "insert into root.vehicle.d0(time,s1) values (19999,3)",
+              "insert into root.vehicle.d0(time,s1) values (20000,4)",
+              "insert into root.vehicle.d0(time,s1) values (20001,5)",
+              "insert into root.vehicle.d0(time,s1) values (45000,6)",
+              "flush"),
+          null);
 
       final Set<String> expectedResSet = new HashSet<>();
 

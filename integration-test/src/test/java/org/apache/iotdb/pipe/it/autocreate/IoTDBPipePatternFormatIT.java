@@ -53,14 +53,13 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
-              "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s,s1,t) values (1,1,1,1)",
+              "insert into root.db.d2(time,s) values (1,1)",
+              "insert into root.db2.d1(time,s) values (1,1)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -102,14 +101,13 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
-              "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s,s1,t) values (1,1,1,1)",
+              "insert into root.db.d2(time,s) values (1,1)",
+              "insert into root.db2.d1(time,s) values (1,1)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -154,14 +152,13 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
-              "insert into root.db.d2(time, s) values (1, 1)",
-              "insert into root.db2.d1(time, s) values (1, 1)"))) {
-        return;
-      }
+              "insert into root.db.d1(time,s,s1,t) values (1,1,1,1)",
+              "insert into root.db.d2(time,s) values (1,1)",
+              "insert into root.db2.d1(time,s) values (1,1)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -226,9 +223,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
 
       // 3. Handle historical data insertion (if applicable)
       if (isHistorical) {
-        if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, insertQueries)) {
-          return;
-        }
+        TestUtils.executeNonQueries(senderEnv, insertQueries, null);
       }
 
       // 4. Create the pipe
@@ -245,9 +240,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
 
       // 6. Handle realtime data insertion (if applicable)
       if (!isHistorical) {
-        if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, insertQueries)) {
-          return;
-        }
+        TestUtils.executeNonQueries(senderEnv, insertQueries, null);
       }
 
       // 7. Validate data eventually arrives on the receiver
