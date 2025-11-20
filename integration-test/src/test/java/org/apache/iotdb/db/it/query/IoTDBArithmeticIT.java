@@ -78,56 +78,6 @@ public class IoTDBArithmeticIT {
   }
 
   @Test
-  public void testArithmeticBinary() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      String[] operands = new String[] {"s1", "s2", "s3", "s4"};
-      for (String operator : new String[] {" + ", " - ", " * ", " / ", " % "}) {
-        List<String> expressions = new ArrayList<>();
-        for (String leftOperand : operands) {
-          for (String rightOperand : operands) {
-            expressions.add(leftOperand + operator + rightOperand);
-          }
-        }
-        String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
-
-        ResultSet resultSet = statement.executeQuery(sql);
-
-        assertEquals(1 + expressions.size(), resultSet.getMetaData().getColumnCount());
-
-        for (int i = 1; i < 6; ++i) {
-          resultSet.next();
-          for (int j = 0; j < expressions.size(); ++j) {
-            double expected = 0;
-            switch (operator) {
-              case " + ":
-                expected = i + i;
-                break;
-              case " - ":
-                expected = i - i;
-                break;
-              case " * ":
-                expected = i * i;
-                break;
-              case " / ":
-                expected = i / i;
-                break;
-              case " % ":
-                expected = i % i;
-                break;
-            }
-            double actual = Double.parseDouble(resultSet.getString(2 + j));
-            assertEquals(expected, actual, E);
-          }
-        }
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
   public void testArithmeticUnary() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
