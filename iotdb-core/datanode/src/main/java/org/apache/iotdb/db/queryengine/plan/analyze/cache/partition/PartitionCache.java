@@ -65,6 +65,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,6 +255,7 @@ public class PartitionCache {
     }
   }
 
+  @TreeModel
   public boolean isNeedLastCache(final String database) {
     Boolean needLastCache = database2NeedLastCacheCache.get(database);
     if (Objects.nonNull(needLastCache)) {
@@ -529,6 +532,7 @@ public class PartitionCache {
     }
   }
 
+  @TableModel
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
     boolean isExisted = containsDatabase(database);
