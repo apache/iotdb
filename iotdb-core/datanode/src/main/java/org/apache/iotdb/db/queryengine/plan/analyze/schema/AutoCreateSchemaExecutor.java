@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeSeriesException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -534,7 +534,10 @@ class AutoCreateSchemaExecutor {
         } else {
           // Load does not tolerate the device alignment mismatch
           throw new SemanticException(
-              new AlignedTimeSeriesException(!pair.getLeft(), devicePath.getFullPath()));
+              new LoadAnalyzeTypeMismatchException(
+                  String.format(
+                      "TimeSeries under this device is%s aligned, please use createTimeSeries or change device. (Path: %s)",
+                      !pair.getLeft() ? "" : " not", devicePath.getFullPath())));
         }
       } else {
         failedCreationSet.add(subStatus);
