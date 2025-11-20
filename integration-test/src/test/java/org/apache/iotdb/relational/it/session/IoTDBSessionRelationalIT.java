@@ -53,10 +53,9 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.io.File;
@@ -80,12 +79,13 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionRelationalIT {
 
-  @Rule public TestName testName = new TestName();
+  @BeforeClass
+  public static void classSetUp() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    EnvFactory.getEnv().setTestMethodName(testName.getMethodName());
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");

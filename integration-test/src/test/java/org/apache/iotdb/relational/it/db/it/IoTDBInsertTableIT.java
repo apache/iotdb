@@ -45,10 +45,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.io.File;
@@ -83,15 +81,12 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBInsertTableIT {
 
-  @Rule public TestName testName = new TestName();
-
   @BeforeClass
   public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeCommonConfig()
         .setWriteMemoryProportion("10000000:1");
-    EnvFactory.getEnv().setTestMethodName(testName.getMethodName());
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

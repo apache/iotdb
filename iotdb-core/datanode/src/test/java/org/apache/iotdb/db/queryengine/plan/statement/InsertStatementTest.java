@@ -248,7 +248,6 @@ public class InsertStatementTest {
                 TsTableColumnCategory.ATTRIBUTE));
     tableSchema = new TableSchema("table1", columnSchemas);
 
-    // 更新 DataNodeTableCache 中的表数据
     TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
@@ -284,7 +283,6 @@ public class InsertStatementTest {
                 "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
     tableSchema = new TableSchema("table1", columnSchemas);
 
-    // 更新 DataNodeTableCache 中的表数据
     TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
