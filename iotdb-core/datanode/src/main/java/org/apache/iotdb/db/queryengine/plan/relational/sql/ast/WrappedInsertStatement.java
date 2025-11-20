@@ -182,7 +182,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     TSDataType tsDataType = existingColumn.getDataType();
     MeasurementSchema newMeasurementSchema =
         new MeasurementSchema(
-            tsDataType.name(),
+            existingColumn.getColumnName(),
             tsDataType,
             getDefaultEncoding(tsDataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
