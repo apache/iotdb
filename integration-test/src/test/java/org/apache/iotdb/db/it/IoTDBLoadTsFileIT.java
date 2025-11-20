@@ -272,7 +272,7 @@ public class IoTDBLoadTsFileIT {
     // device 0, sg 0
     try (final TsFileGenerator generator =
         new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
-      // wrong
+      // Wrong, with 04-07 non-exist
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
@@ -298,9 +298,10 @@ public class IoTDBLoadTsFileIT {
       // right
       generator.registerTimeseries(
           SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
-      // wrong
+      // Wrong, with 06 non-exist
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4,
+          Arrays.asList(SchemaConfig.MEASUREMENT_40, SchemaConfig.MEASUREMENT_06));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
@@ -316,11 +317,27 @@ public class IoTDBLoadTsFileIT {
       try {
         statement.execute(
             String.format(
-                "load \"%s\" with(sglevel=2, convert-on-type-mismatch=false)",
-                tmpDir.getAbsolutePath()));
+                "load \"%s\" with ('database-level'='2', 'convert-on-type-mismatch'='false')",
+                tmpDir.getAbsolutePath() + File.separator + "1-0-0-0.tsfile"));
         Assert.fail();
       } catch (final Exception e) {
-        // Expected
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "TimeSeries under this device is not aligned, please use createTimeSeries or change device. (Path: root.sg.test_0.d_0)."));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "load \"%s\" with ('database-level'='2', 'convert-on-type-mismatch'='false')",
+                tmpDir.getAbsolutePath() + File.separator + "2-0-0-0.tsfile"));
+        Assert.fail();
+      } catch (final Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "TimeSeries under this device is aligned, please use createAlignedTimeSeries or change device. (Path: root.sg.test_1.a_4)."));
       }
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));

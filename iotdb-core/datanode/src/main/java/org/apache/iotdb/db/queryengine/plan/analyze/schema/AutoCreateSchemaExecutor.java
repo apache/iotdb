@@ -536,8 +536,10 @@ class AutoCreateSchemaExecutor {
           throw new SemanticException(
               new LoadAnalyzeTypeMismatchException(
                   String.format(
-                      "TimeSeries under this device is%s aligned, please use createTimeSeries or change device. (Path: %s)",
-                      !pair.getLeft() ? "" : " not", devicePath.getFullPath())));
+                      "TimeSeries under this device is%s aligned, please use create%sTimeSeries or change device. (Path: %s)",
+                      !pair.getLeft() ? "" : " not",
+                      !pair.getLeft() ? "Aligned" : "",
+                      devicePath.getFullPath())));
         }
       } else {
         failedCreationSet.add(subStatus);
