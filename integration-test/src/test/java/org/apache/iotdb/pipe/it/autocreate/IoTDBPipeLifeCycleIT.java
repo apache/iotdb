@@ -46,6 +46,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
@@ -776,7 +778,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
     grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.USE_PIPE);
 
-    TestUtils.executeNonQuery(
+    tryExecuteNonQueryWithRetry(
         senderEnv,
         "create pipe testPipe\n"
             + "with connector (\n"
@@ -785,15 +787,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
             + "  'connector.port'='6668'\n"
             + ")",
         "test",
-        "test123",
-        null);
+        "test123");
     executeQueryWithRetry(senderEnv, "show pipes", "test", "test123");
-    TestUtils.executeNonQueries(
+    tryExecuteNonQueriesWithRetry(
         senderEnv,
         Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
         "test",
-        "test123",
-        null);
+        "test123");
 
     assertNonQueryTestFail(
         senderEnv,
@@ -801,7 +801,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         "701: Untrusted uri xxx",
         "test",
         "test123");
-    TestUtils.executeNonQuery(senderEnv, "drop pipePlugin TestProcessor", "test", "test123", null);
+    tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
     executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
   }
 }

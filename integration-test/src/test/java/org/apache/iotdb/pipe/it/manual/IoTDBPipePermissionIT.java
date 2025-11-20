@@ -172,7 +172,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ,MANAGE_DATABASE on root.ln.** to role `admin`"),
+            "grant READ on root.ln.** to role `admin`"),
         null);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

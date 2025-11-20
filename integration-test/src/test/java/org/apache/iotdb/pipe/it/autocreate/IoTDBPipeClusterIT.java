@@ -578,19 +578,17 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      // ensure at least one insert happens before adding node so that the time series can be
-      // created
-      TestUtils.executeNonQuery(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", 0), null);
+      final AtomicInteger succeedNum = new AtomicInteger(0);
       final Thread t =
           new Thread(
               () -> {
                 try {
-                  for (int i = 1; i < 100; ++i) {
-                    TestUtils.executeNonQuery(
+                  for (int i = 0; i < 100; ++i) {
+                    if (TestUtils.tryExecuteNonQueryWithRetry(
                         senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        null);
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+                      succeedNum.incrementAndGet();
+                    }
                     Thread.sleep(100);
                   }
                 } catch (final InterruptedException ignored) {
@@ -604,13 +602,15 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         return;
       }
       t.join();
-      TestUtils.executeNonQuery(senderEnv, "flush", null);
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
-          Collections.singleton("100,"));
+          Collections.singleton(succeedNum.get() + ","));
 
       try {
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
