@@ -68,7 +68,7 @@ public class TSDataTypeTestUtils {
     unsupported.add(TSDataType.UNKNOWN);
     // Add other unsupported types here if needed in the future
     // Example: if OBJECT type is not supported, uncomment the line below
-    // unsupported.add(TSDataType.OBJECT);
+    unsupported.add(TSDataType.OBJECT);
     return unsupported;
   }
 
