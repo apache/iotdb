@@ -74,8 +74,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      // TODO: add database creation after the database auto creating on receiver can be
-      // banned
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
