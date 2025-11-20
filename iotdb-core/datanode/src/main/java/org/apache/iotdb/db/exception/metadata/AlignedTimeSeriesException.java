@@ -22,11 +22,13 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class AlignedTimeseriesException extends MetadataException {
+public class AlignedTimeSeriesException extends MetadataException {
 
-  public AlignedTimeseriesException(String message, String path) {
+  public AlignedTimeSeriesException(final boolean aligned, final String path) {
     super(
-        String.format("%s (Path: %s)", message, path),
+        String.format(
+            "TimeSeries under this device is %s aligned, please use createTimeSeries or change device. (Path: %s)",
+            aligned ? "" : "not", path),
         TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode(),
         true);
   }
