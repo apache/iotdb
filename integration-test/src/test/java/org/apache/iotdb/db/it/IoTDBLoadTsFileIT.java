@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -67,6 +68,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -738,6 +740,47 @@ public class IoTDBLoadTsFileIT {
         } else {
           Assert.fail("This ResultSet is empty.");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithRelativePathName() throws Exception {
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+
+    registerSchema();
+
+    final long writtenPoint1;
+    // device 0, device 1, sg 0
+    File relativePathFile = new File(System.getProperty(USER_DIR), "1-0-0-0.tsfile");
+    try {
+      try (final TsFileGenerator generator = new TsFileGenerator(relativePathFile)) {
+        generator.registerTimeseries(
+            SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+        generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
+        writtenPoint1 = generator.getTotalNumber();
+      }
+
+      try (final Connection connection =
+              EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+          final Statement statement = connection.createStatement()) {
+
+        statement.execute(String.format("load \"%s\" sglevel=2", "1-0-0-0.tsfile"));
+
+        try (final ResultSet resultSet =
+            statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          if (resultSet.next()) {
+            final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+            Assert.assertEquals(writtenPoint1, sg1Count);
+          } else {
+            Assert.fail("This ResultSet is empty.");
+          }
+        }
+      }
+
+    } finally {
+      if (relativePathFile.exists()) {
+        relativePathFile.delete();
       }
     }
   }
