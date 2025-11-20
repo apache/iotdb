@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -75,7 +76,15 @@ public class TsTable {
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
-  private final AtomicLong version = new AtomicLong(0L);
+  /**
+   * Global sequence generator providing unique, monotonically increasing IDs across all instances.
+   * Initialized to -1 to ensure the first ID is 0.
+   */
+  private static final AtomicLong GLOBAL_SEQUENCE = new AtomicLong(-1);
+
+  private final Long creationId = GLOBAL_SEQUENCE.getAndIncrement();
+  private final AtomicLong instanceVersion = new AtomicLong(0L);
+
   private final AtomicBoolean isNotWrite = new AtomicBoolean(true);
 
   private final AtomicLong lastReadVersion = new AtomicLong(-1);
@@ -113,9 +122,9 @@ public class TsTable {
    * @return the column schema, or null if not found
    */
   public TsTableColumnSchema getColumnSchema(final String columnName) {
-    long versionBefore = version.get();
+    long versionBefore = instanceVersion.get();
     TsTableColumnSchema result = columnSchemaMap.get(columnName);
-    if (isNotWrite.get() && version.get() == versionBefore) {
+    if (isNotWrite.get() && instanceVersion.get() == versionBefore) {
       return result;
     }
 
@@ -140,7 +149,7 @@ public class TsTable {
     try {
       writeOperation.run();
     } finally {
-      version.incrementAndGet();
+      instanceVersion.incrementAndGet();
       isNotWrite.set(true);
       readWriteLock.writeLock().unlock();
     }
@@ -157,7 +166,9 @@ public class TsTable {
 
   public List<TsTableColumnSchema> getTagColumnSchemaList() {
     List<TsTableColumnSchema> tagColumnSchemaList = tagColumnSchemas.get();
-    if (tagColumnSchemaList != null && lastReadVersion.get() == version.get() && isNotWrite.get()) {
+    if (tagColumnSchemaList != null
+        && lastReadVersion.get() == instanceVersion.get()
+        && isNotWrite.get()) {
       return tagColumnSchemaList;
     }
 
@@ -172,7 +183,7 @@ public class TsTable {
       return tagColumnSchemaList;
     } finally {
       tagColumnSchemas.set(tagColumnSchemaList);
-      lastReadVersion.set(version.get());
+      lastReadVersion.set(instanceVersion.get());
       readWriteLock.readLock().unlock();
     }
   }
@@ -309,6 +320,10 @@ public class TsTable {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  public Pair<Long, Long> getInstanceVersion() {
+    return new Pair<>(creationId, instanceVersion.get());
   }
 
   public boolean containsPropWithoutLock(final String propKey) {

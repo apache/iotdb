@@ -160,6 +160,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -313,16 +314,17 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
 
-  private static final Cache<TableSchemaCacheKey, Pair<Long, TableSchema>> TABLE_SCHEMA_CACHE =
-      Caffeine.newBuilder()
-          .maximumWeight(
-              IoTDBDescriptor.getInstance().getConfig().getDataNodeTableSchemaCacheSize())
-          .weigher(
-              (TableSchemaCacheKey k, Pair<Long, TableSchema> v) ->
-                  (int)
-                      (PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v.getRight())
-                          + Long.BYTES))
-          .build();
+  private static final Cache<TableSchemaCacheKey, Triple<Long, Long, TableSchema>>
+      TABLE_SCHEMA_CACHE =
+          Caffeine.newBuilder()
+              .maximumWeight(
+                  IoTDBDescriptor.getInstance().getConfig().getDataNodeTableSchemaCacheSize())
+              .weigher(
+                  (TableSchemaCacheKey k, Triple<Long, Long, TableSchema> v) ->
+                      (int)
+                          (PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v.getRight())
+                              + 2 * Long.BYTES))
+              .build();
 
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
@@ -1425,14 +1427,14 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private TableSchema getTableSchemaFromCache(
-      final String database, final String tableName, final long currentVersion) {
+      final String database, final String tableName, final Pair<Long, Long> currentVersion) {
     final TableSchemaCacheKey key = new TableSchemaCacheKey(database, tableName);
-    final Pair<Long, TableSchema> cached = TABLE_SCHEMA_CACHE.getIfPresent(key);
+    final Triple<Long, Long, TableSchema> cached = TABLE_SCHEMA_CACHE.getIfPresent(key);
     if (cached == null) {
       return null;
     }
-    final Long cachedCreationId = cached.getLeft();
-    if (cachedCreationId != null && cachedCreationId.equals(currentVersion)) {
+    if (cached.getLeft().equals(currentVersion.getLeft())
+        && cached.getMiddle().equals(currentVersion.getRight())) {
       return cached.getRight();
     }
     // remove stale entry to avoid unbounded growth
@@ -1443,14 +1445,15 @@ public class DataRegion implements IDataRegionForQuery {
   private void cacheTableSchema(
       final String database,
       final String tableName,
-      final long version,
+      final Pair<Long, Long> version,
       final TableSchema tableSchema) {
     if (tableSchema == null) {
       TABLE_SCHEMA_CACHE.invalidate(new TableSchemaCacheKey(database, tableName));
       return;
     }
     TABLE_SCHEMA_CACHE.put(
-        new TableSchemaCacheKey(database, tableName), new Pair<>(version, tableSchema));
+        new TableSchemaCacheKey(database, tableName),
+        Triple.of(version.getLeft(), version.getRight(), tableSchema));
   }
 
   private static final class TableSchemaCacheKey {
@@ -1487,12 +1490,6 @@ public class DataRegion implements IDataRegionForQuery {
           tableName,
           t -> {
             final String database = getDatabaseName();
-            final long currentVersion = DataNodeTableCache.getInstance().getInstanceVersion();
-
-            final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
-            if (cachedSchema != null) {
-              return cachedSchema;
-            }
 
             TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
             if (tsTable == null) {
@@ -1509,10 +1506,11 @@ public class DataRegion implements IDataRegionForQuery {
                   if (resp == null || resp.tableInfo == null) {
                     TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
                   }
+                  // For table schema from ConfigNode, we cannot get version info,
+                  // so we don't cache it to avoid version mismatch
                   final TableSchema schema =
                       TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
                           ByteBuffer.wrap(resp.getTableInfo()));
-                  cacheTableSchema(database, t, currentVersion, schema);
                   return schema;
                 } catch (TException | ClientManagerException e) {
                   logger.error(
@@ -1528,6 +1526,12 @@ public class DataRegion implements IDataRegionForQuery {
                     "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
+            }
+
+            final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
+            final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
+            if (cachedSchema != null) {
+              return cachedSchema;
             }
 
             final TableSchema schema =
