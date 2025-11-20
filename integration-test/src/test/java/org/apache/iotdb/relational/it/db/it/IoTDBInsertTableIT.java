@@ -42,9 +42,9 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -85,7 +85,7 @@ public class IoTDBInsertTableIT {
 
   @Rule public TestName testName = new TestName();
 
-  @Before
+  @BeforeClass
   public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
@@ -104,7 +104,7 @@ public class IoTDBInsertTableIT {
     }
   }
 
-  @After
+  @AfterClass
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
