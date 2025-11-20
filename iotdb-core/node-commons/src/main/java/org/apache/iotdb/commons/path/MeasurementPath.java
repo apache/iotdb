@@ -33,12 +33,9 @@ import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
 import java.util.HashMap;
 import java.util.Map;
@@ -315,5 +312,31 @@ public class MeasurementPath extends PartialPath {
     return (MeasurementPath)
         PathDeserializeUtil.deserialize(
             ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
+  }
+
+  @Override
+  protected IDeviceID toDeviceID(String[] nodes) {
+    // remove measurement
+    nodes = Arrays.copyOfRange(nodes, 0, nodes.length - 1);
+    return super.toDeviceID(nodes);
+  }
+
+  @Override
+  protected PartialPath createPartialPath(String[] newPathNodes) {
+    return new MeasurementPath(newPathNodes);
+  }
+
+  @Override
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+  }
+
+  public List<PartialPath> getDevicePathPattern() {
+    List<PartialPath> result = new ArrayList<>();
+    result.add(getDevicePath());
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      result.add(new PartialPath(nodes));
+    }
+    return result;
   }
 }
