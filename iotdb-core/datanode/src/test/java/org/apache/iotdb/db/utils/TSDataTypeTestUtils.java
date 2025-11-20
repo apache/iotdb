@@ -30,9 +30,6 @@ import java.util.stream.Collectors;
  * Utility class for TSDataType operations in tests. This class provides helper methods to filter
  * out unsupported data types that should not be used in tests.
  *
- * <p>Note: VECTOR and UNKNOWN are internal types that are not supported for general use. If new
- * unsupported types are added in the future, update the {@link #getUnsupportedTypes()} method.
- *
  * <p>Usage in IT/UT tests:
  *
  * <pre>{@code
