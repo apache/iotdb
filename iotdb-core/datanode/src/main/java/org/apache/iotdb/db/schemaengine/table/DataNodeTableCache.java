@@ -45,6 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,6 +54,9 @@ import java.util.stream.Collectors;
 public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
+
+  /** Instance-specific version counter for optimistic locking mechanisms. */
+  private final AtomicLong instanceVersion = new AtomicLong(0);
 
   // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
@@ -222,6 +226,7 @@ public class DataNodeTableCache implements ITableCache {
         removeTableFromPreUpdateMap(database, oldName);
         LOGGER.info("Rename old table {}.{} successfully.", database, oldName);
       }
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -234,7 +239,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       preUpdateTableMap.remove(database);
-
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -252,7 +257,7 @@ public class DataNodeTableCache implements ITableCache {
       if (preUpdateTableMap.containsKey(database)) {
         preUpdateTableMap.get(database).remove(tableName);
       }
-
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -276,10 +281,14 @@ public class DataNodeTableCache implements ITableCache {
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }
-
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public long getInstanceVersion() {
+    return instanceVersion.get();
   }
 
   public TsTable getTableInWrite(final String database, final String tableName) {
@@ -412,8 +421,9 @@ public class DataNodeTableCache implements ITableCache {
                   });
             }
           });
-      if (isUpdated.get()) {}
-
+      if (isUpdated.get()) {
+        instanceVersion.incrementAndGet();
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -154,7 +154,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         (index, measurement, dataType, columnCategory, existingColumn) ->
             validate(
                 index, insertRowStatement, measurement, dataType, columnCategory, existingColumn),
-        this::adjustTagColumns);
+        (tagColumnIndexMap, existingTagColumnIndexMap) ->
+            adjustTagColumns(insertRowStatement, tagColumnIndexMap, existingTagColumnIndexMap));
   }
 
   private void validate(
@@ -218,6 +219,12 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     }
   }
 
+  void adjustTagColumns(
+      final LinkedHashMap<String, Integer> tagColumnIndexMap,
+      final LinkedHashMap<String, Integer> existingTagColumnIndexMap) {
+    adjustTagColumns(getInnerTreeStatement(), tagColumnIndexMap, existingTagColumnIndexMap);
+  }
+
   /**
    * Adjust the order of TAG columns in this insertion to be consistent with that from the schema
    * region. Optimized for performance: one expansion if needed, one reordering pass.
@@ -228,9 +235,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
    *     column name, value is TAG column index in table (maintains schema region order)
    */
   void adjustTagColumns(
+      final InsertBaseStatement baseStatement,
       final LinkedHashMap<String, Integer> tagColumnIndexMap,
       final LinkedHashMap<String, Integer> existingTagColumnIndexMap) {
-    InsertBaseStatement baseStatement = getInnerTreeStatement();
     if (baseStatement == null || existingTagColumnIndexMap.isEmpty()) {
       return;
     }

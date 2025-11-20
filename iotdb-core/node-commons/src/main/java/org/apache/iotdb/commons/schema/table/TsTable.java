@@ -82,12 +82,12 @@ public class TsTable {
    */
   private static final AtomicLong GLOBAL_SEQUENCE = new AtomicLong(-1);
 
-  private final Long creationId = GLOBAL_SEQUENCE.getAndIncrement();
-  private final AtomicLong instanceVersion = new AtomicLong(0L);
+  private final transient Long creationId = GLOBAL_SEQUENCE.getAndIncrement();
+  private final transient AtomicLong instanceVersion = new AtomicLong(0L);
 
-  private final AtomicBoolean isNotWrite = new AtomicBoolean(true);
+  private final transient AtomicBoolean isNotWrite = new AtomicBoolean(true);
 
-  private final AtomicLong lastReadVersion = new AtomicLong(-1);
+  private final transient AtomicLong lastReadVersion = new AtomicLong(-1);
   private final AtomicReference<List<TsTableColumnSchema>> tagColumnSchemas =
       new AtomicReference<>();
 
