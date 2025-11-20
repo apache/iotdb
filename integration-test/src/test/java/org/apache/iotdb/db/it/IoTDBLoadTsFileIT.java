@@ -269,7 +269,7 @@ public class IoTDBLoadTsFileIT {
     registerSchema();
 
     final long writtenPoint1;
-    // device 0, device 1, sg 0
+    // device 0, sg 0
     try (final TsFileGenerator generator =
         new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       // wrong
