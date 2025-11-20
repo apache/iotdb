@@ -82,7 +82,7 @@ import static org.junit.Assert.fail;
 public class IoTDBInsertTableIT {
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeCommonConfig()
@@ -100,7 +100,7 @@ public class IoTDBInsertTableIT {
   }
 
   @AfterClass
-  public void tearDown() throws Exception {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
