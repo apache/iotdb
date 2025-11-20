@@ -33,8 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,8 +44,6 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -143,13 +141,39 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         this::adjustTagColumns);
   }
 
+  public void validateTableSchema(
+      final Metadata metadata,
+      final MPPQueryContext context,
+      final InsertRowStatement insertRowStatement,
+      final String databaseName) {
+    metadata.validateInsertNodeMeasurements(
+        databaseName,
+        toInsertNodeMeasurementInfo(insertRowStatement),
+        context,
+        true,
+        (index, measurement, dataType, columnCategory, existingColumn) ->
+            validate(
+                index, insertRowStatement, measurement, dataType, columnCategory, existingColumn),
+        this::adjustTagColumns);
+  }
+
   private void validate(
-      int index,
-      String measurement,
-      TSDataType dataType,
-      TsTableColumnCategory columnCategory,
-      TsTableColumnSchema existingColumn) {
-    InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
+      final int index,
+      final String measurement,
+      final TSDataType dataType,
+      final TsTableColumnCategory columnCategory,
+      final TsTableColumnSchema existingColumn) {
+    final InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
+    validate(index, innerTreeStatement, measurement, dataType, columnCategory, existingColumn);
+  }
+
+  private void validate(
+      final int index,
+      final InsertBaseStatement innerTreeStatement,
+      final String measurement,
+      final TSDataType dataType,
+      final TsTableColumnCategory columnCategory,
+      final TsTableColumnSchema existingColumn) {
     if (existingColumn == null) {
       processNonExistColumn(measurement, columnCategory, innerTreeStatement, index);
       return; // Exit early if column doesn't exist
@@ -192,26 +216,6 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     } catch (DataTypeMismatchException | PathNotExistException e) {
       throw new SemanticException(e);
     }
-  }
-
-  public void validateTableSchema(
-      TableSchema realSchema,
-      TableSchema incomingTableSchema,
-      InsertBaseStatement innerTreeStatement) {
-    final List<ColumnSchema> incomingSchemaColumns = incomingTableSchema.getColumns();
-    Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
-    realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
-    // incoming schema should be consistent with real schema
-    for (int i = 0, incomingSchemaColumnsSize = incomingSchemaColumns.size();
-        i < incomingSchemaColumnsSize;
-        i++) {
-      ColumnSchema incomingSchemaColumn = incomingSchemaColumns.get(i);
-      final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
-      validateTableSchema(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
-    }
-    // incoming schema should contain all id columns in real schema and have consistent order
-    final List<ColumnSchema> realIdColumns = realSchema.getTagColumns();
-    adjustIdColumns(realIdColumns, innerTreeStatement);
   }
 
   /**
@@ -477,49 +481,6 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     }
   }
 
-  /**
-   * Adjust the order of ID columns in this insertion to be consistent with that from the schema
-   * region.
-   *
-   * @param realIdColumnSchemas id column order from the schema region
-   */
-  public void adjustIdColumns(
-      List<ColumnSchema> realIdColumnSchemas, final InsertBaseStatement baseStatement) {
-    List<ColumnSchema> incomingColumnSchemas = toTableSchema(baseStatement).getColumns();
-    for (int realIdColPos = 0; realIdColPos < realIdColumnSchemas.size(); realIdColPos++) {
-      ColumnSchema realColumn = realIdColumnSchemas.get(realIdColPos);
-      int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
-      if (incomingIdColPos == -1) {
-        // if the realIdColPos-th id column in the table is missing, insert an empty column in the
-        // tablet
-        baseStatement.insertColumn(realIdColPos, realColumn);
-        incomingColumnSchemas.add(realIdColPos, realColumn);
-      } else {
-        // move the id column in the tablet to the proper position
-        baseStatement.swapColumn(incomingIdColPos, realIdColPos);
-        Collections.swap(incomingColumnSchemas, incomingIdColPos, realIdColPos);
-      }
-    }
-    tableSchema = null;
-  }
-
-  public static void processNonExistColumn(
-      ColumnSchema incoming, InsertBaseStatement innerTreeStatement, int i) {
-    // the column does not exist and auto-creation is disabled
-    SemanticException semanticException =
-        new SemanticException(
-            "Column " + incoming.getName() + " does not exists or fails to be " + "created",
-            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
-    if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
-        || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      // non-measurement columns cannot be partially inserted
-      throw semanticException;
-    } else {
-      // partial insertion
-      innerTreeStatement.markFailedMeasurement(i, semanticException);
-    }
-  }
-
   public static void processNonExistColumn(
       String name,
       TsTableColumnCategory columnCategory,
@@ -578,53 +539,6 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     } else {
       // partial insertion
       innerTreeStatement.markFailedMeasurement(i, semanticException);
-    }
-  }
-
-  public static void validateTableSchema(
-      ColumnSchema incoming, ColumnSchema real, int i, InsertBaseStatement innerTreeStatement) {
-    if (real == null) {
-      processNonExistColumn(incoming, innerTreeStatement, i);
-      return;
-    }
-
-    // check data type
-    if (incoming.getType() == null || incoming.getColumnCategory() != TsTableColumnCategory.FIELD) {
-      // sql insertion does not provide type
-      // the type is inferred and can be inconsistent with the existing one
-      innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
-    } else if (!InternalTypeManager.getTSDataType(real.getType())
-            .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))
-        && !innerTreeStatement.isForceTypeConversion()) {
-      processTypeConflictColumn(incoming, real, i, innerTreeStatement);
-      return;
-    }
-
-    // check column category
-    if (incoming.getColumnCategory() == null) {
-      // sql insertion does not provide category
-      innerTreeStatement.setColumnCategory(real.getColumnCategory(), i);
-    } else if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
-      throw new SemanticException(
-          String.format(
-              "Inconsistent column category of column %s: %s/%s",
-              incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()),
-          TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
-    }
-
-    // construct measurement schema
-    TSDataType tsDataType = InternalTypeManager.getTSDataType(real.getType());
-    MeasurementSchema measurementSchema =
-        new MeasurementSchema(
-            real.getName(),
-            tsDataType,
-            getDefaultEncoding(tsDataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
-    innerTreeStatement.setMeasurementSchema(measurementSchema, i);
-    try {
-      innerTreeStatement.selfCheckDataTypes(i);
-    } catch (DataTypeMismatchException | PathNotExistException e) {
-      throw new SemanticException(e);
     }
   }
 

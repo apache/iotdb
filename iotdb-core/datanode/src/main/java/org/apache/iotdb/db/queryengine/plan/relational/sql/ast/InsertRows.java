@@ -21,14 +21,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class InsertRows extends WrappedInsertStatement {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InsertRows.class);
 
   // Only InsertRows constructed by Pipe will be set to true
   private boolean allowCreateTable = false;
@@ -90,21 +93,8 @@ public class InsertRows extends WrappedInsertStatement {
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
-      final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
-      final TableSchema realSchema =
-          metadata
-              .validateTableHeaderSchema(
-                  AnalyzeUtils.getDatabaseName(insertRowStatement, context),
-                  incomingTableSchema,
-                  context,
-                  allowCreateTable,
-                  false)
-              .orElse(null);
-      if (realSchema == null) {
-        throw new SemanticException(
-            "Schema validation failed, table cannot be created: " + incomingTableSchema);
-      }
-      validateTableSchema(realSchema, incomingTableSchema, insertRowStatement);
+      final String database = AnalyzeUtils.getDatabaseName(insertRowStatement, context);
+      super.validateTableSchema(metadata, context, insertRowStatement, database);
     }
   }
 

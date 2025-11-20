@@ -708,7 +708,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (toLowerCaseApplied) {
       return;
     }
-    devicePath.toLowerCase();
+
     if (measurements == null) {
       return;
     }
@@ -726,6 +726,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       }
     }
     toLowerCaseApplied = true;
+  }
+
+  @TableModel
+  public void toLowerCaseForDevicePath() {
+    devicePath.toLowerCase();
   }
 
   @TableModel

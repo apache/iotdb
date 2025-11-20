@@ -267,11 +267,11 @@ public class TableHeaderSchemaValidator {
      * @param existingColumn existing column in table, null if not exists
      */
     void validate(
-        int index,
-        String measurement,
-        TSDataType dataType,
-        TsTableColumnCategory columnCategory,
-        TsTableColumnSchema existingColumn);
+        final int index,
+        final String measurement,
+        final TSDataType dataType,
+        final TsTableColumnCategory columnCategory,
+        final TsTableColumnSchema existingColumn);
   }
 
   /** Handler for processing TAG columns during validation */

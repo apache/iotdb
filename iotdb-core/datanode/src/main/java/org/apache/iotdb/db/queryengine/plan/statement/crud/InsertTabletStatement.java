@@ -631,10 +631,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
               TSDataType.STRING, TsTableColumnCategory.TAG, rowCount);
       if (nullBitMaps != null) {
         nullBitMaps[tagIdx] = new BitMap(rowCount);
-        // Mark all as null initially (will be overwritten if data exists)
-        for (int row = 0; row < rowCount; row++) {
-          nullBitMaps[tagIdx].mark(row);
-        }
+        nullBitMaps[tagIdx].markAll();
       }
     }
 
