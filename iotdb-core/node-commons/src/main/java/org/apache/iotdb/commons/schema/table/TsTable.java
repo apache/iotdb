@@ -403,12 +403,7 @@ public class TsTable {
   }
 
   public void setProps(Map<String, String> props) {
-    readWriteLock.writeLock().lock();
-    try {
-      this.props = props;
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    executeWrite(() -> this.props = props);
   }
 
   @Override
