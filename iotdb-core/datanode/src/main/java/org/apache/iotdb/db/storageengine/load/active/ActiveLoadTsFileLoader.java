@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -297,8 +298,9 @@ public class ActiveLoadTsFileLoader {
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
     removeToFailDir(filePath);
-    removeToFailDir(filePath + ".resource");
-    removeToFailDir(filePath + ".mods");
+    removeToFailDir(LoadUtil.getTsFileResourcePath(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
   }
 
   private void removeToFailDir(final String filePath) {
