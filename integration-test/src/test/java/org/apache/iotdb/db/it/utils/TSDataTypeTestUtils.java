@@ -56,9 +56,7 @@ public class TSDataTypeTestUtils {
   /**
    * Get the set of unsupported TSDataType values that should be filtered out in tests.
    *
-   * <p>Currently includes: VECTOR, UNKNOWN
-   *
-   * <p>If new unsupported types are added (e.g., OBJECT), add them here.
+   * <p>Currently includes: VECTOR, UNKNOWN, OBJECT
    *
    * @return Set of unsupported TSDataType values
    */
@@ -66,8 +64,6 @@ public class TSDataTypeTestUtils {
     Set<TSDataType> unsupported = new HashSet<>();
     unsupported.add(TSDataType.VECTOR);
     unsupported.add(TSDataType.UNKNOWN);
-    // Add other unsupported types here if needed in the future
-    // Example: if OBJECT type is not supported, uncomment the line below
     unsupported.add(TSDataType.OBJECT);
     return unsupported;
   }
