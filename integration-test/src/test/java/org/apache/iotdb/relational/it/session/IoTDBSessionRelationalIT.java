@@ -110,7 +110,6 @@ public class IoTDBSessionRelationalIT {
   // for manual debugging
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    EnvFactory.getEnv().initClusterEnvironment();
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE \"db1\"");
       session.executeNonQueryStatement("CREATE DATABASE \"db2\"");
