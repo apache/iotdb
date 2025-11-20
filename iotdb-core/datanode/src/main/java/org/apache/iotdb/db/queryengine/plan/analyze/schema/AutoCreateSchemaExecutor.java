@@ -319,7 +319,6 @@ class AutoCreateSchemaExecutor {
             devicePath,
             (k, v) -> {
               if (v == null) {
-                // Load does not tolerate the device alignment mismatch
                 v = new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup());
               }
               MeasurementGroup measurementGroup = v.right;
@@ -533,6 +532,7 @@ class AutoCreateSchemaExecutor {
         if (!isLoad) {
           pair.setLeft(!pair.getLeft());
         } else {
+          // Load does not tolerate the device alignment mismatch
           throw new SemanticException(
               new AlignedTimeseriesException(
                   "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",

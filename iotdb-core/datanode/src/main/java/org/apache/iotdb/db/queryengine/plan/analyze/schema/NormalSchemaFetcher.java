@@ -343,7 +343,7 @@ class NormalSchemaFetcher {
 
     // [Step 5] Auto Create and process the missing schema
     if (!indexOfMeasurementsNeedAutoCreate.isEmpty()) {
-      List<PartialPath> devicePath2AlignedSetter =
+      List<PartialPath> devicePathList =
           schemaComputationWithAutoCreationList.stream()
               .map(ISchemaComputationWithAutoCreation::getDevicePath)
               .collect(Collectors.toList());
@@ -351,7 +351,7 @@ class NormalSchemaFetcher {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoCreateTimeSeries(
           schemaTree,
-          devicePath2AlignedSetter,
+          devicePathList,
           indexOfDevicesNeedAutoCreateSchema,
           indexOfMeasurementsNeedAutoCreate,
           schemaComputationWithAutoCreationList.stream()
