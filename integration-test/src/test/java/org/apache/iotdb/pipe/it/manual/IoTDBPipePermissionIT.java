@@ -43,6 +43,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
@@ -166,14 +168,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testNoPermission() throws Exception {
-    TestUtils.executeNonQueries(
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
         receiverEnv,
         Arrays.asList(
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant READ on root.ln.** to role `admin`"),
-        null);
+            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"))) {
+      return;
+    }
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -181,13 +184,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      TestUtils.executeNonQueries(
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
               "create user someUser 'passwd'",
               "create database root.noPermission",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
-          null);
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"))) {
+        fail();
+        return;
+      }
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
