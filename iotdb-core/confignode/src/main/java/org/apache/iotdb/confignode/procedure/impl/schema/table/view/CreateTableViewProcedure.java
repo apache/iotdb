@@ -121,7 +121,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         SchemaUtils.executeInConsensusLayer(
             new PreCreateTableViewPlan(database, table, TableNodeStatus.PRE_CREATE), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(CreateTableState.PRE_RELEASE);
+      setNextState(CreateTableState.PRE_UPDATE_DATANODE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }

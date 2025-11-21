@@ -74,7 +74,7 @@ public class AddTableColumnProcedure
           LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
           columnCheck(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
           break;
@@ -82,7 +82,7 @@ public class AddTableColumnProcedure
           LOGGER.info("Add column to table {}.{}", database, tableName);
           addColumn(env);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
@@ -114,7 +114,7 @@ public class AddTableColumnProcedure
         return;
       }
       table = result.getRight();
-      setNextState(AddTableColumnState.PRE_RELEASE);
+      setNextState(AddTableColumnState.PRE_UPDATE_DATANODE_CACHE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
@@ -138,7 +138,7 @@ public class AddTableColumnProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
-      setNextState(AddTableColumnState.COMMIT_RELEASE);
+      setNextState(AddTableColumnState.COMMIT_UPDATE_DATANODE_CACHE);
     }
   }
 
@@ -160,7 +160,7 @@ public class AddTableColumnProcedure
               table.getTableName());
           rollbackAddColumn(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Start rollback pre release info of table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);

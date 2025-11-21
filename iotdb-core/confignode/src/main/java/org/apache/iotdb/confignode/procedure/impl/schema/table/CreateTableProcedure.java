@@ -83,7 +83,7 @@ public class CreateTableProcedure
           LOGGER.info("Pre create table {}.{}", database, table.getTableName());
           preCreateTable(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release table {}.{}", database, table.getTableName());
           preReleaseTable(env);
           break;
@@ -91,7 +91,7 @@ public class CreateTableProcedure
           LOGGER.info("Commit create table {}.{}", database, table.getTableName());
           commitCreateTable(env);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info("Commit release table {}.{}", database, table.getTableName());
           commitReleaseTable(env);
           return Flow.NO_MORE_STATE;
@@ -140,7 +140,7 @@ public class CreateTableProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(CreateTableState.PRE_RELEASE);
+      setNextState(CreateTableState.PRE_UPDATE_DATANODE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
@@ -173,7 +173,7 @@ public class CreateTableProcedure
             env,
             LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(CreateTableState.COMMIT_RELEASE);
+      setNextState(CreateTableState.COMMIT_UPDATE_DATANODE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
@@ -208,7 +208,7 @@ public class CreateTableProcedure
           LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
           rollbackCreate(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);
           break;

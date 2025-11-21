@@ -44,8 +44,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.COMMIT_RELEASE;
-import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.PRE_RELEASE;
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.COMMIT_UPDATE_DATANODE_CACHE;
+import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.PRE_UPDATE_DATANODE_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.SET_PROPERTIES;
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
 
@@ -88,7 +88,7 @@ public class SetTablePropertiesProcedure
             return Flow.NO_MORE_STATE;
           }
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           preRelease(env);
           LOGGER.info(
               "Pre release info for table {}.{} when setting properties", database, tableName);
@@ -97,7 +97,7 @@ public class SetTablePropertiesProcedure
           setProperties(env);
           LOGGER.info("Set properties to table {}.{}", database, tableName);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           commitRelease(env);
           LOGGER.info(
               "Commit release info of table {}.{} when setting properties", database, tableName);
@@ -134,7 +134,7 @@ public class SetTablePropertiesProcedure
         return;
       }
       table = result.getRight();
-      setNextState(PRE_RELEASE);
+      setNextState(PRE_UPDATE_DATANODE_CACHE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
@@ -158,7 +158,7 @@ public class SetTablePropertiesProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
-      setNextState(COMMIT_RELEASE);
+      setNextState(COMMIT_UPDATE_DATANODE_CACHE);
     }
   }
 
@@ -174,7 +174,7 @@ public class SetTablePropertiesProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Start rollback pre release info for table {}.{} when setting properties",
               database,
