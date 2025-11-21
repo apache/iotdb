@@ -248,8 +248,8 @@ public class IoTDBJDBCDataSet {
       }
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = "";
-        if (sgList != null
-            && !sgList.isEmpty()
+        if (dbList != null
+            && !dbList.isEmpty()
             && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
           name = dbList.get(i) + "." + columnNameList.get(i);
         } else {
