@@ -85,7 +85,7 @@ public class CreateTableProcedure
           break;
         case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release table {}.{}", database, table.getTableName());
-          preReleaseTable(env);
+          preUpdateDataNodeCache(env);
           break;
         case COMMIT_CREATE:
           LOGGER.info("Commit create table {}.{}", database, table.getTableName());
@@ -93,7 +93,7 @@ public class CreateTableProcedure
           break;
         case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info("Commit release table {}.{}", database, table.getTableName());
-          commitReleaseTable(env);
+          commitUpdateDataNodeCache(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
@@ -146,7 +146,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void preReleaseTable(final ConfigNodeProcedureEnv env) {
+  private void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
 
@@ -179,7 +179,7 @@ public class CreateTableProcedure
     }
   }
 
-  private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
+  private void commitUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(
             database, table.getTableName(), env.getConfigManager(), null);

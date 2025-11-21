@@ -71,7 +71,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
           break;
         case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
-          preRelease(env);
+          preUpdateDataNodeCache(env);
           break;
         case RENAME_TABLE:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
@@ -80,7 +80,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
         case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Commit release info of table {}.{} when renaming table", database, tableName);
-          commitRelease(env, tableName);
+          commitUpdateDataNodeCache(env, tableName);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
@@ -117,8 +117,8 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
   }
 
   @Override
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env, tableName);
+  protected void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    super.preUpdateDataNodeCache(env, tableName);
     setNextState(RenameTableState.RENAME_TABLE);
   }
 

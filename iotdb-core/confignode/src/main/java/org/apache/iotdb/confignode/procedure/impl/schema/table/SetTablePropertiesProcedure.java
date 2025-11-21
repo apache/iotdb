@@ -89,7 +89,7 @@ public class SetTablePropertiesProcedure
           }
           break;
         case PRE_UPDATE_DATANODE_CACHE:
-          preRelease(env);
+          preUpdateDataNodeCache(env);
           LOGGER.info(
               "Pre release info for table {}.{} when setting properties", database, tableName);
           break;
@@ -98,7 +98,7 @@ public class SetTablePropertiesProcedure
           LOGGER.info("Set properties to table {}.{}", database, tableName);
           break;
         case COMMIT_UPDATE_DATANODE_CACHE:
-          commitRelease(env);
+          commitUpdateDataNodeCache(env);
           LOGGER.info(
               "Commit release info of table {}.{} when setting properties", database, tableName);
           return Flow.NO_MORE_STATE;
@@ -141,8 +141,8 @@ public class SetTablePropertiesProcedure
   }
 
   @Override
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env);
+  protected void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    super.preUpdateDataNodeCache(env);
     setNextState(SET_PROPERTIES);
   }
 

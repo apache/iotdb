@@ -85,11 +85,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     return queryId;
   }
 
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    preRelease(env, null);
+  protected void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    preUpdateDataNodeCache(env, null);
   }
 
-  protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+  protected void preUpdateDataNodeCache(
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
 
@@ -107,11 +108,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     }
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env) {
-    commitRelease(env, null);
+  protected void commitUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    commitUpdateDataNodeCache(env, null);
   }
 
-  protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+  protected void commitUpdateDataNodeCache(
+      final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(
             database, table.getTableName(), env.getConfigManager(), oldName);

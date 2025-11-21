@@ -76,7 +76,7 @@ public class AddTableColumnProcedure
           break;
         case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
-          preRelease(env);
+          preUpdateDataNodeCache(env);
           break;
         case ADD_COLUMN:
           LOGGER.info("Add column to table {}.{}", database, tableName);
@@ -84,7 +84,7 @@ public class AddTableColumnProcedure
           break;
         case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
-          commitRelease(env);
+          commitUpdateDataNodeCache(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
@@ -121,8 +121,8 @@ public class AddTableColumnProcedure
   }
 
   @Override
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env);
+  protected void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    super.preUpdateDataNodeCache(env);
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
