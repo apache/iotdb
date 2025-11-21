@@ -63,7 +63,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
   private static final long testTimePartitionInterval = 604800000;
 
   private static final String db = "root.db";
-  private static final int testSgNum = 2;
+  private static final int testDbNum = 2;
 
   @Before
   public void setUp() throws Exception {
@@ -95,7 +95,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      for (int i = 0; i < testSgNum; i++) {
+      for (int i = 0; i < testDbNum; i++) {
         String curSg = db + i;
 
         /* Set Database */

@@ -37,7 +37,7 @@ import java.util.List;
 public class ShowDevicesStatement extends ShowStatement {
 
   private final PartialPath pathPattern;
-  private boolean hasSgCol;
+  private boolean hasDbCol;
   private SchemaFilter schemaFilter;
   private WhereCondition timeCondition;
 
@@ -58,12 +58,12 @@ public class ShowDevicesStatement extends ShowStatement {
     return pathPattern;
   }
 
-  public void setSgCol(boolean hasSgCol) {
-    this.hasSgCol = hasSgCol;
+  public void setDbCol(boolean hasDbCol) {
+    this.hasDbCol = hasDbCol;
   }
 
-  public boolean hasSgCol() {
-    return hasSgCol;
+  public boolean hasDbCol() {
+    return hasDbCol;
   }
 
   public void setTimeCondition(WhereCondition timeCondition) {

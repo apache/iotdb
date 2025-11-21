@@ -3275,7 +3275,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
     analysis.setRespDatasetHeader(
-        showDevicesStatement.hasSgCol()
+        showDevicesStatement.hasDbCol()
             ? DatasetHeaderFactory.getShowDevicesWithSgHeader()
             : DatasetHeaderFactory.getShowDevicesHeader());
     return analysis;

@@ -345,7 +345,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
+  public static final List<ColumnHeader> showDevicesWithDbColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),

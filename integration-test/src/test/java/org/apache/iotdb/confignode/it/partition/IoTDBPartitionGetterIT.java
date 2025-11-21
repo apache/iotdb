@@ -394,9 +394,9 @@ public class IoTDBPartitionGetterIT {
 
       // Get all RegionIds within database
       for (int i = 0; i < databaseNum; i++) {
-        String curSg = db + i;
+        String curDb = db + i;
         getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-        getRegionIdReq.setDatabase(curSg);
+        getRegionIdReq.setDatabase(curDb);
         getRegionIdResp = client.getRegionId(getRegionIdReq);
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
@@ -406,7 +406,7 @@ public class IoTDBPartitionGetterIT {
         // Get RegionId with an equivalent query。
         for (long j = 0; j < testTimePartitionSlotsNum; j++) {
           TGetRegionIdReq subReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-          subReq.setDatabase(curSg);
+          subReq.setDatabase(curDb);
           subReq.setStartTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
           subReq.setEndTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
           TGetRegionIdResp subResp = client.getRegionId(subReq);
@@ -418,7 +418,7 @@ public class IoTDBPartitionGetterIT {
 
         // Get RegionId with time range query
         TGetRegionIdReq rangeReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-        rangeReq.setDatabase(curSg);
+        rangeReq.setDatabase(curDb);
         rangeReq.setStartTimeSlot(new TTimePartitionSlot(0L));
         rangeReq.setEndTimeSlot(
             new TTimePartitionSlot(testTimePartitionSlotsNum * testTimePartitionInterval));
