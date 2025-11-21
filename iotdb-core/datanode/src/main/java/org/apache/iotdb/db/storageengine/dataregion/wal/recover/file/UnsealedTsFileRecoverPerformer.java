@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
@@ -241,8 +241,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           .computeIfAbsent(
               tableName,
               t ->
-                  TableSchema.of(DataNodeTableCache.getInstance().getTable(databaseName, t))
-                      .toTsFileTableSchemaNoAttribute());
+                  TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(
+                      DataNodeTableCache.getInstance().getTable(databaseName, t)));
     }
   }
 
