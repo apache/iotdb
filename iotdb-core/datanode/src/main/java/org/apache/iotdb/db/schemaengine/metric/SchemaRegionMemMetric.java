@@ -34,10 +34,13 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   private static final String MEM_USAGE = "schema_region_mem_usage";
   private static final String SERIES_CNT = "schema_region_series_cnt";
+  private static final String NON_VIEW_SERIES_CNT = "schema_region_non_view_series_cnt";
   private static final String DEVICE_NUMBER = "schema_region_device_cnt";
+  private static final String TABLE_DEVICE_NUMBER = "schema_region_table_device_cnt";
   private static final String TEMPLATE_CNT = "activated_template_cnt";
   private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
   private static final String TRAVERSER_TIMER = "schema_region_traverser_timer";
+  private AbstractMetricService metricService;
 
   private Timer traverserTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -53,6 +56,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    this.metricService = metricService;
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -82,6 +86,17 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         i -> i.getSeriesNumber(true),
         Tag.NAME.toString(),
         SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_REGION.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
+        i -> i.getSeriesNumber(false),
+        Tag.NAME.toString(),
+        NON_VIEW_SERIES_CNT,
         Tag.REGION.toString(),
         regionTagValue,
         Tag.DATABASE.toString(),
@@ -120,6 +135,20 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
             database);
   }
 
+  public void bindTableMetrics(final String tableName) {
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
+        statistics -> statistics.getTableDevicesNumber(tableName),
+        Tag.NAME.toString(),
+        TABLE_DEVICE_NUMBER,
+        Tag.REGION.toString(),
+        regionTagValue,
+        SchemaEngineMemMetric.TABLE,
+        tableName);
+  }
+
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     traverserTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -154,6 +183,15 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
+        NON_VIEW_SERIES_CNT,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
         TEMPLATE_CNT,
         Tag.REGION.toString(),
         regionTagValue,
@@ -177,6 +215,18 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         regionTagValue,
         Tag.DATABASE.toString(),
         database);
+  }
+
+  public void unbindTableMetrics(final String tableName) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        TABLE_DEVICE_NUMBER,
+        Tag.REGION.toString(),
+        regionTagValue,
+        SchemaEngineMemMetric.TABLE,
+        tableName);
   }
 
   public void recordTraverser(long time) {
