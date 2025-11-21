@@ -2143,7 +2143,7 @@ public abstract class AlignedTVList extends TVList {
       int maxRowCountOfCurrentBatch =
           Math.min(
               rows - index,
-              (int)
+              (int) // NOSONAR
                   Math.min(
                       encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk,
                       encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
