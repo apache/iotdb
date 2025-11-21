@@ -531,7 +531,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
     final TCountDatabaseResp resp = new TCountDatabaseResp();
-    countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
+    countDatabaseResp.convertToRPCCountDatabaseResp(resp);
     return resp;
   }
 
