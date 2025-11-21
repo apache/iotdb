@@ -42,14 +42,14 @@ public class PipeStatementTest {
     CreatePipeStatement statement = new CreatePipeStatement(StatementType.CREATE_PIPE);
 
     statement.setPipeName("test");
-    statement.setExtractorAttributes(extractorAttributes);
+    statement.setSourceAttributes(extractorAttributes);
     statement.setProcessorAttributes(processorAttributes);
-    statement.setConnectorAttributes(connectorAttributes);
+    statement.setSinkAttributes(connectorAttributes);
 
     Assert.assertEquals("test", statement.getPipeName());
-    Assert.assertEquals(extractorAttributes, statement.getExtractorAttributes());
+    Assert.assertEquals(extractorAttributes, statement.getSourceAttributes());
     Assert.assertEquals(processorAttributes, statement.getProcessorAttributes());
-    Assert.assertEquals(connectorAttributes, statement.getConnectorAttributes());
+    Assert.assertEquals(connectorAttributes, statement.getSinkAttributes());
 
     Assert.assertEquals(QueryType.WRITE, statement.getQueryType());
   }

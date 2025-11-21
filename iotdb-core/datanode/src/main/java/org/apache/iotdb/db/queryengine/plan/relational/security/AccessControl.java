@@ -230,6 +230,16 @@ public interface AccessControl {
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);
 
+  TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
+
+  List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
+
   // ====================================== COMMON =============================================
   TSStatus allowUserToLogin(String userName);
 }

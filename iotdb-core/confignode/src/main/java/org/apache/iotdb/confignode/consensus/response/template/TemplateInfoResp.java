@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.consensus.response.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.List;
 
