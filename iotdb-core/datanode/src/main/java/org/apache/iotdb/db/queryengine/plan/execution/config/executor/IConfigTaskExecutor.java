@@ -183,6 +183,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showDataNodes();
 
+  SettableFuture<ConfigTaskResult> showAvailableUrls();
+
   SettableFuture<ConfigTaskResult> showConfigNodes();
 
   SettableFuture<ConfigTaskResult> showAINodes();
