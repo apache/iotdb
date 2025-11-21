@@ -1812,6 +1812,7 @@ public class IoTDBSessionRelationalIT {
     dataTypes.remove(TSDataType.OBJECT);
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
+    dataTypes.remove(TSDataType.OBJECT);
 
     try {
       for (TSDataType from : dataTypes) {
@@ -1903,6 +1904,7 @@ public class IoTDBSessionRelationalIT {
     dataTypes.remove(TSDataType.OBJECT);
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
+    dataTypes.remove(TSDataType.OBJECT);
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {
