@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
@@ -197,6 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -814,13 +816,15 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplain(Explain node, Optional<Scope> context) {
+      queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      queryContext.setExplainAnalyze(true);
+      queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
+      queryContext.setVerbose(node.isVerbose());
       return visitQuery((Query) node.getStatement(), context);
     }
 
@@ -3076,6 +3080,14 @@ public class StatementAnalyzer {
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      // if table schema is not found in metadata, we check if it's a CTE defined in the parent
+      // query
+      if (!tableSchema.isPresent()) {
+        CteDataStore dataStore = queryContext.getCteDataStore(table);
+        if (dataStore != null) {
+          tableSchema = Optional.of(dataStore.getTableSchema());
+        }
+      }
       // This can only be a table
       if (!tableSchema.isPresent()) {
         TableMetadataImpl.throwTableNotExistsException(
@@ -3097,6 +3109,7 @@ public class StatementAnalyzer {
     private Scope createScopeForCommonTableExpression(
         Table table, Optional<Scope> scope, WithQuery withQuery) {
       Query query = withQuery.getQuery();
+      query.setMaterialized(withQuery.isMaterialized());
       analysis.registerNamedQuery(table, query);
 
       // re-alias the fields with the name assigned to the query in the WITH declaration
