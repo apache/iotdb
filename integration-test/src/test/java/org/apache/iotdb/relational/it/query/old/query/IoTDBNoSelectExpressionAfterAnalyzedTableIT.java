@@ -73,7 +73,7 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
 
     // mix test
     /* expectedHeader = new String[] {DEVICE, count(s1), count(s2)};
-    retArray = new String[] {"sg,1,null,", "root.db.d2,1,1,"};
+    retArray = new String[] {"db,1,null,", "root.db.d2,1,1,"};
     tableResultSetEqualTest(
         "select count(s1), count(s2) from db where s1>0 order by device",
         expectedHeader,

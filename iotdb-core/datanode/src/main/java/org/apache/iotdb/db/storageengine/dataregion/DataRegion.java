@@ -2553,7 +2553,7 @@ public class DataRegion implements IDataRegionForQuery {
     final long endTime = node.getDeleteEndTime();
     final long searchIndex = node.getSearchIndex();
     // TODO: how to avoid partial deletion?
-    // FIXME: notice that if we may remove a DBProcessor out of memory, we need to close all opened
+    // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock("delete");
 
