@@ -62,7 +62,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
 
-  private static final String sg = "root.sg";
+  private static final String sg = "root.db";
   private static final int testSgNum = 2;
 
   @Before

@@ -46,7 +46,7 @@ public class CreateCQProcedureTest {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    String sql = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.sg.d1 END";
+    String sql = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.db.d1 END";
 
     TCreateCQReq req =
         new TCreateCQReq(
@@ -56,7 +56,7 @@ public class CreateCQProcedureTest {
             1000,
             0,
             (byte) 0,
-            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            "select s1 into root.backup.d1(s1) from root.db.d1",
             sql,
             "Asia",
             "root");

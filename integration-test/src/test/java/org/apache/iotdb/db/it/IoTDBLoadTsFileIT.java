@@ -241,11 +241,11 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -330,11 +330,11 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -378,17 +378,17 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute("create database root.sg.test_0");
+      statement.execute("create database root.db.test_0");
       statement.execute(
           "create device template t1 (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)");
-      statement.execute(" set device template t1 to root.sg.test_0.d_0");
+      statement.execute(" set device template t1 to root.db.test_0.d_0");
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -476,11 +476,11 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -493,7 +493,7 @@ public class IoTDBLoadTsFileIT {
       isAligned.put(SchemaConfig.DEVICE_2, "false");
       isAligned.put(SchemaConfig.DEVICE_3, "false");
       isAligned.put(SchemaConfig.DEVICE_4, "true");
-      try (final ResultSet resultSet = statement.executeQuery("show devices root.sg.**")) {
+      try (final ResultSet resultSet = statement.executeQuery("show devices root.db.**")) {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
@@ -642,9 +642,9 @@ public class IoTDBLoadTsFileIT {
               file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -662,11 +662,11 @@ public class IoTDBLoadTsFileIT {
               file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -731,11 +731,11 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -768,9 +768,9 @@ public class IoTDBLoadTsFileIT {
         statement.execute(String.format("load \"%s\" sglevel=2", "1-0-0-0.tsfile"));
 
         try (final ResultSet resultSet =
-            statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+            statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
           if (resultSet.next()) {
-            final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+            final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
             Assert.assertEquals(writtenPoint1, sg1Count);
           } else {
             Assert.fail("This ResultSet is empty.");
@@ -851,11 +851,11 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -863,7 +863,7 @@ public class IoTDBLoadTsFileIT {
       }
 
       TestUtils.assertSingleResultSetEqual(
-          TestUtils.executeQueryWithRetry(statement, "count timeSeries root.sg.**"),
+          TestUtils.executeQueryWithRetry(statement, "count timeSeries root.db.**"),
           Collections.singletonMap("count(timeseries)", "18"));
     }
   }
@@ -877,7 +877,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg")) {
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.db")) {
         Assert.assertFalse(resultSet.next());
       }
     }
@@ -945,9 +945,9 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -989,9 +989,9 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" ", file.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sgCount = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sgCount = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint, sgCount);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -1026,11 +1026,11 @@ public class IoTDBLoadTsFileIT {
   }
 
   private static class SchemaConfig {
-    private static final String DATABASE_0 = "root.sg.test_0";
-    private static final String DATABASE_1 = "root.sg.test_1";
+    private static final String DATABASE_0 = "root.db.test_0";
+    private static final String DATABASE_1 = "root.db.test_1";
 
     // device 0, nonaligned, sg 0
-    private static final String DEVICE_0 = "root.sg.test_0.d_0";
+    private static final String DEVICE_0 = "root.db.test_0.d_0";
     private static final MeasurementSchema MEASUREMENT_00 =
         new MeasurementSchema("sensor_00", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_01 =
@@ -1049,7 +1049,7 @@ public class IoTDBLoadTsFileIT {
         new MeasurementSchema("sensor_07", TSDataType.STRING, TSEncoding.PLAIN);
 
     // device 1, aligned, sg 0
-    private static final String DEVICE_1 = "root.sg.test_0.a_1";
+    private static final String DEVICE_1 = "root.db.test_0.a_1";
     private static final MeasurementSchema MEASUREMENT_10 =
         new MeasurementSchema("sensor_10", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_11 =
@@ -1068,17 +1068,17 @@ public class IoTDBLoadTsFileIT {
         new MeasurementSchema("sensor_17", TSDataType.STRING, TSEncoding.PLAIN);
 
     // device 2, non aligned, sg 1
-    private static final String DEVICE_2 = "root.sg.test_1.d_2";
+    private static final String DEVICE_2 = "root.db.test_1.d_2";
     private static final MeasurementSchema MEASUREMENT_20 =
         new MeasurementSchema("sensor_20", TSDataType.INT32, TSEncoding.RLE);
 
     // device 3, non aligned, sg 1
-    private static final String DEVICE_3 = "root.sg.test_1.d_3";
+    private static final String DEVICE_3 = "root.db.test_1.d_3";
     private static final MeasurementSchema MEASUREMENT_30 =
         new MeasurementSchema("sensor_30", TSDataType.INT32, TSEncoding.RLE);
 
     // device 4, aligned, sg 1
-    private static final String DEVICE_4 = "root.sg.test_1.a_4";
+    private static final String DEVICE_4 = "root.db.test_1.a_4";
     private static final MeasurementSchema MEASUREMENT_40 =
         new MeasurementSchema("sensor_40", TSDataType.INT32, TSEncoding.RLE);
   }

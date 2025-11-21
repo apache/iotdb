@@ -39,12 +39,12 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest1() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.*"),
-            new PartialPath("root.sg1.d1.s3")),
-        Collections.singletonList(new PartialPath("root.sg1.d1.*")),
-        Collections.singletonList(new PartialPath("root.sg1.d1")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.*"),
+            new PartialPath("root.db1.d1.s3")),
+        Collections.singletonList(new PartialPath("root.db1.d1.*")),
+        Collections.singletonList(new PartialPath("root.db1.d1")),
         true);
   }
 
@@ -52,12 +52,12 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest2() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d1.t2.s2"),
-            new PartialPath("root.sg1.*.t1.s1"),
-            new PartialPath("root.sg1.d2.t1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.t2.s2"), new PartialPath("root.sg1.*.t1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*.t1")),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d1.t2.s2"),
+            new PartialPath("root.db1.*.t1.s1"),
+            new PartialPath("root.db1.d2.t1.s1")),
+        Arrays.asList(new PartialPath("root.db1.d1.t2.s2"), new PartialPath("root.db1.*.t1.s1")),
+        Arrays.asList(new PartialPath("root.db1.d1.t2"), new PartialPath("root.db1.*.t1")),
         true);
   }
 
@@ -65,19 +65,19 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest3() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.s1"),
-            new PartialPath("root.sg1.d2.s1")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.s1"),
+            new PartialPath("root.db1.d2.s1")),
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.s1")),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.s1")),
         Arrays.asList(
-            new PartialPath("root.sg1.d1"),
-            new PartialPath("root.sg1.d1.t1"),
-            new PartialPath("root.sg1.*")),
+            new PartialPath("root.db1.d1"),
+            new PartialPath("root.db1.d1.t1"),
+            new PartialPath("root.db1.*")),
         true);
   }
 
@@ -85,15 +85,15 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest4() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d2.s3"),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d2.s3"),
             new PartialPath("root.**"),
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d2.s3")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d2.s3")),
         Collections.singletonList(new PartialPath("root.**")),
         Collections.singletonList(new PartialPath("root.**")),
         true);
@@ -103,13 +103,13 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest5() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.**.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.s2"), new PartialPath("root.sg1.**.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.**")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.**.s1")),
+        Arrays.asList(new PartialPath("root.db1.d1.s2"), new PartialPath("root.db1.**.s1")),
+        Arrays.asList(new PartialPath("root.db1.d1"), new PartialPath("root.db1.**")),
         true);
   }
 
@@ -117,28 +117,28 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest6() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d2.s2"),
-            new PartialPath("root.sg1.d2.*"),
-            new PartialPath("root.sg1.**.s1"),
-            new PartialPath("root.sg1.*.s2"),
-            new PartialPath("root.sg1.d3.s1"),
-            new PartialPath("root.sg1.d3.s2"),
-            new PartialPath("root.sg1.d3.t1.s1"),
-            new PartialPath("root.sg1.d3.t1.s2")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.d2.s2"),
+            new PartialPath("root.db1.d2.*"),
+            new PartialPath("root.db1.**.s1"),
+            new PartialPath("root.db1.*.s2"),
+            new PartialPath("root.db1.d3.s1"),
+            new PartialPath("root.db1.d3.s2"),
+            new PartialPath("root.db1.d3.t1.s1"),
+            new PartialPath("root.db1.d3.t1.s2")),
         Arrays.asList(
-            new PartialPath("root.sg1.d2.*"),
-            new PartialPath("root.sg1.**.s1"),
-            new PartialPath("root.sg1.*.s2"),
-            new PartialPath("root.sg1.d3.t1.s2")),
+            new PartialPath("root.db1.d2.*"),
+            new PartialPath("root.db1.**.s1"),
+            new PartialPath("root.db1.*.s2"),
+            new PartialPath("root.db1.d3.t1.s2")),
         Arrays.asList(
-            new PartialPath("root.sg1.d2"),
-            new PartialPath("root.sg1.**"),
-            new PartialPath("root.sg1.*"),
-            new PartialPath("root.sg1.d3.t1")),
+            new PartialPath("root.db1.d2"),
+            new PartialPath("root.db1.**"),
+            new PartialPath("root.db1.*"),
+            new PartialPath("root.db1.d3.t1")),
         true);
   }
 
@@ -147,13 +147,13 @@ public class PathPatternTreeTest {
   public void pathPatternTreeTest7() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.*.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.s1"),
-            new PartialPath("root.sg1.**.s1")),
-        Arrays.asList(new PartialPath("root.sg1.*.s2"), new PartialPath("root.sg1.**.s1")),
-        Arrays.asList(new PartialPath("root.sg1.*"), new PartialPath("root.sg1.**")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.*.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.s1"),
+            new PartialPath("root.db1.**.s1")),
+        Arrays.asList(new PartialPath("root.db1.*.s2"), new PartialPath("root.db1.**.s1")),
+        Arrays.asList(new PartialPath("root.db1.*"), new PartialPath("root.db1.**")),
         true);
   }
 
@@ -161,9 +161,9 @@ public class PathPatternTreeTest {
   @Test
   public void pathPatternTreeTest8() throws IllegalPathException, IOException {
     checkPathPatternTree(
-        Arrays.asList(new PartialPath("root.sg1.d1.s1"), new PartialPath("root.sg1.d1.s2")),
-        Arrays.asList(new PartialPath("root.sg1.d1.s1"), new PartialPath("root.sg1.d1.s2")),
-        Collections.singletonList(new PartialPath("root.sg1.d1")),
+        Arrays.asList(new PartialPath("root.db1.d1.s1"), new PartialPath("root.db1.d1.s2")),
+        Arrays.asList(new PartialPath("root.db1.d1.s1"), new PartialPath("root.db1.d1.s2")),
+        Collections.singletonList(new PartialPath("root.db1.d1")),
         true);
   }
 
@@ -171,22 +171,22 @@ public class PathPatternTreeTest {
    * This use case is used to test the completeness of getAllDevicePatterns and getAllPathPatterns
    * results.
    *
-   * <p>After appending root.sg1.d1 and root.sg1.d1.** to an empty pathPatternTree.
+   * <p>After appending root.db1.d1 and root.db1.d1.** to an empty pathPatternTree.
    *
-   * <p>root.sg1.d1.** and root.sg1.d1 should be taken by invoking getAllPathPatterns.
+   * <p>root.db1.d1.** and root.db1.d1 should be taken by invoking getAllPathPatterns.
    */
   @Test
   public void pathPatternTreeTest9() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1"),
-            new PartialPath("root.sg1.d1.**"),
-            new PartialPath("root.sg1.d1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d1.**")),
+            new PartialPath("root.db1.d1"),
+            new PartialPath("root.db1.d1.**"),
+            new PartialPath("root.db1.d1.s1")),
+        Arrays.asList(new PartialPath("root.db1.d1"), new PartialPath("root.db1.d1.**")),
         Arrays.asList(
-            new PartialPath("root.sg1"),
-            new PartialPath("root.sg1.d1"),
-            new PartialPath("root.sg1.d1.**")),
+            new PartialPath("root.db1"),
+            new PartialPath("root.db1.d1"),
+            new PartialPath("root.db1.d1.**")),
         true);
   }
 
@@ -194,28 +194,28 @@ public class PathPatternTreeTest {
   public void pathPatternTreeWithoutWildcardTest() throws IllegalPathException, IOException {
     checkPathPatternTree(
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d1.t2.s2"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d2.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d1.t2.s2"),
-            new PartialPath("root.sg1.d1.s1")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d1.t2.s2"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.d2.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d1.t2.s2"),
+            new PartialPath("root.db1.d1.s1")),
         Arrays.asList(
-            new PartialPath("root.sg1.d1.s1"),
-            new PartialPath("root.sg1.d1.s2"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d2.s2"),
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d1.t2.s2")),
+            new PartialPath("root.db1.d1.s1"),
+            new PartialPath("root.db1.d1.s2"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.d2.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d1.t2.s2")),
         Arrays.asList(
-            new PartialPath("root.sg1.d1"),
-            new PartialPath("root.sg1.d2"),
-            new PartialPath("root.sg1.d1.t1"),
-            new PartialPath("root.sg1.d1.t2")),
+            new PartialPath("root.db1.d1"),
+            new PartialPath("root.db1.d2"),
+            new PartialPath("root.db1.d1.t1"),
+            new PartialPath("root.db1.d1.t2")),
         false);
   }
 
@@ -272,10 +272,10 @@ public class PathPatternTreeTest {
   public void testPathPatternTreeSplit() throws Exception {
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.d1.t2.s2"),
-            new PartialPath("root.sg1.*.t1.s1"),
-            new PartialPath("root.sg1.d2.t1.s1"));
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.d1.t2.s2"),
+            new PartialPath("root.db1.*.t1.s1"),
+            new PartialPath("root.db1.d2.t1.s1"));
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
@@ -284,7 +284,7 @@ public class PathPatternTreeTest {
     patternTree.constructTree();
 
     Assert.assertEquals(
-        Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
+        Arrays.asList(new PartialPath("root.db1.*.t1.s1"), new PartialPath("root.db1.d1.t2.s2")),
         patternTree.getAllPathPatterns());
   }
 
@@ -292,9 +292,9 @@ public class PathPatternTreeTest {
   public void testIntersectWithFullPathPrefixTree1() throws Exception {
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.t1.s1"),
-            new PartialPath("root.sg1.d2.**"));
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.t1.s1"),
+            new PartialPath("root.db1.d2.**"));
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
       patternTree.appendPathPattern(path);
@@ -303,9 +303,9 @@ public class PathPatternTreeTest {
 
     List<PartialPath> fullPathPrefixList =
         Arrays.asList(
-            new PartialPath("root.sg1.d1.**"),
-            new PartialPath("root.sg1.d2.**"),
-            new PartialPath("root.sg1.d3.t1.s1"));
+            new PartialPath("root.db1.d1.**"),
+            new PartialPath("root.db1.d2.**"),
+            new PartialPath("root.db1.d3.t1.s1"));
     PathPatternTree fullPathPrefixTree = new PathPatternTree();
     for (PartialPath path : fullPathPrefixList) {
       fullPathPrefixTree.appendPathPattern(path);
@@ -317,9 +317,9 @@ public class PathPatternTreeTest {
     Set<PartialPath> expected =
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.t1.s1"));
-            add(new PartialPath("root.sg1.d2.**"));
-            add(new PartialPath("root.sg1.d3.t1.s1"));
+            add(new PartialPath("root.db1.d1.t1.s1"));
+            add(new PartialPath("root.db1.d2.**"));
+            add(new PartialPath("root.db1.d3.t1.s1"));
           }
         };
     for (PartialPath path : res.getAllPathPatterns()) {
@@ -332,8 +332,8 @@ public class PathPatternTreeTest {
   public void testIntersectWithFullPathPrefixTree2() throws Exception {
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.t1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.t1.s2"),
             new PartialPath("root.**.t*.**"));
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
@@ -342,7 +342,7 @@ public class PathPatternTreeTest {
     patternTree.constructTree();
 
     List<PartialPath> fullPathPrefixList =
-        Arrays.asList(new PartialPath("root.sg1.d1.**"), new PartialPath("root.sg1.d2.**"));
+        Arrays.asList(new PartialPath("root.db1.d1.**"), new PartialPath("root.db1.d2.**"));
     PathPatternTree fullPathPrefixTree = new PathPatternTree();
     for (PartialPath path : fullPathPrefixList) {
       fullPathPrefixTree.appendPathPattern(path);
@@ -354,10 +354,10 @@ public class PathPatternTreeTest {
     Set<PartialPath> expected =
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.t*.**"));
-            add(new PartialPath("root.sg1.d1.**.t*.**"));
-            add(new PartialPath("root.sg1.d2.t*.**"));
-            add(new PartialPath("root.sg1.d2.**.t*.**"));
+            add(new PartialPath("root.db1.d1.t*.**"));
+            add(new PartialPath("root.db1.d1.**.t*.**"));
+            add(new PartialPath("root.db1.d2.t*.**"));
+            add(new PartialPath("root.db1.d2.**.t*.**"));
           }
         };
     for (PartialPath path : res.getAllPathPatterns()) {
@@ -370,8 +370,8 @@ public class PathPatternTreeTest {
   public void testIntersectWithFullPathPrefixTree3() throws Exception {
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg1.d1.t1.s1"),
-            new PartialPath("root.sg1.*.t1.s2"),
+            new PartialPath("root.db1.d1.t1.s1"),
+            new PartialPath("root.db1.*.t1.s2"),
             new PartialPath("root.**.h*.**"));
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
@@ -380,7 +380,7 @@ public class PathPatternTreeTest {
     patternTree.constructTree();
 
     List<PartialPath> fullPathPrefixList =
-        Arrays.asList(new PartialPath("root.sg1.d1.**"), new PartialPath("root.sg1.d2.**"));
+        Arrays.asList(new PartialPath("root.db1.d1.**"), new PartialPath("root.db1.d2.**"));
     PathPatternTree fullPathPrefixTree = new PathPatternTree();
     for (PartialPath path : fullPathPrefixList) {
       fullPathPrefixTree.appendPathPattern(path);
@@ -392,13 +392,13 @@ public class PathPatternTreeTest {
     Set<PartialPath> expected =
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.h*.**"));
-            add(new PartialPath("root.sg1.d1.t1.s1"));
-            add(new PartialPath("root.sg1.d1.t1.s2"));
-            add(new PartialPath("root.sg1.d1.**.h*.**"));
-            add(new PartialPath("root.sg1.d2.h*.**"));
-            add(new PartialPath("root.sg1.d2.**.h*.**"));
-            add(new PartialPath("root.sg1.d2.t1.s2"));
+            add(new PartialPath("root.db1.d1.h*.**"));
+            add(new PartialPath("root.db1.d1.t1.s1"));
+            add(new PartialPath("root.db1.d1.t1.s2"));
+            add(new PartialPath("root.db1.d1.**.h*.**"));
+            add(new PartialPath("root.db1.d2.h*.**"));
+            add(new PartialPath("root.db1.d2.**.h*.**"));
+            add(new PartialPath("root.db1.d2.t1.s2"));
           }
         };
     for (PartialPath path : res.getAllPathPatterns()) {

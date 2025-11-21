@@ -86,12 +86,12 @@ public class Util {
               IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
       Analysis analysis = new Analysis();
 
-      String device1 = "root.sg.d1";
-      String device2 = "root.sg.d22";
-      String device3 = "root.sg.d333";
-      String device4 = "root.sg.d4444";
-      String device5 = "root.sg.d55555";
-      String device6 = "root.sg.d666666";
+      String device1 = "root.db.d1";
+      String device2 = "root.db.d22";
+      String device3 = "root.db.d333";
+      String device4 = "root.db.d4444";
+      String device5 = "root.db.d55555";
+      String device6 = "root.db.d666666";
 
       TRegionReplicaSet dataRegion1 =
           new TRegionReplicaSet(
@@ -174,8 +174,8 @@ public class Util {
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device5), d5DataRegionMap);
       sgPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
 
-      dataPartitionMap.put("root.sg", sgPartitionMap);
-      analysis.setDatabaseName("root.sg");
+      dataPartitionMap.put("root.db", sgPartitionMap);
+      analysis.setDatabaseName("root.db");
 
       dataPartition.setDataPartitionMap(dataPartitionMap);
 
@@ -184,19 +184,19 @@ public class Util {
       // construct AggregationExpression for GroupByLevel
       Map<String, Set<Expression>> aggregationExpression = new HashMap<>();
       Set<Expression> s1Expression = new HashSet<>();
-      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")));
-      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d22.s1")));
-      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d333.s1")));
-      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d4444.s1")));
+      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d1.s1")));
+      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d22.s1")));
+      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d333.s1")));
+      s1Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d4444.s1")));
 
       Set<Expression> s2Expression = new HashSet<>();
-      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")));
-      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d22.s2")));
-      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d333.s2")));
-      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.sg.d4444.s2")));
+      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d1.s2")));
+      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d22.s2")));
+      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d333.s2")));
+      s2Expression.add(new TimeSeriesOperand(new PartialPath("root.db.d4444.s2")));
 
-      aggregationExpression.put("root.sg.*.s1", s1Expression);
-      aggregationExpression.put("root.sg.*.s2", s2Expression);
+      aggregationExpression.put("root.db.*.s1", s1Expression);
+      aggregationExpression.put("root.db.*.s2", s2Expression);
       // analysis.setAggregationExpressions(aggregationExpression);
 
       // construct schema partition
@@ -223,7 +223,7 @@ public class Util {
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device1), schemaRegion1);
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device3), schemaRegion2);
-      schemaPartitionMap.put("root.sg", schemaRegionMap);
+      schemaPartitionMap.put("root.db", schemaRegionMap);
       schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
       analysis.setDataPartitionInfo(dataPartition);
@@ -283,7 +283,7 @@ public class Util {
     d6.addChild("s2", s2);
 
     ClusterSchemaTree tree = new ClusterSchemaTree(root);
-    tree.setDatabases(Collections.singleton("root.sg"));
+    tree.setDatabases(Collections.singleton("root.db"));
 
     return tree;
   }

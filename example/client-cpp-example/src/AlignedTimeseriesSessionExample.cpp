@@ -26,9 +26,9 @@ Session *session;
 #define DEFAULT_ROW_NUMBER 1000000
 
 void createAlignedTimeseries() {
-    string alignedDeviceId = "root.sg1.d1";
+    string alignedDeviceId = "root.db1.d1";
     vector<string> measurements = {"s1", "s2", "s3"};
-    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
+    vector<string> alignedTimeseries = {"root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s3"};
     vector<TSDataType::TSDataType> dataTypes = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::BOOLEAN};
     vector<TSEncoding::TSEncoding> encodings = {TSEncoding::PLAIN, TSEncoding::GORILLA, TSEncoding::RLE};
     vector<CompressionType::CompressionType> compressors = {
@@ -60,12 +60,12 @@ void createSchemaTemplate() {
         temp.addToTemplate(mNodeS2);
 
         session->createSchemaTemplate(temp);
-        session->setSchemaTemplate("template1", "root.sg3.d1");
+        session->setSchemaTemplate("template1", "root.db3.d1");
     }
 }
 
 void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
+    session->executeNonQueryStatement("insert into root.db3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showDevices() {
@@ -101,7 +101,7 @@ void showTimeseries() {
 }
 
 void insertAlignedRecord() {
-    string deviceId = "root.sg1.d1";
+    string deviceId = "root.db1.d1";
     vector<string> measurements;
     measurements.emplace_back("s1");
     measurements.emplace_back("s2");
@@ -117,7 +117,7 @@ void insertAlignedRecord() {
 }
 
 void insertAlignedRecords() {
-    string deviceId = "root.sg1.d1";
+    string deviceId = "root.db1.d1";
     vector<string> measurements;
     measurements.emplace_back("s1");
     measurements.emplace_back("s2");
@@ -159,7 +159,7 @@ void insertAlignedTablet() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg2.d2", schemas, 100000);
+    Tablet tablet("root.db2.d2", schemas, 100000);
     tablet.setAligned(true);
 
     for (int64_t time = 0; time < DEFAULT_ROW_NUMBER; time++) {
@@ -192,14 +192,14 @@ void insertAlignedTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d1", schemas, 100);
-    Tablet tablet2("root.sg1.d2", schemas, 100);
-    Tablet tablet3("root.sg1.d3", schemas, 100);
+    Tablet tablet1("root.db1.d1", schemas, 100);
+    Tablet tablet2("root.db1.d2", schemas, 100);
+    Tablet tablet3("root.db1.d3", schemas, 100);
 
     unordered_map<string, Tablet *> tabletMap;
-    tabletMap["root.sg1.d1"] = &tablet1;
-    tabletMap["root.sg1.d2"] = &tablet2;
-    tabletMap["root.sg1.d3"] = &tablet3;
+    tabletMap["root.db1.d1"] = &tablet1;
+    tabletMap["root.db1.d2"] = &tablet2;
+    tabletMap["root.db1.d3"] = &tablet3;
 
     for (int64_t time = 0; time < 20; time++) {
         size_t row1 = tablet1.rowSize++;
@@ -256,7 +256,7 @@ void insertNullableTabletWithAlignedTimeseries() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d4", schemas, 20);
+    Tablet tablet("root.db1.d4", schemas, 20);
     tablet.setAligned(true);
 
     for (int64_t time = 0; time < 20; time++) {
@@ -291,7 +291,7 @@ void insertNullableTabletWithAlignedTimeseries() {
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.**");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.db1.**");
     cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
@@ -315,11 +315,11 @@ void deleteData() {
 
 void deleteTimeseries() {
     vector<string> paths;
-    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4",
-                                        "root.sg1.d2.s1", "root.sg1.d2.s2", "root.sg1.d2.s3",
-                                        "root.sg1.d3.s1", "root.sg1.d3.s2", "root.sg1.d3.s3",
-                                        "root.sg1.d4.s1", "root.sg1.d4.s2", "root.sg1.d4.s3",
-                                        "root.sg2.d2.s1", "root.sg2.d2.s2", "root.sg2.d2.s3", };
+    vector<string> alignedTimeseries = {"root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s3", "root.db1.d1.s4",
+                                        "root.db1.d2.s1", "root.db1.d2.s2", "root.db1.d2.s3",
+                                        "root.db1.d3.s1", "root.db1.d3.s2", "root.db1.d3.s3",
+                                        "root.db1.d4.s1", "root.db1.d4.s2", "root.db1.d4.s3",
+                                        "root.db2.d2.s1", "root.db2.d2.s2", "root.db2.d2.s3", };
     for (const string &timeseries: alignedTimeseries) {
         if (session->checkTimeseriesExists(timeseries)) {
             paths.push_back(timeseries);
@@ -330,8 +330,8 @@ void deleteTimeseries() {
 
 void deleteStorageGroups() {
     vector<string> storageGroups;
-    storageGroups.emplace_back("root.sg1");
-    storageGroups.emplace_back("root.sg2");
+    storageGroups.emplace_back("root.db1");
+    storageGroups.emplace_back("root.db2");
     session->deleteStorageGroups(storageGroups);
 }
 
@@ -346,7 +346,7 @@ int main() {
 
     cout << "setStorageGroup\n" << endl;
     try {
-        session->setStorageGroup("root.sg1");
+        session->setStorageGroup("root.db1");
     }
     catch (IoTDBException &e) {
         string errorMessage(e.what());

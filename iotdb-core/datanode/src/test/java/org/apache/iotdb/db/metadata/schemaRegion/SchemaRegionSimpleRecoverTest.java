@@ -97,7 +97,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testRecoverWithAlignedTemplate() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final int templateId = 1;
     final Template template =
         new Template(
@@ -110,7 +110,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.d1"), 2, templateId),
+            new PartialPath("root.db.d1"), 2, templateId),
         template);
     ClusterSchemaTree schemaTree =
         schemaRegion.fetchSeriesSchema(
@@ -123,7 +123,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     Assert.assertTrue(schemaTree.getAllDevices().get(0).isAligned());
 
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.db", 0);
     schemaTree =
         schemaRegion.fetchSeriesSchema(
             ALL_MATCH_SCOPE,
@@ -137,13 +137,13 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testRecoverAfterCreateAlignedTimeSeriesWithMerge() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
 
     final Map<String, String> oldTagMap = Collections.singletonMap("tagK", "tagV");
     final Map<String, String> oldAttrMap = Collections.singletonMap("attrK1", "attrV1");
     schemaRegion.createAlignedTimeSeries(
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg.wf02.wt01"),
+            new PartialPath("root.db.wf02.wt01"),
             Arrays.asList("temperature", "status"),
             Arrays.asList(TSDataType.valueOf("FLOAT"), TSDataType.valueOf("INT32")),
             Arrays.asList(TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
@@ -156,7 +156,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     final Map<String, String> newAttrMap = Collections.singletonMap("attrK2", "attrV2");
     final ICreateAlignedTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg.wf02.wt01"),
+            new PartialPath("root.db.wf02.wt01"),
             // The lists must be mutable
             new ArrayList<>(Arrays.asList("status", "height")),
             new ArrayList<>(
@@ -171,7 +171,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     schemaRegion.createAlignedTimeSeries(mergePlan);
 
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.db", 0);
 
     // The encoding and compressor won't be changed
     // The alias/tags/attributes are updated
@@ -181,7 +181,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
     checkSingleTimeSeries(
         schemaRegion,
-        new PartialPath("root.sg.wf02.wt01.status"),
+        new PartialPath("root.db.wf02.wt01.status"),
         true,
         TSDataType.INT32,
         TSEncoding.RLE,
@@ -192,7 +192,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
     checkSingleTimeSeries(
         schemaRegion,
-        new PartialPath("root.sg.wf02.wt01.height"),
+        new PartialPath("root.db.wf02.wt01.height"),
         true,
         TSDataType.INT64,
         TSEncoding.PLAIN,
@@ -204,13 +204,13 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testRecoverAfterCreateTimeSeriesWithMerge() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
 
     final Map<String, String> oldTagMap = Collections.singletonMap("tagK", "tagV");
     final Map<String, String> oldAttrMap = Collections.singletonMap("attrK1", "attrV1");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.db.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -224,7 +224,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     final Map<String, String> newAttrMap = Collections.singletonMap("attrK2", "attrV2");
     final ICreateTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.db.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.ZSTD,
@@ -236,7 +236,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     schemaRegion.createTimeSeries(mergePlan, -1);
 
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.db", 0);
 
     // The encoding and compressor won't be changed
     // The alias/tags/attributes are updated
@@ -246,7 +246,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
     checkSingleTimeSeries(
         schemaRegion,
-        new PartialPath("root.sg.wf01.wt01.v1.s1"),
+        new PartialPath("root.db.wf01.wt01.v1.s1"),
         false,
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
@@ -305,7 +305,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             new SessionInfo(0, SessionConfig.DEFAULT_USER, ZoneId.systemDefault())));
 
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.db", 0);
 
     final List<IDeviceSchemaInfo> result =
         SchemaRegionTestUtil.getTableDevice(

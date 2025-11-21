@@ -326,8 +326,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
                 new DeleteDataNode(
                     getPlanNodeId(),
                     // Pick the smaller path list to execute the deletion.
-                    // E.g. There is only one path(root.sg.**) in pathList and two paths(root.sg.d1,
-                    // root.sg.d2) in a map entry in regionToPatternMap. Choose the original path is
+                    // E.g. There is only one path(root.db.**) in pathList and two paths(root.db.d1,
+                    // root.db.d2) in a map entry in regionToPatternMap. Choose the original path is
                     // better.
                     this.pathList.size() < regionToPatternMap.get(o).size()
                         ? this.pathList

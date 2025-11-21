@@ -55,24 +55,24 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.db", 0);
   }
 
   /**
    * Prepare timeseries
    *
-   * <p>"root.sg.wf01.wt01.v1.s1" without tags, attributes and alias
+   * <p>"root.db.wf01.wt01.v1.s1" without tags, attributes and alias
    *
-   * <p>"root.sg.wf01.wt01.v1.s2" with tags, attributes and alias
+   * <p>"root.db.wf01.wt01.v1.s2" with tags, attributes and alias
    *
-   * <p>"root.sg.wf01.aligned_device1.(s1,s2)" aligned without tags, attributes and alias
+   * <p>"root.db.wf01.aligned_device1.(s1,s2)" aligned without tags, attributes and alias
    *
-   * <p>"root.sg.wf01.aligned_device2.(s1,s2)" aligned with tags, attributes and alias
+   * <p>"root.db.wf01.aligned_device2.(s1,s2)" aligned with tags, attributes and alias
    */
   private void prepareTimeseries() throws MetadataException {
     SchemaRegionTestUtil.createTimeseries(
         schemaRegion,
-        "root.sg.wf01.wt01.v1.s1",
+        "root.db.wf01.wt01.v1.s1",
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
@@ -82,7 +82,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
         null);
     SchemaRegionTestUtil.createTimeseries(
         schemaRegion,
-        "root.sg.wf01.wt01.v1.s2",
+        "root.db.wf01.wt01.v1.s2",
         TSDataType.FLOAT,
         TSEncoding.RLE,
         CompressionType.GZIP,
@@ -102,7 +102,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
         "temp");
     SchemaRegionTestUtil.createAlignedTimeseries(
         schemaRegion,
-        "root.sg.wf01.aligned_device1",
+        "root.db.wf01.aligned_device1",
         Arrays.asList("s1", "s2"),
         Arrays.asList(TSDataType.INT64, TSDataType.INT32),
         Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE),
@@ -112,7 +112,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
         null);
     SchemaRegionTestUtil.createAlignedTimeseries(
         schemaRegion,
-        "root.sg.wf01.aligned_device2",
+        "root.db.wf01.aligned_device2",
         Arrays.asList("s1", "s2"),
         Arrays.asList(TSDataType.INT64, TSDataType.INT32),
         Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE),
@@ -188,9 +188,9 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   public void testShowTimeseries() throws MetadataException {
     prepareTimeseries();
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.wt01.v1.s1", null, Collections.emptyMap(), Collections.emptyMap());
+        "root.db.wf01.wt01.v1.s1", null, Collections.emptyMap(), Collections.emptyMap());
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.wt01.v1.s2",
+        "root.db.wf01.wt01.v1.s2",
         "temp",
         new HashMap<String, String>() {
           {
@@ -205,11 +205,11 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           }
         });
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.aligned_device1.s1", null, Collections.emptyMap(), Collections.emptyMap());
+        "root.db.wf01.aligned_device1.s1", null, Collections.emptyMap(), Collections.emptyMap());
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.aligned_device1.s2", null, Collections.emptyMap(), Collections.emptyMap());
+        "root.db.wf01.aligned_device1.s2", null, Collections.emptyMap(), Collections.emptyMap());
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.aligned_device2.s1",
+        "root.db.wf01.aligned_device2.s1",
         "alias1",
         new HashMap<String, String>() {
           {
@@ -222,7 +222,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           }
         });
     checkAliasAndTagsAndAttributes(
-        "root.sg.wf01.aligned_device2.s2",
+        "root.db.wf01.aligned_device2.s2",
         "alias2",
         new HashMap<String, String>() {
           {
@@ -242,7 +242,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       prepareTimeseries();
       try {
         schemaRegion.upsertAliasAndTagsAndAttributes(
-            "s2", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+            "s2", null, null, new PartialPath("root.db.wf01.wt01.v1.s1"));
         Assert.fail();
       } catch (final Exception e) {
         Assert.assertTrue(
@@ -251,7 +251,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       }
       try {
         schemaRegion.upsertAliasAndTagsAndAttributes(
-            "temp", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+            "temp", null, null, new PartialPath("root.db.wf01.wt01.v1.s1"));
         Assert.fail();
       } catch (final Exception e) {
         Assert.assertTrue(
@@ -277,12 +277,12 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           };
       final List<String> fullPaths =
           Arrays.asList(
-              "root.sg.wf01.wt01.v1.s1",
-              "root.sg.wf01.wt01.v1.s2",
-              "root.sg.wf01.aligned_device1.s1",
-              "root.sg.wf01.aligned_device1.s2",
-              "root.sg.wf01.aligned_device2.s1",
-              "root.sg.wf01.aligned_device2.s2");
+              "root.db.wf01.wt01.v1.s1",
+              "root.db.wf01.wt01.v1.s2",
+              "root.db.wf01.aligned_device1.s1",
+              "root.db.wf01.aligned_device1.s2",
+              "root.db.wf01.aligned_device2.s1",
+              "root.db.wf01.aligned_device2.s2");
       final List<String> aliasList =
           Arrays.asList(
               "newAlias1", "newAlias2", "newAlias3", "newAlias4", "newAlias5", "newAlias6");
@@ -308,10 +308,10 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("attr3", "new3");
             }
           };
-      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.wt01.v1.s1"));
-      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.db.wf01.wt01.v1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.db.wf01.aligned_device1.s1"));
       try {
-        schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.wt01.v1.s2"));
+        schemaRegion.addAttributes(newAttributes, new PartialPath("root.db.wf01.wt01.v1.s2"));
         Assert.fail();
       } catch (MetadataException e) {
         // expected
@@ -319,14 +319,14 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       }
       try {
         schemaRegion.addAttributes(
-            newAttributes, new PartialPath("root.sg.wf01.aligned_device2.s2"));
+            newAttributes, new PartialPath("root.db.wf01.aligned_device2.s2"));
         Assert.fail();
       } catch (MetadataException e) {
         // expected
         Assert.assertTrue(e.getMessage().contains("already has the attribute"));
       }
-      checkAttributes("root.sg.wf01.wt01.v1.s1", newAttributes);
-      checkAttributes("root.sg.wf01.aligned_device1.s1", newAttributes);
+      checkAttributes("root.db.wf01.wt01.v1.s1", newAttributes);
+      checkAttributes("root.db.wf01.aligned_device1.s1", newAttributes);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());
@@ -344,24 +344,24 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("tag3", "new3");
             }
           };
-      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.wt01.v1.s1"));
-      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.wt01.v1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.aligned_device1.s1"));
       try {
-        schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.wt01.v1.s2"));
+        schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.wt01.v1.s2"));
         Assert.fail();
       } catch (MetadataException e) {
         // expected
         Assert.assertTrue(e.getMessage().contains("already has the tag"));
       }
       try {
-        schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.aligned_device2.s2"));
+        schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.aligned_device2.s2"));
         Assert.fail();
       } catch (MetadataException e) {
         // expected
         Assert.assertTrue(e.getMessage().contains("already has the tag"));
       }
-      checkTags("root.sg.wf01.wt01.v1.s1", newTags);
-      checkTags("root.sg.wf01.aligned_device1.s1", newTags);
+      checkTags("root.db.wf01.wt01.v1.s1", newTags);
+      checkTags("root.db.wf01.aligned_device1.s1", newTags);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());
@@ -383,8 +383,8 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("tag3", "new3");
             }
           };
-      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.wt01.v1.s1"));
-      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.wt01.v1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.db.wf01.aligned_device1.s1"));
       Map<String, String> newAttributes =
           new HashMap<String, String>() {
             {
@@ -392,17 +392,17 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
               put("attr3", "new3");
             }
           };
-      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.wt01.v1.s1"));
-      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.db.wf01.wt01.v1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.db.wf01.aligned_device1.s1"));
       // drop all tags and attributes then check
       List<String> fullPaths =
           Arrays.asList(
-              "root.sg.wf01.wt01.v1.s1",
-              "root.sg.wf01.wt01.v1.s2",
-              "root.sg.wf01.aligned_device1.s1",
-              "root.sg.wf01.aligned_device1.s2",
-              "root.sg.wf01.aligned_device2.s1",
-              "root.sg.wf01.aligned_device2.s2");
+              "root.db.wf01.wt01.v1.s1",
+              "root.db.wf01.wt01.v1.s2",
+              "root.db.wf01.aligned_device1.s1",
+              "root.db.wf01.aligned_device1.s2",
+              "root.db.wf01.aligned_device2.s1",
+              "root.db.wf01.aligned_device2.s2");
       for (String fullPath : fullPaths) {
         schemaRegion.dropTagsOrAttributes(keySet, new PartialPath(fullPath));
         checkTags(fullPath, Collections.emptyMap());
@@ -427,12 +427,12 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           };
       List<String> fullPaths =
           Arrays.asList(
-              "root.sg.wf01.wt01.v1.s1",
-              "root.sg.wf01.wt01.v1.s2",
-              "root.sg.wf01.aligned_device1.s1",
-              "root.sg.wf01.aligned_device1.s2",
-              "root.sg.wf01.aligned_device2.s1",
-              "root.sg.wf01.aligned_device2.s2");
+              "root.db.wf01.wt01.v1.s1",
+              "root.db.wf01.wt01.v1.s2",
+              "root.db.wf01.aligned_device1.s1",
+              "root.db.wf01.aligned_device1.s2",
+              "root.db.wf01.aligned_device2.s1",
+              "root.db.wf01.aligned_device2.s2");
       List<Boolean> expectException = Arrays.asList(true, false, true, true, false, true);
       for (int i = 0; i < fullPaths.size(); i++) {
         try {
@@ -445,7 +445,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
         }
       }
       checkAttributes(
-          "root.sg.wf01.wt01.v1.s2",
+          "root.db.wf01.wt01.v1.s2",
           new HashMap<String, String>() {
             {
               put("attr1", "new1");
@@ -453,7 +453,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
             }
           });
       checkTags(
-          "root.sg.wf01.wt01.v1.s2",
+          "root.db.wf01.wt01.v1.s2",
           new HashMap<String, String>() {
             {
               put("tag1", "new1");
@@ -461,14 +461,14 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
             }
           });
       checkAttributes(
-          "root.sg.wf01.aligned_device2.s1",
+          "root.db.wf01.aligned_device2.s1",
           new HashMap<String, String>() {
             {
               put("attr1", "new1");
             }
           });
       checkTags(
-          "root.sg.wf01.aligned_device2.s1",
+          "root.db.wf01.aligned_device2.s1",
           new HashMap<String, String>() {
             {
               put("tag1", "new1");
@@ -486,28 +486,28 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       prepareTimeseries();
       try {
         schemaRegion.renameTagOrAttributeKey(
-            "attr1", "attr2", new PartialPath("root.sg.wf01.wt01.v1.s2"));
+            "attr1", "attr2", new PartialPath("root.db.wf01.wt01.v1.s2"));
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("already has a tag/attribute named"));
       }
       try {
         schemaRegion.renameTagOrAttributeKey(
-            "attr3", "newAttr3", new PartialPath("root.sg.wf01.wt01.v1.s2"));
+            "attr3", "newAttr3", new PartialPath("root.db.wf01.wt01.v1.s2"));
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("does not have tag/attribute"));
       }
       schemaRegion.renameTagOrAttributeKey(
-          "attr1", "newAttr1", new PartialPath("root.sg.wf01.wt01.v1.s2"));
+          "attr1", "newAttr1", new PartialPath("root.db.wf01.wt01.v1.s2"));
       schemaRegion.renameTagOrAttributeKey(
-          "tag1", "newTag1", new PartialPath("root.sg.wf01.wt01.v1.s2"));
+          "tag1", "newTag1", new PartialPath("root.db.wf01.wt01.v1.s2"));
       schemaRegion.renameTagOrAttributeKey(
-          "attr1", "newAttr1", new PartialPath("root.sg.wf01.aligned_device2.s1"));
+          "attr1", "newAttr1", new PartialPath("root.db.wf01.aligned_device2.s1"));
       schemaRegion.renameTagOrAttributeKey(
-          "tag1", "newTag1", new PartialPath("root.sg.wf01.aligned_device2.s1"));
+          "tag1", "newTag1", new PartialPath("root.db.wf01.aligned_device2.s1"));
       checkAttributes(
-          "root.sg.wf01.wt01.v1.s2",
+          "root.db.wf01.wt01.v1.s2",
           new HashMap<String, String>() {
             {
               put("newAttr1", "a1");
@@ -515,7 +515,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
             }
           });
       checkTags(
-          "root.sg.wf01.wt01.v1.s2",
+          "root.db.wf01.wt01.v1.s2",
           new HashMap<String, String>() {
             {
               put("newTag1", "t1");
@@ -523,14 +523,14 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
             }
           });
       checkAttributes(
-          "root.sg.wf01.aligned_device2.s1",
+          "root.db.wf01.aligned_device2.s1",
           new HashMap<String, String>() {
             {
               put("newAttr1", "a1");
             }
           });
       checkTags(
-          "root.sg.wf01.aligned_device2.s1",
+          "root.db.wf01.aligned_device2.s1",
           new HashMap<String, String>() {
             {
               put("newTag1", "t1");
@@ -548,17 +548,17 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       prepareTimeseries();
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
+              schemaRegion, new PartialPath("root.db.wf01.wt01.v1.temp"));
       Assert.assertEquals(1, result.size());
       // Delete timeseries
       final PathPatternTree patternTree = new PathPatternTree();
-      patternTree.appendFullPath(new PartialPath("root.sg.wf01.wt01.v1.temp"));
+      patternTree.appendFullPath(new PartialPath("root.db.wf01.wt01.v1.temp"));
       patternTree.constructTree();
       Assert.assertTrue(schemaRegion.constructSchemaBlackList(patternTree).getLeft() >= 1);
       schemaRegion.deleteTimeseriesInBlackList(patternTree);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
+              schemaRegion, new PartialPath("root.db.wf01.wt01.v1.temp"));
       Assert.assertEquals(0, result.size());
     } catch (final Exception e) {
       logger.error(e.getMessage(), e);

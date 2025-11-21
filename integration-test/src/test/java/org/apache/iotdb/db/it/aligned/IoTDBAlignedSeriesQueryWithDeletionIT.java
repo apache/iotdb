@@ -61,7 +61,7 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete from root.sg1.d1.* where time <= 2");
+      statement.execute("delete from root.db1.d1.* where time <= 2");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -80,12 +80,12 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
       "3,30000.0,null,30000", "4,4.0,4,null",
     };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s3"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select s1, s2, s3 from root.sg1.d1 where time <= 4")) {
+            statement.executeQuery("select s1, s2, s3 from root.db1.d1 where time <= 4")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -116,9 +116,9 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select s1, s4 from root.sg1.d1 where time <= 2")) {
+            statement.executeQuery("select s1, s4 from root.db1.d1 where time <= 2")) {
       // data at timestamp [1,2] has been deleted and should not be kept in result
-      // data of root.sg1.d1.s4 is not deleted at timestamp 2, but it is null
+      // data of root.db1.d1.s4 is not deleted at timestamp 2, but it is null
       assertFalse(resultSet.next());
 
     } catch (SQLException e) {
@@ -132,19 +132,19 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son)"
+          "insert into root.db1.factory0.d1.group1(time, s_lat, s_son)"
               + " aligned values (10,3.3,4.4),(20,13.3,14.4),(30,23.3,24.4),(40,43.3,44.4);");
       statement.execute(
-          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son, s_boolean)"
+          "insert into root.db1.factory0.d1.group1(time, s_lat, s_son, s_boolean)"
               + " aligned values (10,3.3,4.4, true),(20,13.3,14.4, false),(30,23.3,24.4, true),(40,43.3,44.4, true);");
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.factory0.d1.group1;");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
       }
       assertEquals(4, cnt);
-      statement.execute("delete from root.sg1.factory0.d1.group1.* where time < 30;");
-      resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
+      statement.execute("delete from root.db1.factory0.d1.group1.* where time < 30;");
+      resultSet = statement.executeQuery("select * from root.db1.factory0.d1.group1;");
       cnt = 0;
       while (resultSet.next()) {
         cnt++;

@@ -49,33 +49,33 @@ public class SyntaxConventionRelatedExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   /**
-   * if you want to create a time series named root.sg1.select, a possible SQL statement would be
-   * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,
+   * if you want to create a time series named root.db1.select, a possible SQL statement would be
+   * like: create timeseries root.db1.select with datatype=FLOAT, encoding=RLE As described before,
    * when using session API, path is represented using String. The path should be written as
-   * "root.sg1.select".
+   * "root.db1.select".
    */
-  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.sg1.select";
+  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.db1.select";
 
   /**
-   * if you want to create a time series named root.sg1.111, a possible SQL statement would be like:
-   * create timeseries root.sg1.`111` with datatype=FLOAT, encoding=RLE The path should be written
-   * as "root.sg1.`111`".
+   * if you want to create a time series named root.db1.111, a possible SQL statement would be like:
+   * create timeseries root.db1.`111` with datatype=FLOAT, encoding=RLE The path should be written
+   * as "root.db1.`111`".
    */
-  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.sg1.`111`";
+  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.db1.`111`";
 
   /**
-   * if you want to create a time series named root.sg1.`a"b'c``, a possible SQL statement would be
-   * like: create timeseries root.sg1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
-   * written as "root.sg1.`a"b`c```".
+   * if you want to create a time series named root.db1.`a"b'c``, a possible SQL statement would be
+   * like: create timeseries root.db1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
+   * written as "root.db1.`a"b`c```".
    */
-  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.sg1.`a\"b'c```";
+  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.db1.`a\"b'c```";
 
   /**
-   * if you want to create a time series named root.sg1.a, a possible SQL statement would be like:
-   * create timeseries root.sg1.a with datatype=FLOAT, encoding=RLE The path should be written as
-   * "root.sg1.a".
+   * if you want to create a time series named root.db1.a, a possible SQL statement would be like:
+   * create timeseries root.db1.a with datatype=FLOAT, encoding=RLE The path should be written as
+   * "root.db1.a".
    */
-  private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
+  private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.db1.a";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -93,7 +93,7 @@ public class SyntaxConventionRelatedExample {
     session.setFetchSize(10000);
 
     try {
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
     } catch (StatementExecutionException e) {
       if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
@@ -102,9 +102,9 @@ public class SyntaxConventionRelatedExample {
 
     // createTimeSeries
     createTimeSeries();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.*");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db1.*");
     // the expected paths would be:
-    // [root.sg1.select, root.sg1.`111`, root.sg1.`a"b'c```, root.sg1.a]
+    // [root.db1.select, root.db1.`111`, root.db1.`a"b'c```, root.db1.a]
     // You could see that time series in dataSet are exactly the same as
     // the initial String you used as path. Node names consist of digits or contain special
     // characters are quoted with ``, both in SQL statement and in header of result dataset.

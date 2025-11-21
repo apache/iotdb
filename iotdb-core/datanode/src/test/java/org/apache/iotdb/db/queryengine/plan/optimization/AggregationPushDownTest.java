@@ -48,55 +48,55 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     List<AggregationDescriptor> aggregationDescriptorList =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s1"));
 
     checkPushDown(
-        "select count(s1) from root.sg.d1 group by ([0, 100), 10ms);",
+        "select count(s1) from root.db.d1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .rawDataAggregation("1", aggregationDescriptorList, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
                 "2",
-                schemaMap.get("root.sg.d1.s1"),
+                schemaMap.get("root.db.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
             .getRoot());
     checkPushDown(
-        "select count(s1) from root.sg.d1 where s1 > 1 group by ([0, 100), 10ms);",
+        "select count(s1) from root.db.d1 where s1 > 1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .scan(
                 "0",
-                schemaMap.get("root.sg.d1.s1"),
+                schemaMap.get("root.db.d1.s1"),
                 ExpressionFactory.gt(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
+                    ExpressionFactory.timeSeries(schemaMap.get("root.db.d1.s1")),
                     ExpressionFactory.intValue("1")))
             .rawDataAggregation("2", aggregationDescriptorList, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
                 "3",
-                schemaMap.get("root.sg.d1.s1"),
+                schemaMap.get("root.db.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false,
                 ExpressionFactory.gt(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
+                    ExpressionFactory.timeSeries(schemaMap.get("root.db.d1.s1")),
                     ExpressionFactory.intValue("1")))
             .getRoot());
     checkPushDown(
-        "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms);",
+        "select __endTime, count(s1) from root.db.d1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .rawDataAggregation("1", aggregationDescriptorList, groupByTimeParameter, true)
             .columnInject("2", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
                 "3",
-                schemaMap.get("root.sg.d1.s1"),
+                schemaMap.get("root.db.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
@@ -110,33 +110,33 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     List<AggregationDescriptor> aggregationDescriptorList =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d2.a.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d2.a.s1"));
 
     checkPushDown(
-        "select count(s1) from root.sg.d2.a group by ([0, 100), 10ms);",
+        "select count(s1) from root.db.d2.a group by ([0, 100), 10ms);",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("aligned_root.sg.d2.a.s1"))
+            .scanAligned("0", schemaMap.get("aligned_root.db.d2.a.s1"))
             .rawDataAggregation("1", aggregationDescriptorList, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
             .alignedAggregationScan(
                 "2",
-                schemaMap.get("aligned_root.sg.d2.a.s1"),
+                schemaMap.get("aligned_root.db.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
             .getRoot());
     checkPushDown(
-        "select __endTime, count(s1) from root.sg.d2.a group by ([0, 100), 10ms);",
+        "select __endTime, count(s1) from root.db.d2.a group by ([0, 100), 10ms);",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("aligned_root.sg.d2.a.s1"))
+            .scanAligned("0", schemaMap.get("aligned_root.db.d2.a.s1"))
             .rawDataAggregation("1", aggregationDescriptorList, groupByTimeParameter, true)
             .columnInject("2", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
             .alignedAggregationScan(
                 "3",
-                schemaMap.get("aligned_root.sg.d2.a.s1"),
+                schemaMap.get("aligned_root.db.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
@@ -150,25 +150,25 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     List<AggregationDescriptor> aggregationDescriptorList1 =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s1"));
     List<AggregationDescriptor> aggregationDescriptorList2 =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s2"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s2"));
     List<AggregationDescriptor> allAggregationDescriptorList =
         new ArrayList<>(aggregationDescriptorList2);
     allAggregationDescriptorList.addAll(aggregationDescriptorList1);
 
     checkPushDown(
-        "select count(s1), count(s2) from root.sg.d1 group by ([0, 100), 10ms);",
+        "select count(s1), count(s2) from root.db.d1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .fullOuterTimeJoin(
-                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+                Arrays.asList(schemaMap.get("root.db.d1.s1"), schemaMap.get("root.db.d1.s2")))
             .rawDataAggregation("3", allAggregationDescriptorList, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationTimeJoin(
                 4,
-                Arrays.asList(schemaMap.get("root.sg.d1.s2"), schemaMap.get("root.sg.d1.s1")),
+                Arrays.asList(schemaMap.get("root.db.d1.s2"), schemaMap.get("root.db.d1.s1")),
                 Arrays.asList(aggregationDescriptorList2, aggregationDescriptorList1),
                 groupByTimeParameter)
             .getRoot());
@@ -180,14 +180,14 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 5), true);
     List<AggregationDescriptor> aggregationDescriptorList1 =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.PARTIAL, "root.sg.d1.s1"));
+            getAggregationDescriptor(AggregationStep.PARTIAL, "root.db.d1.s1"));
     List<AggregationDescriptor> aggregationDescriptorList2 =
-        Collections.singletonList(getAggregationDescriptor(AggregationStep.FINAL, "root.sg.d1.s1"));
+        Collections.singletonList(getAggregationDescriptor(AggregationStep.FINAL, "root.db.d1.s1"));
 
     checkPushDown(
-        "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms, 5ms);",
+        "select __endTime, count(s1) from root.db.d1 group by ([0, 100), 10ms, 5ms);",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .rawDataAggregation("1", aggregationDescriptorList1, groupByTimeParameter, true)
             .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, false)
             .columnInject("3", groupByTimeParameter)
@@ -195,7 +195,7 @@ public class AggregationPushDownTest {
         new TestPlanBuilder()
             .aggregationScan(
                 "4",
-                schemaMap.get("root.sg.d1.s1"),
+                schemaMap.get("root.db.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false)
@@ -210,28 +210,28 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     List<AggregationDescriptor> aggregationDescriptorList =
         Arrays.asList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s2"),
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s2"),
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s1"));
 
     checkCannotPushDown(
-        "select count(s1), count(s2) from root.sg.d1 where s1 > 1 and s2 > 1 group by ([0, 100), 10ms);",
+        "select count(s1), count(s2) from root.db.d1 where s1 > 1 and s2 > 1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .innerTimeJoin(
                 "5",
                 Ordering.ASC,
                 Arrays.asList("0", "1"),
-                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")),
+                Arrays.asList(schemaMap.get("root.db.d1.s1"), schemaMap.get("root.db.d1.s2")),
                 Arrays.asList(
                     ExpressionFactory.gt(
-                        ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
+                        ExpressionFactory.timeSeries(schemaMap.get("root.db.d1.s1")),
                         ExpressionFactory.intValue("1")),
                     ExpressionFactory.gt(
-                        ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s2")),
+                        ExpressionFactory.timeSeries(schemaMap.get("root.db.d1.s2")),
                         ExpressionFactory.intValue("1"))))
             .rawDataAggregation("4", aggregationDescriptorList, groupByTimeParameter, false)
             .getRoot());
     checkCannotPushDown(
-        "select count(s1), count(s2) from root.sg.d1 where s1 > 1 group by ([0, 100), 10ms);",
+        "select count(s1), count(s2) from root.db.d1 where s1 > 1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .leftOuterTimeJoin(
                 "5",
@@ -239,12 +239,12 @@ public class AggregationPushDownTest {
                 new TestPlanBuilder()
                     .scan(
                         "0",
-                        schemaMap.get("root.sg.d1.s1"),
+                        schemaMap.get("root.db.d1.s1"),
                         ExpressionFactory.gt(
-                            ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
+                            ExpressionFactory.timeSeries(schemaMap.get("root.db.d1.s1")),
                             ExpressionFactory.intValue("1")))
                     .getRoot(),
-                new TestPlanBuilder().scan("1", schemaMap.get("root.sg.d1.s2")).getRoot())
+                new TestPlanBuilder().scan("1", schemaMap.get("root.db.d1.s2")).getRoot())
             .rawDataAggregation("4", aggregationDescriptorList, groupByTimeParameter, false)
             .getRoot());
   }
@@ -255,37 +255,37 @@ public class AggregationPushDownTest {
         new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     List<AggregationDescriptor> aggregationDescriptorList1 =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d2.a.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d2.a.s1"));
 
     checkPushDown(
-        "select count(s1) from root.sg.d2.a where s2 > 1 group by ([0, 100), 10ms);",
+        "select count(s1) from root.db.d2.a where s2 > 1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .scanAligned(
                 "0",
-                schemaMap.get("root.sg.d2.a"),
+                schemaMap.get("root.db.d2.a"),
                 ExpressionFactory.gt(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s2")),
+                    ExpressionFactory.timeSeries(schemaMap.get("root.db.d2.a.s2")),
                     ExpressionFactory.intValue("1")))
-            .project("3", Collections.singletonList("root.sg.d2.a.s1"))
+            .project("3", Collections.singletonList("root.db.d2.a.s1"))
             .rawDataAggregation("2", aggregationDescriptorList1, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
             .alignedAggregationScan(
                 "4",
-                schemaMap.get("root.sg.d2.a"),
+                schemaMap.get("root.db.d2.a"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false,
                 ExpressionFactory.gt(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s2")),
+                    ExpressionFactory.timeSeries(schemaMap.get("root.db.d2.a.s2")),
                     ExpressionFactory.intValue("1")))
             .getRoot());
 
     List<AggregationDescriptor> aggregationDescriptorList2 =
         Collections.singletonList(
-            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s1"));
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.db.d1.s1"));
     checkPushDown(
-        "select count(s1) from root.sg.d1 where time > 100 and s2 > 10 group by ([0, 100), 10ms);",
+        "select count(s1) from root.db.d1 where time > 100 and s2 > 10 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .leftOuterTimeJoin(
                 "5",
@@ -293,11 +293,11 @@ public class AggregationPushDownTest {
                 new TestPlanBuilder()
                     .scan(
                         "1",
-                        schemaMap.get("root.sg.d1.s2"),
-                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                        schemaMap.get("root.db.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.db.d1.s2")), intValue("10")))
                     .getRoot(),
-                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
-            .project("6", Collections.singletonList("root.sg.d1.s1"))
+                new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1")).getRoot())
+            .project("6", Collections.singletonList("root.db.d1.s1"))
             .rawDataAggregation("4", aggregationDescriptorList2, groupByTimeParameter, false)
             .getRoot(),
         new TestPlanBuilder()
@@ -307,10 +307,10 @@ public class AggregationPushDownTest {
                 new TestPlanBuilder()
                     .scan(
                         "1",
-                        schemaMap.get("root.sg.d1.s2"),
-                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                        schemaMap.get("root.db.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.db.d1.s2")), intValue("10")))
                     .getRoot(),
-                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+                new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1")).getRoot())
             .rawDataAggregation("4", aggregationDescriptorList2, groupByTimeParameter, false)
             .getRoot());
   }

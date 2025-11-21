@@ -446,7 +446,7 @@ public class IoTDBOrderByTableIT {
   @Ignore
   @Test
   public void orderByInAggregationTest() {
-    String sql = "select avg(num) from root.sg.d group by session(10000ms) order by avg(num) desc";
+    String sql = "select avg(num) from root.db.d group by session(10000ms) order by avg(num) desc";
     double[][] ans = new double[][] {{15.0}, {13.0}, {13.0}, {11.0}, {6.4}, {4.6}};
     long[] times =
         new long[] {51536000000L, 41536000000L, 41536900000L, 31536100000L, 31536000000L, 0L};
@@ -473,7 +473,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest2() {
     String sql =
-        "select avg(num) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
+        "select avg(num) from root.db.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
           {13.0, 54.12},
@@ -508,7 +508,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest3() {
     String sql =
-        "select avg(num) from root.sg.d group by session(10000ms) order by avg(num) desc,max_value(floatNum)";
+        "select avg(num) from root.db.d group by session(10000ms) order by avg(num) desc,max_value(floatNum)";
     double[] ans = new double[] {15.0, 13.0, 13.0, 11.0, 6.4, 4.6};
     long[] times =
         new long[] {51536000000L, 41536900000L, 41536000000L, 31536100000L, 31536000000L, 0L};
@@ -535,7 +535,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest4() {
     String sql =
-        "select avg(num)+avg(floatNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select avg(num)+avg(floatNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     double[][] ans =
         new double[][] {{1079.56122}, {395.4584}, {65.121}, {151.2855}, {67.12}, {250.213}};
     long[] times =
@@ -564,7 +564,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest5() {
     String sql =
-        "select min_value(bigNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select min_value(bigNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     long[] ans =
         new long[] {2147483646L, 2147483650L, 2147468648L, 2146483648L, 2107483648L, 3147483648L};
     long[] times =
@@ -593,7 +593,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest6() {
     String sql =
-        "select min_value(num)+min_value(bigNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select min_value(num)+min_value(bigNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     long[] ans =
         new long[] {2147483647L, 2147483654L, 2147468659L, 2146483660L, 2107483661L, 3147483663L};
     long[] times =
@@ -622,7 +622,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest7() {
     String sql =
-        "select avg(num)+min_value(floatNum) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
+        "select avg(num)+min_value(floatNum) from root.db.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
           {13.0, 54.12, 54.12},
@@ -657,7 +657,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByInAggregationTest8() {
     String sql =
-        "select avg(num)+avg(floatNum) from root.sg.d group by session(10000ms) order by avg(floatNum)+avg(num)";
+        "select avg(num)+avg(floatNum) from root.db.d group by session(10000ms) order by avg(floatNum)+avg(num)";
     double[][] ans =
         new double[][] {{1079.56122}, {395.4584}, {65.121}, {151.2855}, {67.12}, {250.213}};
     long[] times =
@@ -1053,18 +1053,18 @@ public class IoTDBOrderByTableIT {
         };
     String[] device =
         new String[] {
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2"
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1097,8 +1097,8 @@ public class IoTDBOrderByTableIT {
   }
 
   private void checkSingleDouble(String sql, Object value, boolean deviceAsc) {
-    String device = "root.sg.d";
-    if (!deviceAsc) device = "root.sg.d2";
+    String device = "root.db.d";
+    if (!deviceAsc) device = "root.db.d2";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -1108,8 +1108,8 @@ public class IoTDBOrderByTableIT {
           double actualVal = resultSet.getDouble(2);
           assertEquals(deviceName, device);
           assertEquals(Double.parseDouble(value.toString()), actualVal, 1);
-          if (device.equals("root.sg.d")) device = "root.sg.d2";
-          else device = "root.sg.d";
+          if (device.equals("root.db.d")) device = "root.db.d2";
+          else device = "root.db.d";
           i++;
         }
         assertEquals(i, 2);
@@ -1286,7 +1286,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByUDFTest1() {
     String sql =
-        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2') nulls first, bottom_k(bigNum, 'k'='2') nulls first";
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.db.d order by top_k(num, 'k'='2') nulls first, bottom_k(bigNum, 'k'='2') nulls first";
     int[] ans = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 11, 12, 14};
     orderByUDFTest(sql, ans);
   }
@@ -1295,7 +1295,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void orderByUDFTest2() {
     String sql =
-        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.db.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
     int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     orderByUDFTest(sql, ans);
   }
@@ -1313,7 +1313,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void errorTest1() {
     errorTest(
-        "select num from root.sg.d order by avg(bigNum)",
+        "select num from root.db.d order by avg(bigNum)",
         "701: Raw data and aggregation hybrid query is not supported.");
   }
 
@@ -1321,7 +1321,7 @@ public class IoTDBOrderByTableIT {
   @Test
   public void errorTest2() {
     errorTest(
-        "select avg(num) from root.sg.d order by bigNum",
+        "select avg(num) from root.db.d order by bigNum",
         "701: Raw data and aggregation hybrid query is not supported.");
   }
 
@@ -1344,8 +1344,8 @@ public class IoTDBOrderByTableIT {
   @Test
   public void errorTest7() {
     errorTest(
-        "select last bigNum,floatNum from root.** order by root.sg.d.bigNum",
-        "701: root.sg.d.bigNum in order by clause doesn't exist in the result of last query.");
+        "select last bigNum,floatNum from root.** order by root.db.d.bigNum",
+        "701: root.db.d.bigNum in order by clause doesn't exist in the result of last query.");
   }
 
   // last query
@@ -1381,7 +1381,7 @@ public class IoTDBOrderByTableIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
+          {"root.db.d.num", "root.db.d2.num", "root.db.d.bigNum", "root.db.d2.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };
@@ -1395,7 +1395,7 @@ public class IoTDBOrderByTableIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d2.bigNum", "root.db.d.num", "root.db.d.bigNum"},
           {"15", "3147483648", "15", "3147483648"},
           {"INT32", "INT64", "INT32", "INT64"}
         };
@@ -1409,7 +1409,7 @@ public class IoTDBOrderByTableIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d2.bigNum", "root.db.d.num", "root.db.d.bigNum"},
           {"15", "3147483648", "15", "3147483648"},
           {"INT32", "INT64", "INT32", "INT64"}
         };
@@ -1423,7 +1423,7 @@ public class IoTDBOrderByTableIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d.num", "root.db.d2.bigNum", "root.db.d.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };
@@ -1437,7 +1437,7 @@ public class IoTDBOrderByTableIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d.num", "root.db.d2.bigNum", "root.db.d.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };

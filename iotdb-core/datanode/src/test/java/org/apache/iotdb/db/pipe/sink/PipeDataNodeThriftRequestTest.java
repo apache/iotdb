@@ -208,7 +208,7 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
-      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+      final Tablet t = new Tablet("root.db.d", schemaList, 1024);
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -344,7 +344,7 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
-    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    final Tablet t = new Tablet("root.db.d", schemaList, 1024);
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);
@@ -420,7 +420,7 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
-    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    final Tablet t = new Tablet("root.db.d", schemaList, 1024);
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);

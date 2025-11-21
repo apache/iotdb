@@ -88,8 +88,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
   @Test
   public void basicDataInheritIT() throws Exception {
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.db0";
+    final String sg1 = "root.db1";
     final String d00 = sg0 + ".d0.s";
     final String d01 = sg0 + ".d1.s";
     final String d10 = sg1 + ".d0.s";

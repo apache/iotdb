@@ -194,12 +194,12 @@ public class ConfigMTreeTest {
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
-    root.setStorageGroup(new PartialPath("root.sg1"));
+    root.setStorageGroup(new PartialPath("root.db1"));
     root.setStorageGroup(new PartialPath("root.a.sg1"));
     root.setStorageGroup(new PartialPath("root.a.b.sg1"));
-    root.setStorageGroup(new PartialPath("root.sg2"));
+    root.setStorageGroup(new PartialPath("root.db2"));
     root.setStorageGroup(new PartialPath("root.a.sg2"));
-    root.setStorageGroup(new PartialPath("root.sg3"));
+    root.setStorageGroup(new PartialPath("root.db3"));
     root.setStorageGroup(new PartialPath("root.a.b.sg3"));
 
     assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), ALL_MATCH_SCOPE, false, false));
@@ -213,16 +213,16 @@ public class ConfigMTreeTest {
     assertEquals(
         2, root.getDatabaseNum(new PartialPath("root.**.sg1"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        1, root.getDatabaseNum(new PartialPath("root.sg3"), ALL_MATCH_SCOPE, false, false));
+        1, root.getDatabaseNum(new PartialPath("root.db3"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
         2, root.getDatabaseNum(new PartialPath("root.*.b.*"), ALL_MATCH_SCOPE, false, false));
   }
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    root.setStorageGroup(new PartialPath("root.sg1"));
+    root.setStorageGroup(new PartialPath("root.db1"));
 
-    root.setStorageGroup(new PartialPath("root.sg2"));
+    root.setStorageGroup(new PartialPath("root.db2"));
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
         root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, ALL_MATCH_SCOPE);
@@ -243,16 +243,16 @@ public class ConfigMTreeTest {
 
     root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
     root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
-    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.db"));
     root.setStorageGroup(new PartialPath("root.ln"));
 
     result =
         root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true, ALL_MATCH_SCOPE);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(5, result.right.size());
-    Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));
-    Assert.assertTrue(result.right.contains(new PartialPath("root.sg2")));
-    Assert.assertTrue(result.right.contains(new PartialPath("root.sg")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.db1")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.db2")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.db")));
     Assert.assertTrue(result.right.contains(new PartialPath("root.ln")));
     Assert.assertTrue(result.right.contains(new PartialPath("root.test.`001.002.003`")));
   }
@@ -261,7 +261,7 @@ public class ConfigMTreeTest {
   public void testSerialization() throws Exception {
     final PartialPath[] pathList =
         new PartialPath[] {
-          new PartialPath("root.sg"),
+          new PartialPath("root.db"),
           new PartialPath("root.a.sg"),
           new PartialPath("root.a.b.sg"),
           new PartialPath("root.a.a.b.sg")
@@ -319,7 +319,7 @@ public class ConfigMTreeTest {
 
     final PartialPath[] pathList =
         new PartialPath[] {
-          new PartialPath("root.sg"),
+          new PartialPath("root.db"),
           new PartialPath("root.a.sg"),
           new PartialPath("root.a.b.sg"),
           new PartialPath("root.a.a.b.sg")

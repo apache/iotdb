@@ -87,7 +87,7 @@ public class IoTDBSessionQueryIT {
           "34,null,null,aligned_test34",
         };
 
-    List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5");
+    List<String> columnNames = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s4", "root.db1.d1.s5");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeRawDataQuery(columnNames, 16, 35)) {
@@ -126,12 +126,12 @@ public class IoTDBSessionQueryIT {
 
     List<String> columnNames =
         Arrays.asList(
-            "root.sg1.d2.s5",
-            "root.sg1.d1.s4",
-            "root.sg1.d2.s1",
-            "root.sg1.d1.s5",
-            "root.sg1.d2.s4",
-            "root.sg1.d1.s1");
+            "root.db1.d2.s5",
+            "root.db1.d1.s4",
+            "root.db1.d2.s1",
+            "root.db1.d1.s5",
+            "root.db1.d2.s4",
+            "root.db1.d1.s1");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeRawDataQuery(columnNames, 16, 35)) {
@@ -149,9 +149,9 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryTest() throws IoTDBConnectionException {
-    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+    String[] retArray = new String[] {"23,root.db1.d1.s1,230000.0,FLOAT"};
 
-    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
+    List<String> selectedPaths = Collections.singletonList("root.db1.d1.s1");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths)) {
@@ -167,7 +167,7 @@ public class IoTDBSessionQueryIT {
   public void lastQueryWithLastTimeTest() throws IoTDBConnectionException {
     String[] retArray = new String[] {};
 
-    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
+    List<String> selectedPaths = Collections.singletonList("root.db1.d1.s1");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths, 30)) {
@@ -181,19 +181,19 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryForOneDevice() throws IoTDBConnectionException {
-    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+    String[] retArray = new String[] {"23,root.db1.d1.s1,230000.0,FLOAT"};
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // first time, cache miss
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.d1", Collections.singletonList("s1"), true)) {
+              "root.db1", "root.db1.d1", Collections.singletonList("s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
       }
       // second time, cache hit
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.d1", Collections.singletonList("s1"), true)) {
+              "root.db1", "root.db1.d1", Collections.singletonList("s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
       }
     } catch (StatementExecutionException e) {
@@ -205,37 +205,37 @@ public class IoTDBSessionQueryIT {
   @Test
   public void lastQueryForOneDeviceNoSchema() throws IoTDBConnectionException {
     String[] retArray = new String[] {};
-    String[] retArray2 = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+    String[] retArray2 = new String[] {"23,root.db1.d1.s1,230000.0,FLOAT"};
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // database has no schema
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1.d1", "root.sg1.d1", Collections.singletonList("s1"), true)) {
+              "root.db1.d1", "root.db1.d1", Collections.singletonList("s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
       }
       // device has no schema
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.noThisDevice", Collections.singletonList("s1"), true)) {
+              "root.db1", "root.db1.noThisDevice", Collections.singletonList("s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
       }
       // sensor has no schema
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.d1", Collections.singletonList("notExist"), true)) {
+              "root.db1", "root.db1.d1", Collections.singletonList("notExist"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
       }
 
       // some sensor has no schema
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"), true)) {
+              "root.db1", "root.db1.d1", Arrays.asList("notExist", "s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
       }
       try (SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
-              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"), true)) {
+              "root.db1", "root.db1.d1", Arrays.asList("notExist", "s1"), true)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
       }
     } catch (StatementExecutionException e) {
@@ -250,11 +250,11 @@ public class IoTDBSessionQueryIT {
     String[] retArray = new String[] {"0,20,29,28,19,20"};
     List<String> paths =
         Arrays.asList(
-            "root.sg1.d1.s1",
-            "root.sg1.d1.s2",
-            "root.sg1.d1.s3",
-            "root.sg1.d1.s4",
-            "root.sg1.d1.s5");
+            "root.db1.d1.s1",
+            "root.db1.d1.s2",
+            "root.db1.d1.s3",
+            "root.db1.d1.s4",
+            "root.db1.d1.s5");
     List<TAggregationType> aggregations = Collections.nCopies(paths.size(), TAggregationType.COUNT);
 
     List<String> columnNames = new ArrayList<>();
@@ -277,11 +277,11 @@ public class IoTDBSessionQueryIT {
     String[] retArray = new String[] {"0,12,15,22,13,6"};
     List<String> paths =
         Arrays.asList(
-            "root.sg1.d1.s1",
-            "root.sg1.d1.s2",
-            "root.sg1.d1.s3",
-            "root.sg1.d1.s4",
-            "root.sg1.d1.s5");
+            "root.db1.d1.s1",
+            "root.db1.d1.s2",
+            "root.db1.d1.s3",
+            "root.db1.d1.s4",
+            "root.db1.d1.s5");
     List<TAggregationType> aggregations = Collections.nCopies(paths.size(), TAggregationType.COUNT);
 
     List<String> columnNames = new ArrayList<>();
@@ -304,7 +304,7 @@ public class IoTDBSessionQueryIT {
   public void groupByQueryTest1() {
     String[] retArray =
         new String[] {"11,10,130142.0,13014.2", "21,1,null,230000.0", "31,0,355.0,null"};
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s1");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 
@@ -336,7 +336,7 @@ public class IoTDBSessionQueryIT {
           "31,0,130.0,null",
           "37,0,154.0,null"
         };
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s1");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 
@@ -369,7 +369,7 @@ public class IoTDBSessionQueryIT {
           "31,0,355.0,null",
           "36,0,190.0,null"
         };
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s1");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 

@@ -55,7 +55,7 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN",
-              "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+              "create timeseries root.db.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"),
           null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -87,7 +87,7 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
         senderEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN",
-            "create timeseries root.sg.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"),
+            "create timeseries root.db.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"),
         null);
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -97,7 +97,7 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
         Collections.singleton("2,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "count timeseries root.sg.**",
+        "count timeseries root.db.**",
         "count(timeseries),",
         Collections.singleton("2,"));
   }

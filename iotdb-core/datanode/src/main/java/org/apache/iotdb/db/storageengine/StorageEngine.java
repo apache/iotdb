@@ -449,7 +449,7 @@ public class StorageEngine implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.db1
    */
   public DataRegion buildNewDataRegion(String databaseName, DataRegionId dataRegionId)
       throws DataRegionException {

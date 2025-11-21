@@ -161,7 +161,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
 
         // now, the query should throw exception
         try {
-          session.executeQueryStatement("select * from root.sg.**");
+          session.executeQueryStatement("select * from root.db.**");
         } catch (StatementExecutionException e) {
           break;
         }
@@ -194,7 +194,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       while (true) {
         SessionDataSet resultSet;
         try {
-          resultSet = session.executeQueryStatement("select * from root.sg.**");
+          resultSet = session.executeQueryStatement("select * from root.db.**");
         } catch (StatementExecutionException e) {
           if (System.currentTimeMillis() - start > 60_000L) {
             fail("Cannot execute query within 60s");

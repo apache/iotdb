@@ -198,7 +198,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testLastUserDefinedFunctionQuery() {
     String sql =
         String.format(
-            "select last counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01",
+            "select last counter(temperature, '%s'='%s') from root.dbcc.wf03.wt01",
             UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

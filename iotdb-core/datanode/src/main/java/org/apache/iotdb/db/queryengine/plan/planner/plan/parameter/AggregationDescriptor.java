@@ -59,9 +59,9 @@ public class AggregationDescriptor {
    * Input of aggregation function. Currently, we only support one series in the aggregation
    * function.
    *
-   * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
+   * <p>example: select sum(s1) from root.db.d1; expression [root.db.d1.s1] will be in this field.
    *
-   * <p>example: select sum(s1) from root.** group by level = 1; expression [root.sg.*.s1] may be in
+   * <p>example: select sum(s1) from root.** group by level = 1; expression [root.db.*.s1] may be in
    * this field if the data is in different DataRegion
    */
   protected List<Expression> inputExpressions;
@@ -210,9 +210,9 @@ public class AggregationDescriptor {
    *
    * <p>Example:
    *
-   * <p>Full column name -> udf(root.sg.d.s1, sin(root.sg.d.s1))
+   * <p>Full column name -> udf(root.db.d.s1, sin(root.db.d.s1))
    *
-   * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
+   * <p>The parameter part -> root.db.d.s1, sin(root.db.d.s1)
    */
   public String getParametersString() {
     if (parametersString == null) {

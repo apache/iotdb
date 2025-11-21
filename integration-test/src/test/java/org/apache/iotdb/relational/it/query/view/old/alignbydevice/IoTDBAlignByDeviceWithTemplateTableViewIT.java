@@ -49,29 +49,29 @@ public class IoTDBAlignByDeviceWithTemplateTableViewIT {
   private static final String[] sqls =
       new String[] {
         // non-aligned template
-        "CREATE database root.sg1;",
+        "CREATE database root.db1;",
         "CREATE schema template t1 (s1 FLOAT encoding=RLE, s2 BOOLEAN encoding=PLAIN compression=SNAPPY, s3 INT32);",
-        "SET SCHEMA TEMPLATE t1 to root.sg1;",
-        "INSERT INTO root.sg1.d1(timestamp,s1,s2,s3) values(1,1.1,false,1), (2,2.2,false,2);",
-        "INSERT INTO root.sg1.d2(timestamp,s1,s2,s3) values(1,11.1,false,11), (2,22.2,false,22);",
-        "INSERT INTO root.sg1.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44);",
-        "INSERT INTO root.sg1.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555);",
+        "SET SCHEMA TEMPLATE t1 to root.db1;",
+        "INSERT INTO root.db1.d1(timestamp,s1,s2,s3) values(1,1.1,false,1), (2,2.2,false,2);",
+        "INSERT INTO root.db1.d2(timestamp,s1,s2,s3) values(1,11.1,false,11), (2,22.2,false,22);",
+        "INSERT INTO root.db1.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44);",
+        "INSERT INTO root.db1.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555);",
 
         // aligned template
-        "CREATE database root.sg2;",
+        "CREATE database root.db2;",
         "CREATE schema template t2 aligned (s1 FLOAT encoding=RLE, s2 BOOLEAN encoding=PLAIN compression=SNAPPY, s3 INT32);",
-        "SET SCHEMA TEMPLATE t2 to root.sg2;",
-        "INSERT INTO root.sg2.d1(timestamp,s1,s2,s3) values(1,1.1,false,1), (2,2.2,false,2);",
-        "INSERT INTO root.sg2.d2(timestamp,s1,s2,s3) values(1,11.1,false,11), (2,22.2,false,22);",
-        "INSERT INTO root.sg2.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44);",
-        "INSERT INTO root.sg2.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555);",
+        "SET SCHEMA TEMPLATE t2 to root.db2;",
+        "INSERT INTO root.db2.d1(timestamp,s1,s2,s3) values(1,1.1,false,1), (2,2.2,false,2);",
+        "INSERT INTO root.db2.d2(timestamp,s1,s2,s3) values(1,11.1,false,11), (2,22.2,false,22);",
+        "INSERT INTO root.db2.d3(timestamp,s1,s2,s3) values(1,111.1,true,null), (4,444.4,true,44);",
+        "INSERT INTO root.db2.d4(timestamp,s1,s2,s3) values(1,1111.1,true,1111), (5,5555.5,false,5555);",
       };
 
   private static final String[] createTableViewSqls =
       new String[] {
         "CREATE database " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create view table1(device_id STRING TAG, s1 FLOAT FIELD, s2 BOOLEAN FIELD, s3 INT32 FIELD) as root.sg2.**",
+        "create view table1(device_id STRING TAG, s1 FLOAT FIELD, s2 BOOLEAN FIELD, s3 INT32 FIELD) as root.db2.**",
       };
 
   @BeforeClass

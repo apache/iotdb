@@ -169,7 +169,7 @@ public class TabletExample {
 
       long insertCost = 0;
       for (int i = 0; i < colSize; i++) {
-        String deviceId = "root.sg" + i % 8 + "." + i;
+        String deviceId = "root.db" + i % 8 + "." + i;
 
         Tablet ta = new Tablet(deviceId, schemas, rowSize);
         for (int t = 0; t < rowSize; t++) {

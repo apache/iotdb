@@ -115,7 +115,7 @@ public class SchemaFetchScanOperatorTest {
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
-            new PartialPath("root.sg.d2.a"), Arrays.asList("s1", "status"));
+            new PartialPath("root.db.d2.a"), Arrays.asList("s1", "status"));
     Assert.assertTrue(deviceSchemaInfo.isAligned());
     List<IMeasurementSchema> measurementSchemaList = deviceSchemaInfo.getMeasurementSchemaList();
     Assert.assertEquals(2, measurementSchemaList.size());
@@ -127,10 +127,10 @@ public class SchemaFetchScanOperatorTest {
             .collect(Collectors.toList()));
 
     Pair<List<MeasurementPath>, Integer> pair =
-        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 0, 0, false);
+        schemaTree.searchMeasurementPaths(new PartialPath("root.db.**.status"), 0, 0, false);
     Assert.assertEquals(3, pair.left.size());
     Assert.assertEquals(
-        Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
+        Arrays.asList("root.db.d1.s2", "root.db.d2.a.s2", "root.db.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
   }
 
@@ -139,13 +139,13 @@ public class SchemaFetchScanOperatorTest {
 
     MeasurementPath d1s1 =
         new MeasurementPath(
-            new PartialPath("root.sg.d1.s1"),
+            new PartialPath("root.db.d1.s1"),
             new MeasurementSchema(
                 "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             false);
     MeasurementPath d1s2 =
         new MeasurementPath(
-            new PartialPath("root.sg.d1.s2"),
+            new PartialPath("root.db.d1.s2"),
             new MeasurementSchema(
                 "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             false);
@@ -153,13 +153,13 @@ public class SchemaFetchScanOperatorTest {
 
     MeasurementPath d2s1 =
         new MeasurementPath(
-            new PartialPath("root.sg.d2.s1"),
+            new PartialPath("root.db.d2.s1"),
             new MeasurementSchema(
                 "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             false);
     MeasurementPath d2s2 =
         new MeasurementPath(
-            new PartialPath("root.sg.d2.s2"),
+            new PartialPath("root.db.d2.s2"),
             new MeasurementSchema(
                 "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             false);
@@ -167,13 +167,13 @@ public class SchemaFetchScanOperatorTest {
 
     MeasurementPath d2as1 =
         new MeasurementPath(
-            new PartialPath("root.sg.d2.a.s1"),
+            new PartialPath("root.db.d2.a.s1"),
             new MeasurementSchema(
                 "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             true);
     MeasurementPath d2as2 =
         new MeasurementPath(
-            new PartialPath("root.sg.d2.a.s2"),
+            new PartialPath("root.db.d2.a.s2"),
             new MeasurementSchema(
                 "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
             true);

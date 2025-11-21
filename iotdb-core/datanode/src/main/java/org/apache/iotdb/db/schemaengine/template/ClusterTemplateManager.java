@@ -397,14 +397,14 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   private boolean checkIsRelated(
       PartialPath pathPattern, PartialPath pathSetTemplate, Template template) {
-    // e.g. given template t1(s1 int32) set on root.sg, the possible timeseries are matched by
-    // root.sg.s1 or root.sg.**.s1
-    // thus we check pathPattern.overlapWith(root.sg.s1) || pathPattern.overlapWith(root.sg.**.s1)
+    // e.g. given template t1(s1 int32) set on root.db, the possible timeseries are matched by
+    // root.db.s1 or root.db.**.s1
+    // thus we check pathPattern.overlapWith(root.db.s1) || pathPattern.overlapWith(root.db.**.s1)
     // and the following logic is equivalent with the above expression
 
     String measurement = pathPattern.getTailNode();
     if (PathPatternUtil.hasWildcard(measurement)) {
-      // if measurement is wildcard, e.g. root.sg.d1.**, root.sg.d1.*, root.sg.d1.s*
+      // if measurement is wildcard, e.g. root.db.d1.**, root.db.d1.*, root.db.d1.s*
       return pathPattern.overlapWithFullPathPrefix(pathSetTemplate);
     }
 

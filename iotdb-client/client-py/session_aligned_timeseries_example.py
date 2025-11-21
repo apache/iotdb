@@ -33,12 +33,12 @@ session = Session(
 session.open(False)
 
 # set and delete databases
-session.set_storage_group("root.sg_test_01")
-session.set_storage_group("root.sg_test_02")
-session.set_storage_group("root.sg_test_03")
-session.set_storage_group("root.sg_test_04")
-session.delete_storage_group("root.sg_test_02")
-session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"])
+session.set_storage_group("root.db_test_01")
+session.set_storage_group("root.db_test_02")
+session.set_storage_group("root.db_test_03")
+session.set_storage_group("root.db_test_04")
+session.delete_storage_group("root.db_test_02")
+session.delete_storage_groups(["root.db_test_03", "root.db_test_04"])
 
 # setting aligned time series.
 measurements_lst_ = [
@@ -54,7 +54,7 @@ data_type_lst_ = [
 encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
 compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
 session.create_aligned_time_series(
-    "root.sg_test_01.d_02",
+    "root.db_test_01.d_02",
     measurements_lst_,
     data_type_lst_,
     encoding_lst_,
@@ -81,7 +81,7 @@ data_type_lst_ = [
 encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
 compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
 session.create_aligned_time_series(
-    "root.sg_test_01.d_02",
+    "root.db_test_01.d_02",
     measurements_lst_,
     data_type_lst_,
     encoding_lst_,
@@ -91,20 +91,20 @@ session.create_aligned_time_series(
 # delete time series
 session.delete_time_series(
     [
-        "root.sg_test_01.d_02.s_07",
-        "root.sg_test_01.d_02.s_08",
-        "root.sg_test_01.d_02.s_09",
+        "root.db_test_01.d_02.s_07",
+        "root.db_test_01.d_02.s_08",
+        "root.db_test_01.d_02.s_09",
     ]
 )
 
 # checking time series
 print(
     "s_07 expecting False, checking result: ",
-    session.check_time_series_exists("root.sg_test_01.d_02.s_07"),
+    session.check_time_series_exists("root.db_test_01.d_02.s_07"),
 )
 print(
     "s_03 expecting True, checking result: ",
-    session.check_time_series_exists("root.sg_test_01.d_02.s_03"),
+    session.check_time_series_exists("root.db_test_01.d_02.s_03"),
 )
 
 # insert one aligned record into the database.
@@ -119,7 +119,7 @@ data_types_ = [
     TSDataType.TEXT,
 ]
 session.insert_aligned_record(
-    "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
+    "root.db_test_01.d_02", 1, measurements_, data_types_, values_
 )
 
 # insert multiple aligned records into database
@@ -132,7 +132,7 @@ values_list_ = [
     [True, 77, 88, 1.25, 8.125, "test_records02"],
 ]
 data_type_list_ = [data_types_, data_types_]
-device_ids_ = ["root.sg_test_01.d_02", "root.sg_test_01.d_02"]
+device_ids_ = ["root.db_test_01.d_02", "root.db_test_01.d_02"]
 session.insert_aligned_records(
     device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
 )
@@ -146,16 +146,16 @@ values_ = [
 ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
 timestamps_ = [4, 5, 6, 7]
 tablet_ = Tablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, values_, timestamps_
+    "root.db_test_01.d_02", measurements_, data_types_, values_, timestamps_
 )
 session.insert_aligned_tablet(tablet_)
 
 # insert multiple aligned tablets into database
 tablet_01 = Tablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, values_, [8, 9, 10, 11]
+    "root.db_test_01.d_02", measurements_, data_types_, values_, [8, 9, 10, 11]
 )
 tablet_02 = Tablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, values_, [12, 13, 14, 15]
+    "root.db_test_01.d_02", measurements_, data_types_, values_, [12, 13, 14, 15]
 )
 session.insert_aligned_tablets([tablet_01, tablet_02])
 
@@ -168,7 +168,7 @@ values_ = [
 ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
 timestamps_ = [16, 17, 18, 19]
 tablet_ = Tablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, values_, timestamps_
+    "root.db_test_01.d_02", measurements_, data_types_, values_, timestamps_
 )
 session.insert_aligned_tablet(tablet_)
 
@@ -187,17 +187,17 @@ data_types_list = [
 values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
 
 session.insert_aligned_records_of_one_device(
-    "root.sg_test_01.d_02", time_list, measurements_list, data_types_list, values_list
+    "root.db_test_01.d_02", time_list, measurements_list, data_types_list, values_list
 )
 
 # execute non-query sql statement
 session.execute_non_query_statement(
-    "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
+    "insert into root.db_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
 )
 
 # execute sql query statement
 with session.execute_query_statement(
-    "select * from root.sg_test_01.d_02"
+    "select * from root.db_test_01.d_02"
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
@@ -212,14 +212,14 @@ measurements_list = [
 ]
 values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
 session.insert_aligned_string_records_of_one_device(
-    "root.sg_test_01.d_04",
+    "root.db_test_01.d_04",
     time_list,
     measurements_list,
     values_list,
 )
 
 # delete database
-session.delete_storage_group("root.sg_test_01")
+session.delete_storage_group("root.db_test_01")
 
 # close session connection.
 session.close()

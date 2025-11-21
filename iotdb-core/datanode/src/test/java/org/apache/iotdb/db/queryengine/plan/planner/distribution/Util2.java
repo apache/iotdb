@@ -72,9 +72,9 @@ import java.util.Map;
 public class Util2 {
   public static final Analysis ANALYSIS = constructAnalysis();
 
-  private static final String device1 = "root.sg.d1";
-  private static final String device2 = "root.sg.d2";
-  private static final String device3 = "root.sg.d3";
+  private static final String device1 = "root.db.d1";
+  private static final String device2 = "root.db.d2";
+  private static final String device3 = "root.db.d3";
 
   public static Analysis constructAnalysis() {
     TRegionReplicaSet dataRegion1 =
@@ -110,7 +110,7 @@ public class Util2 {
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    dataPartitionMap.put("root.sg", sgPartitionMap);
+    dataPartitionMap.put("root.db", sgPartitionMap);
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
     Analysis analysis = new Analysis();
@@ -132,7 +132,7 @@ public class Util2 {
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device3), schemaRegion2);
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-    schemaPartitionMap.put("root.sg", schemaRegionMap);
+    schemaPartitionMap.put("root.db", schemaRegionMap);
     SchemaPartition schemaPartition =
         new SchemaPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -176,7 +176,7 @@ public class Util2 {
     d2.addChild("s3", t3);
 
     ClusterSchemaTree tree = new ClusterSchemaTree(root);
-    tree.setDatabases(Collections.singleton("root.sg"));
+    tree.setDatabases(Collections.singleton("root.db"));
 
     return tree;
   }

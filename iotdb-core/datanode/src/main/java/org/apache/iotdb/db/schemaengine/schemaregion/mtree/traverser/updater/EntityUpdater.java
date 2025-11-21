@@ -30,7 +30,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.Entit
 public abstract class EntityUpdater<N extends IMNode<N>> extends EntityTraverser<Void, N>
     implements Updater {
   /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   * To traverse subtree under root.db, e.g., init Traverser(root, "root.db.**")
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse

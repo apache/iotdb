@@ -322,7 +322,7 @@ public class CNPhysicalPlanGeneratorTest {
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
     final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
+    storageGroupPathList.add("root.db");
     storageGroupPathList.add("root.ln");
     storageGroupPathList.add("root.a.sg");
     storageGroupPathList.add("root.a.b.sg");
@@ -441,7 +441,7 @@ public class CNPhysicalPlanGeneratorTest {
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
     final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
+    storageGroupPathList.add("root.db");
     storageGroupPathList.add("root.a.sg");
     storageGroupPathList.add("root.a.b.sg");
     storageGroupPathList.add("root.a.a.a.b.sg");
@@ -487,11 +487,11 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(plan2.hashCode());
 
     final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan1 =
-        new PreSetSchemaTemplatePlan("t1", "root.sg");
+        new PreSetSchemaTemplatePlan("t1", "root.db");
     final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan2 =
         new PreSetSchemaTemplatePlan("t2", "root.a.sg.t1");
     final CommitSetSchemaTemplatePlan setSchemaTemplatePlan1 =
-        new CommitSetSchemaTemplatePlan("t1", "root.sg");
+        new CommitSetSchemaTemplatePlan("t1", "root.db");
     final CommitSetSchemaTemplatePlan setSchemaTemplatePlan2 =
         new CommitSetSchemaTemplatePlan("t2", "root.a.sg.t1");
     clusterSchemaInfo.preSetSchemaTemplate(preSetSchemaTemplatePlan1);

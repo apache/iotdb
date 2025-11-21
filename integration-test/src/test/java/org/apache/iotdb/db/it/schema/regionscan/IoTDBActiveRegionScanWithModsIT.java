@@ -45,13 +45,13 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
 
   private static String[] delete_sqls =
       new String[] {
-        "delete from root.sg.aligned.** where time >= 1 and time <= 3",
-        "delete from root.sg.aligned.d1.* where time = 20",
-        "delete from root.sg.aligned.d2.* where time = 30",
+        "delete from root.db.aligned.** where time >= 1 and time <= 3",
+        "delete from root.db.aligned.d1.* where time = 20",
+        "delete from root.db.aligned.d2.* where time = 30",
         "delete from root.** where time >=9 and time <=15",
-        "delete from root.sg.unaligned.** where time >= 20 and time <= 30",
-        "delete from root.sg.aligned.** where time > 40 and time <= 43",
-        "delete from root.sg.unaligned.d2.* where time > 40 and time <= 43"
+        "delete from root.db.unaligned.** where time >= 20 and time <= 30",
+        "delete from root.db.aligned.** where time > 40 and time <= 43",
+        "delete from root.db.unaligned.d2.* where time > 40 and time <= 43"
       };
 
   public IoTDBActiveRegionScanWithModsIT(final SchemaTestMode schemaTestMode) {
@@ -97,7 +97,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
   @Test
   public void showActiveDataWithMods() {
     String sql = "show devices where time < 5";
-    String[] retArray = new String[] {"root.sg.unaligned.d2"};
+    String[] retArray = new String[] {"root.db.unaligned.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     sql = "count devices where time < 5";
@@ -105,7 +105,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
     basicCountActiveDeviceTest(sql, COUNT_DEVICES_COLUMN_NAMES, value);
 
     sql = "show timeseries where time < 5";
-    retArray = new String[] {"root.sg.unaligned.d2.s1"};
+    retArray = new String[] {"root.db.unaligned.d2.s1"};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
     sql = "count timeseries where time < 5";
@@ -116,7 +116,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
   @Test
   public void showActiveDataWithMods2() {
     String sql = "show devices where time < 31 and time > 15";
-    String[] retArray = new String[] {"root.sg.aligned.d1"};
+    String[] retArray = new String[] {"root.db.aligned.d1"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     sql = "count devices where time < 31 and time > 15";
@@ -126,7 +126,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
     sql = "show timeseries where time < 31 and time > 15";
     retArray =
         new String[] {
-          "root.sg.aligned.d1.s1", "root.sg.aligned.d1.s2",
+          "root.db.aligned.d1.s1", "root.db.aligned.d1.s2",
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
@@ -139,7 +139,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
   public void showActiveDataWithMods3() {
     String sql = "show devices where time > 7 and time < 20";
     String[] retArray =
-        new String[] {"root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d2"};
+        new String[] {"root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     sql = "count devices where time > 7 and time < 20";
@@ -148,7 +148,7 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
 
     sql = "show timeseries where time > 7 and time < 20";
     retArray =
-        new String[] {"root.sg.aligned.d1.s2", "root.sg.aligned.d2.s4", "root.sg.unaligned.d2.s1"};
+        new String[] {"root.db.aligned.d1.s2", "root.db.aligned.d2.s4", "root.db.unaligned.d2.s1"};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
     sql = "count timeseries where time > 7 and time < 20";
@@ -158,33 +158,33 @@ public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
 
   @Test
   public void showActiveDataWithMods4() {
-    String sql = "show devices root.sg.** where time > 40";
+    String sql = "show devices root.db.** where time > 40";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1",
-          "root.sg.aligned.d2",
-          "root.sg.unaligned.d2",
-          "root.sg.unaligned.d3",
+          "root.db.aligned.d1",
+          "root.db.aligned.d2",
+          "root.db.unaligned.d2",
+          "root.db.unaligned.d3",
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
-    sql = "count devices root.sg.**  where time > 40";
+    sql = "count devices root.db.**  where time > 40";
     long value = 4;
     basicCountActiveDeviceTest(sql, COUNT_DEVICES_COLUMN_NAMES, value);
 
-    sql = "show timeseries root.sg.**  where time > 40";
+    sql = "show timeseries root.db.**  where time > 40";
     retArray =
         new String[] {
-          "root.sg.aligned.d1.s1",
-          "root.sg.aligned.d1.s2",
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
-          "root.sg.unaligned.d3.s4",
+          "root.db.aligned.d1.s1",
+          "root.db.aligned.d1.s2",
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
+          "root.db.unaligned.d3.s4",
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
-    sql = "count timeseries root.sg.** where time > 40";
+    sql = "count timeseries root.db.** where time > 40";
     value = 6;
     basicCountActiveDeviceTest(sql, COUNT_TIMESERIES_COLUMN_NAMES, value);
   }

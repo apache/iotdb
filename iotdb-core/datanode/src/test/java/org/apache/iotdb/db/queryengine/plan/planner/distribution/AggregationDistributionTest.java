@@ -73,8 +73,8 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_1_series_2_regions");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1) from root.sg.d1";
-    String d1s1Path = "root.sg.d1.s1";
+    String sql = "select count(s1) from root.db.d1";
+    String d1s1Path = "root.db.d1.s1";
 
     Analysis analysis = Util.analyze(sql, context);
     PlanNode rootNode = Util.genLogicalPlan(analysis, context);
@@ -100,8 +100,8 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_1_series_2_regions_sliding_window");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1) from root.sg.d1 group by ([0, 100), 5ms, 1ms)";
-    String d1s1Path = "root.sg.d1.s1";
+    String sql = "select count(s1) from root.db.d1 group by ([0, 100), 5ms, 1ms)";
+    String d1s1Path = "root.db.d1.s1";
 
     Analysis analysis = Util.analyze(sql, context);
     PlanNode rootNode = Util.genLogicalPlan(analysis, context);
@@ -135,9 +135,9 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1) from root.sg.d1, root.sg.d22";
-    String d1s1Path = "root.sg.d1.s1";
-    String d2s1Path = "root.sg.d22.s1";
+    String sql = "select count(s1) from root.db.d1, root.db.d22";
+    String d1s1Path = "root.db.d1.s1";
+    String d2s1Path = "root.db.d22.s1";
 
     Analysis analysis = Util.analyze(sql, context);
     PlanNode timeJoinNode = Util.genLogicalPlan(analysis, context);
@@ -194,9 +194,9 @@ public class AggregationDistributionTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String d1s1Path = "root.sg.d1.s1";
-    String d3s1Path = "root.sg.d333.s1";
-    String sql = "select count(s1) from root.sg.d1,root.sg.d333 group by ([0, 50), 5ms, 3ms)";
+    String d1s1Path = "root.db.d1.s1";
+    String d3s1Path = "root.db.d333.s1";
+    String sql = "select count(s1) from root.db.d1,root.db.d333 group by ([0, 50), 5ms, 3ms)";
 
     Analysis analysis = Util.analyze(sql, context);
     PlanNode slidingWindowAggregationNode = Util.genLogicalPlan(analysis, context);
@@ -233,10 +233,10 @@ public class AggregationDistributionTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String d1s1Path = "root.sg.d1.s1";
-    String d3s1Path = "root.sg.d333.s1";
+    String d1s1Path = "root.db.d1.s1";
+    String d3s1Path = "root.db.d333.s1";
 
-    String sql = "select count(s1) from root.sg.d1, root.sg.d333";
+    String sql = "select count(s1) from root.db.d1, root.db.d333";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode timeJoinNode = Util.genLogicalPlan(analysis, context);
 
@@ -259,13 +259,13 @@ public class AggregationDistributionTest {
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     //    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-    String d3s1Path = "root.sg.d333.s1";
+    String d3s1Path = "root.db.d333.s1";
     //    timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
 
-    String d4s1Path = "root.sg.d4444.s1";
+    String d4s1Path = "root.db.d4444.s1";
     //    timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT));
     //    Analysis analysis = Util.constructAnalysis();
-    String sql = "select count(s1) from root.sg.d333, root.sg.d4444";
+    String sql = "select count(s1) from root.db.d333, root.db.d4444";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode timeJoinNode = Util.genLogicalPlan(analysis, context);
 
@@ -284,9 +284,9 @@ public class AggregationDistributionTest {
   @Test
   public void testGroupByLevelWithTwoChildren() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
-    String d1s1Path = "root.sg.d1.s1";
-    String d2s1Path = "root.sg.d22.s1";
-    String groupedPath = "root.sg.*.s1";
+    String d1s1Path = "root.db.d1.s1";
+    String d2s1Path = "root.db.d22.s1";
+    String groupedPath = "root.db.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -325,9 +325,9 @@ public class AggregationDistributionTest {
   @Test
   public void testAggregationWithMultiGroupByLevelNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_children");
-    String d3s1Path = "root.sg.d333.s1";
-    String d4s1Path = "root.sg.d4444.s1";
-    String groupedPath = "root.sg.*.s1";
+    String d3s1Path = "root.db.d333.s1";
+    String d4s1Path = "root.db.d4444.s1";
+    String groupedPath = "root.db.*.s1";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -390,9 +390,9 @@ public class AggregationDistributionTest {
   @Test
   public void testGroupByLevelNodeWithSlidingWindow() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_with_sliding_window");
-    String d3s1Path = "root.sg.d333.s1";
-    String d4s1Path = "root.sg.d4444.s1";
-    String groupedPath = "root.sg.*.s1";
+    String d3s1Path = "root.db.d333.s1";
+    String d4s1Path = "root.db.d4444.s1";
+    String groupedPath = "root.db.*.s1";
 
     SlidingWindowAggregationNode slidingWindowAggregationNode =
         genSlidingWindowAggregationNode(
@@ -487,10 +487,10 @@ public class AggregationDistributionTest {
   @Test
   public void testGroupByLevelTwoSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_series");
-    String d1s1Path = "root.sg.d1.s1";
-    String d1s2Path = "root.sg.d1.s2";
-    String groupedPathS1 = "root.sg.*.s1";
-    String groupedPathS2 = "root.sg.*.s2";
+    String d1s1Path = "root.db.d1.s1";
+    String d1s2Path = "root.db.d1.s2";
+    String groupedPathS1 = "root.db.*.s1";
+    String groupedPathS2 = "root.db.*.s2";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -551,11 +551,11 @@ public class AggregationDistributionTest {
   @Test
   public void testGroupByLevel2Series2Devices3Regions() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_series");
-    String d1s1Path = "root.sg.d1.s1";
-    String d1s2Path = "root.sg.d1.s2";
-    String d2s1Path = "root.sg.d22.s1";
-    String groupedPathS1 = "root.sg.*.s1";
-    String groupedPathS2 = "root.sg.*.s2";
+    String d1s1Path = "root.db.d1.s1";
+    String d1s2Path = "root.db.d1.s2";
+    String d2s1Path = "root.db.d22.s1";
+    String groupedPathS1 = "root.db.*.s1";
+    String groupedPathS2 = "root.db.*.s2";
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -633,11 +633,11 @@ public class AggregationDistributionTest {
   @Test
   public void testGroupByLevelWithSliding2Series2Devices3Regions() throws IllegalPathException {
     QueryId queryId = new QueryId("test_group_by_level_two_series");
-    String d1s1Path = "root.sg.d1.s1";
-    String d1s2Path = "root.sg.d1.s2";
-    String d2s1Path = "root.sg.d22.s1";
-    String groupedPathS1 = "root.sg.*.s1";
-    String groupedPathS2 = "root.sg.*.s2";
+    String d1s1Path = "root.db.d1.s1";
+    String d1s2Path = "root.db.d1.s2";
+    String d2s1Path = "root.db.d22.s1";
+    String groupedPathS1 = "root.db.*.s1";
+    String groupedPathS2 = "root.db.*.s2";
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
@@ -759,7 +759,7 @@ public class AggregationDistributionTest {
   @Test
   public void testAggregation1Series1Region() throws IllegalPathException {
     QueryId queryId = new QueryId("test_aggregation_1_series_1_region");
-    String d2s1Path = "root.sg.d22.s1";
+    String d2s1Path = "root.db.d22.s1";
 
     PlanNode root = genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT);
     Analysis analysis = Util.constructAnalysis();
@@ -778,7 +778,7 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_align_by_device_1_device_2_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1), count(s2) from root.sg.d1 align by device";
+    String sql = "select count(s1), count(s2) from root.db.d1 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -800,7 +800,7 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_align_by_device_2_device_3_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1), count(s2) from root.sg.d1,root.sg.d22 align by device";
+    String sql = "select count(s1), count(s2) from root.db.d1,root.db.d22 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -828,7 +828,7 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_align_by_device_2_device_2_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1), count(s2) from root.sg.d333,root.sg.d4444 align by device";
+    String sql = "select count(s1), count(s2) from root.db.d333,root.db.d4444 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -908,7 +908,7 @@ public class AggregationDistributionTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d666666.s1, d666666.s2, d333.s1 from root.sg limit 10";
+    String sql = "select d666666.s1, d666666.s2, d333.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
 
@@ -923,7 +923,7 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_each_series_1_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select count(s1), count(s2) from root.sg.d22, root.sg.d55555";
+    String sql = "select count(s1), count(s2) from root.db.d22, root.db.d55555";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -939,10 +939,10 @@ public class AggregationDistributionTest {
                     instanceof HorizontallyConcatNode));
 
     Map<String, AggregationStep> expectedStep = new HashMap<>();
-    expectedStep.put("root.sg.d22.s1", AggregationStep.SINGLE);
-    expectedStep.put("root.sg.d22.s2", AggregationStep.SINGLE);
-    expectedStep.put("root.sg.d55555.s1", AggregationStep.SINGLE);
-    expectedStep.put("root.sg.d55555.s2", AggregationStep.SINGLE);
+    expectedStep.put("root.db.d22.s1", AggregationStep.SINGLE);
+    expectedStep.put("root.db.d22.s2", AggregationStep.SINGLE);
+    expectedStep.put("root.db.d55555.s1", AggregationStep.SINGLE);
+    expectedStep.put("root.db.d55555.s2", AggregationStep.SINGLE);
     fragmentInstances.forEach(
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
   }

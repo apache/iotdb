@@ -365,7 +365,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.db1
    */
   public DataRegion(
       String systemDir, String dataRegionId, TsFileFlushPolicy fileFlushPolicy, String databaseName)
@@ -3966,7 +3966,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Get the storageGroupPath with dataRegionId.
    *
-   * @return data region path, like root.sg1/0
+   * @return data region path, like root.db1/0
    */
   public String getStorageGroupPath() {
     return databaseName + File.separator + dataRegionId;

@@ -44,7 +44,7 @@ public class AlterLogicalViewProcedureTest {
             new HashMap<PartialPath, ViewExpression>() {
               {
                 put(
-                    new PartialPath("root.sg"),
+                    new PartialPath("root.db"),
                     new ConstantViewOperand(TSDataType.BOOLEAN, "true"));
               }
             },

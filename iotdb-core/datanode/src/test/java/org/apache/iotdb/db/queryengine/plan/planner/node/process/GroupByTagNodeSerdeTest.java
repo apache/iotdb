@@ -64,7 +64,7 @@ public class GroupByTagNodeSerdeTest {
         new CrossSeriesAggregationDescriptor(
             TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
-            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))),
             1,
             Collections.emptyMap(),
             Collections.singletonList(
@@ -72,12 +72,12 @@ public class GroupByTagNodeSerdeTest {
                     "max_time",
                     new LinkedHashMap<>(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))));
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))))));
     CrossSeriesAggregationDescriptor s1Avg =
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
-            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))),
             1,
             Collections.emptyMap(),
             Collections.singletonList(
@@ -85,17 +85,17 @@ public class GroupByTagNodeSerdeTest {
                     "avg",
                     new LinkedHashMap<>(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))));
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))))));
     AggregationDescriptor s1MaxTimePartial =
         new AggregationDescriptor(
             TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.PARTIAL,
-            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))));
     AggregationDescriptor s1AvgTimePartial =
         new AggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.PARTIAL,
-            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))));
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
         new HashMap<>();
     tagValuesToAggregationDescriptors.put(
@@ -106,7 +106,7 @@ public class GroupByTagNodeSerdeTest {
             Collections.singletonList(
                 new SeriesAggregationScanNode(
                     new PlanNodeId("TestSeriesAggregateScanNode1"),
-                    new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+                    new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
                     Arrays.asList(s1MaxTimePartial, s1AvgTimePartial),
                     Ordering.ASC,
                     gt(time(), longValue(100)),
@@ -116,7 +116,7 @@ public class GroupByTagNodeSerdeTest {
             Ordering.ASC,
             Collections.singletonList("k1"),
             tagValuesToAggregationDescriptors,
-            Arrays.asList("MAX_TIME(root.sg.d1.s1)", "AVG(root.sg.d1.s1)"));
+            Arrays.asList("MAX_TIME(root.db.d1.s1)", "AVG(root.db.d1.s1)"));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
     expectedNode.serialize(byteBuffer);

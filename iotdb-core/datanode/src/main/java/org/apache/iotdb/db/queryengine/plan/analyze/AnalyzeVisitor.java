@@ -2517,8 +2517,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * Check datatype consistency in ALIGN BY DEVICE.
    *
-   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
-   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+   * <p>an inconsistent example: select s0 from root.db1.d1, root.db1.d2 align by device, return
+   * false while root.db1.d1.s0 is INT32 and root.db1.d2.s0 is FLOAT.
    */
   private void checkDataTypeConsistencyInAlignByDevice(
       Analysis analysis, List<Expression> expressions) {

@@ -66,7 +66,7 @@ public class IoTDBPartitionCreationIT {
   private static final String IoTConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
-  private static final String sg = "root.sg";
+  private static final String sg = "root.db";
   private static final int testSeriesPartitionBatchSize = 1;
   private static final int testTimePartitionBatchSize = 1;
   private static final int testDataRegionGroupPerDatabase = 4;

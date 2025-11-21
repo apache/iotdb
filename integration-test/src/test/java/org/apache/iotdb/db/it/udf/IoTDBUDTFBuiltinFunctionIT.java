@@ -55,12 +55,12 @@ import static org.junit.Assert.fail;
 public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (8, 4, 4, 4, 4, true, '4', 4, '2024-01-05', 4, '4')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (10000000000, 5, 5, 5, 5, false, '5', 5, '2024-01-06', 5, '5')"
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (8, 4, 4, 4, 4, true, '4', 4, '2024-01-05', 4, '4')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (10000000000, 5, 5, 5, 5, false, '5', 5, '2024-01-06', 5, '5')"
   };
 
   private static final double E = 0.0001;
@@ -80,16 +80,16 @@ public class IoTDBUDTFBuiltinFunctionIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s6 with datatype=TEXT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s10 with datatype=DATE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s12 with datatype=STRING,encoding=PLAIN");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s6 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s10 with datatype=DATE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s12 with datatype=STRING,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -141,7 +141,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1",
                   functionName, functionName, functionName, functionName));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -160,7 +160,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1 align by device",
                   functionName, functionName, functionName, functionName));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -191,7 +191,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.db.d1",
                   TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -214,7 +214,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.db.d1 align by device",
                   TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -236,7 +236,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.db.d1",
                   BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K,
                   BOTTOM_K, K, BOTTOM_K, K));
 
@@ -260,7 +260,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.db.d1 align by device",
                   BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -284,7 +284,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1");
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.db.d1");
 
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 2, columnCount);
@@ -302,7 +302,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       resultSet =
           statement.executeQuery(
-              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1 align by device");
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.db.d1 align by device");
 
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 + 2, columnCount);
@@ -338,7 +338,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1",
                   functionName, functionName, functionName, functionName));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -359,7 +359,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1 align by device",
                   functionName, functionName, functionName, functionName));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -397,7 +397,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
-                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1")) {
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.db.d1")) {
         assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
 
         for (int i = 0; i < INSERTION_SQLS.length; ++i) {
@@ -415,7 +415,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
-                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1 align by device")) {
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.db.d1 align by device")) {
         assertEquals(2 + 5, resultSet.getMetaData().getColumnCount());
 
         for (int i = 0; i < INSERTION_SQLS.length; ++i) {
@@ -433,7 +433,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
-              statement.executeQuery("select const(s7, 'value'='1024') from root.sg.d1")) {
+              statement.executeQuery("select const(s7, 'value'='1024') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("attribute \"type\" is required but was not provided"));
@@ -441,7 +441,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
-              statement.executeQuery("select const(s8, 'type'='INT64') from root.sg.d1")) {
+              statement.executeQuery("select const(s8, 'type'='INT64') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("attribute \"value\" is required but was not provided"));
@@ -450,7 +450,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
               statement.executeQuery(
-                  "select const(s8, 'value'='1024', 'type'='long') from root.sg.d1")) {
+                  "select const(s8, 'value'='1024', 'type'='long') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("the given value type is not supported"));
@@ -459,7 +459,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
               statement.executeQuery(
-                  "select const(s8, 'value'='1024e', 'type'='INT64') from root.sg.d1")) {
+                  "select const(s8, 'value'='1024e', 'type'='INT64') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("java.lang.NumberFormatException"));
@@ -483,7 +483,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1");
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.db.d1");
 
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(5, columnCount);
@@ -500,7 +500,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       resultSet =
           statement.executeQuery(
-              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1 align by device");
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.db.d1 align by device");
 
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(6, columnCount);
@@ -524,26 +524,26 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testContinuouslySatisfies() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d2.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s5 with datatype=BOOLEAN,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
 
     // create timeseries with only 0,1 values
     String[] ZERO_ONE_SQL = {
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (0, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (1, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (2, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (3, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (4, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (7, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (10000000000, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (0, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (1, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (2, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (3, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (4, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (7, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (10000000000, 0, 0, 0, 0, false)",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -565,7 +565,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2",
                   functionName, functionName, functionName, functionName, functionName));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 5, columnCount);
@@ -586,7 +586,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2 align by device",
                   functionName, functionName, functionName, functionName, functionName));
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 + 5, columnCount);
@@ -617,7 +617,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2",
                   functionName, functionName, functionName, functionName, functionName));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -639,7 +639,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2 align by device",
                   functionName, functionName, functionName, functionName, functionName));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -671,7 +671,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2",
                   functionName, functionName, functionName, functionName, functionName));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 5, columnCount);
@@ -692,7 +692,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2 align by device",
                   functionName, functionName, functionName, functionName, functionName));
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 + 5, columnCount);
@@ -723,7 +723,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2",
                   functionName, functionName, functionName, functionName, functionName));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 5, columnCount);
@@ -744,7 +744,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.sg.d2 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4), %s(s5) from root.db.d2 align by device",
                   functionName, functionName, functionName, functionName, functionName));
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 + 5, columnCount);
@@ -776,7 +776,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
             statement.executeQuery(
                 String.format(
                     Locale.ENGLISH,
-                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1",
+                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.db.d1",
                     threshold,
                     threshold,
                     threshold,
@@ -799,7 +799,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
             statement.executeQuery(
                 String.format(
                     Locale.ENGLISH,
-                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1 align by device",
+                    "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.db.d1 align by device",
                     threshold,
                     threshold,
                     threshold,
@@ -837,7 +837,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                 String.format(
                     Locale.ENGLISH,
                     "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
-                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1",
+                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.db.d1",
                     upper,
                     lower,
                     upper,
@@ -865,7 +865,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                 String.format(
                     Locale.ENGLISH,
                     "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
-                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1 align by device",
+                        + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.db.d1 align by device",
                     upper,
                     lower,
                     upper,
@@ -897,14 +897,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testEqualBucketSampleForRandom() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d5.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d5.s1 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
     String[] SQL_FOR_SAMPLE_S1 = new String[100];
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
-          String.format("insert into root.sg.d5(time, s1) values (%d, %d)", i, i);
+          String.format("insert into root.db.d5(time, s1) values (%d, %d)", i, i);
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -923,7 +923,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           statement.executeQuery(
               String.format(
                   Locale.ENGLISH,
-                  "select " + "%s(s1, 'proportion'='%f') from root.sg.d5",
+                  "select " + "%s(s1, 'proportion'='%f') from root.db.d5",
                   functionName,
                   proportionValue));
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -942,12 +942,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testEqualBucketSampleForAgg() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d4.s1 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d4.s2 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d4.s3 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d4.s4 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d4.s5 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d4.s6 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s2 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s3 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s4 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s5 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d4.s6 with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -961,19 +961,19 @@ public class IoTDBUDTFBuiltinFunctionIT {
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d4(time, s1) values (%d, %f)", i, i * 1.0);
+              Locale.ENGLISH, "insert into root.db.d4(time, s1) values (%d, %f)", i, i * 1.0);
       SQL_FOR_SAMPLE_S2[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d4(time, s2) values (%d, %f)", i, i * 1.0);
+              Locale.ENGLISH, "insert into root.db.d4(time, s2) values (%d, %f)", i, i * 1.0);
       SQL_FOR_SAMPLE_S3[i] =
-          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s3) values (%d, %d)", i, i);
+          String.format(Locale.ENGLISH, "insert into root.db.d4(time, s3) values (%d, %d)", i, i);
       SQL_FOR_SAMPLE_S4[i] =
-          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s4) values (%d, %d)", i, i);
+          String.format(Locale.ENGLISH, "insert into root.db.d4(time, s4) values (%d, %d)", i, i);
       SQL_FOR_SAMPLE_S5[i] =
-          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s5) values (%d, %d)", i, -i);
+          String.format(Locale.ENGLISH, "insert into root.db.d4(time, s5) values (%d, %d)", i, -i);
       SQL_FOR_SAMPLE_S6[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d4(time, s6) values (%d, %f)", i, i * 1.0);
+              Locale.ENGLISH, "insert into root.db.d4(time, s6) values (%d, %f)", i, i * 1.0);
     }
     float[] ANSWER1 =
         new float[] {4.5F, 14.5F, 24.5F, 34.5F, 44.5F, 54.5F, 64.5F, 74.5F, 84.5F, 94.5F};
@@ -1011,7 +1011,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                       + "%s(s4, 'type'='%s', 'proportion'='%f'), "
                       + "%s(s5, 'type'='%s', 'proportion'='%f'), "
                       + "%s(s6, 'type'='%s', 'proportion'='%f')"
-                      + "from root.sg.d4",
+                      + "from root.db.d4",
                   functionName,
                   proportionValue,
                   functionName,
@@ -1049,14 +1049,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testEqualBucketSampleForM4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d3.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d3.s1 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
     String[] SQL_FOR_SAMPLE = new String[100];
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE[i] =
-          String.format("insert into root.sg.d3(time, s1) values (%d, %d)", i, i + 1);
+          String.format("insert into root.db.d3(time, s1) values (%d, %d)", i, i + 1);
     }
     int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1077,7 +1077,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           statement.executeQuery(
               String.format(
                   Locale.ENGLISH,
-                  "select %s(s1, 'method'='%s', 'proportion'='%f') from root.sg.d3",
+                  "select %s(s1, 'method'='%s', 'proportion'='%f') from root.db.d3",
                   functionName,
                   methodName,
                   proportionValue));
@@ -1096,11 +1096,11 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testEqualBucketSampleForOutlier() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d6.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d6.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d6.s3 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d6.s4 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d6.s5 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d6.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d6.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d6.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d6.s4 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d6.s5 with datatype=FLOAT,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1112,24 +1112,24 @@ public class IoTDBUDTFBuiltinFunctionIT {
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
           String.format(
-              "insert into root.sg.d6(time, s1) values (%d, %d)",
+              "insert into root.db.d6(time, s1) values (%d, %d)",
               i, i % 5 == 0 && i % 10 != 0 ? i + 100 : i);
       SQL_FOR_SAMPLE_S2[i] =
           String.format(
-              "insert into root.sg.d6(time, s2) values (%d, %d)", i, i % 10 == 6 ? i + 100 : i);
+              "insert into root.db.d6(time, s2) values (%d, %d)", i, i % 10 == 6 ? i + 100 : i);
       if (i % 10 == 9 || i % 20 == 0) {
-        SQL_FOR_SAMPLE_S2[i] = String.format("insert into root.sg.d6(time, s2) values (%d, 0)", i);
+        SQL_FOR_SAMPLE_S2[i] = String.format("insert into root.db.d6(time, s2) values (%d, 0)", i);
       }
       SQL_FOR_SAMPLE_S3[i] =
           String.format(
-              "insert into root.sg.d6(time, s3) values (%d, %d)", i, i % 10 == 7 ? i + 100 : i);
+              "insert into root.db.d6(time, s3) values (%d, %d)", i, i % 10 == 7 ? i + 100 : i);
       SQL_FOR_SAMPLE_S4[i] =
           String.format(
-              "insert into root.sg.d6(time, s4) values (%d, %d)", i, i % 10 == 8 ? i + 100 : i);
+              "insert into root.db.d6(time, s4) values (%d, %d)", i, i % 10 == 8 ? i + 100 : i);
     }
     for (int i = 0; i < 20; i++) {
       SQL_FOR_SAMPLE_S5[i] =
-          String.format("insert into root.sg.d6(time, s5) values (%d, %d)", i, i);
+          String.format("insert into root.db.d6(time, s5) values (%d, %d)", i, i);
     }
     int[] ANSWER1 = new int[] {105, 115, 125, 135, 145, 155, 165, 175, 185, 195};
     long[] ANSWER2 = new long[] {106, 116, 126, 136, 146, 156, 166, 176, 186, 196};
@@ -1162,7 +1162,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   Locale.ENGLISH,
                   "select "
                       + "%s(s1, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
+                      + "from root.db.d6",
                   functionName,
                   proportionValue,
                   "avg",
@@ -1180,7 +1180,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   Locale.ENGLISH,
                   "select "
                       + "%s(s2, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
+                      + "from root.db.d6",
                   functionName,
                   proportionValue,
                   "stendis",
@@ -1198,7 +1198,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   Locale.ENGLISH,
                   "select "
                       + "%s(s3, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
+                      + "from root.db.d6",
                   functionName,
                   proportionValue,
                   "cos",
@@ -1216,7 +1216,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   Locale.ENGLISH,
                   "select "
                       + "%s(s4, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
+                      + "from root.db.d6",
                   functionName,
                   proportionValue,
                   "prenextdis",
@@ -1234,7 +1234,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   Locale.ENGLISH,
                   "select "
                       + "%s(s5, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
+                      + "from root.db.d6",
                   functionName,
                   0.5,
                   "cos",
@@ -1494,15 +1494,15 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testUDTFJexl() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d7.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s2 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s3 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s4 with datatype=TEXT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s5 with datatype=BOOLEAN,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s6 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s7 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s8 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d7.s9 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s4 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s6 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s7 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s8 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d7.s9 with datatype=TEXT,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1518,77 +1518,77 @@ public class IoTDBUDTFBuiltinFunctionIT {
     for (int i = 0; i < 5; i++) {
       SQL_FOR_SAMPLE_1[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
+              Locale.ENGLISH, "insert into root.db.d7(time, s1) values (%d, %d)", i, i + 1);
       SQL_FOR_SAMPLE_2[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s2) values (%d, %f)", i, i + 1.0);
+              Locale.ENGLISH, "insert into root.db.d7(time, s2) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_3[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s3) values (%d, %f)", i, i + 1.0);
+              Locale.ENGLISH, "insert into root.db.d7(time, s3) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_4[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
-      SQL_FOR_SAMPLE_5[i] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", i);
+              Locale.ENGLISH, "insert into root.db.d7(time, s4) values (%d, '%s')", i, "string");
+      SQL_FOR_SAMPLE_5[i] = String.format("insert into root.db.d7(time, s5) values (%d, true)", i);
       SQL_FOR_SAMPLE_6[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
+              Locale.ENGLISH, "insert into root.db.d7(time, s6) values (%d, %d)", i, i + 8);
       SQL_FOR_SAMPLE_7[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s7) values (%d, %d)", i, i + 1);
+              Locale.ENGLISH, "insert into root.db.d7(time, s7) values (%d, %d)", i, i + 1);
       SQL_FOR_SAMPLE_8[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s8) values (%d, %f)", i, i + 1.0);
+              Locale.ENGLISH, "insert into root.db.d7(time, s8) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_9[i] =
           String.format(
-              Locale.ENGLISH, "insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
+              Locale.ENGLISH, "insert into root.db.d7(time, s9) values (%d, '%s')", i, "string");
     }
     SQL_FOR_SAMPLE_1[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s1) values (%d, %d)",
+            "insert into root.db.d7(time, s1) values (%d, %d)",
             10000000000L,
             5 + 1);
     SQL_FOR_SAMPLE_2[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s2) values (%d, %f)",
+            "insert into root.db.d7(time, s2) values (%d, %f)",
             10000000000L,
             5 + 1.0);
     SQL_FOR_SAMPLE_3[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s3) values (%d, %f)",
+            "insert into root.db.d7(time, s3) values (%d, %f)",
             10000000000L,
             5 + 1.0);
     SQL_FOR_SAMPLE_4[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s4) values (%d, '%s')",
+            "insert into root.db.d7(time, s4) values (%d, '%s')",
             10000000000L,
             "string");
-    SQL_FOR_SAMPLE_5[5] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", 5);
+    SQL_FOR_SAMPLE_5[5] = String.format("insert into root.db.d7(time, s5) values (%d, true)", 5);
     SQL_FOR_SAMPLE_6[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s6) values (%d, %d)",
+            "insert into root.db.d7(time, s6) values (%d, %d)",
             10000000000L,
             5 + 8);
     SQL_FOR_SAMPLE_7[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s7) values (%d, %d)",
+            "insert into root.db.d7(time, s7) values (%d, %d)",
             10000000000L,
             5 + 1);
     SQL_FOR_SAMPLE_8[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s8) values (%d, %f)",
+            "insert into root.db.d7(time, s8) values (%d, %f)",
             10000000000L,
             5 + 1.0);
     SQL_FOR_SAMPLE_9[5] =
         String.format(
             Locale.ENGLISH,
-            "insert into root.sg.d7(time, s9) values (%d, '%s')",
+            "insert into root.db.d7(time, s9) values (%d, '%s')",
             10000000000L,
             "string");
     double[] ANSWER1 = new double[] {2, 4, 6, 8, 10, 12};
@@ -1641,7 +1641,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                       + "%s(s7, s8, 'expr'='%s'), "
                       + "%s(s4, s7, s1, 'expr'='%s'), "
                       + "%s(s1, s7, s8, s5, 'expr'='%s') "
-                      + "from root.sg.d7",
+                      + "from root.db.d7",
                   functionName,
                   expr1,
                   functionName,
@@ -1687,7 +1687,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
                       + "%s(s7, s8, 'expr'='%s'), "
                       + "%s(s4, s7, s1, 'expr'='%s'), "
                       + "%s(s1, s7, s8, s5, 'expr'='%s') "
-                      + "from root.sg.d7 align by device",
+                      + "from root.db.d7 align by device",
                   functionName,
                   expr1,
                   functionName,

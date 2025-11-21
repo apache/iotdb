@@ -61,7 +61,7 @@ def session_test(use_session_pool=False):
             print("can't open session")
             exit(1)
 
-        device_id = "root.sg_test_01.d_04"
+        device_id = "root.db_test_01.d_04"
         measurements_new_type = ["s_01", "s_02", "s_03", "s_04"]
         data_types_new_type = [
             TSDataType.DATE,
@@ -113,20 +113,20 @@ def session_test(use_session_pool=False):
         )
 
         with session.execute_query_statement(
-            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+            "select s_01,s_02,s_03,s_04 from root.db_test_01.d_04"
         ) as dataset:
             print(dataset.get_column_names())
             while dataset.has_next():
                 print(dataset.next())
 
         with session.execute_query_statement(
-            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+            "select s_01,s_02,s_03,s_04 from root.db_test_01.d_04"
         ) as dataset:
             df = dataset.todf()
             print(df.to_string())
 
         with session.execute_query_statement(
-            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+            "select s_01,s_02,s_03,s_04 from root.db_test_01.d_04"
         ) as dataset:
             cnt = 0
             while dataset.has_next():
@@ -146,7 +146,7 @@ def session_test(use_session_pool=False):
             assert cnt == 10
 
         with session.execute_query_statement(
-            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+            "select s_01,s_02,s_03,s_04 from root.db_test_01.d_04"
         ) as dataset:
             df = dataset.todf()
             rows, columns = df.shape
@@ -172,7 +172,7 @@ def session_test(use_session_pool=False):
         )
 
         with session.execute_query_statement(
-            "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04 where time > 10"
+            "select s_01,s_02,s_03,s_04 from root.db_test_01.d_04 where time > 10"
         ) as dataset:
             cnt = 0
             while dataset.has_next():

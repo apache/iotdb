@@ -41,7 +41,7 @@ public class DataRegionStateMachineTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
@@ -52,7 +52,7 @@ public class DataRegionStateMachineTest {
     node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
@@ -63,7 +63,7 @@ public class DataRegionStateMachineTest {
     node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
@@ -83,7 +83,7 @@ public class DataRegionStateMachineTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
@@ -94,7 +94,7 @@ public class DataRegionStateMachineTest {
     node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
@@ -105,7 +105,7 @@ public class DataRegionStateMachineTest {
     node =
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
