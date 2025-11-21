@@ -936,8 +936,8 @@ public class AlignedTVListIteratorTest {
 
       if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
         alignedChunkWriter.sealCurrentPage();
+        count += alignedChunkWriter.getTimeChunkWriter().getPointNum();
         alignedChunkWriter.clearPageWriter();
-        count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
         alignedChunkWriter = new AlignedChunkWriterImpl(getMeasurementSchema());
         encodeInfo.reset();
       }
