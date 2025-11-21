@@ -70,20 +70,20 @@ public class SettleService implements IService {
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 
-    /* Classify the file paths by the SG, and then call the methods of StorageGroupProcessor of each
-    SG in turn to get the TsFileResources.*/
-    Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // sgPath -> tsFilePaths
+    /* Classify the file paths by the DB, and then call the methods of StorageGroupProcessor of each
+    DB in turn to get the TsFileResources.*/
+    Map<PartialPath, List<String>> tmpDbResourcesMap = new HashMap<>(); // dbPath -> tsFilePaths
     try {
       for (String filePath : TsFileAndModSettleTool.getInstance().recoverSettleFileMap.keySet()) {
-        PartialPath sgPath = getSGByFilePath(filePath);
-        if (tmpSgResourcesMap.containsKey(sgPath)) {
-          List<String> filePaths = tmpSgResourcesMap.get(sgPath);
+        PartialPath dbPath = getDBByFilePath(filePath);
+        if (tmpDbResourcesMap.containsKey(dbPath)) {
+          List<String> filePaths = tmpDbResourcesMap.get(dbPath);
           filePaths.add(filePath);
-          tmpSgResourcesMap.put(sgPath, filePaths);
+          tmpDbResourcesMap.put(dbPath, filePaths);
         } else {
           List<String> tsFilePaths = new ArrayList<>();
           tsFilePaths.add(filePath);
-          tmpSgResourcesMap.put(sgPath, tsFilePaths);
+          tmpDbResourcesMap.put(dbPath, tsFilePaths);
         }
       }
 
@@ -144,17 +144,17 @@ public class SettleService implements IService {
     return filesToBeSettledCount;
   }
 
-  public PartialPath getSGByFilePath(String tsFilePath) throws WriteProcessException {
-    PartialPath sgPath = null;
+  public PartialPath getDBByFilePath(String tsFilePath) throws WriteProcessException {
+    PartialPath dbPath = null;
     try {
-      sgPath =
+      dbPath =
           new PartialPath(
               new File(tsFilePath).getParentFile().getParentFile().getParentFile().getName());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(
-          "Fail to get sg of this tsFile while parsing the file path.", e);
+          "Fail to get db of this tsFile while parsing the file path.", e);
     }
-    return sgPath;
+    return dbPath;
   }
 
   private void submitSettleTask(SettleTask settleTask) throws WriteProcessException {

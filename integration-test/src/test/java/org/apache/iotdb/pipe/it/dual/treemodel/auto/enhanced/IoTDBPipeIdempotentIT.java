@@ -176,7 +176,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singletonList(
             "create timeSeries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN"),
         "delete timeSeries root.ln.wf01.wt01.status0",
-        "create database root.sg",
+        "create database root.db",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -187,7 +187,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Collections.emptyList(),
         "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -199,7 +199,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singletonList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)"),
         "alter schema template t1 add (rest FLOAT encoding=RLE, FLOAT2 TEXT encoding=PLAIN compression=SNAPPY)",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -211,7 +211,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singletonList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)"),
         "drop schema template t1",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -222,9 +222,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-            "create database root.sg1"),
-        "set schema template t1 to root.sg1",
-        "create database root.sg2",
+            "create database root.db1"),
+        "set schema template t1 to root.db1",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -235,10 +235,10 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-            "create database root.sg1",
-            "set schema template t1 to root.sg1"),
-        "unset schema template t1 from root.sg1",
-        "create database root.sg2",
+            "create database root.db1",
+            "set schema template t1 to root.db1"),
+        "unset schema template t1 from root.db1",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -249,11 +249,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-            "create database root.sg1",
-            "set schema template t1 to root.sg1"),
-        "create timeSeries using device template on root.sg1.d1",
-        "create timeSeries using device template on root.sg1.d2",
-        "count timeSeries root.sg1.**",
+            "create database root.db1",
+            "set schema template t1 to root.db1"),
+        "create timeSeries using device template on root.db1.d1",
+        "create timeSeries using device template on root.db1.d2",
+        "count timeSeries root.db1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
   }
@@ -263,12 +263,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-            "create database root.sg1",
-            "set schema template t1 to root.sg1",
-            "create timeSeries using device template on root.sg1.d1",
-            "create timeSeries using device template on root.sg1.d2"),
-        "delete timeSeries of schema template t1 from root.sg1.*",
-        "create database root.sg2",
+            "create database root.db1",
+            "set schema template t1 to root.db1",
+            "create timeSeries using device template on root.db1.d1",
+            "create timeSeries using device template on root.db1.d2"),
+        "delete timeSeries of schema template t1 from root.db1.*",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -278,8 +278,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testCreateDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "create database root.sg1",
-        "create database root.sg2",
+        "create database root.db1",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -288,9 +288,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   @Test
   public void testAlterDatabaseIdempotent() throws Exception {
     testIdempotent(
-        Collections.singletonList("create database root.sg1"),
-        "ALTER DATABASE root.sg1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
-        "create database root.sg2",
+        Collections.singletonList("create database root.db1"),
+        "ALTER DATABASE root.db1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("3,"));
@@ -299,9 +299,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   @Test
   public void testDropDatabaseIdempotent() throws Exception {
     testIdempotent(
-        Collections.singletonList("create database root.sg1"),
-        "drop database root.sg1",
-        "create database root.sg2",
+        Collections.singletonList("create database root.db1"),
+        "drop database root.db1",
+        "create database root.db2",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -312,7 +312,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Collections.emptyList(),
         "create user `ln_write_user` 'write_pwd123456'",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -323,7 +323,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Collections.emptyList(),
         "create role `test`",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -334,7 +334,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList("create user `ln_write_user` 'write_pwd123456'", "create role `test`"),
         "grant role test to ln_write_user",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -347,7 +347,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create user `ln_write_user` 'write_pwd123456'",
             "GRANT READ_DATA, WRITE_DATA ON root.t1.** TO USER ln_write_user;"),
         "REVOKE READ_DATA, WRITE_DATA ON root.t1.** FROM USER ln_write_user;",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -358,7 +358,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Arrays.asList("create role `test`", "GRANT READ ON root.** TO ROLE test;"),
         "REVOKE READ ON root.** FROM ROLE test;",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -372,7 +372,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create role `test`",
             "grant role test to ln_write_user"),
         "revoke role test from ln_write_user",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -383,7 +383,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Collections.singletonList("create user `ln_write_user` 'write_pwd123456'"),
         "drop user `ln_write_user`",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));
@@ -394,7 +394,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
     testIdempotent(
         Collections.singletonList("create role `test`"),
         "drop role test",
-        "create database root.sg1",
+        "create database root.db1",
         "count databases",
         "count,",
         Collections.singleton("2,"));

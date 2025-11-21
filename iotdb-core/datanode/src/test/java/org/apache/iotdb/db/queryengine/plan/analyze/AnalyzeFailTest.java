@@ -49,25 +49,25 @@ public class AnalyzeFailTest {
   @Test
   public void illegalAggregationTest1() {
     String message = "Raw data and aggregation result hybrid calculation is not supported.";
-    assertAnalyzeSemanticException("SELECT sum(s1) + s1 FROM root.sg.d1", message);
+    assertAnalyzeSemanticException("SELECT sum(s1) + s1 FROM root.db.d1", message);
   }
 
   @Test
   public void illegalAggregationTest2() {
     String message = "Aggregation results cannot be as input of the aggregation function.";
-    assertAnalyzeSemanticException("SELECT sum(sum(s1)) FROM root.sg.d1", message);
+    assertAnalyzeSemanticException("SELECT sum(sum(s1)) FROM root.db.d1", message);
   }
 
   @Test
   public void illegalAggregationTest3() {
     String message = "Raw data and aggregation hybrid query is not supported.";
-    assertAnalyzeSemanticException("SELECT sum(s1), s1 FROM root.sg.d1", message);
+    assertAnalyzeSemanticException("SELECT sum(s1), s1 FROM root.db.d1", message);
   }
 
   @Test
   public void samePropertyKeyTest() {
     assertAnalyzeSemanticException(
-        "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",
+        "CREATE TIMESERIES root.db1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",
         "Tag and attribute shouldn't have the same property key");
   }
 
@@ -81,158 +81,158 @@ public class AnalyzeFailTest {
   @Test
   public void selectIntoTest() {
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2) from root.sg.* align by device;",
+        "select s1, s2 into root.db_bk.new_d(t1, t2) from root.db.* align by device;",
         DEVICE_NUM_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2) from root.sg.*;", PATH_NUM_MISMATCH_ERROR_MSG);
+        "select s1, s2 into root.db_bk.new_d(t1, t2) from root.db.*;", PATH_NUM_MISMATCH_ERROR_MSG);
 
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2), root.sg_bk.new_d(t3, t1) from root.sg.* align by device;",
+        "select s1, s2 into root.db_bk.new_d(t1, t2), root.db_bk.new_d(t3, t1) from root.db.* align by device;",
         DUPLICATE_TARGET_PATH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2, t1, t4) from root.sg.*;",
+        "select s1, s2 into root.db_bk.new_d(t1, t2, t1, t4) from root.db.*;",
         DUPLICATE_TARGET_PATH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_${1}(t1, t2) from root.sg.* align by device;",
+        "select s1, s2 into root.db_bk.new_${1}(t1, t2) from root.db.* align by device;",
         DUPLICATE_TARGET_PATH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_${1}(t1, t2), root.sg_bk.new_${1}(t1, t2) from root.sg.*;",
+        "select s1, s2 into root.db_bk.new_${1}(t1, t2), root.db_bk.new_${1}(t1, t2) from root.db.*;",
         DUPLICATE_TARGET_PATH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(::) from root.sg.*;", DUPLICATE_TARGET_PATH_ERROR_MSG);
+        "select s1, s2 into root.db_bk.new_d(::) from root.db.*;", DUPLICATE_TARGET_PATH_ERROR_MSG);
 
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2), aligned root.sg_bk.new_d(t3, t4) from root.sg.* align by device;",
+        "select s1, s2 into root.db_bk.new_d(t1, t2), aligned root.db_bk.new_d(t3, t4) from root.db.* align by device;",
         DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d(t1, t2), aligned root.sg_bk.new_d(t3, t4) from root.sg.*;",
+        "select s1, s2 into root.db_bk.new_d(t1, t2), aligned root.db_bk.new_d(t3, t4) from root.db.*;",
         DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG);
 
     assertAnalyzeSemanticException(
-        "select count(s1), last_value(s2) into root.sg_bk.new_${2}(::) from root.sg.* align by device;",
+        "select count(s1), last_value(s2) into root.db_bk.new_${2}(::) from root.db.* align by device;",
         FORBID_PLACEHOLDER_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select count(s1), last_value(s2) into root.sg_bk.new_d1(::), root.sg_bk.new_d2(::) from root.sg.* align by device;",
+        "select count(s1), last_value(s2) into root.db_bk.new_d1(::), root.db_bk.new_d2(::) from root.db.* align by device;",
         FORBID_PLACEHOLDER_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select count(s1), last_value(s2) into root.sg_bk.new_d1(::), root.sg_bk.new_d2(::) from root.sg.*;",
+        "select count(s1), last_value(s2) into root.db_bk.new_d1(::), root.db_bk.new_d2(::) from root.db.*;",
         FORBID_PLACEHOLDER_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select count(s1), last_value(s2) into root.sg_bk.new_${2}(t1, t2, t3, t4) from root.sg.*;",
+        "select count(s1), last_value(s2) into root.db_bk.new_${2}(t1, t2, t3, t4) from root.db.*;",
         FORBID_PLACEHOLDER_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select count(s1), last_value(s2) into root.sg_bk.new_${2}(::) from root.sg.*;",
-        FORBID_PLACEHOLDER_ERROR_MSG);
-
-    assertAnalyzeSemanticException(
-        "select s1 + 1, s1 + s2 into root.sg_bk.new_${2}(::) from root.sg.* align by device;",
-        FORBID_PLACEHOLDER_ERROR_MSG);
-    assertAnalyzeSemanticException(
-        "select s1 + 1, s1 + s2 into root.sg_bk.new_d1(::), root.sg_bk.new_d2(::) from root.sg.* align by device;",
-        FORBID_PLACEHOLDER_ERROR_MSG);
-    assertAnalyzeSemanticException(
-        "select s1 + 1, s1 + s2 into root.sg_bk.new_d1(::), root.sg_bk.new_d2(::) from root.sg.*;",
-        FORBID_PLACEHOLDER_ERROR_MSG);
-    assertAnalyzeSemanticException(
-        "select s1 + 1, s1 + s2 into root.sg_bk.new_${2}(t1, t2, t3, t4) from root.sg.*;",
-        FORBID_PLACEHOLDER_ERROR_MSG);
-    assertAnalyzeSemanticException(
-        "select s1 + 1, s1 + s2 into root.sg_bk.new_${2}(::) from root.sg.*;",
+        "select count(s1), last_value(s2) into root.db_bk.new_${2}(::) from root.db.*;",
         FORBID_PLACEHOLDER_ERROR_MSG);
 
     assertAnalyzeSemanticException(
-        "select * into root.sg_bk.new_d1(::), root.sg_bk.new_d2(::) from root.sg.**;",
+        "select s1 + 1, s1 + s2 into root.db_bk.new_${2}(::) from root.db.* align by device;",
+        FORBID_PLACEHOLDER_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 + 1, s1 + s2 into root.db_bk.new_d1(::), root.db_bk.new_d2(::) from root.db.* align by device;",
+        FORBID_PLACEHOLDER_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 + 1, s1 + s2 into root.db_bk.new_d1(::), root.db_bk.new_d2(::) from root.db.*;",
+        FORBID_PLACEHOLDER_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 + 1, s1 + s2 into root.db_bk.new_${2}(t1, t2, t3, t4) from root.db.*;",
+        FORBID_PLACEHOLDER_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 + 1, s1 + s2 into root.db_bk.new_${2}(::) from root.db.*;",
+        FORBID_PLACEHOLDER_ERROR_MSG);
+
+    assertAnalyzeSemanticException(
+        "select * into root.db_bk.new_d1(::), root.db_bk.new_d2(::) from root.db.**;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into root.sg_bk.new_d1(${3}, s2) from root.sg.d1;",
+        "select s1, s2 into root.db_bk.new_d1(${3}, s2) from root.db.d1;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select * into root.sg_bk.new_${2}(::, s1) from root.sg.**;",
+        "select * into root.db_bk.new_${2}(::, s1) from root.db.**;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select d1.s1, d1.s2, d2.s3, d3.s4 into ::(s1_1, s2_2, backup_${4}) from root.sg",
+        "select d1.s1, d1.s2, d2.s3, d3.s4 into ::(s1_1, s2_2, backup_${4}) from root.db",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1, s2 into ::(s1_1, s2_2), root.backup_sg.::(s1, s2) from root.sg.* align by device;",
+        "select s1, s2 into ::(s1_1, s2_2), root.backup_sg.::(s1, s2) from root.db.* align by device;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1 into root.sg_bk.${2}_$abc(s1) from root.sg.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
+        "select s1 into root.db_bk.${2}_$abc(s1) from root.db.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
     assertAnalyzeSemanticException(
-        "select s1 into root.sg_bk.d01(${3}_$abc) from root.sg.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
+        "select s1 into root.db_bk.d01(${3}_$abc) from root.db.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
   }
 
   @Test
   public void countTimeTest() {
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* group by level=1;",
+        "select count_time(*) from root.db.* group by level=1;",
         COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* group by tags(key);",
+        "select count_time(*) from root.db.* group by tags(key);",
         COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
 
     assertAnalyzeSemanticException(
-        "select count_time(s1) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(s1) from root.db.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(s1) from root.sg.d1;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(s1) from root.db.d1;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(d1.s1) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(d1.s1) from root.db.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(d1.*) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(d1.*) from root.db.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(* + *) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(* + *) from root.db.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) / 2 from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select count_time(*) / 2 from root.db.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select sum(s1) / count_time(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select sum(s1) / count_time(*) from root.db.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select count_time(*), count(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select count_time(*), count(*) from root.db.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select count(*), count_time(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select count(*), count_time(*) from root.db.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select sum(*), count_time(*), sum(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select sum(*), count_time(*), sum(*) from root.db.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select s1, count_time(*), sum(*) from root.sg.*;", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
+        "select s1, count_time(*), sum(*) from root.db.*;", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
 
     assertAnalyzeSemanticException(
-        "select count_time(*),count_time(*) from root.sg.**;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+        "select count_time(*),count_time(*) from root.db.**;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select count_time(*),count_time(*) from root.sg.d1,root.sg.d2;",
+        "select count_time(*),count_time(*) from root.db.d1,root.db.d2;",
         COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select COUNT_TIME(*),COUNT_TIME(*) from root.sg.d1,root.sg.d2;",
+        "select COUNT_TIME(*),COUNT_TIME(*) from root.db.d1,root.db.d2;",
         COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select COUNT_TIME(*),count_time(*) from root.sg.d1,root.sg.d2;",
+        "select COUNT_TIME(*),count_time(*) from root.db.d1,root.db.d2;",
         COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select COUNT_TIME(*),COUNT_time(*) from root.sg.d1,root.sg.d2;",
+        "select COUNT_TIME(*),COUNT_time(*) from root.db.d1,root.db.d2;",
         COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count(*) > 1;",
+        "select count_time(*) from root.db.* having count(*) > 1;",
         COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count_time(s1) > 1;",
+        "select count_time(*) from root.db.* having count_time(s1) > 1;",
         COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count_time(*) > 1;",
+        "select count_time(*) from root.db.* having count_time(*) > 1;",
         COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
   }
 

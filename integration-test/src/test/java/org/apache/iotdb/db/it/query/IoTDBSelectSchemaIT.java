@@ -42,15 +42,15 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSelectSchemaIT {
   private static String INSERTION_SQLS =
-      "insert into root.sg.d1(time, s1, s2, s3) values (1, 1, 2, 3.0);";
+      "insert into root.db.d1(time, s1, s2, s3) values (1, 1, 2, 3.0);";
 
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s3 with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -93,24 +93,24 @@ public class IoTDBSelectSchemaIT {
       "((s1+1)*2-1)%2+1.5+s2"
     };
     String[] completeExpressions = {
-      "root.sg.d1.s1+root.sg.d1.s2",
-      "-root.sg.d1.s1+root.sg.d1.s2",
-      "-(root.sg.d1.s1+root.sg.d1.s3)",
-      "!(root.sg.d1.s1>root.sg.d1.s2)",
-      "-(-root.sg.d1.s1)",
-      "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3",
-      "-2+root.sg.d1.s1",
-      "!true|root.sg.d1.s1>0",
-      "-(-1)+root.sg.d1.s1",
-      "sin(root.sg.d1.s1)+root.sg.d1.s1",
-      "((root.sg.d1.s1+1)*2-1)%2+1.5+root.sg.d1.s2",
+      "root.db.d1.s1+root.db.d1.s2",
+      "-root.db.d1.s1+root.db.d1.s2",
+      "-(root.db.d1.s1+root.db.d1.s3)",
+      "!(root.db.d1.s1>root.db.d1.s2)",
+      "-(-root.db.d1.s1)",
+      "(root.db.d1.s1+root.db.d1.s2)*root.db.d1.s3",
+      "-2+root.db.d1.s1",
+      "!true|root.db.d1.s1>0",
+      "-(-1)+root.db.d1.s1",
+      "sin(root.db.d1.s1)+root.db.d1.s1",
+      "((root.db.d1.s1+1)*2-1)%2+1.5+root.db.d1.s2",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from root.sg.d1",
+                  "select %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from root.db.d1",
                   expressions[0],
                   expressions[1],
                   expressions[2],

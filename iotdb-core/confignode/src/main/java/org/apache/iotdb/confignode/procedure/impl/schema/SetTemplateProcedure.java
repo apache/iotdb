@@ -113,7 +113,7 @@ public class SetTemplateProcedure
           LOGGER.info("Pre set schemaengine template {} on path {}", templateName, templateSetPath);
           preSetTemplate(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Pre release schemaengine template {} set on path {}", templateName, templateSetPath);
           preReleaseTemplate(env);
@@ -129,9 +129,9 @@ public class SetTemplateProcedure
           LOGGER.info(
               "Commit set schemaengine template {} on path {}", templateName, templateSetPath);
           commitSetTemplate(env);
-          setNextState(SetTemplateState.COMMIT_RELEASE);
+          setNextState(SetTemplateState.COMMIT_UPDATE_DATANODE_CACHE);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Commit release schemaengine template {} set on path {}",
               templateName,
@@ -184,7 +184,7 @@ public class SetTemplateProcedure
       status.setMessage(e.getMessage());
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(SetTemplateState.PRE_RELEASE);
+      setNextState(SetTemplateState.PRE_UPDATE_DATANODE_CACHE);
     } else {
       LOGGER.warn(
           "Failed to pre set template {} on path {} due to {}",
@@ -359,7 +359,7 @@ public class SetTemplateProcedure
       status.setMessage(e.getMessage());
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(SetTemplateState.COMMIT_RELEASE);
+      setNextState(SetTemplateState.COMMIT_UPDATE_DATANODE_CACHE);
     } else {
       LOGGER.warn(
           "Failed to commit set template {} on path {} due to {}",
@@ -430,7 +430,7 @@ public class SetTemplateProcedure
               templateSetPath);
           rollbackPreSet(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Start rollback pre release schemaengine template {} on path {}",
               templateName,

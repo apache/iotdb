@@ -58,19 +58,19 @@ public class IoTDBInTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device1 STRING TAG, device2 STRING TAG, qrcode TEXT FIELD, date_v DATE FIELD, blob_v BLOB FIELD, timestamp_v TIMESTAMP FIELD)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0',1509465600000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1',1509465660000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2',1509465720000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s1','qrcode004', '2024-08-04', X'abc3',1509465780000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s2','qrcode002', '2024-08-05', X'abc4',1509465720000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s2','qrcode003', '2024-08-06', X'abc5',1509465780000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d1','s2','qrcode004', '2024-08-07', X'abc6',1509465840000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d1','s2','qrcode005', '2024-08-08', X'abc7',1509465900000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d2','s1','qrcode002', '2024-08-09', X'abc8',1509465780000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9',1509465840000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca',1509465900000)",
-        "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb',1509465960000)",
+        "CREATE TABLE db(device1 STRING TAG, device2 STRING TAG, qrcode TEXT FIELD, date_v DATE FIELD, blob_v BLOB FIELD, timestamp_v TIMESTAMP FIELD)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0',1509465600000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1',1509465660000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2',1509465720000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s1','qrcode004', '2024-08-04', X'abc3',1509465780000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s2','qrcode002', '2024-08-05', X'abc4',1509465720000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d1','s2','qrcode003', '2024-08-06', X'abc5',1509465780000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d1','s2','qrcode004', '2024-08-07', X'abc6',1509465840000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d1','s2','qrcode005', '2024-08-08', X'abc7',1509465900000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465780000,'d2','s1','qrcode002', '2024-08-09', X'abc8',1509465780000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9',1509465840000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca',1509465900000)",
+        "insert into db(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb',1509465960000)",
         "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD)",
       };
 
@@ -133,7 +133,7 @@ public class IoTDBInTableIT {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select time,device1,device2,qrcode from sg where qrcode in ('d1','s1','qrcode002','qrcode004') order by device1,device2")) {
+              "select time,device1,device2,qrcode from db where qrcode in ('d1','s1','qrcode002','qrcode004') order by device1,device2")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -163,7 +163,7 @@ public class IoTDBInTableIT {
       // DATE IN
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select date_v from sg where date_v in (CAST('2024-08-05' AS DATE), CAST('2024-08-12' AS DATE), CAST('2024-08-22' AS DATE)) order by date_v")) {
+              "select date_v from db where date_v in (CAST('2024-08-05' AS DATE), CAST('2024-08-12' AS DATE), CAST('2024-08-22' AS DATE)) order by date_v")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(
             resultSetMetaData,
@@ -188,7 +188,7 @@ public class IoTDBInTableIT {
       // BLOB IN
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select blob_v from sg where blob_v in (X'abc3', X'abca', X'bbbb') order by blob_v")) {
+              "select blob_v from db where blob_v in (X'abc3', X'abca', X'bbbb') order by blob_v")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(
             resultSetMetaData,
@@ -218,7 +218,7 @@ public class IoTDBInTableIT {
 
   @Test
   public void testTimestampIn() {
-    // select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000)
+    // select time,device1,device2,timestamp_v from db where timestamp_v in (1509465600000)
     // 1509465600000,'d1','s1',
     String[] expectedHeader = new String[] {"time", "device1", "device2", "timestamp_v"};
     String[] retArray =
@@ -226,36 +226,36 @@ public class IoTDBInTableIT {
           "2017-10-31T16:00:00.000Z,d1,s1,2017-10-31T16:00:00.000Z,",
         };
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000)",
+        "select time,device1,device2,timestamp_v from db where timestamp_v in (1509465600000)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v=1509465600000",
+        "select time,device1,device2,timestamp_v from db where timestamp_v=1509465600000",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v=2017-11-01T00:00:00.000+08:00",
+        "select time,device1,device2,timestamp_v from db where timestamp_v=2017-11-01T00:00:00.000+08:00",
         expectedHeader,
         retArray,
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v=CAST('2017-11-01T00:00:00.000+08:00' AS TIMESTAMP)",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-
-    tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v in (1509465600000.0)",
+        "select time,device1,device2,timestamp_v from db where timestamp_v=CAST('2017-11-01T00:00:00.000+08:00' AS TIMESTAMP)",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v=1509465600000.0",
+        "select time,device1,device2,timestamp_v from db where timestamp_v in (1509465600000.0)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select time,device1,device2,timestamp_v from db where timestamp_v=1509465600000.0",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -272,7 +272,7 @@ public class IoTDBInTableIT {
           "2017-10-31T16:06:00.000Z,d2,s1,2017-10-31T16:06:00.000Z,",
         };
     tableResultSetEqualTest(
-        "select time,device1,device2,timestamp_v from sg where timestamp_v not in (2017-11-01T00:00:00.000+08:00,1509465660000.0,CAST('2017-11-01T00:02:00.000+08:00' AS TIMESTAMP)) order by device1,device2,time",
+        "select time,device1,device2,timestamp_v from db where timestamp_v not in (2017-11-01T00:00:00.000+08:00,1509465660000.0,CAST('2017-11-01T00:02:00.000+08:00' AS TIMESTAMP)) order by device1,device2,time",
         expectedHeader,
         retArray,
         DATABASE_NAME);

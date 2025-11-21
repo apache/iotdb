@@ -52,33 +52,33 @@ public class IoTDBTagAggregationIT {
   private final double E = 0.00001D;
   protected static final String[] DATASET =
       new String[] {
-        "CREATE DATABASE root.sg.a;",
-        "CREATE DATABASE root.sg.b;",
-        "CREATE DATABASE root.sg2.c;",
+        "CREATE DATABASE root.db.a;",
+        "CREATE DATABASE root.db.b;",
+        "CREATE DATABASE root.db2.c;",
         "CREATE DATABASE root.case2;",
-        "create timeseries root.sg.a.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
-        "create timeseries root.sg.b.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
-        "create timeseries root.sg.a.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",
-        "create timeseries root.sg.b.d4.t with datatype=FLOAT tags(k1=k1v2, k2=k2v2);",
-        "create timeseries root.sg.a.d5.t with datatype=FLOAT tags(k1=k1v1);",
-        "create timeseries root.sg.b.d6.t with datatype=FLOAT tags(k2=k2v1);",
-        "create timeseries root.sg.a.d7.t with datatype=FLOAT;",
-        "create timeseries root.sg2.c.d8.t with datatype=TEXT tags(k3=k3v1);",
-        "insert into root.sg.a.d1(time, t) values(1, 1.1);",
-        "insert into root.sg.b.d2(time, t) values(1, 1.2);",
-        "insert into root.sg.a.d3(time, t) values(1, 1.3);",
-        "insert into root.sg.b.d4(time, t) values(1, 1.4);",
-        "insert into root.sg.a.d5(time, t) values(1, 1.5);",
-        "insert into root.sg.b.d6(time, t) values(1, 1.6);",
-        "insert into root.sg.a.d7(time, t) values(1, 1.7);",
-        "insert into root.sg2.c.d8(time, t) values(1, 'abc');",
-        "insert into root.sg.a.d1(time, t) values(10, 2.1);",
-        "insert into root.sg.b.d2(time, t) values(10, 3.2);",
-        "insert into root.sg.a.d3(time, t) values(10, 4.3);",
-        "insert into root.sg.b.d4(time, t) values(10, 5.4);",
-        "insert into root.sg.a.d5(time, t) values(10, 6.5);",
-        "insert into root.sg.b.d6(time, t) values(10, 7.6);",
-        "insert into root.sg.a.d7(time, t) values(10, 8.7);",
+        "create timeseries root.db.a.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
+        "create timeseries root.db.b.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
+        "create timeseries root.db.a.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",
+        "create timeseries root.db.b.d4.t with datatype=FLOAT tags(k1=k1v2, k2=k2v2);",
+        "create timeseries root.db.a.d5.t with datatype=FLOAT tags(k1=k1v1);",
+        "create timeseries root.db.b.d6.t with datatype=FLOAT tags(k2=k2v1);",
+        "create timeseries root.db.a.d7.t with datatype=FLOAT;",
+        "create timeseries root.db2.c.d8.t with datatype=TEXT tags(k3=k3v1);",
+        "insert into root.db.a.d1(time, t) values(1, 1.1);",
+        "insert into root.db.b.d2(time, t) values(1, 1.2);",
+        "insert into root.db.a.d3(time, t) values(1, 1.3);",
+        "insert into root.db.b.d4(time, t) values(1, 1.4);",
+        "insert into root.db.a.d5(time, t) values(1, 1.5);",
+        "insert into root.db.b.d6(time, t) values(1, 1.6);",
+        "insert into root.db.a.d7(time, t) values(1, 1.7);",
+        "insert into root.db2.c.d8(time, t) values(1, 'abc');",
+        "insert into root.db.a.d1(time, t) values(10, 2.1);",
+        "insert into root.db.b.d2(time, t) values(10, 3.2);",
+        "insert into root.db.a.d3(time, t) values(10, 4.3);",
+        "insert into root.db.b.d4(time, t) values(10, 5.4);",
+        "insert into root.db.a.d5(time, t) values(10, 6.5);",
+        "insert into root.db.b.d6(time, t) values(10, 7.6);",
+        "insert into root.db.a.d7(time, t) values(10, 8.7);",
 
         // test multi value with multi aggregation column
         "create timeseries root.case2.d1.s1 with datatype=FLOAT tags(k1=v1);",
@@ -119,7 +119,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testAggregateFunctions() {
     String query =
-        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1)";
+        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.db.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
@@ -174,7 +174,7 @@ public class IoTDBTagAggregationIT {
   @Test
   @Ignore
   public void testAggregateFunctionsWithNestedExpression() {
-    String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.sg.** GROUP BY TAGS(k1)";
+    String query = "SELECT COUNT(t + 1), AVG(t + 1) FROM root.db.** GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+------------+------------------+
     // |  k1|count(t + 1)|        avg(t + 1)|
@@ -226,7 +226,7 @@ public class IoTDBTagAggregationIT {
   @Ignore // TODO: support having in later commits
   public void testAggregateFunctionsWithHaving() {
     String query =
-        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.sg.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
+        "SELECT COUNT(t), AVG(t), MAX_TIME(t), MIN_TIME(t), MAX_VALUE(t), MIN_VALUE(t), EXTREME(t) FROM root.db.** GROUP BY TAGS(k1) HAVING avg(t) > 3";
     // Expected result set:
     // +----+--------+------------------+-----------+-----------+------------+------------+----------+
     // |  k1|count(t)|
@@ -269,7 +269,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testMultipleAggregationKeys() {
-    String query = "SELECT COUNT(t) FROM root.sg.** GROUP BY TAGS(k1, k2)";
+    String query = "SELECT COUNT(t) FROM root.db.** GROUP BY TAGS(k1, k2)";
     // Expected result set:
     // +----+----+--------+
     // |  k1|  k2|count(t)|
@@ -306,7 +306,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeAggregation() {
-    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
+    String query = "SELECT COUNT(t) from root.db.** GROUP BY ([0, 20), 10ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -357,7 +357,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithSlidingWindow() {
-    String query = "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
+    String query = "SELECT COUNT(t) from root.db.** GROUP BY ([0, 20), 15ms, 5ms), TAGS(k1)";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -411,7 +411,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testAlongWithTimeAggregationAndOrdering() {
     String query =
-        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
+        "SELECT COUNT(t) from root.db.** GROUP BY ([0, 20), 10ms), TAGS(k1) ORDER BY TIME DESC";
     // Expected result set:
     // +-----------------------------+----+--------+
     // |                         Time|  k1|count(t)|
@@ -462,7 +462,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testAlongWithTimeFiltering() {
-    String query = "SELECT COUNT(t) FROM root.sg.** WHERE time > 1 GROUP BY TAGS(k1)";
+    String query = "SELECT COUNT(t) FROM root.db.** WHERE time > 1 GROUP BY TAGS(k1)";
     // Expected result set:
     // +----+--------+
     // |  k1|count(t)|
@@ -519,7 +519,7 @@ public class IoTDBTagAggregationIT {
 
   @Test
   public void testWithValueFilters() {
-    String query = "SELECT AVG(t) FROM root.sg.** WHERE t > 1.5 GROUP BY TAGS(k1)";
+    String query = "SELECT AVG(t) FROM root.db.** WHERE t > 1.5 GROUP BY TAGS(k1)";
     // Value filter is not supported yet
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -535,7 +535,7 @@ public class IoTDBTagAggregationIT {
   @Test
   public void testWithHaving() {
     String query =
-        "SELECT COUNT(t) from root.sg.** GROUP BY ([0, 20), 10ms), TAGS(k1) HAVING COUNT(t) > 3";
+        "SELECT COUNT(t) from root.db.** GROUP BY ([0, 20), 10ms), TAGS(k1) HAVING COUNT(t) > 3";
     // Having is not supported yet
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

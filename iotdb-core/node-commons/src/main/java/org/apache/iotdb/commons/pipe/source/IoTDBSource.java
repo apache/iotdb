@@ -113,7 +113,7 @@ public abstract class IoTDBSource implements PipeExtractor {
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     if (!isDoubleLiving) {
       return;
     }
@@ -166,7 +166,7 @@ public abstract class IoTDBSource implements PipeExtractor {
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {

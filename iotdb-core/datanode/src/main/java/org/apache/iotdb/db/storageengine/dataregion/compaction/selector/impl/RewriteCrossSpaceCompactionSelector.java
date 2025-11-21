@@ -373,7 +373,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       } else {
         taskResources = selectOneTaskResources(candidate);
       }
-      String sgDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
+      String dbDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
@@ -382,7 +382,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
                   + "Cannot select any files because they do not meet the conditions "
                   + "or may be occupied by other compaction threads.",
               isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
-              sgDataRegionId,
+              dbDataRegionId,
               sequenceFileList.size(),
               unsequenceFileList.size(),
               candidate.getSeqFiles().size(),
@@ -401,7 +401,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
               + "total selected seq file size is {} MB, "
               + "total selected unseq file size is {} MB, "
               + "time consumption {}ms.",
-          sgDataRegionId,
+          dbDataRegionId,
           isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
           sequenceFileList.size(),
           unsequenceFileList.size(),

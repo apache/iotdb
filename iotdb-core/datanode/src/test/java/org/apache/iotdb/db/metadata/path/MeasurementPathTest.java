@@ -41,7 +41,7 @@ public class MeasurementPathTest {
   public void testTransformDataToString() throws IllegalPathException {
     MeasurementPath rawPath =
         new MeasurementPath(
-            new PartialPath("root.sg.d.s"), new MeasurementSchema("s", TSDataType.INT32), true);
+            new PartialPath("root.db.d.s"), new MeasurementSchema("s", TSDataType.INT32), true);
     rawPath.setMeasurementAlias("alias");
     String string = PartialPath.transformDataToString(rawPath);
     MeasurementPath newPath = (MeasurementPath) PartialPath.parseDataFromString(string);
@@ -55,7 +55,7 @@ public class MeasurementPathTest {
   public void testMeasurementPathSerde() throws IllegalPathException, IOException {
     IMeasurementSchema schema = new MeasurementSchema("s1", TSDataType.TEXT);
     MeasurementPath expectedPath =
-        new MeasurementPath(new PartialPath("root.sg.d1.s1"), schema, true);
+        new MeasurementPath(new PartialPath("root.db.d1.s1"), schema, true);
     expectedPath.setMeasurementAlias("alias_s1");
     MeasurementPath actualPath = serdeWithByteBuffer(expectedPath);
     assertMeasurementPathEquals(actualPath, expectedPath);
@@ -75,7 +75,7 @@ public class MeasurementPathTest {
   public void testCloneAndCopy() throws IllegalPathException {
     IMeasurementSchema schema = new MeasurementSchema("s1", TSDataType.TEXT);
     MeasurementPath expectedPath =
-        new MeasurementPath(new PartialPath("root.sg.d1.s1"), schema, true);
+        new MeasurementPath(new PartialPath("root.db.d1.s1"), schema, true);
     expectedPath.setMeasurementAlias("alias_s1");
 
     MeasurementPath actualPath = expectedPath.clone();

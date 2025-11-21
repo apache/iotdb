@@ -1200,7 +1200,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [GITHUB-3339] Try to fix sg dead lock
 * [GITHUB-3329] Fix upgrade NPE and DeadLock
 * [GITHUB-3319] Fix upgrade tool cannot close file reader
-* [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.sg1.d1
+* [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.db1.d1
 * [IOTDB-1219] Fix a potential NPE issue in UDF module
 * [IOTDB-1286] Fix 4 C++ mem-leak points
 * [IOTDB-1294] Fix delete operation become invalid after compaction

@@ -59,7 +59,7 @@ import java.util.Map;
 
 public class MemChunkDeserializeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private String storageGroup = "sg1";
+  private String storageGroup = "db1";
   private String dataRegionId = "1";
 
   private IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("d1");

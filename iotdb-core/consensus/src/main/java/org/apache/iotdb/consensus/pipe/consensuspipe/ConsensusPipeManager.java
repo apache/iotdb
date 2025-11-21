@@ -99,7 +99,7 @@ public class ConsensusPipeManager {
     final ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     return new ImmutableTriple<>(
         ImmutableMap.<String, String>builder()
-            .put(EXTRACTOR_KEY, config.getExtractorPluginName())
+            .put(EXTRACTOR_KEY, config.getSourcePluginName())
             .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
             .put(
                 EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
@@ -121,7 +121,7 @@ public class ConsensusPipeManager {
             .put(PROCESSOR_KEY, config.getProcessorPluginName())
             .build(),
         ImmutableMap.<String, String>builder()
-            .put(CONNECTOR_KEY, config.getConnectorPluginName())
+            .put(CONNECTOR_KEY, config.getSinkPluginName())
             .put(
                 CONNECTOR_CONSENSUS_GROUP_ID_KEY,
                 String.valueOf(consensusPipeName.getConsensusGroupId().getId()))

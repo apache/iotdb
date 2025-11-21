@@ -53,7 +53,7 @@ public class CompactionValidationTest {
   static final String SENSOR_2 = "sensor_2";
   static final String SENSOR_3 = "sensor_3";
 
-  static final String DEVICE_1 = "root.sg.device_1";
+  static final String DEVICE_1 = "root.db.device_1";
   final String dir = TestConstant.OUTPUT_DATA_DIR + "test-validation";
 
   @Before

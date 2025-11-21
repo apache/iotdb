@@ -110,22 +110,22 @@ public class IoTDBTemplateAuthIT {
         }
       }
 
-      adminStmt.execute("create database root.sg1");
-      adminStmt.execute("create database root.sg2");
-      adminStmt.execute("create database root.sg3");
-      adminStmt.execute("set device template t1 to root.sg1.d1");
+      adminStmt.execute("create database root.db1");
+      adminStmt.execute("create database root.db2");
+      adminStmt.execute("create database root.db3");
+      adminStmt.execute("set device template t1 to root.db1.d1");
 
-      adminStmt.execute("set device template t2 to root.sg2");
+      adminStmt.execute("set device template t2 to root.db2");
 
       assertNonQueryTestFail(
-          "set device template t1 to root.sg3",
+          "set device template t1 to root.db3",
           "803: No permissions for this operation, please add privilege SYSTEM",
           "tytyty1",
           "tytytytytytytyty");
 
-      adminStmt.execute("set device template t1 to root.sg3");
-      adminStmt.execute("create timeseries using device template on root.sg1.d1");
-      adminStmt.execute("create timeseries using device template on root.sg3");
+      adminStmt.execute("set device template t1 to root.db3");
+      adminStmt.execute("create timeseries using device template on root.db1.d1");
+      adminStmt.execute("create timeseries using device template on root.db3");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
@@ -135,7 +135,7 @@ public class IoTDBTemplateAuthIT {
         }
       }
 
-      adminStmt.execute("grant read_schema on root.sg1.d2.** to user tytyty1");
+      adminStmt.execute("grant read_schema on root.db1.d2.** to user tytyty1");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
@@ -145,7 +145,7 @@ public class IoTDBTemplateAuthIT {
         }
       }
 
-      adminStmt.execute("grant read_schema on root.sg1.d1.** to user tytyty1");
+      adminStmt.execute("grant read_schema on root.db1.d1.** to user tytyty1");
       retSet = Collections.singleton("t1");
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
@@ -159,7 +159,7 @@ public class IoTDBTemplateAuthIT {
         assertEquals(retSet.size(), cnt);
       }
 
-      adminStmt.execute("grant read_schema on root.sg1.** to user tytyty2");
+      adminStmt.execute("grant read_schema on root.db1.** to user tytyty2");
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty2", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show device templates")) {
@@ -300,7 +300,7 @@ public class IoTDBTemplateAuthIT {
       }
 
       // show paths set device template
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1", "root.sg3"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1", "root.db3"));
       try (ResultSet resultSet = adminStmt.executeQuery("show paths set device template t1")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -321,7 +321,7 @@ public class IoTDBTemplateAuthIT {
         }
         assertEquals(retSet.size(), cnt);
       }
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1"));
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show paths set device template t1")) {
@@ -345,7 +345,7 @@ public class IoTDBTemplateAuthIT {
         assertEquals(retSet.size(), cnt);
       }
 
-      retSet = new HashSet<>(Arrays.asList("root.sg2"));
+      retSet = new HashSet<>(Arrays.asList("root.db2"));
       try (ResultSet resultSet = adminStmt.executeQuery("show paths set device template t2")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -409,7 +409,7 @@ public class IoTDBTemplateAuthIT {
       }
 
       // show paths using device template
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1", "root.sg3"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1", "root.db3"));
       try (ResultSet resultSet = adminStmt.executeQuery("show paths using device template t1")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -430,7 +430,7 @@ public class IoTDBTemplateAuthIT {
         }
         assertEquals(retSet.size(), cnt);
       }
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1"));
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show paths using device template t1")) {
@@ -515,7 +515,7 @@ public class IoTDBTemplateAuthIT {
         assertEquals(retSet.size(), cnt);
       }
 
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1", "root.sg3"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1", "root.db3"));
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show paths set device template t1")) {
@@ -527,7 +527,7 @@ public class IoTDBTemplateAuthIT {
         }
         assertEquals(retSet.size(), cnt);
       }
-      retSet = new HashSet<>(Arrays.asList("root.sg2"));
+      retSet = new HashSet<>(Arrays.asList("root.db2"));
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show paths set device template t2")) {
@@ -548,7 +548,7 @@ public class IoTDBTemplateAuthIT {
         }
       }
 
-      retSet = new HashSet<>(Arrays.asList("root.sg1.d1"));
+      retSet = new HashSet<>(Arrays.asList("root.db1.d1"));
       try (Connection userCon = EnvFactory.getEnv().getConnection("tytyty1", "tytytytytytytyty");
           Statement userStmt = userCon.createStatement();
           ResultSet resultSet = userStmt.executeQuery("show paths using device template t1")) {

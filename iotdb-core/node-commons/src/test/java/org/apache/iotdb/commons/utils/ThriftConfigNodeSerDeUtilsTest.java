@@ -40,7 +40,7 @@ public class ThriftConfigNodeSerDeUtilsTest {
   @Test
   public void readWriteTStorageGroupSchemaTest() {
     TDatabaseSchema storageGroupSchema0 = new TDatabaseSchema();
-    storageGroupSchema0.setName("root.sg");
+    storageGroupSchema0.setName("root.db");
     storageGroupSchema0.setSchemaReplicationFactor(3);
     storageGroupSchema0.setDataReplicationFactor(3);
     storageGroupSchema0.setTimePartitionInterval(604800);

@@ -63,8 +63,8 @@ public class DeactivateTemplateProcedureTest {
         new TSEncoding[] {TSEncoding.BITMAP, TSEncoding.PLAIN},
         new CompressionType[] {CompressionType.GZIP, CompressionType.UNCOMPRESSED});
 
-    templateSetInfo.put(new PartialPath("root.sg1.**"), Arrays.asList(t1, t2));
-    templateSetInfo.put(new PartialPath("root.sg2.**"), Arrays.asList(t2, t1));
+    templateSetInfo.put(new PartialPath("root.db1.**"), Arrays.asList(t1, t2));
+    templateSetInfo.put(new PartialPath("root.db2.**"), Arrays.asList(t2, t1));
 
     DeactivateTemplateProcedure deactivateTemplateProcedure =
         new DeactivateTemplateProcedure(queryId, templateSetInfo, false);

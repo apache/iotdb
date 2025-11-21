@@ -59,7 +59,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testFetchNestedTemplateDevice() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     int templateId = 1;
     Template template =
         new Template(
@@ -71,11 +71,11 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.d1"), 2, templateId),
+            new PartialPath("root.db.d1"), 2, templateId),
         template);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.d1.GPS"), 3, templateId),
+            new PartialPath("root.db.d1.GPS"), 3, templateId),
         template);
     ClusterSchemaTree schemaTree =
         schemaRegion.fetchSeriesSchema(
@@ -94,7 +94,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   /** Test {@link ISchemaRegion#activateSchemaTemplate}. */
   @Test
   public void testActivateSchemaTemplate() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     int templateId = 1;
     Template template =
         new Template(
@@ -106,13 +106,13 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
+            new PartialPath("root.db.wf01.wt01"), 3, templateId),
         template);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf02"), 2, templateId),
+            new PartialPath("root.db.wf02"), 2, templateId),
         template);
-    Set<String> expectedPaths = new HashSet<>(Arrays.asList("root.sg.wf01.wt01", "root.sg.wf02"));
+    Set<String> expectedPaths = new HashSet<>(Arrays.asList("root.db.wf01.wt01", "root.db.wf02"));
     Set<String> pathsUsingTemplate =
         new HashSet<>(getPathsUsingTemplate(schemaRegion, new PartialPath("root.**"), templateId));
     Assert.assertEquals(expectedPaths, pathsUsingTemplate);
@@ -121,19 +121,19 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     allPatternTree.constructTree();
     Assert.assertEquals(2, schemaRegion.countPathsUsingTemplate(templateId, allPatternTree));
     PathPatternTree wf01PatternTree = new PathPatternTree();
-    wf01PatternTree.appendPathPattern(new PartialPath("root.sg.wf01.*"));
+    wf01PatternTree.appendPathPattern(new PartialPath("root.db.wf01.*"));
     wf01PatternTree.constructTree();
     Assert.assertEquals(1, schemaRegion.countPathsUsingTemplate(templateId, wf01PatternTree));
     Assert.assertEquals(
-        "root.sg.wf01.wt01",
-        getPathsUsingTemplate(schemaRegion, new PartialPath("root.sg.wf01.*"), templateId).get(0));
+        "root.db.wf01.wt01",
+        getPathsUsingTemplate(schemaRegion, new PartialPath("root.db.wf01.*"), templateId).get(0));
     PathPatternTree wf02PatternTree = new PathPatternTree();
-    wf02PatternTree.appendPathPattern(new PartialPath("root.sg.wf02"));
+    wf02PatternTree.appendPathPattern(new PartialPath("root.db.wf02"));
     wf02PatternTree.constructTree();
     Assert.assertEquals(1, schemaRegion.countPathsUsingTemplate(templateId, wf02PatternTree));
     Assert.assertEquals(
-        "root.sg.wf02",
-        getPathsUsingTemplate(schemaRegion, new PartialPath("root.sg.wf02"), templateId).get(0));
+        "root.db.wf02",
+        getPathsUsingTemplate(schemaRegion, new PartialPath("root.db.wf02"), templateId).get(0));
   }
 
   /**
@@ -143,7 +143,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
    */
   @Test
   public void testDeactivateTemplate() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     int templateId = 1;
     Template template =
         new Template(
@@ -155,31 +155,31 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
+            new PartialPath("root.db.wf01.wt01"), 3, templateId),
         template);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf02"), 2, templateId),
+            new PartialPath("root.db.wf02"), 2, templateId),
         template);
 
-    // construct schema blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
+    // construct schema blacklist with template on root.db.wf01.wt01 and root.db.wf02
     Map<PartialPath, List<Integer>> allDeviceTemplateMap = new HashMap<>();
     allDeviceTemplateMap.put(new PartialPath("root.**"), Collections.singletonList(templateId));
     schemaRegion.constructSchemaBlackListWithTemplate(
         SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(allDeviceTemplateMap));
 
-    // rollback schema blacklist with template on root.sg.wf02
+    // rollback schema blacklist with template on root.db.wf02
     Map<PartialPath, List<Integer>> wf02TemplateMap = new HashMap<>();
-    wf02TemplateMap.put(new PartialPath("root.sg.wf02"), Collections.singletonList(templateId));
+    wf02TemplateMap.put(new PartialPath("root.db.wf02"), Collections.singletonList(templateId));
     schemaRegion.rollbackSchemaBlackListWithTemplate(
         SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(wf02TemplateMap));
 
-    // deactivate schema blacklist with template on root.sg.wf01.wt01
+    // deactivate schema blacklist with template on root.db.wf01.wt01
     schemaRegion.deactivateTemplateInBlackList(
         SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(allDeviceTemplateMap));
 
     // check using getPathsUsingTemplate
-    List<String> expectedPaths = Collections.singletonList("root.sg.wf02");
+    List<String> expectedPaths = Collections.singletonList("root.db.wf02");
     List<String> pathsUsingTemplate =
         getPathsUsingTemplate(schemaRegion, new PartialPath("root.**"), templateId);
     Assert.assertEquals(expectedPaths, pathsUsingTemplate);
@@ -192,9 +192,9 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testFetchSchemaWithTemplate() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     SchemaRegionTestUtil.createSimpleTimeSeriesByList(
-        schemaRegion, Arrays.asList("root.sg.wf01.wt01.status", "root.sg.wf01.wt01.temperature"));
+        schemaRegion, Arrays.asList("root.db.wf01.wt01.status", "root.db.wf01.wt01.temperature"));
     int templateId = 1;
     Template template =
         new Template(
@@ -207,15 +207,15 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     ClusterTemplateManager.getInstance().putTemplate(template);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf02"), 2, templateId),
+            new PartialPath("root.db.wf02"), 2, templateId),
         template);
     Map<Integer, Template> templateMap = Collections.singletonMap(templateId, template);
     List<String> expectedTimeseries =
         Arrays.asList(
-            "root.sg.wf01.wt01.status",
-            "root.sg.wf01.wt01.temperature",
-            "root.sg.wf02.s1",
-            "root.sg.wf02.s2");
+            "root.db.wf01.wt01.status",
+            "root.db.wf01.wt01.temperature",
+            "root.db.wf02.s1",
+            "root.db.wf02.s2");
 
     // check fetch schema
     ClusterSchemaTree schemaTree =

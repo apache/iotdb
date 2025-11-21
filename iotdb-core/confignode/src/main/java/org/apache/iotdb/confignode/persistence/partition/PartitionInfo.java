@@ -642,11 +642,11 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return database name
    */
   public String getRegionDatabase(TConsensusGroupId regionId) {
-    Optional<DatabasePartitionTable> sgPartitionTableOptional =
+    Optional<DatabasePartitionTable> dbPartitionTableOptional =
         databasePartitionTables.values().stream()
             .filter(s -> s.containRegionGroup(regionId))
             .findFirst();
-    return sgPartitionTableOptional.map(DatabasePartitionTable::getDatabaseName).orElse(null);
+    return dbPartitionTableOptional.map(DatabasePartitionTable::getDatabaseName).orElse(null);
   }
 
   // ======================================================
@@ -1117,10 +1117,10 @@ public class PartitionInfo implements SnapshotProcessor {
         return new GetTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
       } else {
-        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        DatabasePartitionTable dbPartitionTable = databasePartitionTables.get(plan.getDatabase());
         return new GetTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            sgPartitionTable
+            dbPartitionTable
                 .getTimeSlotList(
                     plan.getSeriesSlotId(),
                     plan.getRegionId(),
@@ -1156,10 +1156,10 @@ public class PartitionInfo implements SnapshotProcessor {
         return new CountTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), 0);
       } else {
-        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+        DatabasePartitionTable dbPartitionTable = databasePartitionTables.get(plan.getDatabase());
         return new CountTimeSlotListResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            sgPartitionTable
+            dbPartitionTable
                 .getTimeSlotList(
                     plan.getSeriesSlotId(),
                     plan.getRegionId(),
@@ -1190,10 +1190,10 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetSeriesSlotListResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
+    DatabasePartitionTable dbPartitionTable = databasePartitionTables.get(plan.getDatabase());
     return new GetSeriesSlotListResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        sgPartitionTable.getSeriesSlotList(plan.getPartitionType()));
+        dbPartitionTable.getSeriesSlotList(plan.getPartitionType()));
   }
 
   public void getSchemaRegionIds(

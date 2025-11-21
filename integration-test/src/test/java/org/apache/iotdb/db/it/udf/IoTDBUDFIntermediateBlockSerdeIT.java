@@ -39,12 +39,12 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 public class IoTDBUDFIntermediateBlockSerdeIT {
   private static final String[] SQLs =
       new String[] {
-        "insert into root.sg.d1(time, s1) values (1,1)",
-        "insert into root.sg.d1(time, s1) values (2,2)",
-        "insert into root.sg.d1(time, s1) values (3,3)",
-        "insert into root.sg.d1(time, s1) values (4,4)",
-        "insert into root.sg.d1(time, s1) values (5,5)",
-        "insert into root.sg.d1(time, s1) values (6,6)"
+        "insert into root.db.d1(time, s1) values (1,1)",
+        "insert into root.db.d1(time, s1) values (2,2)",
+        "insert into root.db.d1(time, s1) values (3,3)",
+        "insert into root.db.d1(time, s1) values (4,4)",
+        "insert into root.db.d1(time, s1) values (5,5)",
+        "insert into root.db.d1(time, s1) values (6,6)"
       };
 
   @BeforeClass
@@ -63,11 +63,11 @@ public class IoTDBUDFIntermediateBlockSerdeIT {
   public void testM4() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "EQUAL_SIZE_BUCKET_M4_SAMPLE(root.sg.d1.s1, \"proportion\"=\"1\")"
+          TIMESTAMP_STR, "EQUAL_SIZE_BUCKET_M4_SAMPLE(root.db.d1.s1, \"proportion\"=\"1\")"
         };
     String[] retArray = new String[] {"1,1.0,", "2,2.0,", "3,3.0,", "4,4.0,", "5,5.0,", "6,6.0,"};
     resultSetEqualWithDescOrderTest(
-        "select EQUAL_SIZE_BUCKET_M4_SAMPLE(s1,'proportion'='1') from root.sg.d1",
+        "select EQUAL_SIZE_BUCKET_M4_SAMPLE(s1,'proportion'='1') from root.db.d1",
         expectedHeader,
         retArray);
   }

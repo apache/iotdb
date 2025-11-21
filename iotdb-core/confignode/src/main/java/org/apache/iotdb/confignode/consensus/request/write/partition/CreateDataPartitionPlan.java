@@ -76,8 +76,8 @@ public class CreateDataPartitionPlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     assignedDataPartition = new HashMap<>();
 
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
+    int databaseNum = buffer.getInt();
+    for (int i = 0; i < databaseNum; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
       dataPartitionTable.deserialize(buffer);

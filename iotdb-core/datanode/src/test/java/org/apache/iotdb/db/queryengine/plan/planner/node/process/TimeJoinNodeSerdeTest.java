@@ -48,7 +48,7 @@ public class TimeJoinNodeSerdeTest {
       seriesScanNode1 =
           new SeriesScanNode(
               new PlanNodeId("TestSeriesScanNode"),
-              new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+              new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
               Ordering.DESC,
               null,
               100,
@@ -57,7 +57,7 @@ public class TimeJoinNodeSerdeTest {
       seriesScanNode2 =
           new SeriesScanNode(
               new PlanNodeId("TestSeriesScanNode"),
-              new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
+              new MeasurementPath("root.db.d1.s2", TSDataType.INT32),
               Ordering.DESC,
               null,
               100,
@@ -95,7 +95,7 @@ public class TimeJoinNodeSerdeTest {
             new PlanNodeId("TestInnerTimeJoinNode"),
             Ordering.ASC,
             Arrays.asList(0L, 1L),
-            Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"));
+            Arrays.asList("root.db.d1.s1", "root.db.d1.s2"));
     innerTimeJoinNode.addChild(seriesScanNode1);
     innerTimeJoinNode.addChild(seriesScanNode2);
 

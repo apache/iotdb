@@ -426,10 +426,10 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
 
     int requestId = 0;
-    for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
+    for (Map.Entry<String, List<TRegionReplicaSet>> dbRegionsEntry :
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      String storageGroup = sgRegionsEntry.getKey();
-      List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
+      String storageGroup = dbRegionsEntry.getKey();
+      List<TRegionReplicaSet> regionReplicaSets = dbRegionsEntry.getValue();
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           clientHandler.putRequest(
@@ -449,10 +449,10 @@ public class ConfigNodeProcedureEnv {
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.CREATE_DATA_REGION);
 
     int requestId = 0;
-    for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
+    for (Map.Entry<String, List<TRegionReplicaSet>> dbRegionsEntry :
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      String storageGroup = sgRegionsEntry.getKey();
-      List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
+      String storageGroup = dbRegionsEntry.getKey();
+      List<TRegionReplicaSet> regionReplicaSets = dbRegionsEntry.getValue();
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           clientHandler.putRequest(

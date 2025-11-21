@@ -43,8 +43,8 @@ import static org.apache.iotdb.itbase.constant.TestConstant.s2;
 public class IoTDBNoSelectExpressionAfterAnalyzedIT {
   private static final String[] SQLs =
       new String[] {
-        "insert into root.sg.d1(time,s1) values(1,1)",
-        "insert into root.sg.d2(time,s1,s2) values(1,1,1)"
+        "insert into root.db.d1(time,s1) values(1,1)",
+        "insert into root.db.d2(time,s1,s2) values(1,1,1)"
       };
 
   @BeforeClass
@@ -63,31 +63,31 @@ public class IoTDBNoSelectExpressionAfterAnalyzedIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR};
     String[] retArray = new String[] {};
     resultSetEqualTest(
-        "select s2 from root.sg.d1 where s1>0 align by device", expectedHeader, retArray);
+        "select s2 from root.db.d1 where s1>0 align by device", expectedHeader, retArray);
 
     resultSetEqualTest(
-        "select count(s2) from root.sg.d1 where s1>0 align by device", expectedHeader, retArray);
+        "select count(s2) from root.db.d1 where s1>0 align by device", expectedHeader, retArray);
 
     // mix test
     expectedHeader = new String[] {DEVICE, count(s1), count(s2)};
-    retArray = new String[] {"root.sg.d1,1,null,", "root.sg.d2,1,1,"};
+    retArray = new String[] {"root.db.d1,1,null,", "root.db.d2,1,1,"};
     resultSetEqualTest(
-        "select count(s1), count(s2) from root.sg.* where s1>0 align by device",
+        "select count(s1), count(s2) from root.db.* where s1>0 align by device",
         expectedHeader,
         retArray);
 
     expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, s1, s2};
-    retArray = new String[] {"1,root.sg.d1,1.0,null,", "1,root.sg.d2,1.0,1.0,"};
+    retArray = new String[] {"1,root.db.d1,1.0,null,", "1,root.db.d2,1.0,1.0,"};
     resultSetEqualTest(
-        "select s1, s2 from root.sg.* where s1>0 align by device", expectedHeader, retArray);
+        "select s1, s2 from root.db.* where s1>0 align by device", expectedHeader, retArray);
   }
 
   @Test
   public void testAlignByTime() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR};
     String[] retArray = new String[] {};
-    resultSetEqualTest("select s2 from root.sg.d1 where s1>0", expectedHeader, retArray);
+    resultSetEqualTest("select s2 from root.db.d1 where s1>0", expectedHeader, retArray);
 
-    resultSetEqualTest("select count(s2) from root.sg.d1 where s1>0", expectedHeader, retArray);
+    resultSetEqualTest("select count(s2) from root.db.d1 where s1>0", expectedHeader, retArray);
   }
 }

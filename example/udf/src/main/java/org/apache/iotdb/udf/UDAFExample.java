@@ -37,11 +37,11 @@ import java.nio.ByteBuffer;
 /** This is an internal example of the UDAF implementation. */
 public class UDAFExample implements UDAF {
   /**
-   * CREATE DATABASE root.sg; CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;
-   * INSERT INTO root.sg(time, s1) VALUES (0, 1), (1, 3), (2, 5);
+   * CREATE DATABASE root.db; CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;
+   * INSERT INTO root.db(time, s1) VALUES (0, 1), (1, 3), (2, 5);
    *
    * <p>CREATE FUNCTION avg_udaf AS 'org.apache.iotdb.udf.UDAFExample'; SHOW FUNCTIONS; SELECT s1
-   * FROM root.sg; SELECT avg_udaf(s1) FROM root.sg;
+   * FROM root.db; SELECT avg_udaf(s1) FROM root.db;
    */
   static class AvgState implements State {
     double sum;

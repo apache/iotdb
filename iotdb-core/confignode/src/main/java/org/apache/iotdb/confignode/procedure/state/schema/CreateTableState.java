@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 public enum CreateTableState {
   CHECK_TABLE_EXISTENCE,
   PRE_CREATE,
-  PRE_RELEASE,
+  PRE_UPDATE_DATANODE_CACHE,
   COMMIT_CREATE,
-  COMMIT_RELEASE,
+  COMMIT_UPDATE_DATANODE_CACHE,
 }

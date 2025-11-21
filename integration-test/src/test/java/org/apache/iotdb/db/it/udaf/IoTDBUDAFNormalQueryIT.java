@@ -76,16 +76,16 @@ public class IoTDBUDAFNormalQueryIT {
       };
   private static final String[] dataSet3 =
       new String[] {
-        "CREATE DATABASE root.sg",
-        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-        "insert into root.sg.d1(timestamp,s1) values(5,5)",
-        "insert into root.sg.d1(timestamp,s1) values(12,12)",
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+        "insert into root.db.d1(timestamp,s1) values(5,5)",
+        "insert into root.db.d1(timestamp,s1) values(12,12)",
         "flush",
-        "insert into root.sg.d1(timestamp,s1) values(15,15)",
-        "insert into root.sg.d1(timestamp,s1) values(25,25)",
+        "insert into root.db.d1(timestamp,s1) values(15,15)",
+        "insert into root.db.d1(timestamp,s1) values(25,25)",
         "flush",
-        "insert into root.sg.d1(timestamp,s1) values(1,111)",
-        "insert into root.sg.d1(timestamp,s1) values(20,200)",
+        "insert into root.db.d1(timestamp,s1) values(1,111)",
+        "insert into root.db.d1(timestamp,s1) values(20,200)",
         "flush",
       };
   private final String d0s0 = "root.vehicle.d0.s0";

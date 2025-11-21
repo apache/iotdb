@@ -258,7 +258,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
@@ -273,7 +273,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.AlterDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800)
@@ -289,7 +289,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void DeleteStorageGroupPlanTest() throws IOException {
     // TODO: Add serialize and deserialize test
-    DeleteDatabasePlan req0 = new DeleteDatabasePlan("root.sg");
+    DeleteDatabasePlan req0 = new DeleteDatabasePlan("root.db");
     DeleteDatabasePlan req1 =
         (DeleteDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -297,14 +297,14 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetTTLPlanTest() throws IOException {
-    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
+    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "db0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void SetSchemaReplicationFactorPlanTest() throws IOException {
-    SetSchemaReplicationFactorPlan req0 = new SetSchemaReplicationFactorPlan("root.sg0", 3);
+    SetSchemaReplicationFactorPlan req0 = new SetSchemaReplicationFactorPlan("root.db0", 3);
     SetSchemaReplicationFactorPlan req1 =
         (SetSchemaReplicationFactorPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -313,7 +313,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetDataReplicationFactorPlanTest() throws IOException {
-    SetDataReplicationFactorPlan req0 = new SetDataReplicationFactorPlan("root.sg0", 3);
+    SetDataReplicationFactorPlan req0 = new SetDataReplicationFactorPlan("root.db0", 3);
     SetDataReplicationFactorPlan req1 =
         (SetDataReplicationFactorPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -322,7 +322,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetTimePartitionIntervalPlanTest() throws IOException {
-    SetTimePartitionIntervalPlan req0 = new SetTimePartitionIntervalPlan("root.sg0", 6048000L);
+    SetTimePartitionIntervalPlan req0 = new SetTimePartitionIntervalPlan("root.db0", 6048000L);
     SetTimePartitionIntervalPlan req1 =
         (SetTimePartitionIntervalPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -333,7 +333,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void AdjustMaxRegionGroupCountPlanTest() throws IOException {
     AdjustMaxRegionGroupNumPlan req0 = new AdjustMaxRegionGroupNumPlan();
     for (int i = 0; i < 3; i++) {
-      req0.putEntry("root.sg" + i, new Pair<>(i, i));
+      req0.putEntry("root.db" + i, new Pair<>(i, i));
     }
 
     AdjustMaxRegionGroupNumPlan req1 =
@@ -356,11 +356,11 @@ public class ConfigPhysicalPlanSerDeTest {
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegionGroup("root.sg0", dataRegionSet);
+    req0.addRegionGroup("root.db0", dataRegionSet);
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegionGroup("root.sg1", schemaRegionSet);
+    req0.addRegionGroup("root.db1", schemaRegionSet);
 
     CreateRegionGroupsPlan req1 =
         (CreateRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -383,9 +383,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
     OfferRegionMaintainTasksPlan plan0 = new OfferRegionMaintainTasksPlan();
     plan0.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
+        new RegionCreateTask(dataNodeLocation, "root.db", regionReplicaSet));
     plan0.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
+        new RegionCreateTask(dataNodeLocation, "root.db", regionReplicaSet));
     plan0.appendRegionMaintainTask(
         new RegionDeleteTask(
             dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));
@@ -415,7 +415,7 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
-    String storageGroup = "root.sg0";
+    String storageGroup = "root.db0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0);
 
@@ -441,7 +441,7 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
-    String storageGroup = "root.sg0";
+    String storageGroup = "root.db0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
@@ -703,7 +703,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
     DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure(false);
-    deleteDatabaseProcedure.setDeleteDatabaseSchema(new TDatabaseSchema("root.sg"));
+    deleteDatabaseProcedure.setDeleteDatabaseSchema(new TDatabaseSchema("root.db"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
     updateProcedurePlan0.setProcedure(deleteDatabaseProcedure);
     UpdateProcedurePlan updateProcedurePlan1 =
@@ -731,11 +731,11 @@ public class ConfigPhysicalPlanSerDeTest {
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-    createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
-    createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.db0", dataRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.db1", schemaRegionSet);
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
-    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
-    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    persistPlan.addRegionGroup("root.db0", dataRegionSet);
+    persistPlan.addRegionGroup("root.db1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(
             TConsensusGroupType.DataRegion, createRegionGroupsPlan, persistPlan, failedRegions);
@@ -752,7 +752,7 @@ public class ConfigPhysicalPlanSerDeTest {
     UpdateProcedurePlan req0 = new UpdateProcedurePlan();
     DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure(false);
     TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
-    tDatabaseSchema.setName("root.sg");
+    tDatabaseSchema.setName("root.db");
     deleteDatabaseProcedure.setDeleteDatabaseSchema(tDatabaseSchema);
     req0.setProcedure(deleteDatabaseProcedure);
     UpdateProcedurePlan req1 =
@@ -807,7 +807,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
-        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+        new SetSchemaTemplatePlan("template_name_test", "root.in.db.dw");
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
         (SetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
@@ -1618,8 +1618,8 @@ public class ConfigPhysicalPlanSerDeTest {
                 1000,
                 0,
                 (byte) 0,
-                "select s1 into root.backup.d1.s1 from root.sg.d1",
-                "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
+                "select s1 into root.backup.d1.s1 from root.db.d1",
+                "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.db.d1 END",
                 "Asia",
                 "root"),
             "testCq1_md5",
@@ -1783,7 +1783,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void PreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
-    PreUnsetSchemaTemplatePlan plan = new PreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    PreUnsetSchemaTemplatePlan plan = new PreUnsetSchemaTemplatePlan(1, new PartialPath("root.db"));
     PreUnsetSchemaTemplatePlan deserializedPlan =
         (PreUnsetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
@@ -1794,7 +1794,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void RollbackPreUnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
     RollbackPreUnsetSchemaTemplatePlan plan =
-        new RollbackPreUnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+        new RollbackPreUnsetSchemaTemplatePlan(1, new PartialPath("root.db"));
     RollbackPreUnsetSchemaTemplatePlan deserializedPlan =
         (RollbackPreUnsetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
@@ -1804,7 +1804,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void UnsetSchemaTemplatePlanTest() throws IllegalPathException, IOException {
-    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(1, new PartialPath("root.sg"));
+    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(1, new PartialPath("root.db"));
     UnsetSchemaTemplatePlan deserializedPlan =
         (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
@@ -1834,7 +1834,7 @@ public class ConfigPhysicalPlanSerDeTest {
     spaceQuota.setTimeserieNum(3);
     spaceQuota.setDiskSize(1024);
     SetSpaceQuotaPlan plan =
-        new SetSpaceQuotaPlan(Collections.singletonList("root.sg"), spaceQuota);
+        new SetSpaceQuotaPlan(Collections.singletonList("root.db"), spaceQuota);
     SetSpaceQuotaPlan deserializedPlan =
         (SetSpaceQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getPrefixPathList(), deserializedPlan.getPrefixPathList());
@@ -1878,7 +1878,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new DatabaseSchemaPlan(
                 ConfigPhysicalPlanType.CreateDatabase,
                 new TDatabaseSchema()
-                    .setName("sg")
+                    .setName("db")
                     .setTTL(Long.MAX_VALUE)
                     .setSchemaReplicationFactor(3)
                     .setDataReplicationFactor(3)
@@ -1889,7 +1889,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeUnsetSchemaTemplatePlanTest() throws IOException {
     final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan =
-        new PipeUnsetSchemaTemplatePlan("template0", "root.sg");
+        new PipeUnsetSchemaTemplatePlan("template0", "root.db");
     Assert.assertEquals(
         pipeUnsetSchemaTemplatePlan,
         ConfigPhysicalPlan.Factory.create(pipeUnsetSchemaTemplatePlan.serializeToByteBuffer()));

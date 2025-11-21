@@ -151,8 +151,8 @@ public class IoTDBSystemPermissionIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
         "803: No permissions for this operation, please add privilege SYSTEM",
@@ -177,8 +177,8 @@ public class IoTDBSystemPermissionIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
         "test5",

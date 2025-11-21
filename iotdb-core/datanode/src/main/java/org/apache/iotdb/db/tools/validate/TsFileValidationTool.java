@@ -97,7 +97,7 @@ public class TsFileValidationTool {
     // check tsfiles in data dir, which will check for correctness inside one single tsfile and
     // between files
     for (File seqDataDir : seqDataDirList) {
-      // get sg data dirs
+      // get db data dirs
       if (!checkIsDirectory(seqDataDir)) {
         continue;
       }
@@ -107,17 +107,17 @@ public class TsFileValidationTool {
                   seqDataDir.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX))));
       findIncorrectFiles(rootTsFiles);
 
-      List<File> sgDirs =
+      List<File> dbDirs =
           Arrays.asList(Objects.requireNonNull(seqDataDir.listFiles(File::isDirectory)));
-      for (File sgDir : Objects.requireNonNull(sgDirs)) {
+      for (File dbDir : Objects.requireNonNull(sgDirs)) {
         if (!checkIsDirectory(sgDir)) {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
+          printBoth("- Check files in database: " + dbDir.getAbsolutePath());
         }
         // get data region dirs
-        File[] dataRegionDirs = sgDir.listFiles();
+        File[] dataRegionDirs = dbDir.listFiles();
         for (File dataRegionDir : Objects.requireNonNull(dataRegionDirs)) {
           if (!checkIsDirectory(dataRegionDir)) {
             continue;

@@ -42,25 +42,25 @@ public class IoTDBUDAFGroupByLevelIT {
 
   private static final String[] dataset =
       new String[] {
-        "CREATE DATABASE root.sg1",
-        "CREATE DATABASE root.sg2",
-        "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg1.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg2.d1.status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg2.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg2.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "INSERT INTO root.sg1.d1(timestamp,status) values(150,true)",
-        "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(200,false,20.71)",
-        "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(600,false,71.12)",
-        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(200,false,42.66)",
-        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(300,false,46.77)",
-        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(700,true,62.15)",
-        "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(100,3,88.24)",
-        "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(500,5,125.5)",
-        "INSERT INTO root.sg2.d2(timestamp,temperature) values(200,105.5)",
-        "INSERT INTO root.sg2.d2(timestamp,temperature) values(800,61.22)",
+        "CREATE DATABASE root.db1",
+        "CREATE DATABASE root.db2",
+        "CREATE TIMESERIES root.db1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db1.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db2.d1.status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db2.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db2.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "INSERT INTO root.db1.d1(timestamp,status) values(150,true)",
+        "INSERT INTO root.db1.d1(timestamp,status,temperature) values(200,false,20.71)",
+        "INSERT INTO root.db1.d1(timestamp,status,temperature) values(600,false,71.12)",
+        "INSERT INTO root.db1.d2(timestamp,status,temperature) values(200,false,42.66)",
+        "INSERT INTO root.db1.d2(timestamp,status,temperature) values(300,false,46.77)",
+        "INSERT INTO root.db1.d2(timestamp,status,temperature) values(700,true,62.15)",
+        "INSERT INTO root.db2.d1(timestamp,status,temperature) values(100,3,88.24)",
+        "INSERT INTO root.db2.d1(timestamp,status,temperature) values(500,5,125.5)",
+        "INSERT INTO root.db2.d2(timestamp,temperature) values(200,105.5)",
+        "INSERT INTO root.db2.d2(timestamp,temperature) values(800,61.22)",
       };
 
   @BeforeClass
@@ -97,9 +97,9 @@ public class IoTDBUDAFGroupByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT avg_udaf(temperature) " + "FROM root.sg1.* " + "GROUP BY LEVEL=1")) {
+              "SELECT avg_udaf(temperature) " + "FROM root.db1.* " + "GROUP BY LEVEL=1")) {
         while (resultSet.next()) {
-          String actual = resultSet.getString(avgUDAF("root.sg1.*.temperature"));
+          String actual = resultSet.getString(avgUDAF("root.db1.*.temperature"));
           Assert.assertEquals(expected[cnt], Double.parseDouble(actual), DELTA);
           cnt++;
         }
@@ -107,9 +107,9 @@ public class IoTDBUDAFGroupByLevelIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT avg_udaf(temperature) " + "FROM root.sg2.* " + "GROUP BY LEVEL=1")) {
+              "SELECT avg_udaf(temperature) " + "FROM root.db2.* " + "GROUP BY LEVEL=1")) {
         while (resultSet.next()) {
-          String actual = resultSet.getString(avgUDAF("root.sg2.*.temperature"));
+          String actual = resultSet.getString(avgUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected[cnt], Double.parseDouble(actual), DELTA);
           cnt++;
         }
@@ -127,10 +127,10 @@ public class IoTDBUDAFGroupByLevelIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT avg_udaf(temperature) " + "FROM root.sg1.* " + "GROUP BY LEVEL=1, 2")) {
+              "SELECT avg_udaf(temperature) " + "FROM root.db1.* " + "GROUP BY LEVEL=1, 2")) {
         while (resultSet.next()) {
-          String actual1 = resultSet.getString(avgUDAF("root.sg1.d1.temperature"));
-          String actual2 = resultSet.getString(avgUDAF("root.sg1.d2.temperature"));
+          String actual1 = resultSet.getString(avgUDAF("root.db1.d1.temperature"));
+          String actual2 = resultSet.getString(avgUDAF("root.db1.d2.temperature"));
           Assert.assertEquals(expected[cnt++], Double.parseDouble(actual1), DELTA);
           Assert.assertEquals(expected[cnt++], Double.parseDouble(actual2), DELTA);
         }
@@ -140,9 +140,9 @@ public class IoTDBUDAFGroupByLevelIT {
   }
 
   /**
-   * [root.sg.d1.temperature, root.sg.d2.temperature] with level = 1
+   * [root.db.d1.temperature, root.db.d2.temperature] with level = 1
    *
-   * <p>Result is [root.sg.*.temperature]
+   * <p>Result is [root.db.*.temperature]
    */
   @Test
   public void UDAFGroupByLevelWithAliasTest() throws Exception {
@@ -154,7 +154,7 @@ public class IoTDBUDAFGroupByLevelIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "SELECT count_udaf(temperature) AS ct "
-                  + "FROM root.sg1.d1, root.sg1.d2 "
+                  + "FROM root.db1.d1, root.db1.d2 "
                   + "GROUP BY LEVEL=1")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("ct");
@@ -166,7 +166,7 @@ public class IoTDBUDAFGroupByLevelIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT count_udaf(temperature) AS ct " + "FROM root.sg1.* " + "GROUP BY LEVEL=1")) {
+              "SELECT count_udaf(temperature) AS ct " + "FROM root.db1.* " + "GROUP BY LEVEL=1")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("ct");
           Assert.assertEquals(expected[cnt], actual);
@@ -177,7 +177,7 @@ public class IoTDBUDAFGroupByLevelIT {
   }
 
   /**
-   * [root.sg.d1.temperature, root.sg.d2.temperature] with level = 2
+   * [root.db.d1.temperature, root.db.d2.temperature] with level = 2
    *
    * <p>Result is [root.*.d1.temperature, root.*.d2.temperature]
    */
@@ -186,21 +186,21 @@ public class IoTDBUDAFGroupByLevelIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery(
-          "SELECT count_udaf(temperature) AS ct " + "FROM root.sg1.* " + "GROUP BY LEVEL=2");
+          "SELECT count_udaf(temperature) AS ct " + "FROM root.db1.* " + "GROUP BY LEVEL=2");
       fail("No exception thrown");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("can only be matched with one"));
     }
   }
 
-  // Different from above at: root.sg1.*.temperature is just one ResultColumn
+  // Different from above at: root.db1.*.temperature is just one ResultColumn
   @Test
   public void UDAFGroupByLevelWithAliasFailTest2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery(
           "SELECT count_udaf(temperature) AS ct "
-              + "FROM root.sg1.d1, root.sg2.d2 "
+              + "FROM root.db1.d1, root.db2.d2 "
               + "GROUP BY LEVEL=2");
       fail("No exception thrown");
     } catch (Exception e) {
@@ -215,7 +215,7 @@ public class IoTDBUDAFGroupByLevelIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(
           "SELECT count_udaf(temperature) AS ct, count_udaf(temperature) AS ct2 "
-              + "FROM root.sg1.d1 "
+              + "FROM root.db1.d1 "
               + "GROUP BY LEVEL=2");
       fail("No exception thrown");
     } catch (Exception e) {
@@ -233,7 +233,7 @@ public class IoTDBUDAFGroupByLevelIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "SELECT count_udaf(temperature) AS ct "
-                  + "FROM root.sg1.d1, root.sg1.d2 "
+                  + "FROM root.db1.d1, root.db1.d2 "
                   + "GROUP BY ([0, 600), 100ms), LEVEL=1")) {
         while (resultSet.next()) {
           String actual =
@@ -246,7 +246,7 @@ public class IoTDBUDAFGroupByLevelIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT count_udaf(temperature) AS ct FROM root.sg1.* "
+              "SELECT count_udaf(temperature) AS ct FROM root.db1.* "
                   + "GROUP BY ([0, 600), 100ms), LEVEL=1")) {
         while (resultSet.next()) {
           String actual =
@@ -259,7 +259,7 @@ public class IoTDBUDAFGroupByLevelIT {
   }
 
   /**
-   * [root.sg.d1.temperature, root.sg.d2.temperature] with level = 2
+   * [root.db.d1.temperature, root.db.d2.temperature] with level = 2
    *
    * <p>Result is [root.*.d1.temperature, root.*.d2.temperature]
    */
@@ -269,7 +269,7 @@ public class IoTDBUDAFGroupByLevelIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(
           "SELECT count_udaf(temperature) AS ct "
-              + "FROM root.sg1.* "
+              + "FROM root.db1.* "
               + "GROUP BY ([0, 600), 100ms), LEVEL=2");
       fail();
     } catch (Exception e) {
@@ -277,14 +277,14 @@ public class IoTDBUDAFGroupByLevelIT {
     }
   }
 
-  // Different from above at: root.sg1.*.temperature is just one ResultColumn
+  // Different from above at: root.db1.*.temperature is just one ResultColumn
   @Test
   public void UDAFGroupByLevelWithAliasWithTimeIntervalFailTest2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery(
           "SELECT count_udaf(temperature) AS ct "
-              + "FROM root.sg1.d1, root.sg1.d2 "
+              + "FROM root.db1.d1, root.db1.d2 "
               + "GROUP BY ([0, 600), 100ms), level=2");
       fail();
     } catch (Exception e) {
@@ -307,9 +307,9 @@ public class IoTDBUDAFGroupByLevelIT {
                   + "SLIMIT 2")) {
         while (resultSet.next()) {
           String actual =
-              resultSet.getString(countUDAF("root.sg1.*.temperature"))
+              resultSet.getString(countUDAF("root.db1.*.temperature"))
                   + ","
-                  + resultSet.getString(countUDAF("root.sg2.*.temperature"));
+                  + resultSet.getString(countUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected[cnt], actual);
           cnt++;
         }
@@ -323,9 +323,9 @@ public class IoTDBUDAFGroupByLevelIT {
                   + "SLIMIT 2 SOFFSET 1")) {
         while (resultSet.next()) {
           String actual =
-              resultSet.getString(countUDAF("root.sg2.*.temperature"))
+              resultSet.getString(countUDAF("root.db2.*.temperature"))
                   + ","
-                  + resultSet.getString(countUDAF("root.sg1.*.status"));
+                  + resultSet.getString(countUDAF("root.db1.*.status"));
           Assert.assertEquals(expected[cnt], actual);
           cnt++;
         }
@@ -338,7 +338,7 @@ public class IoTDBUDAFGroupByLevelIT {
                   + "GROUP BY level=1,2 "
                   + "slimit 1 soffset 4")) {
         while (resultSet.next()) {
-          String actual = resultSet.getString(countUDAF("root.sg1.d1.status"));
+          String actual = resultSet.getString(countUDAF("root.db1.d1.status"));
           Assert.assertEquals(expected[cnt], actual);
           cnt++;
         }
@@ -368,10 +368,10 @@ public class IoTDBUDAFGroupByLevelIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "SELECT sum_udaf(temperature) "
-                  + "FROM root.sg2.* "
+                  + "FROM root.db2.* "
                   + "GROUP BY ([0, 600), 100ms), LEVEL=1")) {
         while (resultSet.next()) {
-          String actual = "" + resultSet.getString(sumUDAF("root.sg2.*.temperature"));
+          String actual = "" + resultSet.getString(sumUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected1[cnt], actual);
           cnt++;
         }
@@ -385,13 +385,13 @@ public class IoTDBUDAFGroupByLevelIT {
                   + "GROUP BY ([0, 600), 100ms), LEVEL=1")) {
         while (resultSet.next()) {
           String actual =
-              resultSet.getString(maxTime("root.sg1.*.temperature"))
+              resultSet.getString(maxTime("root.db1.*.temperature"))
                   + ","
-                  + resultSet.getString(maxTime("root.sg2.*.temperature"))
+                  + resultSet.getString(maxTime("root.db2.*.temperature"))
                   + ","
-                  + resultSet.getString(avgUDAF("root.sg1.*.temperature"))
+                  + resultSet.getString(avgUDAF("root.db1.*.temperature"))
                   + ","
-                  + resultSet.getString(avgUDAF("root.sg2.*.temperature"));
+                  + resultSet.getString(avgUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected2[cnt], actual);
           cnt++;
         }
@@ -412,10 +412,10 @@ public class IoTDBUDAFGroupByLevelIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "SELECT sum_udaf(temperature) "
-                  + "FROM root.sg2.* "
+                  + "FROM root.db2.* "
                   + "GROUP BY ([0, 600), 100ms), LEVEL=0,1")) {
         while (resultSet.next()) {
-          String actual = "" + resultSet.getString(sumUDAF("root.sg2.*.temperature"));
+          String actual = "" + resultSet.getString(sumUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected[cnt], actual);
           cnt++;
         }
@@ -445,9 +445,9 @@ public class IoTDBUDAFGroupByLevelIT {
           String actual =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(countUDAF("root.sg1.*.temperature"))
+                  + resultSet.getString(countUDAF("root.db1.*.temperature"))
                   + ","
-                  + resultSet.getString(countUDAF("root.sg2.*.temperature"));
+                  + resultSet.getString(countUDAF("root.db2.*.temperature"));
           Assert.assertEquals(expected[cnt], actual);
           cnt++;
         }
@@ -464,9 +464,9 @@ public class IoTDBUDAFGroupByLevelIT {
           String actual =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(countUDAF("root.sg2.*.temperature"))
+                  + resultSet.getString(countUDAF("root.db2.*.temperature"))
                   + ","
-                  + resultSet.getString(countUDAF("root.sg1.*.status"));
+                  + resultSet.getString(countUDAF("root.db1.*.status"));
           Assert.assertEquals(expected2[cnt], actual);
           cnt++;
         }

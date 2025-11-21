@@ -51,7 +51,7 @@ public class DeviceSchemaScanNodeSerdeTest {
     DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(
             new PlanNodeId("deviceSchemaScan"),
-            new PartialPath("root.sg.device0"),
+            new PartialPath("root.db.device0"),
             10,
             10,
             false,

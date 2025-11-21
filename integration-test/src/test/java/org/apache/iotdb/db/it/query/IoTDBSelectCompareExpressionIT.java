@@ -85,7 +85,7 @@ public class IoTDBSelectCompareExpressionIT {
       String _text) {
     return String.format(
         Locale.CHINA,
-        "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (%d, %d, %d, %f, %f, %s, %s);",
+        "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6) values (%d, %d, %d, %f, %f, %s, %s);",
         time,
         intValue32,
         intValue64,
@@ -117,13 +117,13 @@ public class IoTDBSelectCompareExpressionIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s6 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s6 with datatype=TEXT,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -142,7 +142,7 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s1>=5, s1<=5, s1>5, s1<5, s1==5, s1!=5 from root.sg.d1");
+          statement.executeQuery("select s1>=5, s1<=5, s1>5, s1<5, s1==5, s1!=5 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -175,7 +175,7 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s2>=5, s2<=5, s2>5, s2<5, s2==5, s2!=5 from root.sg.d1");
+          statement.executeQuery("select s2>=5, s2<=5, s2>5, s2<5, s2==5, s2!=5 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -208,7 +208,7 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s3>=5, s3<=5, s3>5, s3<5, s3==5, s3!=5 from root.sg.d1");
+          statement.executeQuery("select s3>=5, s3<=5, s3>5, s3<5, s3==5, s3!=5 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -241,7 +241,7 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s4>=5, s4<=5, s4>5, s4<5, s4==5, s4!=5 from root.sg.d1");
+          statement.executeQuery("select s4>=5, s4<=5, s4>5, s4<5, s4==5, s4!=5 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -274,7 +274,7 @@ public class IoTDBSelectCompareExpressionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
-          statement.executeQuery("select s5==true, s5!=true, s5==false, s5!=false from root.sg.d1");
+          statement.executeQuery("select s5==true, s5!=true, s5==false, s5!=false from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 4, columnCount);
 
@@ -305,7 +305,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select s1>=s2, s1<=s2, s1>s3, s1<s3, s1==s4, s1!=s4 from root.sg.d1");
+              "select s1>=s2, s1<=s2, s1>s3, s1<s3, s1==s4, s1!=s4 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -339,7 +339,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select s2>=s3, s2<=s3, s2>s4, s2<s4, s2==s1, s2!=s1 from root.sg.d1");
+              "select s2>=s3, s2<=s3, s2>s4, s2<s4, s2==s1, s2!=s1 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -373,7 +373,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select s3>=s4, s3<=s4, s3>s1, s3<s1, s3==s2, s3!=s2 from root.sg.d1");
+              "select s3>=s4, s3<=s4, s3>s1, s3<s1, s3==s2, s3!=s2 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -407,7 +407,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select s4>=s1, s4<=s1, s4>s2, s4<s2, s4==s3, s4!=s3 from root.sg.d1");
+              "select s4>=s1, s4<=s1, s4>s2, s4<s2, s4==s3, s4!=s3 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
@@ -444,7 +444,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select s1>=1 && s1<3, !(s1 < 2 || s1> 8), !(s2>3) from root.sg.d1");
+              "select s1>=1 && s1<3, !(s1 < 2 || s1> 8), !(s2>3) from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 3, columnCount);
 
@@ -472,7 +472,7 @@ public class IoTDBSelectCompareExpressionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select ( s1 + 1 ) * 2 - 4 < ( s3 * 3 - 6) / 2 && ( s1 + 5 ) * 2 > s2 * 3 + 4 from root.sg.d1");
+              "select ( s1 + 1 ) * 2 - 4 < ( s3 * 3 - 6) / 2 && ( s1 + 5 ) * 2 > s2 * 3 + 4 from root.db.d1");
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount);
 

@@ -174,8 +174,8 @@ public class FileLoaderUtils {
    * Load AlignedTimeSeriesMetadata for aligned time series.
    *
    * @param resource corresponding TsFileResource
-   * @param alignedPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
-   *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
+   * @param alignedPath instance of VectorPartialPath, vector's full path, e.g. (root.db1.d1.vector,
+   *     [root.db1.d1.vector.s1, root.db1.d1.vector.s2])
    * @throws IOException IOException may be thrown while reading it from disk.
    */
   public static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(

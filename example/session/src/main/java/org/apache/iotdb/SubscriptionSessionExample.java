@@ -87,7 +87,7 @@ public class SubscriptionSessionExample {
           String.format(
               "insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", CURRENT_TIME + i));
       session.executeNonQueryStatement(
-          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", CURRENT_TIME + 2 * i));
+          String.format("insert into root.db.d3(time, s1) values (%s, 5)", CURRENT_TIME + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
@@ -216,7 +216,7 @@ public class SubscriptionSessionExample {
                                 QueryExpression.create(
                                     Arrays.asList(
                                         new Path("root.db.d2", "s2", true),
-                                        new Path("root.sg.d3", "s1", true)),
+                                        new Path("root.db.d3", "s1", true)),
                                     null));
                         while (dataSet.hasNext()) {
                           System.out.println(dataSet.next());

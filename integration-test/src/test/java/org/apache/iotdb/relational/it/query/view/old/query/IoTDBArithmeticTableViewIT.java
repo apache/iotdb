@@ -73,27 +73,27 @@ public class IoTDBArithmeticTableViewIT {
 
   private static final String[] INSERTION_SQLS = {
     "CREATE DATABASE root.test",
-    "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s5 WITH DATATYPE=DATE, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s6 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s7 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s8 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (1, 1, 1, 1.0, 1.0, '2024-01-01', 10, true, 'test')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (2, 2, 2, 2.0, 2.0, '2024-02-01', 20, true, 'test')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (3, 3, 3, 3.0, 3.0, '2024-03-01', 30, true, 'test')",
-    "CREATE ALIGNED TIMESERIES root.sg2.d1(date DATE)",
-    "insert into root.sg2.d1(time, date) values (1, '9999-12-31')",
-    "insert into root.sg2.d1(time, date) values (2, '1000-01-01')"
+    "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s5 WITH DATATYPE=DATE, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s6 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s7 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s8 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (1, 1, 1, 1.0, 1.0, '2024-01-01', 10, true, 'test')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (2, 2, 2, 2.0, 2.0, '2024-02-01', 20, true, 'test')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (3, 3, 3, 3.0, 3.0, '2024-03-01', 30, true, 'test')",
+    "CREATE ALIGNED TIMESERIES root.db2.d1(date DATE)",
+    "insert into root.db2.d1(time, date) values (1, '9999-12-31')",
+    "insert into root.db2.d1(time, date) values (2, '1000-01-01')"
   };
 
   private static final String[] CREATE_TABLE_VIEW_SQLS = {
     "CREATE DATABASE " + DATABASE_NAME,
     "USE " + DATABASE_NAME,
-    "CREATE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD, s7 BOOLEAN FIELD, s8 TEXT FIELD) as root.sg.**",
-    "CREATE VIEW table2 (device STRING TAG, date DATE FIELD) as root.sg2.**",
+    "CREATE VIEW table1 (device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 DATE FIELD, s6 TIMESTAMP FIELD, s7 BOOLEAN FIELD, s8 TEXT FIELD) as root.db.**",
+    "CREATE VIEW table2 (device STRING TAG, date DATE FIELD) as root.db2.**",
   };
 
   @BeforeClass

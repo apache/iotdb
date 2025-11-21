@@ -74,7 +74,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
-    String database = "root.sg1.a.b.c";
+    String database = "root.db1.a.b.c";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -126,7 +126,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         statement.execute(
             String.format(
                 "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                "root.sg.d.a\".\"b"));
+                "root.db.d.a\".\"b"));
         fail();
       } catch (SQLException ignored) {
       }
@@ -134,7 +134,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         statement.execute(
             String.format(
                 "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                "root.sg.d.a“（Φ）”b"));
+                "root.db.d.a“（Φ）”b"));
         fail();
       } catch (SQLException ignored) {
       }
@@ -142,17 +142,17 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         statement.execute(
             String.format(
                 "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                "root.sg.d.a>b"));
+                "root.db.d.a>b"));
         fail();
       } catch (SQLException ignored) {
       }
     }
 
     String[] timeSeriesArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`"
+      "root.db.d.`a.b`", "root.db.d.`a“（Φ）”b`", "root.db.d.`a>b`", "root.db.d.`0e38`"
     };
     String[] timeSeriesResArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`",
+      "root.db.d.`a.b`", "root.db.d.`a“（Φ）”b`", "root.db.d.`a>b`", "root.db.d.`0e38`",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -173,7 +173,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
       throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("count timeseries root.sg.**")) {
+        ResultSet resultSet = statement.executeQuery("count timeseries root.db.**")) {
       while (resultSet.next()) {
         long count = resultSet.getLong(1);
         Assert.assertEquals(timeSeriesArray.length, count);
@@ -186,14 +186,14 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64, datatype = test", "root.sg.a"));
+          String.format("create timeseries %s with datatype=INT64, datatype = test", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create timeseries %s with encoding=plain", "root.sg.a"));
+      statement.execute(String.format("create timeseries %s with encoding=plain", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -202,7 +202,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
-              "create timeseries %s with encoding=plain, compressor=snappy", "root.sg.a"));
+              "create timeseries %s with encoding=plain, compressor=snappy", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -210,7 +210,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          String.format("create timeseries %s with datatype=float, encoding=plan", "root.sg.a"));
+          String.format("create timeseries %s with datatype=float, encoding=plan", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -218,7 +218,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64, encoding=test", "root.sg.a"));
+          String.format("create timeseries %s with datatype=INT64, encoding=test", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -228,7 +228,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=test, compression=test",
-              "root.sg.a"));
+              "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -236,7 +236,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64,compression=test", "root.sg.a"));
+          String.format("create timeseries %s with datatype=INT64,compression=test", "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -246,7 +246,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=test",
-              "root.sg.a"));
+              "root.db.a"));
       fail();
     } catch (SQLException ignored) {
     }
@@ -256,14 +256,14 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   public void testQueryDataFromTimeSeriesWithoutData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      statement.execute("create timeseries root.db2.d.s1 with datatype=INT64");
     } catch (SQLException ignored) {
       fail();
     }
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select s1 from root.sg2.d")) {
+        ResultSet resultSet = statement.executeQuery("select s1 from root.db2.d")) {
       while (resultSet.next()) {
         cnt++;
       }
@@ -277,19 +277,19 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   public void testIllegalInput() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      statement.execute("create timeseries root.db2.d.s1 with datatype=INT64");
       assertThrows(
           "Unsupported datatype: UNKNOWN",
           SQLException.class,
-          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=UNKNOWN"));
+          () -> statement.execute("create timeseries root.db2.d.s1 with datatype=UNKNOWN"));
       assertThrows(
           "Unsupported datatype: VECTOR",
           SQLException.class,
-          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=VECTOR"));
+          () -> statement.execute("create timeseries root.db2.d.s1 with datatype=VECTOR"));
       assertThrows(
           "Unsupported datatype: YES",
           SQLException.class,
-          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=YES"));
+          () -> statement.execute("create timeseries root.db2.d.s1 with datatype=YES"));
       assertThrows(
           "Unsupported datatype: UNKNOWN",
           SQLException.class,
@@ -307,14 +307,14 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   public void testDifferentDeviceAlignment() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      statement.execute("create timeseries root.db2.d.s1 with datatype=INT64");
       // Should ignore the alignment difference
-      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+      statement.execute("create aligned timeseries root.db2.d (s2 int64, s3 int64)");
       // Should use the existing alignment
-      statement.execute("insert into root.sg2.d (time, s4) aligned values (-1, 1)");
+      statement.execute("insert into root.db2.d (time, s4) aligned values (-1, 1)");
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from root.sg2.d"),
-          "Time,root.sg2.d.s3,root.sg2.d.s4,root.sg2.d.s1,root.sg2.d.s2,",
+          statement.executeQuery("select * from root.db2.d"),
+          "Time,root.db2.d.s3,root.db2.d.s4,root.db2.d.s1,root.db2.d.s2,",
           Collections.singleton("-1,null,1.0,null,null,"));
     } catch (SQLException ignored) {
       fail();

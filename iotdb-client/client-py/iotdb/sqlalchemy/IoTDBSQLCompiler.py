@@ -49,8 +49,8 @@ class IoTDBSQLCompiler(SQLCompiler):
     ):
         """
         Override this method to solve two problems
-        1. IoTDB does not support querying Time as a measurement name (e.g. select Time from root.storagegroup.device)
-        2. IoTDB does not support path.measurement format to determine a column (e.g. select root.storagegroup.device.temperature from root.storagegroup.device)
+        1. IoTDB does not support querying Time as a measurement name (e.g. select Time from root.database.device)
+        2. IoTDB does not support path.measurement format to determine a column (e.g. select root.database.temperature from root.database.device)
         """
         assert select_wraps_for is None, (
             "SQLAlchemy 1.4 requires use of "

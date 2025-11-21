@@ -85,7 +85,7 @@ public class SchemaRegionListeningQueueTest {
     final PipeEnrichedWritePlanNode node2 =
         new PipeEnrichedWritePlanNode(
             new ActivateTemplateNode(
-                new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.sg.d1.s1"), 2, 1));
+                new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.db.d1.s1"), 2, 1));
 
     PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node1);
     PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node2);

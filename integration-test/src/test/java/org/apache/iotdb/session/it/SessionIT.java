@@ -73,7 +73,7 @@ public class SessionIT {
   @Test
   public void testInsertByStrAndSelectFailedData() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
 
       session.createTimeseries(
           deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
@@ -90,7 +90,7 @@ public class SessionIT {
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
       schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
 
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
+      Tablet tablet = new Tablet("root.db1.d1", schemaList, 10);
 
       for (long time = 0; time < 10; time++) {
         int row = tablet.getRowSize();
@@ -109,7 +109,7 @@ public class SessionIT {
       }
 
       SessionDataSet dataSet =
-          session.executeQueryStatement("select s1, s2, s3, s4 from root.sg1.d1");
+          session.executeQueryStatement("select s1, s2, s3, s4 from root.db1.d1");
       int i = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();

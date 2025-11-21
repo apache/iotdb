@@ -74,24 +74,24 @@ public class IoTDBSessionDisableMemControlIT {
   @Test
   public void insertPartialTabletTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      if (!session.checkTimeseriesExists("root.sg.d.s1")) {
+      if (!session.checkTimeseriesExists("root.db.d.s1")) {
         session.createTimeseries(
-            "root.sg.d.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db.d.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
-      if (!session.checkTimeseriesExists("root.sg.d.s2")) {
+      if (!session.checkTimeseriesExists("root.db.d.s2")) {
         session.createTimeseries(
-            "root.sg.d.s2", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+            "root.db.d.s2", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
       }
-      if (!session.checkTimeseriesExists("root.sg.d.s3")) {
+      if (!session.checkTimeseriesExists("root.db.d.s3")) {
         session.createTimeseries(
-            "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
-      Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+      Tablet tablet = new Tablet("root.db.d", schemaList, 10);
 
       long timestamp = System.currentTimeMillis();
 
@@ -107,7 +107,7 @@ public class IoTDBSessionDisableMemControlIT {
           } catch (StatementExecutionException e) {
             LOGGER.error(e.getMessage());
             assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
-            assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
+            assertTrue(e.getMessage().contains("data type of root.db.d.s3 is not consistent"));
           }
           tablet.reset();
         }
@@ -120,13 +120,13 @@ public class IoTDBSessionDisableMemControlIT {
         } catch (StatementExecutionException e) {
           LOGGER.error(e.getMessage());
           assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
-          assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
+          assertTrue(e.getMessage().contains("data type of root.db.d.s3 is not consistent"));
         }
         tablet.reset();
       }
 
       SessionDataSet dataSet =
-          session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.sg.d");
+          session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.db.d");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(15L, rowRecord.getFields().get(0).getLongV());
@@ -157,7 +157,7 @@ public class IoTDBSessionDisableMemControlIT {
         compressors.add(CompressionType.SNAPPY);
       }
       session.createAlignedTimeseries(
-          "root.sg.d",
+          "root.db.d",
           multiMeasurementComponents,
           dataTypes,
           encodings,
@@ -170,7 +170,7 @@ public class IoTDBSessionDisableMemControlIT {
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
-      Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+      Tablet tablet = new Tablet("root.db.d", schemaList, 10);
 
       long timestamp = System.currentTimeMillis();
 
@@ -186,7 +186,7 @@ public class IoTDBSessionDisableMemControlIT {
           } catch (StatementExecutionException e) {
             LOGGER.error(e.getMessage());
             assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
-            assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
+            assertTrue(e.getMessage().contains("data type of root.db.d.s3 is not consistent"));
           }
           tablet.reset();
         }
@@ -199,12 +199,12 @@ public class IoTDBSessionDisableMemControlIT {
         } catch (StatementExecutionException e) {
           LOGGER.error(e.getMessage());
           assertTrue(e.getMessage().contains("insert measurements [s3] caused by"));
-          assertTrue(e.getMessage().contains("data type of root.sg.d.s3 is not consistent"));
+          assertTrue(e.getMessage().contains("data type of root.db.d.s3 is not consistent"));
         }
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select s1, s2, s3 from root.sg.d");
+      SessionDataSet dataSet = session.executeQueryStatement("select s1, s2, s3 from root.db.d");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getFields().get(0).getLongV());

@@ -111,7 +111,7 @@ public class SystemInfo {
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
+          "Report database Status to the system. " + "After adding {}, current db mem cost is {}.",
           delta,
           totalStorageGroupMemCost);
     }
@@ -122,13 +122,13 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "The total database mem costs are too large, call for flushing. "
-              + "Current sg cost is {}",
+              + "Current db cost is {}",
           totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
       return true;
     } else {
       logger.info(
-          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
+          "Change system to reject status. Triggered by: logical DB ({}), mem cost delta ({}), totalDbMemCost ({}), REJECT_THRESHOLD ({})",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
@@ -151,7 +151,7 @@ public class SystemInfo {
   }
 
   /**
-   * Report resetting the mem cost of sg to system. It will be called after flushing, closing and
+   * Report resetting the mem cost of db to system. It will be called after flushing, closing and
    * failed to insert
    *
    * @param dataRegionInfo database
@@ -163,7 +163,7 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - currentDataRegionMemCost;
       this.totalStorageGroupMemCost -= delta;
       dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
-      // report after reset sg status, because slow write may not reach the report threshold
+      // report after reset db status, because slow write may not reach the report threshold
       dataRegionInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     }
@@ -171,34 +171,34 @@ public class SystemInfo {
     if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
         && totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
-          "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
+          "DB ({}) released memory (delta: {}) but still exceeding flush proportion (totalDbMemCost: {}), call flush.",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
-            "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
+            "DB ({}) released memory (delta: {}), set system to normal status (totalDbMemCost: {}).",
             dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
             totalStorageGroupMemCost);
       }
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = false;
     } else if (totalStorageGroupMemCost >= REJECT_THRESHOLD) {
       logger.warn(
-          "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
+          "DB ({}) released memory (delta: {}), but system is still in reject status (totalDbMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = true;
     } else {
       logger.debug(
-          "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
+          "DB ({}) released memory (delta: {}), system is in normal status (totalDbMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = false;
     }
   }
@@ -398,8 +398,8 @@ public class SystemInfo {
     return compactionFileNumCost;
   }
 
-  private void logCurrentTotalSGMemory() {
-    logger.debug("Current Sg cost is {}", totalStorageGroupMemCost);
+  private void logCurrentTotalDBMemory() {
+    logger.debug("Current Db cost is {}", totalStorageGroupMemCost);
   }
 
   /**

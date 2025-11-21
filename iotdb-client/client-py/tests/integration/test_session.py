@@ -80,44 +80,44 @@ def session_test(use_session_pool=False):
             exit(1)
 
         # set and delete databases
-        session.set_storage_group("root.sg_test_01")
-        session.set_storage_group("root.sg_test_02")
-        session.set_storage_group("root.sg_test_03")
-        session.set_storage_group("root.sg_test_04")
+        session.set_storage_group("root.db_test_01")
+        session.set_storage_group("root.db_test_02")
+        session.set_storage_group("root.db_test_03")
+        session.set_storage_group("root.db_test_04")
 
         try:
-            session.delete_storage_group("root.sg_test_02")
+            session.delete_storage_group("root.db_test_02")
         except Exception:
             test_fail()
             print_message("delete database failed")
 
         try:
-            session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"])
+            session.delete_storage_groups(["root.db_test_03", "root.db_test_04"])
         except Exception:
             test_fail()
             print_message("delete databases failed")
 
         # setting time series.
         session.create_time_series(
-            "root.sg_test_01.d_01.s_01",
+            "root.db_test_01.d_01.s_01",
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             Compressor.SNAPPY,
         )
         session.create_time_series(
-            "root.sg_test_01.d_01.s_02",
+            "root.db_test_01.d_01.s_02",
             TSDataType.INT32,
             TSEncoding.PLAIN,
             Compressor.SNAPPY,
         )
         session.create_time_series(
-            "root.sg_test_01.d_01.s_03",
+            "root.db_test_01.d_01.s_03",
             TSDataType.INT64,
             TSEncoding.PLAIN,
             Compressor.SNAPPY,
         )
         session.create_time_series(
-            "root.sg_test_01.d_02.s_01",
+            "root.db_test_01.d_02.s_01",
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             Compressor.SNAPPY,
@@ -129,12 +129,12 @@ def session_test(use_session_pool=False):
 
         # setting multiple time series once.
         ts_path_lst_ = [
-            "root.sg_test_01.d_01.s_04",
-            "root.sg_test_01.d_01.s_05",
-            "root.sg_test_01.d_01.s_06",
-            "root.sg_test_01.d_01.s_07",
-            "root.sg_test_01.d_01.s_08",
-            "root.sg_test_01.d_01.s_09",
+            "root.db_test_01.d_01.s_04",
+            "root.db_test_01.d_01.s_05",
+            "root.db_test_01.d_01.s_06",
+            "root.db_test_01.d_01.s_07",
+            "root.db_test_01.d_01.s_08",
+            "root.db_test_01.d_01.s_09",
         ]
         data_type_lst_ = [
             TSDataType.FLOAT,
@@ -150,12 +150,12 @@ def session_test(use_session_pool=False):
             ts_path_lst_, data_type_lst_, encoding_lst_, compressor_lst_
         )
         ts_path_lst_ = [
-            "root.sg_test_01.d_02.s_04",
-            "root.sg_test_01.d_02.s_05",
-            "root.sg_test_01.d_02.s_06",
-            "root.sg_test_01.d_02.s_07",
-            "root.sg_test_01.d_02.s_08",
-            "root.sg_test_01.d_02.s_09",
+            "root.db_test_01.d_02.s_04",
+            "root.db_test_01.d_02.s_05",
+            "root.db_test_01.d_02.s_06",
+            "root.db_test_01.d_02.s_07",
+            "root.db_test_01.d_02.s_08",
+            "root.db_test_01.d_02.s_09",
         ]
         data_type_lst_ = [
             TSDataType.FLOAT,
@@ -184,9 +184,9 @@ def session_test(use_session_pool=False):
         try:
             session.delete_time_series(
                 [
-                    "root.sg_test_01.d_01.s_07",
-                    "root.sg_test_01.d_01.s_08",
-                    "root.sg_test_01.d_01.s_09",
+                    "root.db_test_01.d_01.s_07",
+                    "root.db_test_01.d_01.s_08",
+                    "root.db_test_01.d_01.s_09",
                 ]
             )
         except Exception:
@@ -195,22 +195,22 @@ def session_test(use_session_pool=False):
 
         # checking time series
         # s_07 expecting False
-        if session.check_time_series_exists("root.sg_test_01.d_01.s_07"):
+        if session.check_time_series_exists("root.db_test_01.d_01.s_07"):
             test_fail()
-            print_message("root.sg_test_01.d_01.s_07 shouldn't exist")
+            print_message("root.db_test_01.d_01.s_07 shouldn't exist")
 
         # s_03 expecting True
-        if not session.check_time_series_exists("root.sg_test_01.d_01.s_03"):
+        if not session.check_time_series_exists("root.db_test_01.d_01.s_03"):
             test_fail()
-            print_message("root.sg_test_01.d_01.s_03 should exist")
+            print_message("root.db_test_01.d_01.s_03 should exist")
         # d_02.s_01 expecting True
-        if not session.check_time_series_exists("root.sg_test_01.d_02.s_01"):
+        if not session.check_time_series_exists("root.db_test_01.d_02.s_01"):
             test_fail()
-            print_message("root.sg_test_01.d_02.s_01 should exist")
+            print_message("root.db_test_01.d_02.s_01 should exist")
         # d_02.s_06 expecting True
-        if not session.check_time_series_exists("root.sg_test_01.d_02.s_06"):
+        if not session.check_time_series_exists("root.db_test_01.d_02.s_06"):
             test_fail()
-            print_message("root.sg_test_01.d_02.s_06 should exist")
+            print_message("root.db_test_01.d_02.s_06 should exist")
 
         # insert one record into the database.
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
@@ -225,7 +225,7 @@ def session_test(use_session_pool=False):
         ]
         try:
             session.insert_record(
-                "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
+                "root.db_test_01.d_01", 1, measurements_, data_types_, values_
             )
         except Exception:
             test_fail()
@@ -244,7 +244,7 @@ def session_test(use_session_pool=False):
         ]
         try:
             session.insert_record(
-                "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
+                "root.db_test_01.d_01", 1, measurements_, data_types_, values_
             )
         except Exception:
             test_fail()
@@ -260,7 +260,7 @@ def session_test(use_session_pool=False):
             [True, 77, 88, 1.25, 8.125, bytes("test_records02", "utf-8")],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        device_ids_ = ["root.db_test_01.d_01", "root.db_test_01.d_02"]
         try:
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
@@ -279,7 +279,7 @@ def session_test(use_session_pool=False):
             [None, None, None, None, 8.125, bytes("test_records02", "utf-8")],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        device_ids_ = ["root.db_test_01.d_01", "root.db_test_01.d_02"]
         try:
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
@@ -293,7 +293,7 @@ def session_test(use_session_pool=False):
             [None, None, None, None, None, None],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        device_ids_ = ["root.db_test_01.d_01", "root.db_test_01.d_02"]
         try:
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
@@ -311,7 +311,7 @@ def session_test(use_session_pool=False):
         ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
         timestamps_ = [4, 5, 6, 7]
         tablet_ = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
 
         try:
@@ -331,7 +331,7 @@ def session_test(use_session_pool=False):
         ]
         np_timestamps_ = np.array([1, 2, 3, 4], np.dtype(">i8"))
         np_tablet_ = NumpyTablet(
-            "root.sg_test_01.d_02",
+            "root.db_test_01.d_02",
             measurements_,
             data_types_,
             np_values_,
@@ -345,10 +345,10 @@ def session_test(use_session_pool=False):
 
         # insert multiple tablets into database
         tablet_01 = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, [8, 9, 10, 11]
+            "root.db_test_01.d_01", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_02",
+            "root.db_test_01.d_02",
             measurements_,
             data_types_,
             values_,
@@ -369,7 +369,7 @@ def session_test(use_session_pool=False):
         ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
         timestamps_ = [20, 21, 22, 23]
         tablet_ = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
         try:
             session.insert_tablet(tablet_)
@@ -396,7 +396,7 @@ def session_test(use_session_pool=False):
         np_bitmaps_[4].mark(3)
         np_bitmaps_[5].mark(3)
         np_tablet_ = NumpyTablet(
-            "root.sg_test_01.d_01",
+            "root.db_test_01.d_01",
             measurements_,
             data_types_,
             np_values_,
@@ -425,7 +425,7 @@ def session_test(use_session_pool=False):
 
         try:
             session.insert_records_of_one_device(
-                "root.sg_test_01.d_01",
+                "root.db_test_01.d_01",
                 time_list,
                 measurements_list,
                 data_types_list,
@@ -438,17 +438,17 @@ def session_test(use_session_pool=False):
         # execute non-query sql statement
         try:
             session.execute_non_query_statement(
-                "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
+                "insert into root.db_test_01.d_01(timestamp, s_02) values(16, 188)"
             )
         except Exception:
             test_fail()
             print_message(
-                "execute 'insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)' failed"
+                "execute 'insert into root.db_test_01.d_01(timestamp, s_02) values(16, 188)' failed"
             )
 
         # execute sql query statement
         session_data_set = session.execute_query_statement(
-            "select * from root.sg_test_01.d_01"
+            "select * from root.db_test_01.d_01"
         )
         session_data_set.set_fetch_size(1024)
         expect_count = 20

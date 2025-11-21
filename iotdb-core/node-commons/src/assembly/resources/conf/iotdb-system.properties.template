@@ -921,8 +921,8 @@ database_limit_threshold = -1
 enable_auto_create_schema=true
 
 # Database level when creating schema automatically is enabled
-# e.g. root.sg0.d1.s2
-#      we will set root.sg0 as the database if database level is 1
+# e.g. root.db0.d1.s2
+#      we will set root.db0 as the database if database level is 1
 # If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int

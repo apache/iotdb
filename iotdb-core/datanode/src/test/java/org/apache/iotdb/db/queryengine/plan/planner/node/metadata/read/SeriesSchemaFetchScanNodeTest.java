@@ -37,11 +37,11 @@ public class SeriesSchemaFetchScanNodeTest {
   @Test
   public void testSerialization() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.**.*"));
     SeriesSchemaFetchScanNode seriesSchemaFetchScanNode =
         new SeriesSchemaFetchScanNode(
             new PlanNodeId("0"),
-            new PartialPath("root.sg"),
+            new PartialPath("root.db"),
             patternTree,
             Collections.emptyMap(),
             true,
@@ -53,9 +53,9 @@ public class SeriesSchemaFetchScanNodeTest {
     byteBuffer.flip();
     SeriesSchemaFetchScanNode recoveredNode =
         (SeriesSchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
+    Assert.assertEquals("root.db", recoveredNode.getStorageGroup().getFullPath());
     Assert.assertEquals(
-        "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
+        "root.db.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
     Assert.assertTrue(recoveredNode.isWithTags());
     Assert.assertTrue(recoveredNode.isWithTemplate());
   }

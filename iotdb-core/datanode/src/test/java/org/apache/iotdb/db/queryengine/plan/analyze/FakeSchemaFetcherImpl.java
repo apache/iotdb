@@ -52,7 +52,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       boolean withTemplate,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -62,7 +62,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       PathPatternTree authorityScope,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -72,7 +72,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       PathPatternTree authorityScope,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -101,16 +101,16 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   /**
-   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
-   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   * Generate the following tree: root.db.d1.s1, root.db.d1.s2(status) root.db.d2.s1,
+   * root.db.d2.s2(status) root.db.d2.a.s1, root.db.d2.a.s2(status)
    *
    * @return the root node of the generated schemaTree
    */
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
-    root.addChild("sg", sg);
+    SchemaNode db = new SchemaInternalNode("db");
+    root.addChild("db", db);
 
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
@@ -127,14 +127,14 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     s2.setAlias("status");
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
     d1.addChild("s1", s1);
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
     d1.addChild("s3", s3);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
-    sg.addChild("d2", d2);
+    db.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);

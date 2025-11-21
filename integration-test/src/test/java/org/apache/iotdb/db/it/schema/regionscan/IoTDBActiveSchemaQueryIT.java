@@ -45,17 +45,17 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
 
   private static String[] sqls =
       new String[] {
-        "create aligned timeseries root.sg.d1(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))",
-        "CREATE TIMESERIES root.sg.d0.s0 WITH DATATYPE=INT32",
-        "CREATE TIMESERIES root.sg.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2",
-        "CREATE TIMESERIES root.sg.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15",
+        "create aligned timeseries root.db.d1(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))",
+        "CREATE TIMESERIES root.db.d0.s0 WITH DATATYPE=INT32",
+        "CREATE TIMESERIES root.db.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2",
+        "CREATE TIMESERIES root.db.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15",
         "CREATE DEVICE TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)",
         "CREATE DEVICE TEMPLATE t2 aligned(s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)",
-        "SET DEVICE TEMPLATE t1 to root.sg.d2",
-        "SET DEVICE TEMPLATE t2 to root.sg.d3",
-        "CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg.d2",
-        "CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg.d3",
-        "set ttl to root.sg.d3 60000",
+        "SET DEVICE TEMPLATE t1 to root.db.d2",
+        "SET DEVICE TEMPLATE t2 to root.db.d3",
+        "CREATE TIMESERIES OF DEVICE TEMPLATE ON root.db.d2",
+        "CREATE TIMESERIES OF DEVICE TEMPLATE ON root.db.d3",
+        "set ttl to root.db.d3 60000",
       };
 
   public IoTDBActiveSchemaQueryIT(SchemaTestMode schemaTestMode) {
@@ -107,19 +107,19 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       Set<String> expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-                  "root.sg.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
-                  "root.sg.d0.s0,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
-                  "root.sg.d0.s2,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,",
-                  "root.sg.d2.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d2.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d3.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.**", expected);
+                  "root.db.d1.s1,alias1,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+                  "root.db.d1.s2,null,root.db,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
+                  "root.db.d0.s0,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d0.s1,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+                  "root.db.d0.s2,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,",
+                  "root.db.d2.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d2.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d3.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d3.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
+      checkResultSet(statement, "show timeseries root.db.**", expected);
       // 1. Without any data, result set should be empty
       try (ResultSet resultSet =
-          statement.executeQuery("show timeseries root.sg.** where time>0")) {
+          statement.executeQuery("show timeseries root.db.** where time>0")) {
         Assert.assertFalse(resultSet.next());
       }
       // 2. Insert data and check again.
@@ -127,107 +127,107 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       // - root.db.d1.* time=2
       // - root.db.d2.* time=3
       // - root.db.d3.* time=now()
-      statement.execute("insert into root.sg.d0(timestamp,s0, s1, s2) values(1,1,1,1)");
-      statement.execute("insert into root.sg.d1(timestamp,s1,s2) values(2,2,2)");
-      statement.execute("insert into root.sg.d2(timestamp,s1,s2) values(3,3,3)");
-      statement.execute("insert into root.sg.d3(timestamp,s1,s2) values(now(),4,4)");
+      statement.execute("insert into root.db.d0(timestamp,s0, s1, s2) values(1,1,1,1)");
+      statement.execute("insert into root.db.d1(timestamp,s1,s2) values(2,2,2)");
+      statement.execute("insert into root.db.d2(timestamp,s1,s2) values(3,3,3)");
+      statement.execute("insert into root.db.d3(timestamp,s1,s2) values(now(),4,4)");
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-                  "root.sg.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
-                  "root.sg.d0.s0,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
-                  "root.sg.d0.s2,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,",
-                  "root.sg.d2.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d2.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d3.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.** where time>0", expected);
+                  "root.db.d1.s1,alias1,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+                  "root.db.d1.s2,null,root.db,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
+                  "root.db.d0.s0,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d0.s1,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+                  "root.db.d0.s2,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,",
+                  "root.db.d2.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d2.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d3.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d3.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
+      checkResultSet(statement, "show timeseries root.db.** where time>0", expected);
       checkResultSet(
           statement,
-          "count timeseries root.sg.** where time>0",
+          "count timeseries root.db.** where time>0",
           new HashSet<>(Collections.singletonList("9,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-                  "root.sg.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
-                  "root.sg.d2.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d2.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d3.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.** where time>1", expected);
+                  "root.db.d1.s1,alias1,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+                  "root.db.d1.s2,null,root.db,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
+                  "root.db.d2.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d2.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d3.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d3.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
+      checkResultSet(statement, "show timeseries root.db.** where time>1", expected);
       checkResultSet(
           statement,
-          "count timeseries root.sg.** where time>1",
+          "count timeseries root.db.** where time>1",
           new HashSet<>(Collections.singletonList("6,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-                  "root.sg.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
-                  "root.sg.d2.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d2.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
-                  "root.sg.d3.s2,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.** where time!=1", expected);
+                  "root.db.d1.s1,alias1,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+                  "root.db.d1.s2,null,root.db,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,",
+                  "root.db.d2.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d2.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d3.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                  "root.db.d3.s2,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"));
+      checkResultSet(statement, "show timeseries root.db.** where time!=1", expected);
       checkResultSet(
           statement,
-          "count timeseries root.sg.** where time!=1",
+          "count timeseries root.db.** where time!=1",
           new HashSet<>(Collections.singletonList("6,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d0.s0,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
-                  "root.sg.d0.s2,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.** where time<2", expected);
+                  "root.db.d0.s0,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d0.s1,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+                  "root.db.d0.s2,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,"));
+      checkResultSet(statement, "show timeseries root.db.** where time<2", expected);
       checkResultSet(
           statement,
-          "count timeseries root.sg.** where time<2",
+          "count timeseries root.db.** where time<2",
           new HashSet<>(Collections.singletonList("3,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d0.s0,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
-                  "root.sg.d0.s2,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,"));
-      checkResultSet(statement, "show timeseries root.sg.** where time=1", expected);
+                  "root.db.d0.s0,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.d0.s1,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+                  "root.db.d0.s2,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,"));
+      checkResultSet(statement, "show timeseries root.db.** where time=1", expected);
       checkResultSet(
           statement,
-          "count timeseries root.sg.** where time=1",
+          "count timeseries root.db.** where time=1",
           new HashSet<>(Collections.singletonList("3,")));
       // 3. Check non-root user
       statement.execute("CREATE USER user1 'password123456'");
-      statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
-      statement.execute("GRANT READ_SCHEMA ON root.sg.d3.s1 TO USER user1");
+      statement.execute("GRANT READ_SCHEMA ON root.db.d0.s1 TO USER user1");
+      statement.execute("GRANT READ_SCHEMA ON root.db.d3.s1 TO USER user1");
       try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.1 Without read data permission, result set should be empty
         try (ResultSet resultSet =
-            userStmt.executeQuery("show timeseries root.sg.** where time>0")) {
+            userStmt.executeQuery("show timeseries root.db.** where time>0")) {
           Assert.assertFalse(resultSet.next());
         }
         checkResultSet(
             userStmt,
-            "count timeseries root.sg.** where time>0",
+            "count timeseries root.db.** where time>0",
             new HashSet<>(Collections.singletonList("0,")));
       }
-      statement.execute("GRANT READ_DATA ON root.sg.d0.s1 TO USER user1");
-      statement.execute("GRANT READ_DATA ON root.sg.d3.s1 TO USER user1");
+      statement.execute("GRANT READ_DATA ON root.db.d0.s1 TO USER user1");
+      statement.execute("GRANT READ_DATA ON root.db.d3.s1 TO USER user1");
       try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.2 With read data permission, result set should not be empty
         expected =
             new HashSet<>(
                 Arrays.asList(
-                    "root.sg.d0.s1,null,root.sg,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
-                    "root.sg.d3.s1,null,root.sg,INT64,RLE,SNAPPY,null,null,null,null,BASE,"));
-        checkResultSet(userStmt, "show timeseries root.sg.** where time>0", expected);
+                    "root.db.d0.s1,null,root.db,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,",
+                    "root.db.d3.s1,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,"));
+        checkResultSet(userStmt, "show timeseries root.db.** where time>0", expected);
         checkResultSet(
             userStmt,
-            "count timeseries root.sg.** where time>0",
+            "count timeseries root.db.** where time>0",
             new HashSet<>(Collections.singletonList("2,")));
       }
     } catch (Exception e) {
@@ -244,96 +244,96 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
       Set<String> expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d0,false,null,INF,",
-                  "root.sg.d1,true,null,INF,",
-                  "root.sg.d2,false,t1,INF,",
-                  "root.sg.d3,true,t2,60000,"));
-      checkResultSet(statement, "show devices root.sg.*", expected);
+                  "root.db.d0,false,null,INF,",
+                  "root.db.d1,true,null,INF,",
+                  "root.db.d2,false,t1,INF,",
+                  "root.db.d3,true,t2,60000,"));
+      checkResultSet(statement, "show devices root.db.*", expected);
       // 1. Without any data, result set should be empty
-      try (ResultSet resultSet = statement.executeQuery("show devices root.sg.* where time>0")) {
+      try (ResultSet resultSet = statement.executeQuery("show devices root.db.* where time>0")) {
         Assert.assertFalse(resultSet.next());
       }
       // 2. Insert data and check again.
-      // - root.sg.d0.* time=1
-      // - root.sg.d1.* time=2
-      // - root.sg.d2.* time=3
-      // - root.sg.d3.* time=now()
-      statement.execute("insert into root.sg.d0(timestamp,s0, s1, s2) values(1,1,1,1)");
-      statement.execute("insert into root.sg.d1(timestamp,s1,s2) values(2,2,2)");
-      statement.execute("insert into root.sg.d2(timestamp,s1,s2) values(3,3,3)");
-      statement.execute("insert into root.sg.d3(timestamp,s1,s2) values(now(),4,4)");
+      // - root.db.d0.* time=1
+      // - root.db.d1.* time=2
+      // - root.db.d2.* time=3
+      // - root.db.d3.* time=now()
+      statement.execute("insert into root.db.d0(timestamp,s0, s1, s2) values(1,1,1,1)");
+      statement.execute("insert into root.db.d1(timestamp,s1,s2) values(2,2,2)");
+      statement.execute("insert into root.db.d2(timestamp,s1,s2) values(3,3,3)");
+      statement.execute("insert into root.db.d3(timestamp,s1,s2) values(now(),4,4)");
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d0,false,null,INF,",
-                  "root.sg.d1,true,null,INF,",
-                  "root.sg.d2,false,t1,INF,",
-                  "root.sg.d3,true,t2,60000,"));
-      checkResultSet(statement, "show devices root.sg.* where time>0", expected);
+                  "root.db.d0,false,null,INF,",
+                  "root.db.d1,true,null,INF,",
+                  "root.db.d2,false,t1,INF,",
+                  "root.db.d3,true,t2,60000,"));
+      checkResultSet(statement, "show devices root.db.* where time>0", expected);
       checkResultSet(
           statement,
-          "count devices root.sg.* where time>0",
+          "count devices root.db.* where time>0",
           new HashSet<>(Collections.singletonList("4,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1,true,null,INF,",
-                  "root.sg.d2,false,t1,INF,",
-                  "root.sg.d3,true,t2,60000,"));
-      checkResultSet(statement, "show devices root.sg.* where time>1", expected);
+                  "root.db.d1,true,null,INF,",
+                  "root.db.d2,false,t1,INF,",
+                  "root.db.d3,true,t2,60000,"));
+      checkResultSet(statement, "show devices root.db.* where time>1", expected);
       checkResultSet(
           statement,
-          "count devices root.sg.* where time>1",
+          "count devices root.db.* where time>1",
           new HashSet<>(Collections.singletonList("3,")));
       expected =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.d1,true,null,INF,",
-                  "root.sg.d2,false,t1,INF,",
-                  "root.sg.d3,true,t2,60000,"));
-      checkResultSet(statement, "show devices root.sg.* where time!=1", expected);
+                  "root.db.d1,true,null,INF,",
+                  "root.db.d2,false,t1,INF,",
+                  "root.db.d3,true,t2,60000,"));
+      checkResultSet(statement, "show devices root.db.* where time!=1", expected);
       checkResultSet(
           statement,
-          "count devices root.sg.* where time!=1",
+          "count devices root.db.* where time!=1",
           new HashSet<>(Collections.singletonList("3,")));
-      expected = new HashSet<>(Collections.singletonList("root.sg.d0,false,null,INF,"));
-      checkResultSet(statement, "show devices root.sg.* where time<2", expected);
+      expected = new HashSet<>(Collections.singletonList("root.db.d0,false,null,INF,"));
+      checkResultSet(statement, "show devices root.db.* where time<2", expected);
       checkResultSet(
           statement,
-          "count devices root.sg.* where time<2",
+          "count devices root.db.* where time<2",
           new HashSet<>(Collections.singletonList("1,")));
-      expected = new HashSet<>(Collections.singletonList("root.sg.d0,false,null,INF,"));
-      checkResultSet(statement, "show devices root.sg.* where time=1", expected);
+      expected = new HashSet<>(Collections.singletonList("root.db.d0,false,null,INF,"));
+      checkResultSet(statement, "show devices root.db.* where time=1", expected);
       checkResultSet(
           statement,
-          "count devices root.sg.* where time=1",
+          "count devices root.db.* where time=1",
           new HashSet<>(Collections.singletonList("1,")));
       // 3. Check non-root user
       statement.execute("CREATE USER user1 'password123456'");
-      statement.execute("GRANT READ_SCHEMA ON root.sg.d0.s1 TO USER user1");
-      statement.execute("GRANT READ_SCHEMA ON root.sg.d3.s1 TO USER user1");
+      statement.execute("GRANT READ_SCHEMA ON root.db.d0.s1 TO USER user1");
+      statement.execute("GRANT READ_SCHEMA ON root.db.d3.s1 TO USER user1");
       try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.1 Without read data permission, result set should be empty
-        try (ResultSet resultSet = userStmt.executeQuery("show devices root.sg.* where time>0")) {
+        try (ResultSet resultSet = userStmt.executeQuery("show devices root.db.* where time>0")) {
           Assert.assertFalse(resultSet.next());
         }
         checkResultSet(
             userStmt,
-            "count devices root.sg.* where time>0",
+            "count devices root.db.* where time>0",
             new HashSet<>(Collections.singletonList("0,")));
       }
-      statement.execute("GRANT READ_DATA ON root.sg.d0.s1 TO USER user1");
-      statement.execute("GRANT READ_DATA ON root.sg.d3.s1 TO USER user1");
+      statement.execute("GRANT READ_DATA ON root.db.d0.s1 TO USER user1");
+      statement.execute("GRANT READ_DATA ON root.db.d3.s1 TO USER user1");
       try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password123456");
           Statement userStmt = userCon.createStatement()) {
         // 3.2 With read data permission, result set should not be empty
         expected =
-            new HashSet<>(Arrays.asList("root.sg.d0,false,null,INF,", "root.sg.d3,true,t2,60000,"));
-        checkResultSet(userStmt, "show devices root.sg.* where time>0", expected);
+            new HashSet<>(Arrays.asList("root.db.d0,false,null,INF,", "root.db.d3,true,t2,60000,"));
+        checkResultSet(userStmt, "show devices root.db.* where time>0", expected);
         checkResultSet(
             userStmt,
-            "count devices root.sg.* where time>0",
+            "count devices root.db.* where time>0",
             new HashSet<>(Collections.singletonList("2,")));
       }
 

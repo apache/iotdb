@@ -127,7 +127,7 @@ public class IoTDBRestServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
       String json =
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.db25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -156,7 +156,7 @@ public class IoTDBRestServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
       String json =
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":false,\"deviceId\":\"root.db25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -217,7 +217,7 @@ public class IoTDBRestServiceTest {
       HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
       httpPost.setHeader("Accept", "application/json");
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
@@ -249,7 +249,7 @@ public class IoTDBRestServiceTest {
       httpPost.setHeader("Accept", "application/json");
       String authorization = getAuthorization("abc", "def");
       httpPost.setHeader("Authorization", authorization);
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
@@ -275,7 +275,7 @@ public class IoTDBRestServiceTest {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -289,14 +289,14 @@ public class IoTDBRestServiceTest {
       List<Object> expressions =
           new ArrayList<Object>() {
             {
-              add("root.sg25.s3");
-              add("root.sg25.s4");
-              add("root.sg25.s5");
-              add("root.sg25.s6");
-              add("root.sg25.s7");
-              add("root.sg25.s8");
-              add("root.sg25.s4 + 1");
-              add("root.sg25.s4 + 1");
+              add("root.db25.s3");
+              add("root.db25.s4");
+              add("root.db25.s5");
+              add("root.db25.s6");
+              add("root.db25.s7");
+              add("root.db25.s8");
+              add("root.db25.s4 + 1");
+              add("root.db25.s4 + 1");
             }
           };
       List<Object> timestamps =
@@ -378,7 +378,7 @@ public class IoTDBRestServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
       String sql =
-          "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
+          "{\"sql\":\"select count(s4) from root.db25 group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -391,7 +391,7 @@ public class IoTDBRestServiceTest {
       Assert.assertTrue(map.size() > 0);
       Assert.assertTrue(timestampsResult.size() == 10);
       Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertTrue("count(root.db25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -411,7 +411,7 @@ public class IoTDBRestServiceTest {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\",\"rowLimit\":1}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\",\"rowLimit\":1}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -476,7 +476,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
 
@@ -499,7 +499,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("db25");
           }
         };
 
@@ -523,7 +523,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     List<Object> values2 =
@@ -552,7 +552,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -592,12 +592,12 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s3");
-            add("root.sg25.s4");
-            add("root.sg25.s5");
-            add("root.sg25.s6");
-            add("root.sg25.s7");
-            add("root.sg25.s8");
+            add("root.db25.s3");
+            add("root.db25.s4");
+            add("root.db25.s5");
+            add("root.db25.s6");
+            add("root.db25.s7");
+            add("root.db25.s8");
           }
         };
     List<Object> values2 =
@@ -614,12 +614,12 @@ public class IoTDBRestServiceTest {
     List<Object> values3 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
           }
         };
 
@@ -653,12 +653,12 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s3");
-            add("root.sg25.s4");
-            add("root.sg25.s5");
-            add("root.sg25.s7");
-            add("root.sg25.s8");
-            add("root.sg25.s6");
+            add("root.db25.s3");
+            add("root.db25.s4");
+            add("root.db25.s5");
+            add("root.db25.s7");
+            add("root.db25.s8");
+            add("root.db25.s6");
           }
         };
     List<Object> values2 =
@@ -675,12 +675,12 @@ public class IoTDBRestServiceTest {
     List<Object> values3 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
           }
         };
 
@@ -706,7 +706,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     List<Object> values2 =
@@ -760,7 +760,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     List<Boolean> values2 =
@@ -798,13 +798,13 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     List<Object> values2 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     List<Object> values3 =
@@ -857,7 +857,7 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("count(root.sg25.s3)");
+            add("count(root.db25.s3)");
           }
         };
     List<Object> values1 =
@@ -871,7 +871,7 @@ public class IoTDBRestServiceTest {
   }
 
   public void selectLast(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"select last s4 from root.sg25\"}";
+    String sql = "{\"sql\":\"select last s4 from root.db25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -894,7 +894,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s4");
+            add("root.db25.s4");
           }
         };
     List<Object> values2 =

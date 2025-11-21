@@ -61,7 +61,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 
 public abstract class AbstractAlignedSeriesScanTest {
 
-  protected static final String TEST_DATABASE = "root.sg_pd";
+  protected static final String TEST_DATABASE = "root.db_pd";
   protected static final IDeviceID TEST_DEVICE =
       IDeviceID.Factory.DEFAULT_FACTORY.create(TEST_DATABASE + ".d1_aligned");
 
@@ -69,7 +69,7 @@ public abstract class AbstractAlignedSeriesScanTest {
    * The data distribution is as follows.
    *
    * <pre>
-   *  time    root.sg_pd.d1_aligned(s1, s2, s3)
+   *  time    root.db_pd.d1_aligned(s1, s2, s3)
    *      ┌──────────┐
    *   0  │ f1-c1-p1 │ (s1, s2, s3 align on time column)
    *      ╞══════════╡

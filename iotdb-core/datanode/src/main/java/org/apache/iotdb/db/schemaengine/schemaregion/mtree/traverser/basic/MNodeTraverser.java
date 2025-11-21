@@ -33,12 +33,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
  */
 public abstract class MNodeTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
-  // Level query option started from 0. For example, level of root.sg.d1.s1 is 3.
+  // Level query option started from 0. For example, level of root.db.d1.s1 is 3.
   protected int targetLevel = -1;
   protected N lastVisitNode = null;
 
   /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   * To traverse subtree under root.db, e.g., init Traverser(root, "root.db.**")
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse

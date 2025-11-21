@@ -322,11 +322,11 @@ public class CNPhysicalPlanGeneratorTest {
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
     final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
+    storageGroupPathList.add("root.db");
     storageGroupPathList.add("root.ln");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    storageGroupPathList.add("root.a.db");
+    storageGroupPathList.add("root.a.b.db");
+    storageGroupPathList.add("root.a.a.a.b.db");
 
     int i = 0;
     for (String path : storageGroupPathList) {
@@ -441,10 +441,10 @@ public class CNPhysicalPlanGeneratorTest {
     setupTTLInfo();
     final Set<Integer> answerSet = new HashSet<>();
     final Set<String> storageGroupPathList = new TreeSet<>();
-    storageGroupPathList.add("root.sg");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    storageGroupPathList.add("root.db");
+    storageGroupPathList.add("root.a.db");
+    storageGroupPathList.add("root.a.b.db");
+    storageGroupPathList.add("root.a.a.a.b.db");
 
     int i = 0;
     for (String path : storageGroupPathList) {
@@ -487,13 +487,13 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(plan2.hashCode());
 
     final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan1 =
-        new PreSetSchemaTemplatePlan("t1", "root.sg");
+        new PreSetSchemaTemplatePlan("t1", "root.db");
     final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan2 =
-        new PreSetSchemaTemplatePlan("t2", "root.a.sg.t1");
+        new PreSetSchemaTemplatePlan("t2", "root.a.db.t1");
     final CommitSetSchemaTemplatePlan setSchemaTemplatePlan1 =
-        new CommitSetSchemaTemplatePlan("t1", "root.sg");
+        new CommitSetSchemaTemplatePlan("t1", "root.db");
     final CommitSetSchemaTemplatePlan setSchemaTemplatePlan2 =
-        new CommitSetSchemaTemplatePlan("t2", "root.a.sg.t1");
+        new CommitSetSchemaTemplatePlan("t2", "root.a.db.t1");
     clusterSchemaInfo.preSetSchemaTemplate(preSetSchemaTemplatePlan1);
     clusterSchemaInfo.preSetSchemaTemplate(preSetSchemaTemplatePlan2);
     clusterSchemaInfo.commitSetSchemaTemplate(setSchemaTemplatePlan1);

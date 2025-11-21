@@ -61,58 +61,58 @@ public class IoTDBOrderByTableViewIT {
   // https://docs.google.com/spreadsheets/d/1OWA1bKraArCwWVnuTjuhJ5yLG0PFLdD78gD6FjquepI/edit#gid=0
   private static final String[] sql =
       new String[] {
-        "CREATE DATABASE root.sg",
-        "CREATE TIMESERIES root.sg.d1.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d1.bignum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d1.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
-        "CREATE TIMESERIES root.sg.d1.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d1.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d1(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.d1.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d1.bignum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d1.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.db.d1.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.db.d1(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
   private static final String[] createTableViewSql = {
     "CREATE DATABASE db",
     "USE db",
     "CREATE VIEW table0 (device string tag, num int32 field, bignum int64 field, "
-        + "floatnum double field, str TEXT field, bool BOOLEAN field) as root.sg.**",
+        + "floatnum double field, str TEXT field, bool BOOLEAN field) as root.db.**",
   };
 
   private static final String[] sql2 =
       new String[] {
-        "CREATE TIMESERIES root.sg.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.bignum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
-        "CREATE TIMESERIES root.sg.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
+        "CREATE TIMESERIES root.db.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d2.bignum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d2.floatnum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.db.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bignum,floatnum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)"
       };
 
   @BeforeClass
@@ -470,7 +470,7 @@ public class IoTDBOrderByTableViewIT {
   @Ignore
   @Test
   public void orderByInAggregationTest() {
-    String sql = "select avg(num) from root.sg.d group by session(10000ms) order by avg(num) desc";
+    String sql = "select avg(num) from root.db.d group by session(10000ms) order by avg(num) desc";
     double[][] ans = new double[][] {{15.0}, {13.0}, {13.0}, {11.0}, {6.4}, {4.6}};
     long[] times =
         new long[] {51536000000L, 41536000000L, 41536900000L, 31536100000L, 31536000000L, 0L};
@@ -497,7 +497,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest2() {
     String sql =
-        "select avg(num) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
+        "select avg(num) from root.db.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
           {13.0, 54.12},
@@ -532,7 +532,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest3() {
     String sql =
-        "select avg(num) from root.sg.d group by session(10000ms) order by avg(num) desc,max_value(floatNum)";
+        "select avg(num) from root.db.d group by session(10000ms) order by avg(num) desc,max_value(floatNum)";
     double[] ans = new double[] {15.0, 13.0, 13.0, 11.0, 6.4, 4.6};
     long[] times =
         new long[] {51536000000L, 41536900000L, 41536000000L, 31536100000L, 31536000000L, 0L};
@@ -559,7 +559,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest4() {
     String sql =
-        "select avg(num)+avg(floatNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select avg(num)+avg(floatNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     double[][] ans =
         new double[][] {{1079.56122}, {395.4584}, {65.121}, {151.2855}, {67.12}, {250.213}};
     long[] times =
@@ -588,7 +588,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest5() {
     String sql =
-        "select min_value(bigNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select min_value(bigNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     long[] ans =
         new long[] {2147483646L, 2147483650L, 2147468648L, 2146483648L, 2107483648L, 3147483648L};
     long[] times =
@@ -617,7 +617,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest6() {
     String sql =
-        "select min_value(num)+min_value(bigNum) from root.sg.d group by session(10000ms) order by avg(num)+avg(floatNum)";
+        "select min_value(num)+min_value(bigNum) from root.db.d group by session(10000ms) order by avg(num)+avg(floatNum)";
     long[] ans =
         new long[] {2147483647L, 2147483654L, 2147468659L, 2146483660L, 2107483661L, 3147483663L};
     long[] times =
@@ -646,7 +646,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest7() {
     String sql =
-        "select avg(num)+min_value(floatNum) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
+        "select avg(num)+min_value(floatNum) from root.db.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
           {13.0, 54.12, 54.12},
@@ -681,7 +681,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByInAggregationTest8() {
     String sql =
-        "select avg(num)+avg(floatNum) from root.sg.d group by session(10000ms) order by avg(floatNum)+avg(num)";
+        "select avg(num)+avg(floatNum) from root.db.d group by session(10000ms) order by avg(floatNum)+avg(num)";
     double[][] ans =
         new double[][] {{1079.56122}, {395.4584}, {65.121}, {151.2855}, {67.12}, {250.213}};
     long[] times =
@@ -1077,18 +1077,18 @@ public class IoTDBOrderByTableViewIT {
         };
     String[] device =
         new String[] {
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2"
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1121,8 +1121,8 @@ public class IoTDBOrderByTableViewIT {
   }
 
   private void checkSingleDouble(String sql, Object value, boolean deviceAsc) {
-    String device = "root.sg.d";
-    if (!deviceAsc) device = "root.sg.d2";
+    String device = "root.db.d";
+    if (!deviceAsc) device = "root.db.d2";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -1132,8 +1132,8 @@ public class IoTDBOrderByTableViewIT {
           double actualVal = resultSet.getDouble(2);
           assertEquals(deviceName, device);
           assertEquals(Double.parseDouble(value.toString()), actualVal, 1);
-          if (device.equals("root.sg.d")) device = "root.sg.d2";
-          else device = "root.sg.d";
+          if (device.equals("root.db.d")) device = "root.db.d2";
+          else device = "root.db.d";
           i++;
         }
         assertEquals(i, 2);
@@ -1310,7 +1310,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByUDFTest1() {
     String sql =
-        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2') nulls first, bottom_k(bigNum, 'k'='2') nulls first";
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.db.d order by top_k(num, 'k'='2') nulls first, bottom_k(bigNum, 'k'='2') nulls first";
     int[] ans = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 11, 12, 14};
     orderByUDFTest(sql, ans);
   }
@@ -1319,7 +1319,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void orderByUDFTest2() {
     String sql =
-        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
+        "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.db.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
     int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     orderByUDFTest(sql, ans);
   }
@@ -1337,7 +1337,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void errorTest1() {
     errorTest(
-        "select num from root.sg.d order by avg(bigNum)",
+        "select num from root.db.d order by avg(bigNum)",
         "701: Raw data and aggregation hybrid query is not supported.");
   }
 
@@ -1345,7 +1345,7 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void errorTest2() {
     errorTest(
-        "select avg(num) from root.sg.d order by bigNum",
+        "select avg(num) from root.db.d order by bigNum",
         "701: Raw data and aggregation hybrid query is not supported.");
   }
 
@@ -1368,8 +1368,8 @@ public class IoTDBOrderByTableViewIT {
   @Test
   public void errorTest7() {
     errorTest(
-        "select last bigNum,floatNum from root.** order by root.sg.d.bigNum",
-        "701: root.sg.d.bigNum in order by clause doesn't exist in the result of last query.");
+        "select last bigNum,floatNum from root.** order by root.db.d.bigNum",
+        "701: root.db.d.bigNum in order by clause doesn't exist in the result of last query.");
   }
 
   // last query
@@ -1405,7 +1405,7 @@ public class IoTDBOrderByTableViewIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
+          {"root.db.d.num", "root.db.d2.num", "root.db.d.bigNum", "root.db.d2.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };
@@ -1419,7 +1419,7 @@ public class IoTDBOrderByTableViewIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d2.bigNum", "root.db.d.num", "root.db.d.bigNum"},
           {"15", "3147483648", "15", "3147483648"},
           {"INT32", "INT64", "INT32", "INT64"}
         };
@@ -1433,7 +1433,7 @@ public class IoTDBOrderByTableViewIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d2.bigNum", "root.db.d.num", "root.db.d.bigNum"},
           {"15", "3147483648", "15", "3147483648"},
           {"INT32", "INT64", "INT32", "INT64"}
         };
@@ -1447,7 +1447,7 @@ public class IoTDBOrderByTableViewIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d.num", "root.db.d2.bigNum", "root.db.d.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };
@@ -1461,7 +1461,7 @@ public class IoTDBOrderByTableViewIT {
     String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
-          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"root.db.d2.num", "root.db.d.num", "root.db.d2.bigNum", "root.db.d.bigNum"},
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };

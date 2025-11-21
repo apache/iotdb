@@ -65,7 +65,7 @@ public class IoTDBGroupByNaturalMonthIT {
     for (long i = 1604102400000L /*  2020-10-31 00:00:00 */;
         i <= 1617148800000L /* 2021-03-31 00:00:00 */;
         i += 86400_000L) {
-      dataSet.add("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      dataSet.add("insert into root.db1.d1(timestamp, temperature) values (" + i + ", 1)");
     }
 
     // TimeRange: [2023-01-01 00:00:00, 2027-01-01 00:00:00]
@@ -103,7 +103,7 @@ public class IoTDBGroupByNaturalMonthIT {
    */
   @Test
   public void groupByNaturalMonthTest1() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray =
         new String[] {
           "10/31/2020:00:00:00,30.0,",
@@ -113,7 +113,7 @@ public class IoTDBGroupByNaturalMonthIT {
           "02/28/2021:00:00:00,1.0,"
         };
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2020-10-31, 2021-03-01), 1mo, 1mo)",
         expectedHeader,
         retArray,
@@ -127,7 +127,7 @@ public class IoTDBGroupByNaturalMonthIT {
    */
   @Test
   public void groupByNaturalMonthTest2() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {
       "10/31/2020:00:00:00,10.0,",
       "11/30/2020:00:00:00,10.0,",
@@ -136,7 +136,7 @@ public class IoTDBGroupByNaturalMonthIT {
       "02/28/2021:00:00:00,1.0,"
     };
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2020-10-31, 2021-03-01), 10d, 1mo)",
         expectedHeader,
         retArray,
@@ -150,10 +150,10 @@ public class IoTDBGroupByNaturalMonthIT {
    */
   @Test
   public void groupByNaturalMonthTest3() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {"10/31/2020:00:00:00,30.0,"};
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 " + "GROUP BY ([2020-10-31, 2020-11-30), 1mo)",
+        "select sum(temperature) from root.db1.d1 " + "GROUP BY ([2020-10-31, 2020-11-30), 1mo)",
         expectedHeader,
         retArray,
         df,
@@ -166,10 +166,10 @@ public class IoTDBGroupByNaturalMonthIT {
    */
   @Test
   public void groupByNaturalMonthTest4() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {"01/31/2021:00:00:00,28.0,", "02/28/2021:00:00:00,31.0,"};
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 GROUP BY ([2021-01-31, 2021-03-31), 1mo)",
+        "select sum(temperature) from root.db1.d1 GROUP BY ([2021-01-31, 2021-03-31), 1mo)",
         expectedHeader,
         retArray,
         df,
@@ -178,12 +178,12 @@ public class IoTDBGroupByNaturalMonthIT {
 
   @Test
   public void groupByNaturalMonthTest5() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {
       "01/30/2021:00:00:00,29.0,", "02/28/2021:00:00:00,30.0,", "03/30/2021:00:00:00,1.0,"
     };
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 GROUP BY ([2021-01-30, 2021-03-31), 1mo)",
+        "select sum(temperature) from root.db1.d1 GROUP BY ([2021-01-30, 2021-03-31), 1mo)",
         expectedHeader,
         retArray,
         df,
@@ -194,12 +194,12 @@ public class IoTDBGroupByNaturalMonthIT {
   @Test
   public void groupByNaturalMonthFailTest() {
     assertTestFail(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2021-01-31, 2021-03-31), 1mo) order by time desc",
         "doesn't support order by time desc now.");
 
     assertTestFail(
-        "select sum(temperature) from root.sg1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
+        "select sum(temperature) from root.db1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
         "The time windows may exceed 10000, please ensure your input.");
   }
 
@@ -217,9 +217,9 @@ public class IoTDBGroupByNaturalMonthIT {
       List<String> times = new ArrayList<>();
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sum(temperature) from root.sg1.d1 GROUP BY ([now() - 1mo, now()), 1d)")) {
+              "select sum(temperature) from root.db1.d1 GROUP BY ([now() - 1mo, now()), 1d)")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          String ans = resultSet.getString(sum("root.db1.d1.temperature"));
           times.add(resultSet.getString("Time"));
           if (ans == null) {
             cnt++;
@@ -236,7 +236,7 @@ public class IoTDBGroupByNaturalMonthIT {
 
   @Test
   public void groupBySlingWindowNaturalMonth1() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {
       "10/31/2020:00:00:00,61.0,",
       "11/30/2020:00:00:00,62.0,",
@@ -245,7 +245,7 @@ public class IoTDBGroupByNaturalMonthIT {
       "02/28/2021:00:00:00,1.0,"
     };
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2020-10-31, 2021-03-01), 2mo, 1mo)",
         expectedHeader,
         retArray,
@@ -255,7 +255,7 @@ public class IoTDBGroupByNaturalMonthIT {
 
   @Test
   public void groupBySlingWindowNaturalMonth2() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.db1.d1.temperature")};
     String[] retArray = {
       "10/31/2020:00:00:00,30.0,",
       "11/10/2020:00:00:00,30.0,",
@@ -272,7 +272,7 @@ public class IoTDBGroupByNaturalMonthIT {
       "02/28/2021:00:00:00,1.0,"
     };
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2020-10-31, 2021-03-01), 1mo, 10d)",
         expectedHeader,
         retArray,

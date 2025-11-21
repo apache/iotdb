@@ -144,7 +144,7 @@ public class AbstractCompactionTest {
   private final long oldLongestExpiredTime =
       IoTDBDescriptor.getInstance().getConfig().getMaxExpiredTime();
 
-  protected static File STORAGE_GROUP_DIR =
+  protected static File DATABASE_DIR =
       new File(
           TestConstant.BASE_OUTPUT_PATH
               + "data"
@@ -184,7 +184,7 @@ public class AbstractCompactionTest {
   private int fileCount = 0;
 
   protected TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+      new TsFileManager(COMPACTION_TEST_SG, "0", DATABASE_DIR.getPath());
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {

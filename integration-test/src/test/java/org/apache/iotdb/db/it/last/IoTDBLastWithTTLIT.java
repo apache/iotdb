@@ -48,8 +48,8 @@ public class IoTDBLastWithTTLIT {
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time, s1, s2) values(1, 1, 1)");
-      statement.execute("insert into root.sg.d2(time, s1, s2) aligned values(2, 1, 1)");
+      statement.execute("insert into root.db.d1(time, s1, s2) values(1, 1, 1)");
+      statement.execute("insert into root.db.d2(time, s1, s2) aligned values(2, 1, 1)");
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -65,17 +65,17 @@ public class IoTDBLastWithTTLIT {
   public void withTTL() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s1,1.0,DOUBLE",
-          "1,root.sg.d1.s2,1.0,DOUBLE",
-          "2,root.sg.d2.s1,1.0,DOUBLE",
-          "2,root.sg.d2.s2,1.0,DOUBLE"
+          "1,root.db.d1.s1,1.0,DOUBLE",
+          "1,root.db.d1.s2,1.0,DOUBLE",
+          "2,root.db.d2.s1,1.0,DOUBLE",
+          "2,root.db.d2.s2,1.0,DOUBLE"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg.* order by timeseries asc")) {
+          statement.executeQuery("select last * from root.db.* order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -91,10 +91,10 @@ public class IoTDBLastWithTTLIT {
         assertEquals(retArray.length, cnt);
       }
 
-      statement.execute("set ttl to root.sg 1");
+      statement.execute("set ttl to root.db 1");
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg.* order by timeseries asc")) {
+          statement.executeQuery("select last * from root.db.* order by timeseries asc")) {
         assertFalse(resultSet.next());
       }
 

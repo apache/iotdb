@@ -82,7 +82,7 @@ public class SessionPoolExample {
 
   // more insert example, see SessionExample.java
   private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = "root.db1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -107,7 +107,7 @@ public class SessionPoolExample {
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = sessionPool.executeQueryStatement("select * from root.db1.d1");
               // get DataIterator like JDBC
               DataIterator dataIterator = wrapper.iterator();
               System.out.println(wrapper.getColumnNames());

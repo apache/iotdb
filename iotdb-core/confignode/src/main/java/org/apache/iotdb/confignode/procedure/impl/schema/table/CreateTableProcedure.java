@@ -83,17 +83,17 @@ public class CreateTableProcedure
           LOGGER.info("Pre create table {}.{}", database, table.getTableName());
           preCreateTable(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release table {}.{}", database, table.getTableName());
-          preReleaseTable(env);
+          preUpdateDataNodeCache(env);
           break;
         case COMMIT_CREATE:
           LOGGER.info("Commit create table {}.{}", database, table.getTableName());
           commitCreateTable(env);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info("Commit release table {}.{}", database, table.getTableName());
-          commitReleaseTable(env);
+          commitUpdateDataNodeCache(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
@@ -140,13 +140,13 @@ public class CreateTableProcedure
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(new PreCreateTablePlan(database, table), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(CreateTableState.PRE_RELEASE);
+      setNextState(CreateTableState.PRE_UPDATE_DATANODE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
-  private void preReleaseTable(final ConfigNodeProcedureEnv env) {
+  private void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
 
@@ -173,13 +173,13 @@ public class CreateTableProcedure
             env,
             LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(CreateTableState.COMMIT_RELEASE);
+      setNextState(CreateTableState.COMMIT_UPDATE_DATANODE_CACHE);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
-  private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
+  private void commitUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(
             database, table.getTableName(), env.getConfigManager(), null);
@@ -208,7 +208,7 @@ public class CreateTableProcedure
           LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
           rollbackCreate(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);
           break;

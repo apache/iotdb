@@ -49,7 +49,7 @@ public class TriggerExecuteTest {
     try {
       TriggerInformation triggerInformation =
           new TriggerInformation(
-              new PartialPath("root.sg.**"),
+              new PartialPath("root.db.**"),
               "test1",
               "org.apache.iotdb.db.trigger.service.TestTrigger",
               false,
@@ -102,7 +102,7 @@ public class TriggerExecuteTest {
     InsertRowNode insertRowNode =
         new InsertRowNode(
             new PlanNodeId("plannode 2"),
-            new PartialPath("root.sg"),
+            new PartialPath("root.db"),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,

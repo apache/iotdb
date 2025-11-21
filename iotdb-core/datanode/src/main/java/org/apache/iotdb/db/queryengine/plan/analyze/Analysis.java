@@ -138,10 +138,10 @@ public class Analysis implements IAnalysis {
   /*
   tag values -> (grouped expression -> output expressions)
   For different combination of tag keys, the grouped expression may be different. Let's say there
-   are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
+   are 3 timeseries root.db.d1.temperature, root.db.d1.status, root.db.d2.temperature, and their
    tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
    GROUP BY k1", timeseries are grouped by their tags into 2 buckets. Bucket [v1] has
-   [root.sg.d1.temperature, root.sg.d1.status], while bucket [v2] has [root.sg.d2.temperature].
+   [root.db.d1.temperature, root.db.d1.status], while bucket [v2] has [root.db.d2.temperature].
    Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
    aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
   has [last_value(temperature)].
@@ -215,7 +215,7 @@ public class Analysis implements IAnalysis {
   // The expressions in order by clause
   // In align by device orderByExpression is the deviceView of expression which doesn't have
   // device-prefix
-  // for example, in device root.sg1.d1, [root.sg1.d1.s1] is expression and [s1] is the device-view
+  // for example, in device root.db1.d1, [root.db1.d1.s1] is expression and [s1] is the device-view
   // one.
   private Set<Expression> orderByExpressions;
 

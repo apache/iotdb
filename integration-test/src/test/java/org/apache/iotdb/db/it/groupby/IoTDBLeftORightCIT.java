@@ -40,7 +40,7 @@ public class IoTDBLeftORightCIT {
 
   private static final String[] sqls =
       new String[] {
-        "insert into root.sg1.d1(time, s1) values(9, 9)",
+        "insert into root.db1.d1(time, s1) values(9, 9)",
       };
 
   @BeforeClass
@@ -58,13 +58,13 @@ public class IoTDBLeftORightCIT {
   public void testLeftORightCGroupBy() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, count("root.sg1.d1.s1"),
+          TIMESTAMP_STR, count("root.db1.d1.s1"),
         };
     String[] retArray =
         new String[] {
           "2,0,", "4,0,", "6,0,", "8,0,", "9,1,",
         };
     resultSetEqualWithDescOrderTest(
-        "select count(s1) from root.sg1.d1 group by((0, 9], 2ms)", expectedHeader, retArray);
+        "select count(s1) from root.db1.d1 group by((0, 9], 2ms)", expectedHeader, retArray);
   }
 }

@@ -51,7 +51,7 @@ public class TimeSeriesSchemaScanNodeSerdeTest {
     TimeSeriesSchemaScanNode timeSeriesSchemaScanNode =
         new TimeSeriesSchemaScanNode(
             new PlanNodeId("timeSeriesSchemaScan"),
-            new PartialPath("root.sg.device0.sensor"),
+            new PartialPath("root.db.device0.sensor"),
             null,
             10,
             0,

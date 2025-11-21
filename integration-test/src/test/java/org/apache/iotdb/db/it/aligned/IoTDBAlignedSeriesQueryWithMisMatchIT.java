@@ -59,10 +59,10 @@ public class IoTDBAlignedSeriesQueryWithMisMatchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("insert into root.sg1.d1(time, s1, s2) aligned values (1, 1, true)");
+      statement.execute("insert into root.db1.d1(time, s1, s2) aligned values (1, 1, true)");
       statement.execute("flush");
-      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("insert into root.sg1.d1(time, s1, s2) aligned values (10, 10, 100)");
+      statement.execute("delete timeseries root.db1.d1.s2");
+      statement.execute("insert into root.db1.d1(time, s1, s2) aligned values (10, 10, 100)");
       statement.execute("flush");
     } catch (Exception e) {
       fail(e.getMessage());
@@ -82,11 +82,11 @@ public class IoTDBAlignedSeriesQueryWithMisMatchIT {
       "1,1.0,null", "10,10.0,100.0",
     };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s2"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s2"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1")) {
+        ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db1.d1")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();

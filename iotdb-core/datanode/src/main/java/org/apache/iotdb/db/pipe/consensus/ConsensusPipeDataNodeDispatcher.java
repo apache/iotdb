@@ -49,9 +49,9 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   @Override
   public void createPipe(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
+      Map<String, String> sinkAttributes,
       boolean needManuallyStart)
       throws Exception {
     try (ConfigNodeClient configNodeClient =
@@ -60,9 +60,9 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
           new TCreatePipeReq()
               .setPipeName(pipeName)
               .setNeedManuallyStart(needManuallyStart)
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setProcessorAttributes(processorAttributes)
-              .setConnectorAttributes(connectorAttributes);
+              .setConnectorAttributes(sinkAttributes);
       TSStatus status = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);

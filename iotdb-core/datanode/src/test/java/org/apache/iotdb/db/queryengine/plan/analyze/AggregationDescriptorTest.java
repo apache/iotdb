@@ -50,9 +50,9 @@ public class AggregationDescriptorTest {
 
   static {
     try {
-      pathMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
-      pathMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
-      pathMap.put("root.sg.*.s1", new MeasurementPath("root.sg.*.s1", TSDataType.INT32));
+      pathMap.put("root.db.d1.s1", new MeasurementPath("root.db.d1.s1", TSDataType.INT32));
+      pathMap.put("root.db.d2.s1", new MeasurementPath("root.db.d2.s1", TSDataType.INT32));
+      pathMap.put("root.db.*.s1", new MeasurementPath("root.db.*.s1", TSDataType.INT32));
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
@@ -63,85 +63,85 @@ public class AggregationDescriptorTest {
         new AggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.SINGLE,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
             TAggregationType.SUM.name().toLowerCase(),
             AggregationStep.PARTIAL,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
             TAggregationType.LAST_VALUE.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
             TAggregationType.MAX_VALUE.name().toLowerCase(),
             AggregationStep.FINAL,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
             TAggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.d1.s1")))));
 
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
-                new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
-                new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+                new TimeSeriesOperand(pathMap.get("root.db.d2.s1")),
+                new TimeSeriesOperand(pathMap.get("root.db.d1.s1"))),
             2,
             Collections.emptyMap(),
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
-                new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
-                new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+                new TimeSeriesOperand(pathMap.get("root.db.d1.s1")),
+                new TimeSeriesOperand(pathMap.get("root.db.d2.s1"))),
             2,
             Collections.emptyMap(),
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.COUNT.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
-                new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
-                new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+                new TimeSeriesOperand(pathMap.get("root.db.d2.s1")),
+                new TimeSeriesOperand(pathMap.get("root.db.d1.s1"))),
             2,
             Collections.emptyMap(),
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
-                new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
-                new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+                new TimeSeriesOperand(pathMap.get("root.db.d1.s1")),
+                new TimeSeriesOperand(pathMap.get("root.db.d2.s1"))),
             2,
             Collections.emptyMap(),
-            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.db.*.s1")))));
   }
 
   @Test
   public void testOutputColumnNames() {
     List<String> expectedOutputColumnNames =
         Arrays.asList(
-            "avg(root.sg.d1.s1)",
-            "sum(root.sg.d1.s1)",
-            "count(root.sg.d1.s1)",
-            "last_value(root.sg.d1.s1)",
-            "max_time(root.sg.d1.s1)",
-            "max_value(root.sg.d1.s1)");
+            "avg(root.db.d1.s1)",
+            "sum(root.db.d1.s1)",
+            "count(root.db.d1.s1)",
+            "last_value(root.db.d1.s1)",
+            "max_time(root.db.d1.s1)",
+            "max_value(root.db.d1.s1)");
     Assert.assertEquals(
         expectedOutputColumnNames,
         aggregationDescriptorList.stream()
@@ -155,13 +155,13 @@ public class AggregationDescriptorTest {
   public void testInputColumnNames() {
     List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
-            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
-            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
-            Collections.singletonList(Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("root.db.d1.s1")),
+            Collections.singletonList(Collections.singletonList("root.db.d1.s1")),
+            Collections.singletonList(Arrays.asList("count(root.db.d1.s1)", "sum(root.db.d1.s1)")),
             Collections.singletonList(
-                Arrays.asList("last_value(root.sg.d1.s1)", "max_time(root.sg.d1.s1)")),
-            Collections.singletonList(Collections.singletonList("max_value(root.sg.d1.s1)")),
-            Collections.singletonList(Collections.singletonList("count(root.sg.d1.s1)")));
+                Arrays.asList("last_value(root.db.d1.s1)", "max_time(root.db.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("max_value(root.db.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("count(root.db.d1.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         aggregationDescriptorList.stream()
@@ -172,7 +172,7 @@ public class AggregationDescriptorTest {
   @Test
   public void testOutputColumnNamesInGroupByLevel() {
     List<String> expectedOutputColumnNames =
-        Arrays.asList("count(root.sg.*.s1)", "avg(root.sg.*.s1)", "sum(root.sg.*.s1)");
+        Arrays.asList("count(root.db.*.s1)", "avg(root.db.*.s1)", "sum(root.db.*.s1)");
     Assert.assertEquals(
         expectedOutputColumnNames,
         groupByLevelDescriptorList.stream()
@@ -187,17 +187,17 @@ public class AggregationDescriptorTest {
     List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
             Arrays.asList(
-                Collections.singletonList("count(root.sg.d2.s1)"),
-                Collections.singletonList("count(root.sg.d1.s1)")),
+                Collections.singletonList("count(root.db.d2.s1)"),
+                Collections.singletonList("count(root.db.d1.s1)")),
             Arrays.asList(
-                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
-                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")),
+                Arrays.asList("count(root.db.d1.s1)", "sum(root.db.d1.s1)"),
+                Arrays.asList("count(root.db.d2.s1)", "sum(root.db.d2.s1)")),
             Arrays.asList(
-                Collections.singletonList("count(root.sg.d2.s1)"),
-                Collections.singletonList("count(root.sg.d1.s1)")),
+                Collections.singletonList("count(root.db.d2.s1)"),
+                Collections.singletonList("count(root.db.d1.s1)")),
             Arrays.asList(
-                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
-                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")));
+                Arrays.asList("count(root.db.d1.s1)", "sum(root.db.d1.s1)"),
+                Arrays.asList("count(root.db.d2.s1)", "sum(root.db.d2.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         groupByLevelDescriptorList.stream()

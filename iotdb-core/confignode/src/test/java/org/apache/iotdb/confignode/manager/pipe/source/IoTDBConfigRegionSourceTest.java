@@ -43,7 +43,7 @@ public class IoTDBConfigRegionSourceTest {
                           Boolean.TRUE.toString());
                       put(
                           PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
-                          PipeSourceConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE);
+                          PipeSourceConstant.SOURCE_REALTIME_MODE_HYBRID_VALUE);
                       put(
                           PipeSourceConstant.EXTRACTOR_INCLUSION_KEY,
                           PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE);

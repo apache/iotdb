@@ -33,9 +33,9 @@ import static org.junit.Assert.assertNotEquals;
 public class DeviceIDTest {
   @Test
   public void deviceIDBuildTest() throws IllegalPathException {
-    PartialPath partialPath1 = new MeasurementPath("root.sg1.d1.s1");
-    PartialPath partialPath2 = new MeasurementPath("root.sg1.d1.s2");
-    PartialPath partialPath3 = new MeasurementPath("root.sg1.d2.s1");
+    PartialPath partialPath1 = new MeasurementPath("root.db1.d1.s1");
+    PartialPath partialPath2 = new MeasurementPath("root.db1.d1.s2");
+    PartialPath partialPath3 = new MeasurementPath("root.db1.d2.s1");
 
     IDeviceID deviceID1 = DeviceIDFactory.getInstance().getDeviceID(partialPath1.getDevicePath());
     IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID(partialPath2.getDevicePath());

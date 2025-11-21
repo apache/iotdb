@@ -80,7 +80,7 @@ public class IoTDBInsertTableSessionPoolIT {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
-          "create table sg6 (tag1 string tag, s1 int64 field, s2 int64 field)");
+          "create table db6 (tag1 string tag, s1 int64 field, s2 int64 field)");
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -133,7 +133,7 @@ public class IoTDBInsertTableSessionPoolIT {
       } finally {
         session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       }
-      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM db6")) {
         assertEquals(4, dataSet.getColumnNames().size());
         assertEquals("time", dataSet.getColumnNames().get(0));
         assertEquals("tag1", dataSet.getColumnNames().get(1));

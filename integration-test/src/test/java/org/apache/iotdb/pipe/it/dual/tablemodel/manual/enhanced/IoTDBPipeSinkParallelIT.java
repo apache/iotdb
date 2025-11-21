@@ -96,10 +96,10 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.sg1.d1(time, s1) values (0, 1)",
-              "insert into root.sg1.d1(time, s1) values (1, 2)",
-              "insert into root.sg1.d1(time, s1) values (2, 3)",
-              "insert into root.sg1.d1(time, s1) values (3, 4)",
+              "insert into root.db1.d1(time, s1) values (0, 1)",
+              "insert into root.db1.d1(time, s1) values (1, 2)",
+              "insert into root.db1.d1(time, s1) values (2, 3)",
+              "insert into root.db1.d1(time, s1) values (3, 4)",
               "flush"),
           null);
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
@@ -109,8 +109,8 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.sg1.**",
-          "Time,root.sg1.d1.s1,",
+          "select * from root.db1.**",
+          "Time,root.db1.d1.s1,",
           expectedResSet,
           handleFailure);
 

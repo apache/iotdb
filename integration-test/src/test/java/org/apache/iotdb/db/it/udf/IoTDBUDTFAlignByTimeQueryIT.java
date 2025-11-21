@@ -86,8 +86,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s2 with datatype=INT32,encoding=PLAIN");
       // create aligned timeseries
-      statement.execute(("CREATE DATABASE root.sg1"));
-      statement.execute("CREATE ALIGNED TIMESERIES root.sg1(s1 INT32, s2 INT32)");
+      statement.execute(("CREATE DATABASE root.db1"));
+      statement.execute("CREATE ALIGNED TIMESERIES root.db1(s1 INT32, s2 INT32)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -116,7 +116,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
                 "insert into root.vehicle.d4(timestamp,s1) values(%d,%d)", 2 * i, 3 * i)));
         statement.execute(
             (String.format(
-                "insert into root.sg1(timestamp,s1, s2) aligned values(%d,%d,%d)", i, i, i)));
+                "insert into root.db1(timestamp,s1, s2) aligned values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

@@ -61,7 +61,7 @@ public class DistributionPlannerBasicTest {
     SeriesScanNode root =
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
             Ordering.ASC);
 
     Analysis analysis = Util.constructAnalysis();
@@ -80,7 +80,7 @@ public class DistributionPlannerBasicTest {
     SeriesScanNode root =
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
             Ordering.ASC);
 
     Analysis analysis = Util.constructAnalysis();
@@ -99,7 +99,7 @@ public class DistributionPlannerBasicTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
 
@@ -116,7 +116,7 @@ public class DistributionPlannerBasicTest {
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s1"),
+            new PartialPath("root.db.d1.s1"),
             null,
             10,
             0,
@@ -127,7 +127,7 @@ public class DistributionPlannerBasicTest {
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1.s2"),
+            new PartialPath("root.db.d1.s2"),
             null,
             10,
             0,
@@ -138,7 +138,7 @@ public class DistributionPlannerBasicTest {
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d22.s1"),
+            new PartialPath("root.db.d22.s1"),
             null,
             10,
             0,
@@ -161,7 +161,7 @@ public class DistributionPlannerBasicTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
 
@@ -183,7 +183,7 @@ public class DistributionPlannerBasicTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d1.s1,d1.s2,d22.s1 from root.sg limit 10";
+    String sql = "select d1.s1,d1.s2,d22.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
 
@@ -201,7 +201,7 @@ public class DistributionPlannerBasicTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d1.s1,d1.s2,d333.s1 from root.sg limit 10";
+    String sql = "select d1.s1,d1.s2,d333.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
 
@@ -214,7 +214,7 @@ public class DistributionPlannerBasicTest {
   @Test
   public void testSingleAlignedSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_aligned");
-    String sql = "select s1, s2 from root.sg.d666666 limit 10";
+    String sql = "select s1, s2 from root.db.d666666 limit 10";
     MPPQueryContext context =
         new MPPQueryContext(sql, queryId, null, new TEndPoint(), new TEndPoint());
 
@@ -233,7 +233,7 @@ public class DistributionPlannerBasicTest {
     InsertRowNode insertRowNode =
         new InsertRowNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {
               "s1",
@@ -254,7 +254,7 @@ public class DistributionPlannerBasicTest {
             "",
             queryId,
             new SessionInfo(
-                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+                0, "test", ZoneId.systemDefault(), "root.db", IClientSession.SqlDialect.TABLE),
             new TEndPoint(),
             new TEndPoint());
     context.setQueryType(QueryType.WRITE);
@@ -270,7 +270,7 @@ public class DistributionPlannerBasicTest {
     InsertRowNode insertRowNode1 =
         new InsertRowNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
@@ -285,7 +285,7 @@ public class DistributionPlannerBasicTest {
     InsertRowNode insertRowNode2 =
         new InsertRowNode(
             queryId.genPlanNodeId(),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
@@ -308,7 +308,7 @@ public class DistributionPlannerBasicTest {
             "",
             queryId,
             new SessionInfo(
-                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+                0, "test", ZoneId.systemDefault(), "root.db", IClientSession.SqlDialect.TABLE),
             new TEndPoint(),
             new TEndPoint());
     context.setQueryType(QueryType.WRITE);

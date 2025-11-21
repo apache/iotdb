@@ -47,8 +47,8 @@ public class IoTDBLastQueryWithLimitOffsetIT {
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time, s1, s2) values(1, 1, 1)");
-      statement.execute("insert into root.sg.d2(time, s1, s2) aligned values(2, 1, 1)");
+      statement.execute("insert into root.db.d1(time, s1, s2) values(1, 1, 1)");
+      statement.execute("insert into root.db.d2(time, s1, s2) aligned values(2, 1, 1)");
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -64,14 +64,14 @@ public class IoTDBLastQueryWithLimitOffsetIT {
   public void testWithLimit() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s1,1.0,DOUBLE",
+          "1,root.db.d1.s1,1.0,DOUBLE",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg.* order by timeseries asc limit 1")) {
+          statement.executeQuery("select last * from root.db.* order by timeseries asc limit 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -95,13 +95,13 @@ public class IoTDBLastQueryWithLimitOffsetIT {
 
   @Test
   public void testWithOffset() {
-    String[] retArray = new String[] {"2,root.sg.d2.s2,1.0,DOUBLE"};
+    String[] retArray = new String[] {"2,root.db.d2.s2,1.0,DOUBLE"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg.* order by timeseries asc offset 3")) {
+          statement.executeQuery("select last * from root.db.* order by timeseries asc offset 3")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -127,7 +127,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
   public void testWithLimitAndOffset() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s2,1.0,DOUBLE", "2,root.sg.d2.s1,1.0,DOUBLE",
+          "1,root.db.d1.s2,1.0,DOUBLE", "2,root.db.d2.s1,1.0,DOUBLE",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -135,7 +135,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last * from root.sg.* order by timeseries asc limit 2 offset 1")) {
+              "select last * from root.db.* order by timeseries asc limit 2 offset 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -164,14 +164,14 @@ public class IoTDBLastQueryWithLimitOffsetIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.executeQuery("select last * from root.sg.* order by timeseries asc slimit 1");
+        statement.executeQuery("select last * from root.db.* order by timeseries asc slimit 1");
         fail();
       } catch (Exception ignored) {
 
       }
 
       try {
-        statement.executeQuery("select last * from root.sg.* order by timeseries asc soffset 1");
+        statement.executeQuery("select last * from root.db.* order by timeseries asc soffset 1");
         fail();
       } catch (Exception ignored) {
 
@@ -179,7 +179,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
 
       try {
         statement.executeQuery(
-            "select last * from root.sg.* order by timeseries asc slimit 1 soffset 1");
+            "select last * from root.db.* order by timeseries asc slimit 1 soffset 1");
         fail();
       } catch (Exception ignored) {
 
@@ -195,7 +195,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
   public void testWithSortLimit() {
     String[] retArray =
         new String[] {
-          "2,root.sg.d2.s2,1.0,DOUBLE",
+          "2,root.db.d2.s2,1.0,DOUBLE",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -203,7 +203,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last * from root.sg.** order by time desc, timeseries desc limit 1")) {
+              "select last * from root.db.** order by time desc, timeseries desc limit 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =

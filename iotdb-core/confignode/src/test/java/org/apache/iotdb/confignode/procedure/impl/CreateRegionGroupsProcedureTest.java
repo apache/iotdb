@@ -91,12 +91,12 @@ public class CreateRegionGroupsProcedureTest {
     assertEquals(failedRegions0, failedRegions1);
 
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-    createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
-    createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.db0", dataRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.db1", schemaRegionSet);
 
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
-    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
-    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    persistPlan.addRegionGroup("root.db0", dataRegionSet);
+    persistPlan.addRegionGroup("root.db1", schemaRegionSet);
 
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(

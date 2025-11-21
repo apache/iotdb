@@ -328,11 +328,11 @@ public class SnapshotTaker {
    * @throws IOException
    */
   public File getSnapshotFilePathForTsFile(File tsFile, String snapshotId) throws IOException {
-    // ... data (un)sequence sgName dataRegionId timePartition tsFileName
+    // ... data (un)sequence dbName dataRegionId timePartition tsFileName
     String[] splittedPath =
         tsFile.getAbsolutePath().split(File.separator.equals("\\") ? "\\\\" : File.separator);
     // snapshot dir will be like
-    // ... data snapshot snapshotId (un)sequence sgName dataRegionId timePartition
+    // ... data snapshot snapshotId (un)sequence dbName dataRegionId timePartition
     StringBuilder stringBuilder = new StringBuilder();
     int i = 0;
     // build the prefix part of data dir

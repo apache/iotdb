@@ -40,14 +40,14 @@ public class IoTDBNullOperandIT {
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.test",
-        "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s5 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "INSERT INTO root.test.sg1(timestamp,s1,s3,s4) values(1, 1, true, false)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s3) values(2, 2, true)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s4) values(3, 3, false)",
+        "CREATE TIMESERIES root.test.db1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s5 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "INSERT INTO root.test.db1(timestamp,s1,s3,s4) values(1, 1, true, false)",
+        "INSERT INTO root.test.db1(timestamp,s1,s3) values(2, 2, true)",
+        "INSERT INTO root.test.db1(timestamp,s1,s4) values(3, 3, false)",
         "flush",
       };
 
@@ -73,12 +73,12 @@ public class IoTDBNullOperandIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "root.test.sg1.s1 + root.test.sg1.s2",
-          "root.test.sg1.s1 - root.test.sg1.s2",
-          "root.test.sg1.s1 * root.test.sg1.s2",
-          "root.test.sg1.s1 / root.test.sg1.s2",
-          "root.test.sg1.s1 % root.test.sg1.s2",
-          "root.test.sg1.s2 % root.test.sg1.s2",
+          "root.test.db1.s1 + root.test.db1.s2",
+          "root.test.db1.s1 - root.test.db1.s2",
+          "root.test.db1.s1 * root.test.db1.s2",
+          "root.test.db1.s1 / root.test.db1.s2",
+          "root.test.db1.s1 % root.test.db1.s2",
+          "root.test.db1.s2 % root.test.db1.s2",
         };
     String[] retArray =
         new String[] {
@@ -87,7 +87,7 @@ public class IoTDBNullOperandIT {
           "3,null,null,null,null,null,null,",
         };
     resultSetEqualTest(
-        "select s1+s2, s1-s2, s1*s2, s1/s2, s1%s2, s2%s2 from root.test.sg1",
+        "select s1+s2, s1-s2, s1*s2, s1/s2, s1%s2, s2%s2 from root.test.db1",
         expectedHeader, retArray);
   }
 
@@ -101,12 +101,12 @@ public class IoTDBNullOperandIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "root.test.sg1.s1 = root.test.sg1.s2",
-          "root.test.sg1.s1 > root.test.sg1.s2",
-          "root.test.sg1.s1 < root.test.sg1.s2",
-          "root.test.sg1.s5 LIKE pattern = 'test'",
-          "root.test.sg1.s2 IN (1,2)",
-          "root.test.sg1.s2 BETWEEN 1 AND 3",
+          "root.test.db1.s1 = root.test.db1.s2",
+          "root.test.db1.s1 > root.test.db1.s2",
+          "root.test.db1.s1 < root.test.db1.s2",
+          "root.test.db1.s5 LIKE pattern = 'test'",
+          "root.test.db1.s2 IN (1,2)",
+          "root.test.db1.s2 BETWEEN 1 AND 3",
         };
     String[] retArray =
         new String[] {
@@ -115,7 +115,7 @@ public class IoTDBNullOperandIT {
           "3,null,null,null,null,null,null,",
         };
     resultSetEqualTest(
-        "select s1=s2, s1>s2, s1<s2, s5 like \"test\" , s2 in (1,2), s2 between 1 and 3 from root.test.sg1",
+        "select s1=s2, s1>s2, s1<s2, s5 like \"test\" , s2 in (1,2), s2 between 1 and 3 from root.test.db1",
         expectedHeader,
         retArray);
   }
@@ -127,18 +127,18 @@ public class IoTDBNullOperandIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "root.test.sg1.s1",
-          "root.test.sg1.s2 IS NULL",
-          "root.test.sg1.s2 IS NOT NULL",
-          "root.test.sg1.s5 IS NULL",
-          "root.test.sg1.s5 IS NOT NULL",
+          "root.test.db1.s1",
+          "root.test.db1.s2 IS NULL",
+          "root.test.db1.s2 IS NOT NULL",
+          "root.test.db1.s5 IS NULL",
+          "root.test.db1.s5 IS NOT NULL",
         };
     String[] retArray =
         new String[] {
           "1,1,true,false,true,false,", "2,2,true,false,true,false,", "3,3,true,false,true,false,",
         };
     resultSetEqualTest(
-        "select s1,s2 is null, s2 is not null, s5 is null, s5 is not null from root.test.sg1",
+        "select s1,s2 is null, s2 is not null, s5 is null, s5 is not null from root.test.db1",
         expectedHeader,
         retArray);
   }
@@ -154,24 +154,24 @@ public class IoTDBNullOperandIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "root.test.sg1.s3 | root.test.sg1.s3",
-          "root.test.sg1.s4 & root.test.sg1.s4",
-          "root.test.sg1.s3 | root.test.sg1.s4",
-          "root.test.sg1.s3 & root.test.sg1.s4",
+          "root.test.db1.s3 | root.test.db1.s3",
+          "root.test.db1.s4 & root.test.db1.s4",
+          "root.test.db1.s3 | root.test.db1.s4",
+          "root.test.db1.s3 & root.test.db1.s4",
         };
     String[] retArray =
         new String[] {
           "1,true,false,true,false,", "2,true,null,true,null,", "3,null,false,null,false,",
         };
     resultSetEqualTest(
-        "select s3||s3, s4&&s4, s3||s4, s3&&s4  from root.test.sg1", expectedHeader, retArray);
+        "select s3||s3, s4&&s4, s3||s4, s3&&s4  from root.test.db1", expectedHeader, retArray);
   }
 
   @Test
   public void testWhere() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "root.test.sg1.s1", "root.test.sg1.s3", "root.test.sg1.s4",
+          TIMESTAMP_STR, "root.test.db1.s1", "root.test.db1.s3", "root.test.db1.s4",
         };
     String[] retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where s2>0", expectedHeader, retArray);
@@ -188,9 +188,9 @@ public class IoTDBNullOperandIT {
 
     retArray =
         new String[] {
-          "1,root.test.sg1,1,true,false,",
-          "2,root.test.sg1,2,true,null,",
-          "3,root.test.sg1,3,null,false,",
+          "1,root.test.db1,1,true,false,",
+          "2,root.test.db1,2,true,null,",
+          "3,root.test.db1,3,null,false,",
         };
     expectedHeader =
         new String[] {
@@ -206,7 +206,7 @@ public class IoTDBNullOperandIT {
   public void testHaving() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "count(root.test.sg1.s1)", "count(root.test.sg1.s2)",
+          TIMESTAMP_STR, "count(root.test.db1.s1)", "count(root.test.db1.s2)",
         };
     String[] retArray = new String[] {};
     resultSetEqualTest(
@@ -225,7 +225,7 @@ public class IoTDBNullOperandIT {
 
     retArray =
         new String[] {
-          "1,root.test.sg1,1,0,", "2,root.test.sg1,1,0,", "3,root.test.sg1,1,0,",
+          "1,root.test.db1,1,0,", "2,root.test.db1,1,0,", "3,root.test.db1,1,0,",
         };
     expectedHeader =
         new String[] {
@@ -242,7 +242,7 @@ public class IoTDBNullOperandIT {
     // series in select not exist
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "root.test.sg1.s1", "root.test.sg1.s3", "root.test.sg1.s4",
+          TIMESTAMP_STR, "root.test.db1.s1", "root.test.db1.s3", "root.test.db1.s4",
         };
     String[] retArray =
         new String[] {
@@ -271,7 +271,7 @@ public class IoTDBNullOperandIT {
     // series in having not exist
     expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "count(root.test.sg1.s1)", "count(root.test.sg1.s2)",
+          TIMESTAMP_STR, "count(root.test.db1.s1)", "count(root.test.db1.s2)",
         };
     retArray = new String[] {};
     resultSetEqualTest(

@@ -55,16 +55,16 @@ public class IoTDBSpecialWordsIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.deviceId.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.sg1.deviceId(time, s1) values(1, 1)");
+          "CREATE TIMESERIES root.db1.deviceId.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.db1.deviceId(time, s1) values(1, 1)");
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg1.deviceId")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from root.db1.deviceId")) {
         int count = 0;
         while (resultSet.next()) {
           assertEquals("1", resultSet.getString("Time"));
-          assertEquals("1", resultSet.getString("root.sg1.deviceId.s1"));
+          assertEquals("1", resultSet.getString("root.db1.deviceId.s1"));
           count++;
         }
         assertEquals(1, count);

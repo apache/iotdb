@@ -91,7 +91,7 @@ public class SessionConcurrentExample {
       try {
         insertTablet(
             session,
-            String.format("root.sg_%d.d_%d", currentIndex / PARALLEL_DEGREE_FOR_ONE_SG, j));
+            String.format("root.db_%d.d_%d", currentIndex / PARALLEL_DEGREE_FOR_ONE_SG, j));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         LOGGER.error("Insert tablet error", e);
       }
@@ -123,7 +123,7 @@ public class SessionConcurrentExample {
 
     session.createSchemaTemplate(template);
     for (int i = 0; i < SG_NUM; i++) {
-      session.setSchemaTemplate("template1", "root.sg_" + i);
+      session.setSchemaTemplate("template1", "root.db_" + i);
     }
   }
 

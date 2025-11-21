@@ -51,19 +51,19 @@ public class IoTDBArithmeticIT {
 
   private static final String[] INSERTION_SQLS = {
     "CREATE DATABASE root.test",
-    "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s7 WITH DATATYPE=INT32, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.sg.d1.s8 WITH DATATYPE=INT32, ENCODING=PLAIN",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (1, 1, 1, 1, 1, false, '1', 1)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (2, 2, 2, 2, 2, false, '2', 2)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (3, 3, 3, 3, 3, true, '3', 3)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (4, 4, 4, 4, 4, true, '4', 4)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (5, 5, 5, 5, 5, true, '5', 5, 5)",
+    "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s3 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s7 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.db.d1.s8 WITH DATATYPE=INT32, ENCODING=PLAIN",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7) values (1, 1, 1, 1, 1, false, '1', 1)",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8) values (2, 2, 2, 2, 2, false, '2', 2)",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7) values (3, 3, 3, 3, 3, true, '3', 3)",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8) values (4, 4, 4, 4, 4, true, '4', 4)",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (5, 5, 5, 5, 5, true, '5', 5, 5)",
   };
 
   @BeforeClass
@@ -90,7 +90,7 @@ public class IoTDBArithmeticIT {
             expressions.add(leftOperand + operator + rightOperand);
           }
         }
-        String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
+        String sql = String.format("select %s from root.db.d1", String.join(",", expressions));
 
         ResultSet resultSet = statement.executeQuery(sql);
 
@@ -132,7 +132,7 @@ public class IoTDBArithmeticIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"- s1", "- s2", "- s3", "- s4"};
-      String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
+      String sql = String.format("select %s from root.db.d1", String.join(",", expressions));
       ResultSet resultSet = statement.executeQuery(sql);
 
       assertEquals(1 + expressions.length, resultSet.getMetaData().getColumnCount());
@@ -156,7 +156,7 @@ public class IoTDBArithmeticIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] expressions = new String[] {"s1", "s1 + s2", "sin(s1)"};
-      String sql = String.format("select %s from root.sg.d1", String.join(",", expressions));
+      String sql = String.format("select %s from root.db.d1", String.join(",", expressions));
       ResultSet resultSet = statement.executeQuery(sql);
 
       assertEquals(1 + expressions.length, resultSet.getMetaData().getColumnCount());
@@ -177,7 +177,7 @@ public class IoTDBArithmeticIT {
   public void testNonAlign() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1");
+      ResultSet resultSet = statement.executeQuery("select s7 + s8 from root.db.d1");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       assertTrue(resultSet.next());
       String curr = null;
@@ -188,7 +188,7 @@ public class IoTDBArithmeticIT {
       assertEquals(10, Double.parseDouble(resultSet.getString(2)), E);
       assertFalse(resultSet.next());
 
-      resultSet = statement.executeQuery("select s7 + s8 from root.sg.d1 where time < 5");
+      resultSet = statement.executeQuery("select s7 + s8 from root.db.d1 where time < 5");
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       curr = null;
       while (curr == null) {
@@ -208,7 +208,7 @@ public class IoTDBArithmeticIT {
   public void testWrongTypeBoolean() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery("select s1 + s5 from root.sg.d1");
+      statement.executeQuery("select s1 + s5 from root.db.d1");
     } catch (Exception throwable) {
       assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
     }
@@ -218,7 +218,7 @@ public class IoTDBArithmeticIT {
   public void testWrongTypeText() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery("select s1 + s6 from root.sg.d1");
+      statement.executeQuery("select s1 + s6 from root.db.d1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
     }
@@ -228,7 +228,7 @@ public class IoTDBArithmeticIT {
   public void testNot() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select not(s5), !s5 from root.sg.d1"); ) {
+        ResultSet resultSet = statement.executeQuery("select not(s5), !s5 from root.db.d1"); ) {
       String[] retArray = new String[] {"true", "true", "false", "false", "false"};
       int cnt = 0;
       while (resultSet.next()) {

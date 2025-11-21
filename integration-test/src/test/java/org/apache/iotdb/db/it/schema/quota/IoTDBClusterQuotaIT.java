@@ -52,21 +52,21 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // create database
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE DATABASE root.db2");
       // create device template
       statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
       // set device template
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.db2");
       statement.execute(
-          "create timeseries root.sg1.d0.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.d0.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.sg1.d0.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.d0.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.sg1.d1.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.d1.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.sg1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
-      statement.execute("create timeseries of device template on root.sg2.d1;");
+          "create timeseries root.db1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+      statement.execute("create timeseries of device template on root.db2.d1;");
     }
   }
 
@@ -76,30 +76,30 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+            "create timeseries root.db1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
-        statement.execute("create timeseries of device template on root.sg2.d2;");
+        statement.execute("create timeseries of device template on root.db2.d2;");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       // delete some timeseries and database
-      statement.execute("delete database root.sg2;");
-      statement.execute("delete timeseries root.sg1.d0.s0;");
+      statement.execute("delete database root.db2;");
+      statement.execute("delete timeseries root.db1.d0.s0;");
       Thread.sleep(2000); // wait heartbeat
       // now we can create 3 new timeseries or 1 new device
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d4");
-      statement.execute("create timeseries of device template on root.sg1.d4");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.db1.d4");
+      statement.execute("create timeseries of device template on root.db1.d4");
       statement.execute(
-          "create timeseries root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       Thread.sleep(2000); // wait heartbeat
       try {
         statement.execute(
-            "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+            "create timeseries root.db1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));

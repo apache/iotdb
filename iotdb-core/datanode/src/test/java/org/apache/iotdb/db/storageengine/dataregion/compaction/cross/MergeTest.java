@@ -104,7 +104,7 @@ abstract class MergeTest {
 
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
+      File file = new File(TestConstant.getTestTsFilePath("root.db1", 0, 0, i));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -115,7 +115,7 @@ abstract class MergeTest {
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
+      File file = new File(TestConstant.getTestTsFilePath("root.db1", 0, 0, i + seqFileNum));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -127,7 +127,7 @@ abstract class MergeTest {
     }
 
     File file =
-        new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, seqFileNum + unseqFileNum));
+        new File(TestConstant.getTestTsFilePath("root.db1", 0, 0, seqFileNum + unseqFileNum));
     mkdirs(file);
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);

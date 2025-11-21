@@ -221,7 +221,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+        new TsFileManager(COMPACTION_TEST_SG, "0", DATABASE_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
@@ -450,7 +450,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+        new TsFileManager(COMPACTION_TEST_SG, "0", DATABASE_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
@@ -572,7 +572,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
   public void testOneDeletionDuringCompaction() throws Exception {
     DataRegion vsgp =
         new DataRegion(
-            STORAGE_GROUP_DIR.getPath(),
+            DATABASE_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),
             COMPACTION_TEST_SG);
@@ -695,7 +695,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
   public void testSeveralDeletionsDuringCompaction() throws Exception {
     DataRegion vsgp =
         new DataRegion(
-            STORAGE_GROUP_DIR.getPath(),
+            DATABASE_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),
             COMPACTION_TEST_SG);

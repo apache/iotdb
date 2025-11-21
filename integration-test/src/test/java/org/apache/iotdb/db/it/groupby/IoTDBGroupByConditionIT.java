@@ -47,70 +47,70 @@ public class IoTDBGroupByConditionIT {
   // https://docs.google.com/spreadsheets/d/1vsSmb41pdmK-BdBR1STwr8olg1Qc8baKVEWnfJB4mAg/edit#gid=0
   private static final String[] SQLs =
       new String[] {
-        "CREATE DATABASE root.sg.beijing.car01",
-        "CREATE TIMESERIES root.sg.beijing.car01.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car01.soc WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car01.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
+        "CREATE DATABASE root.db.beijing.car01",
+        "CREATE TIMESERIES root.db.beijing.car01.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car01.soc WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car01.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
         "flush",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
         "flush"
       };
 
   private static final String[] SQLs2 =
       new String[] {
-        "CREATE DATABASE root.sg.beijing.car02",
-        "CREATE TIMESERIES root.sg.beijing.car02.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car02.soc WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car02.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
+        "CREATE DATABASE root.db.beijing.car02",
+        "CREATE TIMESERIES root.db.beijing.car02.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car02.soc WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car02.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
         "flush"
       };
 
@@ -151,10 +151,10 @@ public class IoTDBGroupByConditionIT {
           {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
     normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
     normalTest(res, sql2);
   }
 
@@ -166,7 +166,7 @@ public class IoTDBGroupByConditionIT {
           {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
     normalTest(res, sql2);
   }
 
@@ -177,7 +177,7 @@ public class IoTDBGroupByConditionIT {
           {"5", "2500000000", "2499999995.0", "9", "100.0"},
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
   }
 
@@ -188,7 +188,7 @@ public class IoTDBGroupByConditionIT {
           {"5", "7", "2.0", "3", "36.0"},
         };
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
     normalTest(res, sql2);
   }
 
@@ -199,7 +199,7 @@ public class IoTDBGroupByConditionIT {
           {"3", "4", "1.0", "2", "16.0"},
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
   }
 
@@ -210,7 +210,7 @@ public class IoTDBGroupByConditionIT {
           {"6", "2500000000", "2499999994", "13", "100.0"},
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(soc>=24.0,KEEP<=15)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(soc>=24.0,KEEP<=15)";
     normalTestWithEndTime(res, sql);
   }
 
@@ -222,7 +222,7 @@ public class IoTDBGroupByConditionIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(
             resultSetMetaData,
-            "Time,__endTime,max_time(root.sg.beijing.car01.charging_status) - min_time(root.sg.beijing.car01.charging_status),count(root.sg.beijing.car01.vehicle_status),last_value(root.sg.beijing.car01.soc)");
+            "Time,__endTime,max_time(root.db.beijing.car01.charging_status) - min_time(root.db.beijing.car01.charging_status),count(root.db.beijing.car01.vehicle_status),last_value(root.db.beijing.car01.soc)");
         int count = 0;
         while (resultSet.next()) {
           String startTime = resultSet.getString(1);
@@ -253,7 +253,7 @@ public class IoTDBGroupByConditionIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(
             resultSetMetaData,
-            "Time,max_time(root.sg.beijing.car01.charging_status) - min_time(root.sg.beijing.car01.charging_status),count(root.sg.beijing.car01.vehicle_status),last_value(root.sg.beijing.car01.soc)");
+            "Time,max_time(root.db.beijing.car01.charging_status) - min_time(root.db.beijing.car01.charging_status),count(root.db.beijing.car01.vehicle_status),last_value(root.db.beijing.car01.soc)");
         int count = 0;
         while (resultSet.next()) {
           String startTime = resultSet.getString(1);
@@ -285,11 +285,11 @@ public class IoTDBGroupByConditionIT {
             "Time,Device,__endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc)");
         int count = 0;
         int rowNum = res.length;
-        String device = "root.sg.beijing.car01";
+        String device = "root.db.beijing.car01";
         while (resultSet.next()) {
           if (count == rowNum) {
             count = 0;
-            device = "root.sg.beijing.car02";
+            device = "root.db.beijing.car02";
           }
           String startTime = resultSet.getString(1);
           String deviceName = resultSet.getString(2);
@@ -324,11 +324,11 @@ public class IoTDBGroupByConditionIT {
             "Time,Device,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc)");
         int count = 0;
         int rowNum = res.length;
-        String device = "root.sg.beijing.car01";
+        String device = "root.db.beijing.car01";
         while (resultSet.next()) {
           if (count == rowNum) {
             count = 0;
-            device = "root.sg.beijing.car02";
+            device = "root.db.beijing.car02";
           }
           String startTime = resultSet.getString(1);
           String deviceName = resultSet.getString(2);
@@ -374,10 +374,10 @@ public class IoTDBGroupByConditionIT {
           {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
     normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.db.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
     normalTest(res, sql2);
   }
 
@@ -385,13 +385,13 @@ public class IoTDBGroupByConditionIT {
   public void groupByConditionFirstValueTest() {
     String[][] res = new String[][] {{"5", "7", "18.0"}};
     String sql =
-        "select first_value(soc) from root.sg.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
+        "select first_value(soc) from root.db.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,first_value(root.sg.beijing.car01.soc)");
+        checkHeader(resultSetMetaData, "Time,first_value(root.db.beijing.car01.soc)");
         int count = 0;
         while (resultSet.next()) {
           String startTime = resultSet.getString(1);
@@ -427,28 +427,28 @@ public class IoTDBGroupByConditionIT {
   @Test
   public void errorTest2() {
     errorTest(
-        "select first_value(soc) from root.sg.beijing.car01 group by condition(count(charging_status)!=0,KEEP>2,ignoreNull=false)",
+        "select first_value(soc) from root.db.beijing.car01 group by condition(count(charging_status)!=0,KEEP>2,ignoreNull=false)",
         "701: Aggregation expression shouldn't exist in group by clause");
   }
 
   @Test
   public void errorTest3() {
     errorTest(
-        "select first_value(soc) from root.sg.beijing.car01 group by condition(s1!=0,KEEP>2,ignoreNull=false)",
-        "701: root.sg.beijing.car01.s1 != 0 in group by clause doesn't exist.");
+        "select first_value(soc) from root.db.beijing.car01 group by condition(s1!=0,KEEP>2,ignoreNull=false)",
+        "701: root.db.beijing.car01.s1 != 0 in group by clause doesn't exist.");
   }
 
   @Test
   public void errorTest4() {
     errorTest(
-        "select first_value(soc) from root.sg.beijing.car01 group by condition(s1!=0,KEEP>2,ignoreNull=false) align by device",
+        "select first_value(soc) from root.db.beijing.car01 group by condition(s1!=0,KEEP>2,ignoreNull=false) align by device",
         "701: s1 != 0 in group by clause doesn't exist.");
   }
 
   @Test
   public void errorTest5() {
     errorTest(
-        "select first_value(soc) from root.sg.beijing.car01 group by condition(root.sg.beijing.car01.soc!=0,KEEP>2,ignoreNull=false) align by device",
+        "select first_value(soc) from root.db.beijing.car01 group by condition(root.db.beijing.car01.soc!=0,KEEP>2,ignoreNull=false) align by device",
         "701: ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
   }
 }

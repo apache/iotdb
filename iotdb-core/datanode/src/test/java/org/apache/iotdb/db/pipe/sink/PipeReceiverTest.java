@@ -44,7 +44,7 @@ public class PipeReceiverTest {
       receiver.receive(
           PipeTransferTabletRawReq.toTPipeTransferReq(
               new Tablet(
-                  "root.sg.d",
+                  "root.db.d",
                   Collections.singletonList(new MeasurementSchema("s", TSDataType.INT32))),
               true));
     } catch (IOException e) {

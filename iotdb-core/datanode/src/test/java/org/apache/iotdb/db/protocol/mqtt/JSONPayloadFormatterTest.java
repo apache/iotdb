@@ -31,7 +31,7 @@ public class JSONPayloadFormatterTest {
   public void formatJson() {
     String payload =
         " {\n"
-            + "      \"device\":\"root.sg.d1\",\n"
+            + "      \"device\":\"root.db.d1\",\n"
             + "      \"timestamp\":1586076045524,\n"
             + "      \"measurements\":[\"s1\",\"s2\"],\n"
             + "      \"values\":[0.530635,0.530635]\n"
@@ -43,7 +43,7 @@ public class JSONPayloadFormatterTest {
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
     TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(0);
 
-    assertEquals("root.sg.d1", message.getDevice());
+    assertEquals("root.db.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
     assertEquals("s1", message.getMeasurements().get(0));
     assertEquals(0.530635D, Double.parseDouble(message.getValues().get(0)), 0);
@@ -53,7 +53,7 @@ public class JSONPayloadFormatterTest {
   public void formatBatchJson() {
     String payload =
         " {\n"
-            + "      \"device\":\"root.sg.d1\",\n"
+            + "      \"device\":\"root.db.d1\",\n"
             + "      \"timestamps\":[1586076045524,1586076065526],\n"
             + "      \"measurements\":[\"s1\",\"s2\"],\n"
             + "      \"values\":[[0.530635,0.530635], [0.530655,0.530695]]\n"
@@ -65,7 +65,7 @@ public class JSONPayloadFormatterTest {
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
     TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(1);
 
-    assertEquals("root.sg.d1", message.getDevice());
+    assertEquals("root.db.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s2", message.getMeasurements().get(1));
     assertEquals(0.530695D, Double.parseDouble(message.getValues().get(1)), 0);
@@ -76,13 +76,13 @@ public class JSONPayloadFormatterTest {
     String payload =
         " [\n"
             + "  {\n"
-            + "      \"device\":\"root.sg.d1\",\n"
+            + "      \"device\":\"root.db.d1\",\n"
             + "      \"timestamp\":1586076045524,\n"
             + "      \"measurements\":[\"s1\",\"s2\"],\n"
             + "      \"values\":[0.530635,0.530635]\n"
             + "  },\n"
             + "  {\n"
-            + "      \"device\":\"root.sg.d2\",\n"
+            + "      \"device\":\"root.db.d2\",\n"
             + "      \"timestamp\":1586076065526,\n"
             + "      \"measurements\":[\"s3\",\"s4\"],\n"
             + "      \"values\":[0.530655,0.530655]\n"
@@ -95,7 +95,7 @@ public class JSONPayloadFormatterTest {
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
     TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(1);
 
-    assertEquals("root.sg.d2", message.getDevice());
+    assertEquals("root.db.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s3", message.getMeasurements().get(0));
     assertEquals(0.530655D, Double.parseDouble(message.getValues().get(0)), 0);
@@ -106,13 +106,13 @@ public class JSONPayloadFormatterTest {
     String payload =
         "[\n"
             + "  {\n"
-            + "      \"device\":\"root.sg.d1\",\n"
+            + "      \"device\":\"root.db.d1\",\n"
             + "      \"timestamps\":[1586076045524,1586076065526],\n"
             + "      \"measurements\":[\"s1\",\"s2\"],\n"
             + "      \"values\":[[0.530635,0.530635], [0.530655,0.530695]]\n"
             + "  },\n"
             + "  {\n"
-            + "      \"device\":\"root.sg.d2\",\n"
+            + "      \"device\":\"root.db.d2\",\n"
             + "      \"timestamps\":[1586076045524,1586076065526],\n"
             + "      \"measurements\":[\"s3\",\"s4\"],\n"
             + "      \"values\":[[0.530635,0.530635], [0.530655,0.530695]]\n"
@@ -125,7 +125,7 @@ public class JSONPayloadFormatterTest {
     JSONPayloadFormatter formatter = new JSONPayloadFormatter();
     TreeMessage message = (TreeMessage) formatter.format(topic, buf).get(3);
 
-    assertEquals("root.sg.d2", message.getDevice());
+    assertEquals("root.db.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s4", message.getMeasurements().get(1));
     assertEquals(0.530695D, Double.parseDouble(message.getValues().get(1)), 0);

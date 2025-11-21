@@ -348,7 +348,7 @@ public class SessionConnectionTest {
     sessionConnection.testInsertTablet(new TSInsertTabletReq());
     sessionConnection.insertTablets(new TSInsertTabletsReq());
     sessionConnection.testInsertTablets(new TSInsertTabletsReq());
-    sessionConnection.deleteTimeseries(Arrays.asList("root.sg1.d1.s1"));
+    sessionConnection.deleteTimeseries(Arrays.asList("root.db1.d1.s1"));
   }
 
   @Test

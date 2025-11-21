@@ -64,7 +64,7 @@ public class MetaUtils {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level) {
       throw new IllegalPathException(
-          path.getFullPath(), "it is no longer than default sg level: " + level);
+          path.getFullPath(), "it is no longer than default db level: " + level);
     }
     if (!nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(
@@ -77,8 +77,8 @@ public class MetaUtils {
 
   /**
    * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
-   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
-   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   * all the aligned time series is NOT united. For example, given root.db.d1.vector1[s1] and
+   * root.db.d1.vector1[s2], they will be organized to root.db.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series. The list has been sorted by the alphabetical order, so all the aligned time series
@@ -111,8 +111,8 @@ public class MetaUtils {
 
   /**
    * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
-   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
-   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   * all the aligned time series is NOT united. For example, given root.db.d1.vector1[s1] and
+   * root.db.d1.vector1[s2], they will be organized to root.db.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
    *     series. The list has been sorted by the alphabetical order, so all the aligned time series

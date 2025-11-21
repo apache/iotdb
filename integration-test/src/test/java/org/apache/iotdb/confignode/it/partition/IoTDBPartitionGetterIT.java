@@ -83,7 +83,7 @@ public class IoTDBPartitionGetterIT {
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 5;
 
-  private static final String sg = "root.sg";
+  private static final String db = "root.db";
   private static final int databaseNum = 2;
   private static final int testSeriesPartitionSlotNum = 1000;
   private static final int seriesPartitionBatchSize = 10;
@@ -118,18 +118,18 @@ public class IoTDBPartitionGetterIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set Databases */
       for (int i = 0; i < databaseNum; i++) {
-        TSStatus status = client.setDatabase(new TDatabaseSchema(sg + i));
+        TSStatus status = client.setDatabase(new TDatabaseSchema(db + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
       /* Create SchemaPartitions */
-      final String sg0 = "root.sg0";
-      final String sg1 = "root.sg1";
+      final String db0 = "root.db0";
+      final String db1 = "root.db1";
 
-      final String d00 = sg0 + ".d0.s";
-      final String d01 = sg0 + ".d1.s";
-      final String d10 = sg1 + ".d0.s";
-      final String d11 = sg1 + ".d1.s";
+      final String d00 = db0 + ".d0.s";
+      final String d01 = db0 + ".d1.s";
+      final String d10 = db1 + ".d0.s";
+      final String d11 = db1 + ".d1.s";
 
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
       TSchemaPartitionTableResp schemaPartitionTableResp;
@@ -144,13 +144,13 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
+        Assert.assertTrue(schemaPartitionTable.containsKey(db + i));
+        Assert.assertEquals(2, schemaPartitionTable.get(db + i).size());
       }
 
       /* Create DataPartitions */
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
@@ -202,16 +202,16 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSchemaPartition() throws Exception {
-    final String sg = "root.sg";
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String db = "root.db";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
-    final String d11 = sg1 + ".d1.s";
+    final String d11 = db1 + ".d1.s";
 
-    final String allPaths = "root.sg*";
-    final String allSg0 = "root.sg0.**";
+    final String allPaths = "root.db*";
+    final String alldb0 = "root.db0.**";
 
-    final String notExistsSg = "root.sg10.**";
+    final String notExistsSg = "root.db10.**";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -240,13 +240,13 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
+        Assert.assertTrue(schemaPartitionTable.containsKey(db + i));
+        Assert.assertEquals(2, schemaPartitionTable.get(db + i).size());
       }
 
       // Test getSchemaPartition, when a device path matches with a Database and end with "*",
       // ConfigNode will return all the SchemaPartitions in this Database
-      buffer = generatePatternTreeBuffer(new String[] {allSg0, d11});
+      buffer = generatePatternTreeBuffer(new String[] {alldb0, d11});
       schemaPartitionReq.setPathPatternTree(buffer);
       schemaPartitionTableResp = client.getSchemaPartitionTable(schemaPartitionReq);
       Assert.assertEquals(
@@ -254,12 +254,12 @@ public class IoTDBPartitionGetterIT {
           schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      // Check "root.sg0"
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg0));
-      Assert.assertEquals(2, schemaPartitionTable.get(sg0).size());
-      // Check "root.sg1"
-      Assert.assertTrue(schemaPartitionTable.containsKey(sg1));
-      Assert.assertEquals(1, schemaPartitionTable.get(sg1).size());
+      // Check "root.db0"
+      Assert.assertTrue(schemaPartitionTable.containsKey(db0));
+      Assert.assertEquals(2, schemaPartitionTable.get(db0).size());
+      // Check "root.db1"
+      Assert.assertTrue(schemaPartitionTable.containsKey(db1));
+      Assert.assertEquals(1, schemaPartitionTable.get(db1).size());
     }
   }
 
@@ -276,7 +276,7 @@ public class IoTDBPartitionGetterIT {
       // Prepare partitionSlotsMap
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg + 10, 0, 10, 0, 10, testTimePartitionInterval);
+              db + 10, 0, 10, 0, 10, testTimePartitionInterval);
 
       // Test getDataPartitionTable, the result should be empty
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
@@ -299,7 +299,7 @@ public class IoTDBPartitionGetterIT {
       leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testDataRegionGroupPerDatabase);
 
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
@@ -344,13 +344,13 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSlots() throws Exception {
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
-    final IDeviceID d00 = Factory.DEFAULT_FACTORY.create(sg0 + ".d0.s");
-    final IDeviceID d01 = Factory.DEFAULT_FACTORY.create(sg0 + ".d1.s");
-    final IDeviceID d10 = Factory.DEFAULT_FACTORY.create(sg1 + ".d0.s");
-    final IDeviceID d11 = Factory.DEFAULT_FACTORY.create(sg1 + ".d1.s");
+    final IDeviceID d00 = Factory.DEFAULT_FACTORY.create(db0 + ".d0.s");
+    final IDeviceID d01 = Factory.DEFAULT_FACTORY.create(db0 + ".d1.s");
+    final IDeviceID d10 = Factory.DEFAULT_FACTORY.create(db1 + ".d0.s");
+    final IDeviceID d11 = Factory.DEFAULT_FACTORY.create(db1 + ".d1.s");
 
     IDeviceID[] devices = new IDeviceID[] {d00, d01, d10, d11};
 
@@ -363,7 +363,7 @@ public class IoTDBPartitionGetterIT {
 
       // Get RegionIds of specified database and timestamp
       getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-      getRegionIdReq.setDatabase(sg0);
+      getRegionIdReq.setDatabase(db0);
       getRegionIdReq.setStartTimeSlot(new TTimePartitionSlot(0));
       getRegionIdReq.setEndTimeSlot(new TTimePartitionSlot(0));
       getRegionIdResp = client.getRegionId(getRegionIdReq);
@@ -394,9 +394,9 @@ public class IoTDBPartitionGetterIT {
 
       // Get all RegionIds within database
       for (int i = 0; i < databaseNum; i++) {
-        String curSg = sg + i;
+        String curDb = db + i;
         getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-        getRegionIdReq.setDatabase(curSg);
+        getRegionIdReq.setDatabase(curDb);
         getRegionIdResp = client.getRegionId(getRegionIdReq);
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
@@ -406,7 +406,7 @@ public class IoTDBPartitionGetterIT {
         // Get RegionId with an equivalent query。
         for (long j = 0; j < testTimePartitionSlotsNum; j++) {
           TGetRegionIdReq subReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-          subReq.setDatabase(curSg);
+          subReq.setDatabase(curDb);
           subReq.setStartTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
           subReq.setEndTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
           TGetRegionIdResp subResp = client.getRegionId(subReq);
@@ -418,7 +418,7 @@ public class IoTDBPartitionGetterIT {
 
         // Get RegionId with time range query
         TGetRegionIdReq rangeReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-        rangeReq.setDatabase(curSg);
+        rangeReq.setDatabase(curDb);
         rangeReq.setStartTimeSlot(new TTimePartitionSlot(0L));
         rangeReq.setEndTimeSlot(
             new TTimePartitionSlot(testTimePartitionSlotsNum * testTimePartitionInterval));
@@ -443,7 +443,7 @@ public class IoTDBPartitionGetterIT {
       }
 
       // Get RegionId of SchemaPartition
-      getRegionIdReq.setDatabase(sg0);
+      getRegionIdReq.setDatabase(db0);
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
@@ -453,7 +453,7 @@ public class IoTDBPartitionGetterIT {
       TGetTimeSlotListReq getTimeSlotListReq;
       TGetTimeSlotListResp getTimeSlotListResp;
       getTimeSlotListReq = new TGetTimeSlotListReq();
-      getTimeSlotListReq.setDatabase(sg0);
+      getTimeSlotListReq.setDatabase(db0);
       getTimeSlotListResp = client.getTimeSlotList(getTimeSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getTimeSlotListResp.status.getCode());
@@ -480,7 +480,7 @@ public class IoTDBPartitionGetterIT {
       TCountTimeSlotListReq countTimeSlotListReq;
       TCountTimeSlotListResp countTimeSlotListResp;
       countTimeSlotListReq = new TCountTimeSlotListReq();
-      countTimeSlotListReq.setDatabase(sg0);
+      countTimeSlotListReq.setDatabase(db0);
       countTimeSlotListResp = client.countTimeSlotList(countTimeSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countTimeSlotListResp.status.getCode());
@@ -504,7 +504,7 @@ public class IoTDBPartitionGetterIT {
       TGetSeriesSlotListReq getSeriesSlotListReq;
       TGetSeriesSlotListResp getSeriesSlotListResp;
 
-      getSeriesSlotListReq = new TGetSeriesSlotListReq(sg0, TConsensusGroupType.DataRegion);
+      getSeriesSlotListReq = new TGetSeriesSlotListReq(db0, TConsensusGroupType.DataRegion);
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());

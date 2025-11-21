@@ -851,7 +851,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     // show devices with database
     if (ctx.WITH() != null) {
-      showDevicesStatement.setSgCol(true);
+      showDevicesStatement.setDbCol(true);
     }
     return showDevicesStatement;
   }

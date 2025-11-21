@@ -374,13 +374,13 @@ public class TSBSMetadata implements Metadata {
 
   @Override
   public DataPartition getDataPartition(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return DATA_PARTITION;
   }
 
@@ -422,19 +422,19 @@ public class TSBSMetadata implements Metadata {
 
       @Override
       public DataPartition getDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return DATA_PARTITION;
       }
 
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return DATA_PARTITION;
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return DATA_PARTITION;
       }
 

@@ -168,17 +168,17 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
   public void testDeleteDatabaseAndThenQuery() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
+      statement.execute("insert into root.db1.d1(time,s1) values(1,1);");
       statement.execute("flush");
-      statement.execute("select count(*) from root.sg1.**;");
-      statement.execute("delete database root.sg1");
-      statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
+      statement.execute("select count(*) from root.db1.**;");
+      statement.execute("delete database root.db1");
+      statement.execute("insert into root.db1.sdhkajhd(time,s1) values(1,1);");
       statement.execute("flush");
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.db1.**")) {
         while (resultSet.next()) {
           count++;
-          assertEquals(1, resultSet.getLong("count(root.sg1.sdhkajhd.s1)"));
+          assertEquals(1, resultSet.getLong("count(root.db1.sdhkajhd.s1)"));
         }
       }
       assertEquals(1, count);
@@ -190,15 +190,15 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       try {
-        statement.execute("insert into root.sg1.d1(s1) values(1);");
-        statement.execute("insert into root.sg2(s2) values(1);");
-        statement.execute("select last(s1) from root.sg1.d1;");
-        statement.execute("select last(s2) from root.sg2;");
-        statement.execute("insert into root.sg1.d1(s1) values(1);");
-        statement.execute("insert into root.sg2(s2) values(1);");
+        statement.execute("insert into root.db1.d1(s1) values(1);");
+        statement.execute("insert into root.db2(s2) values(1);");
+        statement.execute("select last(s1) from root.db1.d1;");
+        statement.execute("select last(s2) from root.db2;");
+        statement.execute("insert into root.db1.d1(s1) values(1);");
+        statement.execute("insert into root.db2(s2) values(1);");
         statement.execute("delete database root.**");
-        statement.execute("insert into root.sg1.d1(s1) values(\"2001-08-01\");");
-        statement.execute("insert into root.sg2(s2) values(\"2001-08-01\");");
+        statement.execute("insert into root.db1.d1(s1) values(\"2001-08-01\");");
+        statement.execute("insert into root.db2(s2) values(\"2001-08-01\");");
       } catch (final Exception e) {
         Assert.fail(e.getMessage());
       }

@@ -46,17 +46,17 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg1(device STRING TAG, s1 INT32 FIELD, s2 DOUBLE FIELD, s3 STRING FIELD, s4 DATE FIELD, s5 TIMESTAMP FIELD)",
-        "insert into sg1(time,device,s1,s2,s3,s4,s5) values(0,'d1',0,0,'0','2024-01-01',0)",
-        "insert into sg1(time,device,s1,s2,s3,s4,s5) values(1,'d1',1,1,'1','2024-01-02',1)",
-        "insert into sg1(time,device,s1,s2) values(2,'d1',2,2)",
-        "insert into sg1(time,device,s1,s2) values(3,'d1',3,3)",
-        "insert into sg1(time,device,s1,s2) values(4,'d1',4,4)",
-        "insert into sg1(time,device,s1,s2) values(5,'d1',5,5)",
-        "insert into sg1(time,device,s1,s2) values(6,'d1',6,6)",
-        "insert into sg1(time,device,s1,s2) values(7,'d1',7,7)",
-        "insert into sg1(time,device,s1,s2) values(8,'d1',8,8)",
-        "insert into sg1(time,device,s1,s2) values(9,'d1',9,9)"
+        "CREATE TABLE db1(device STRING TAG, s1 INT32 FIELD, s2 DOUBLE FIELD, s3 STRING FIELD, s4 DATE FIELD, s5 TIMESTAMP FIELD)",
+        "insert into db1(time,device,s1,s2,s3,s4,s5) values(0,'d1',0,0,'0','2024-01-01',0)",
+        "insert into db1(time,device,s1,s2,s3,s4,s5) values(1,'d1',1,1,'1','2024-01-02',1)",
+        "insert into db1(time,device,s1,s2) values(2,'d1',2,2)",
+        "insert into db1(time,device,s1,s2) values(3,'d1',3,3)",
+        "insert into db1(time,device,s1,s2) values(4,'d1',4,4)",
+        "insert into db1(time,device,s1,s2) values(5,'d1',5,5)",
+        "insert into db1(time,device,s1,s2) values(6,'d1',6,6)",
+        "insert into db1(time,device,s1,s2) values(7,'d1',7,7)",
+        "insert into db1(time,device,s1,s2) values(8,'d1',8,8)",
+        "insert into db1(time,device,s1,s2) values(9,'d1',9,9)"
       };
 
   @BeforeClass
@@ -77,7 +77,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1 from sg1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
+              "select s1 from db1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -97,7 +97,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1 from sg1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
+              "select s1 from db1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -116,7 +116,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 = '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 = '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -125,7 +125,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 = CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 = CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -133,7 +133,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 = 1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 = 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -141,7 +141,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 != '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 != '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -150,7 +150,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 != CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 != CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -158,7 +158,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 != 1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 != 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -176,7 +176,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 > '0'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 > '0'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -185,7 +185,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 > CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 > CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -193,7 +193,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 > 0")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 > 0")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -201,32 +201,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 < '1'")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 < CAST('2024-01-02' AS DATE)")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 < 1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 >= '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 < '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -235,7 +210,32 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 >= CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 < CAST('2024-01-02' AS DATE)")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 < 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 >= '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from db1 where s4 >= CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -243,7 +243,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(2, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 >= 1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 >= 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -251,7 +251,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 <= '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 <= '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -260,7 +260,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 <= CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 <= CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -268,7 +268,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 <= 1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 <= 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -286,7 +286,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 = '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 = '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -294,7 +294,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s3 = '1'")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s3 = '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -303,7 +303,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 = CAST('2024-01-01' AS DATE)")) {
+          statement.executeQuery("select s1 from db1 where s4 = CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -311,7 +311,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         Assert.assertEquals(1, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s1 from sg1 where s5 = 1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1 from db1 where s5 = 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;

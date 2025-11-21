@@ -282,9 +282,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create database root.sg",
-              "create timeseries root.sg.a.b int32",
-              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"),
+              "create database root.db",
+              "create timeseries root.db.a.b int32",
+              "create aligned timeseries root.db.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"),
           null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -312,13 +312,13 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show timeseries root.sg.**",
+          "show timeseries root.db.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           new HashSet<>(
               Arrays.asList(
-                  "root.sg.a.b,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
-                  "root.sg.`apache|timecho-tag-attr`.d1.s1,null,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"},null,null,BASE,",
-                  "root.sg.`apache|timecho-tag-attr`.d1.s2,null,root.sg,DOUBLE,GORILLA,LZ4,{\"tag4\":\"v4\",\"tag3\":\"v3\"},{\"attr4\":\"v4\",\"attr3\":\"v3\"},null,null,BASE,")));
+                  "root.db.a.b,null,root.db,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+                  "root.db.`apache|timecho-tag-attr`.d1.s1,null,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"},null,null,BASE,",
+                  "root.db.`apache|timecho-tag-attr`.d1.s2,null,root.db,DOUBLE,GORILLA,LZ4,{\"tag4\":\"v4\",\"tag3\":\"v3\"},{\"attr4\":\"v4\",\"attr3\":\"v3\"},null,null,BASE,")));
     }
   }
 }

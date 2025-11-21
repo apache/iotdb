@@ -30,7 +30,7 @@ import java.util.Objects;
 
 public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String database;
 
   private long timePartitionInterval;
 
@@ -38,14 +38,14 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetTimePartitionInterval);
   }
 
-  public SetTimePartitionIntervalPlan(String storageGroup, long timePartitionInterval) {
+  public SetTimePartitionIntervalPlan(String database, long timePartitionInterval) {
     this();
-    this.storageGroup = storageGroup;
+    this.database = database;
     this.timePartitionInterval = timePartitionInterval;
   }
 
   public String getDatabase() {
-    return storageGroup;
+    return database;
   }
 
   public long getTimePartitionInterval() {
@@ -56,13 +56,13 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    BasicStructureSerDeUtil.write(storageGroup, stream);
+    BasicStructureSerDeUtil.write(database, stream);
     stream.writeLong(timePartitionInterval);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    database = BasicStructureSerDeUtil.readString(buffer);
     timePartitionInterval = buffer.getLong();
   }
 
@@ -75,12 +75,11 @@ public class SetTimePartitionIntervalPlan extends ConfigPhysicalPlan {
       return false;
     }
     SetTimePartitionIntervalPlan that = (SetTimePartitionIntervalPlan) o;
-    return timePartitionInterval == that.timePartitionInterval
-        && storageGroup.equals(that.storageGroup);
+    return timePartitionInterval == that.timePartitionInterval && database.equals(that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, timePartitionInterval);
+    return Objects.hash(database, timePartitionInterval);
   }
 }

@@ -59,10 +59,10 @@ public class IoTDBInsertMultiPartitionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1) values(1,2)");
+      statement.execute("insert into root.db.d1(time,s1) values(1,2)");
       statement.execute("flush");
-      statement.execute("insert into root.sg.d1(time,s1) values(2,2)");
-      statement.execute("insert into root.sg.d1(time,s1) values(604800001,2)");
+      statement.execute("insert into root.db.d1(time,s1) values(2,2)");
+      statement.execute("insert into root.db.d1(time,s1) values(604800001,2)");
       statement.execute("flush");
     } catch (Exception e) {
       fail(e.getMessage());

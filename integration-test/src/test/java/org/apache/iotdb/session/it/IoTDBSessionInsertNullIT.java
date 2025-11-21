@@ -72,21 +72,21 @@ public class IoTDBSessionInsertNullIT {
 
   private void prepareData(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup("root.sg1");
+    session.setStorageGroup("root.db1");
     session.createTimeseries(
-        "root.sg1.clsu.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s4", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s4", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s5", TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s5", TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s6", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d1.s6", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "root.db1.clsu.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
   }
 
   private long queryCountRecords(ISession session, String sql)
@@ -113,7 +113,7 @@ public class IoTDBSessionInsertNullIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.d1";
+      String deviceId = "root.db1.clsu.d1";
       session.insertRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
       List<String> t = new ArrayList<>();
       t.add(null);
@@ -149,7 +149,7 @@ public class IoTDBSessionInsertNullIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = "root.db1.clsu.aligned_d1";
       session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
       List<String> t = new ArrayList<>();
       t.add(null);
@@ -193,8 +193,8 @@ public class IoTDBSessionInsertNullIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId1 = "root.sg1.clsu.d2";
-      String deviceId2 = "root.sg1.clsu.d3";
+      String deviceId1 = "root.db1.clsu.d2";
+      String deviceId2 = "root.db1.clsu.d3";
       session.insertRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(300L, 300L),
@@ -245,8 +245,8 @@ public class IoTDBSessionInsertNullIT {
   public void insertAlignedRecordsNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.aligned_d2";
-      String deviceId2 = "root.sg1.clsu.aligned_d3";
+      String deviceId1 = "root.db1.clsu.aligned_d2";
+      String deviceId2 = "root.db1.clsu.aligned_d3";
       session.insertAlignedRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(300L, 300L),
@@ -288,7 +288,7 @@ public class IoTDBSessionInsertNullIT {
   public void insertRecordsOfOneDeviceNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.InsertRecordsOfOneDevice";
+      String deviceId1 = "root.db1.clsu.InsertRecordsOfOneDevice";
       session.insertRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(300L, 301L),
@@ -327,7 +327,7 @@ public class IoTDBSessionInsertNullIT {
   public void insertAlignedRecordsOfOneDeviceNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.InsertAlignedRecordsOfOneDevice";
+      String deviceId1 = "root.db1.clsu.InsertAlignedRecordsOfOneDevice";
       session.insertAlignedRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(300L, 301L),
@@ -367,7 +367,7 @@ public class IoTDBSessionInsertNullIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.d1";
+      String deviceId = "root.db1.clsu.d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -401,7 +401,7 @@ public class IoTDBSessionInsertNullIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = "root.db1.clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -435,7 +435,7 @@ public class IoTDBSessionInsertNullIT {
                     + File.separator
                     + "sequence"
                     + File.separator
-                    + "root.sg1"
+                    + "root.db1"
                     + File.separator
                     + "1"
                     + File.separator
@@ -458,7 +458,7 @@ public class IoTDBSessionInsertNullIT {
   @Test
   public void insertTabletNullMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = "root.db1.clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -476,7 +476,7 @@ public class IoTDBSessionInsertNullIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = "root.db1.clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -494,7 +494,7 @@ public class IoTDBSessionInsertNullIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = "root.db1.clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,

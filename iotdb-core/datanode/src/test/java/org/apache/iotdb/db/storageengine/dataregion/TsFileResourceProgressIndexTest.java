@@ -73,16 +73,16 @@ public class TsFileResourceProgressIndexTest {
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
         .forEach(
-            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i));
     ArrayDeviceTimeIndex deviceTimeIndex =
         new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
               deviceTimeIndex.updateStartTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i);
               deviceTimeIndex.updateEndTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);

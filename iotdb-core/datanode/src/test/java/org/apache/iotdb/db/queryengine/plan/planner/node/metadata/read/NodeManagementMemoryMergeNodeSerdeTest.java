@@ -88,8 +88,8 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
   private NodeManagementMemoryMergeNode createNodeManagementMemoryMergeNode()
       throws IllegalPathException {
     Set<TSchemaNode> data = new HashSet<>();
-    data.add(new TSchemaNode("root.ln", MNodeType.STORAGE_GROUP.getNodeType()));
-    data.add(new TSchemaNode("root.abc", MNodeType.STORAGE_GROUP.getNodeType()));
+    data.add(new TSchemaNode("root.ln", MNodeType.DATABASE.getNodeType()));
+    data.add(new TSchemaNode("root.abc", MNodeType.DATABASE.getNodeType()));
     NodeManagementMemoryMergeNode memorySourceNode =
         new NodeManagementMemoryMergeNode(new PlanNodeId("nodeManagementMerge"), data);
     SchemaQueryMergeNode schemaMergeNode = new SchemaQueryMergeNode(new PlanNodeId("schemaMerge"));

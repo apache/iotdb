@@ -64,47 +64,47 @@ public class LimitOffsetPushDownTest {
   @Test
   public void testNonAlignedPushDown() {
     checkPushDown(
-        "select s1 from root.sg.d1 limit 100;",
-        new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).limit("1", 100).getRoot(),
-        new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1"), 100, 0).getRoot());
+        "select s1 from root.db.d1 limit 100;",
+        new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1")).limit("1", 100).getRoot(),
+        new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1"), 100, 0).getRoot());
     checkPushDown(
-        "select s1 from root.sg.d1 offset 100;",
-        new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).offset("1", 100).getRoot(),
-        new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1"), 0, 100).getRoot());
+        "select s1 from root.db.d1 offset 100;",
+        new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1")).offset("1", 100).getRoot(),
+        new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1"), 0, 100).getRoot());
     checkPushDown(
-        "select s1 from root.sg.d1 limit 100 offset 100;",
+        "select s1 from root.db.d1 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .offset("1", 100)
             .limit("2", 100)
             .getRoot(),
-        new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100).getRoot());
+        new TestPlanBuilder().scan("0", schemaMap.get("root.db.d1.s1"), 100, 100).getRoot());
   }
 
   @Test
   public void testAlignedPushDown() {
     checkPushDown(
-        "select s1, s2 from root.sg.d2.a limit 100;",
+        "select s1, s2 from root.db.d2.a limit 100;",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .scanAligned("0", schemaMap.get("root.db.d2.a"))
             .limit("1", 100)
             .getRoot(),
-        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.sg.d2.a"), 100, 0).getRoot());
+        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.db.d2.a"), 100, 0).getRoot());
     checkPushDown(
-        "select s1, s2 from root.sg.d2.a offset 100;",
+        "select s1, s2 from root.db.d2.a offset 100;",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .scanAligned("0", schemaMap.get("root.db.d2.a"))
             .offset("1", 100)
             .getRoot(),
-        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.sg.d2.a"), 0, 100).getRoot());
+        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.db.d2.a"), 0, 100).getRoot());
     checkPushDown(
-        "select s1, s2 from root.sg.d2.a limit 100 offset 100;",
+        "select s1, s2 from root.db.d2.a limit 100 offset 100;",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .scanAligned("0", schemaMap.get("root.db.d2.a"))
             .offset("1", 100)
             .limit("2", 100)
             .getRoot(),
-        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.sg.d2.a"), 100, 100).getRoot());
+        new TestPlanBuilder().scanAligned("0", schemaMap.get("root.db.d2.a"), 100, 100).getRoot());
   }
 
   @Test
@@ -112,19 +112,19 @@ public class LimitOffsetPushDownTest {
     List<Expression> expressions =
         Arrays.asList(
             add(
-                function("sin", add(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("1"))),
+                function("sin", add(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("1"))),
                 intValue("1")),
-            gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")));
+            gt(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("10")));
     checkPushDown(
-        "select sin(s1 + 1) + 1, s1 > 10 from root.sg.d1 limit 100 offset 100;",
+        "select sin(s1 + 1) + 1, s1 > 10 from root.db.d1 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .transform("1", expressions)
             .offset("2", 100)
             .limit("3", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
+            .scan("0", schemaMap.get("root.db.d1.s1"), 100, 100)
             .transform("1", expressions)
             .getRoot());
   }
@@ -132,15 +132,15 @@ public class LimitOffsetPushDownTest {
   @Test
   public void testPushDownWithFill() {
     checkPushDown(
-        "select s1 from root.sg.d1 fill(100) limit 100 offset 100;",
+        "select s1 from root.db.d1 fill(100) limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .fill("1", "100")
             .offset("2", 100)
             .limit("3", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
+            .scan("0", schemaMap.get("root.db.d1.s1"), 100, 100)
             .fill("1", "100")
             .getRoot());
   }
@@ -149,16 +149,16 @@ public class LimitOffsetPushDownTest {
   public void testPushDownAlignByDevice() {
     // non aligned device
     checkPushDown(
-        "select s1 from root.sg.d1 limit 100 offset 100 align by device;",
+        "select s1 from root.db.d1 limit 100 offset 100 align by device;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
-            .singleDeviceView("1", "root.sg.d1", "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"))
+            .singleDeviceView("1", "root.db.d1", "s1")
             .offset("2", 100)
             .limit("3", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
-            .singleDeviceView("1", "root.sg.d1", "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"), 100, 100)
+            .singleDeviceView("1", "root.db.d1", "s1")
             .getRoot());
 
     OrderByParameter orderByParameter =
@@ -167,16 +167,16 @@ public class LimitOffsetPushDownTest {
                 new SortItem(OrderByKey.TIME, Ordering.ASC),
                 new SortItem(OrderByKey.DEVICE, Ordering.ASC)));
     checkPushDown(
-        "select s1 from root.sg.d1 order by time asc limit 100 offset 100 align by device;",
+        "select s1 from root.db.d1 order by time asc limit 100 offset 100 align by device;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 200)
-            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"), 200)
+            .singleOrderedDeviceView("1", "root.db.d1", orderByParameter, "s1")
             .offset("2", 100)
             .limit("3", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
-            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"), 100, 100)
+            .singleOrderedDeviceView("1", "root.db.d1", orderByParameter, "s1")
             .getRoot());
 
     // can not push down
@@ -187,17 +187,17 @@ public class LimitOffsetPushDownTest {
                 new SortItem("DEVICE", Ordering.ASC),
                 new SortItem("TIME", Ordering.ASC)));
     checkPushDown(
-        "select s1 from root.sg.d1 order by s1 asc limit 100 offset 100 align by device;",
+        "select s1 from root.db.d1 order by s1 asc limit 100 offset 100 align by device;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
-            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"))
+            .singleOrderedDeviceView("1", "root.db.d1", orderByParameter, "s1")
             .sort("2", orderByParameter)
             .offset("3", 100)
             .limit("4", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
-            .singleOrderedDeviceView("1", "root.sg.d1", orderByParameter, "s1")
+            .scan("0", schemaMap.get("root.db.d1.s1"))
+            .singleOrderedDeviceView("1", "root.db.d1", orderByParameter, "s1")
             .topK("5", 200, orderByParameter, Arrays.asList("Device", "s1"))
             .offset("3", 100)
             .limit("4", 100)
@@ -210,17 +210,17 @@ public class LimitOffsetPushDownTest {
                 new SortItem("DEVICE", Ordering.ASC),
                 new SortItem("TIME", Ordering.ASC)));
     checkPushDown(
-        "select s1,s2 from root.sg.d2.a order by s1 asc limit 100 offset 100 align by device;",
+        "select s1,s2 from root.db.d2.a order by s1 asc limit 100 offset 100 align by device;",
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
-            .singleOrderedDeviceView("1", "root.sg.d2.a", orderByParameter, "s1", "s2")
+            .scanAligned("0", schemaMap.get("root.db.d2.a"))
+            .singleOrderedDeviceView("1", "root.db.d2.a", orderByParameter, "s1", "s2")
             .sort("2", orderByParameter)
             .offset("3", 100)
             .limit("4", 100)
             .getRoot(),
         new TestPlanBuilder()
-            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
-            .singleOrderedDeviceView("1", "root.sg.d2.a", orderByParameter, "s1", "s2")
+            .scanAligned("0", schemaMap.get("root.db.d2.a"))
+            .singleOrderedDeviceView("1", "root.db.d2.a", orderByParameter, "s1", "s2")
             .topK("5", 200, orderByParameter, Arrays.asList("Device", "s1"))
             .offset("3", 100)
             .limit("4", 100)
@@ -230,39 +230,39 @@ public class LimitOffsetPushDownTest {
   @Test
   public void testPushDownWithInto() {
     checkPushDown(
-        "select s1 into root.sg.d2(s1) from root.sg.d1 limit 100 offset 100;",
+        "select s1 into root.db.d2(s1) from root.db.d1 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .offset("1", 100)
             .limit("2", 100)
-            .into("3", schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d2.s1"))
+            .into("3", schemaMap.get("root.db.d1.s1"), schemaMap.get("root.db.d2.s1"))
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
-            .into("3", schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d2.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"), 100, 100)
+            .into("3", schemaMap.get("root.db.d1.s1"), schemaMap.get("root.db.d2.s1"))
             .getRoot());
   }
 
   @Test
   public void testCannotPushDown() {
     checkCannotPushDown(
-        "select s1, s2 from root.sg.d1 limit 100;",
+        "select s1, s2 from root.db.d1 limit 100;",
         new TestPlanBuilder()
             .fullOuterTimeJoin(
-                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+                Arrays.asList(schemaMap.get("root.db.d1.s1"), schemaMap.get("root.db.d1.s2")))
             .limit("3", 100)
             .getRoot());
 
     checkCannotPushDown(
-        "select diff(s1 + 1) + 1 from root.sg.d1 limit 100 offset 100;",
+        "select diff(s1 + 1) + 1 from root.db.d1 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .transform(
                 "1",
                 Collections.singletonList(
                     add(
                         function(
-                            "diff", add(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("1"))),
+                            "diff", add(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("1"))),
                         intValue("1"))))
             .offset("2", 100)
             .limit("3", 100)
@@ -271,40 +271,40 @@ public class LimitOffsetPushDownTest {
     LinkedHashMap<String, String> functionAttributes = new LinkedHashMap<>();
     functionAttributes.put("windowSize", "10");
     checkCannotPushDown(
-        "select m4(s1,'windowSize'='10') from root.sg.d1 limit 100 offset 100;",
+        "select m4(s1,'windowSize'='10') from root.db.d1 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .transform(
                 "1",
                 Collections.singletonList(
-                    function("m4", functionAttributes, timeSeries(schemaMap.get("root.sg.d1.s1")))))
+                    function("m4", functionAttributes, timeSeries(schemaMap.get("root.db.d1.s1")))))
             .offset("2", 100)
             .limit("3", 100)
             .getRoot());
 
     checkCannotPushDown(
-        "select s1 from root.sg.d1 fill(linear) limit 100;",
+        "select s1 from root.db.d1 fill(linear) limit 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .fill("1", FillPolicy.LINEAR)
             .limit("2", 100)
             .getRoot());
     checkCannotPushDown(
-        "select s1 from root.sg.d1 fill(previous) limit 100;",
+        "select s1 from root.db.d1 fill(previous) limit 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .fill("1", FillPolicy.PREVIOUS)
             .limit("2", 100)
             .getRoot());
 
     checkCannotPushDown(
-        "select s1 from root.sg.d1 where s1 > 10 limit 100 offset 100;",
+        "select s1 from root.db.d1 where s1 > 10 limit 100 offset 100;",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .scan("0", schemaMap.get("root.db.d1.s1"))
             .filter(
                 "1",
-                Collections.singletonList(timeSeries(schemaMap.get("root.sg.d1.s1"))),
-                gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")),
+                Collections.singletonList(timeSeries(schemaMap.get("root.db.d1.s1"))),
+                gt(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("10")),
                 false)
             .offset("2", 100)
             .limit("3", 100)
@@ -436,7 +436,7 @@ public class LimitOffsetPushDownTest {
     Assert.assertEquals(endTime, groupByTimeComponent.getEndTime());
   }
 
-  // device: [root.sg.s1, root.sg.s2, root.sg.s2.a]
+  // device: [root.db.s1, root.db.s2, root.db.s2.a]
   private void checkGroupByTimePushDownInAlignByDevice(
       String sql,
       List<String> deviceSet,
@@ -477,7 +477,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 899), 50ms) offset 16 limit 2 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d1");
+    deviceSet.add("root.db.d1");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 804, 899);
   }
 
@@ -486,8 +486,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 899), 50ms) offset 16 limit 10 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d1");
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d1");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 10, 16, 4, 899);
   }
 
@@ -496,7 +496,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 899), 50ms) offset 20 limit 2 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 104, 204);
   }
 
@@ -505,8 +505,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 899), 50ms) offset 33 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d2.a");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d2.a");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 15, 4, 899);
   }
 
@@ -515,7 +515,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 29, 179);
   }
 
@@ -524,8 +524,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 9 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d2.a");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d2.a");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
   }
 
@@ -534,8 +534,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 9 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d2.a");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d2.a");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
   }
 
@@ -544,8 +544,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device offset 9 limit 9 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d2.a");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d2.a");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
   }
 
@@ -554,8 +554,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc offset 9 limit 9 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d1");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d1");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
   }
 
@@ -564,7 +564,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, time desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 54, 199);
   }
 
@@ -573,7 +573,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc, time desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 54, 199);
   }
 
@@ -582,7 +582,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 899), 50ms) order by device desc offset 16 limit 2 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2.a");
+    deviceSet.add("root.db.d2.a");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 804, 899);
   }
 
@@ -591,7 +591,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, avg(s1) desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 1, 4, 199);
   }
 
@@ -600,7 +600,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, avg(s1) desc,time desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 1, 4, 199);
   }
 
@@ -609,7 +609,7 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc limit 1 offset 8 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.db.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 1, 0, 4, 54);
   }
 
@@ -618,8 +618,8 @@ public class LimitOffsetPushDownTest {
     String sql =
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc offset 8 align by device";
     List<String> deviceSet = new ArrayList<>();
-    deviceSet.add("root.sg.d2");
-    deviceSet.add("root.sg.d1");
+    deviceSet.add("root.db.d2");
+    deviceSet.add("root.db.d1");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 4, 199);
   }
 }

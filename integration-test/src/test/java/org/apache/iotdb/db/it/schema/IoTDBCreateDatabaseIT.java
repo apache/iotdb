@@ -73,7 +73,7 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
   /** The test creates three databases */
   @Test
   public void testCreateDatabase() throws Exception {
-    final String[] databases = {"root.sg1", "root.sg2", "root.sg3"};
+    final String[] databases = {"root.db1", "root.db2", "root.db3"};
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (final String database : databases) {
@@ -95,7 +95,7 @@ public class IoTDBCreateDatabaseIT extends AbstractSchemaIT {
       throws SQLException {
 
     List<String> resultList = new ArrayList<>();
-    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.sg*")) {
+    try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.db*")) {
       while (resultSet.next()) {
         final String databasePath = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(databasePath);

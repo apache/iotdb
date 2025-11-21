@@ -90,16 +90,16 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
     List<CompressionType> compressors =
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
 
-    session.setStorageGroup("root.sg");
+    session.setStorageGroup("root.db");
 
     session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
-    session.setSchemaTemplate("flatTemplate", "root.sg.d0");
+    session.setSchemaTemplate("flatTemplate", "root.db.d0");
     try {
-      session.setSchemaTemplate("flatTemplate", "root.sg.d0");
+      session.setSchemaTemplate("flatTemplate", "root.db.d0");
       fail();
     } catch (StatementExecutionException e) {
       assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Template already exists on root.sg.d0",
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Template already exists on root.db.d0",
           e.getMessage());
     }
   }
@@ -107,7 +107,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
   @Test
   public void testShowTemplates()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
-    session.setStorageGroup("root.sg");
+    session.setStorageGroup("root.db");
 
     Template temp1 = getTemplate("template1");
     Template temp2 = getTemplate("template2");
@@ -121,68 +121,68 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
         new HashSet<>(Arrays.asList("template1", "template2")),
         new HashSet<>(session.showAllTemplates()));
 
-    session.setSchemaTemplate("template1", "root.sg.v1");
-    session.setSchemaTemplate("template1", "root.sg.v2");
-    session.setSchemaTemplate("template1", "root.sg.v3");
+    session.setSchemaTemplate("template1", "root.db.v1");
+    session.setSchemaTemplate("template1", "root.db.v2");
+    session.setSchemaTemplate("template1", "root.db.v3");
 
     assertEquals(
-        new HashSet<>(Arrays.asList("root.sg.v1", "root.sg.v2", "root.sg.v3")),
+        new HashSet<>(Arrays.asList("root.db.v1", "root.db.v2", "root.db.v3")),
         new HashSet<>(session.showPathsTemplateSetOn("template1")));
 
     assertEquals(
         new HashSet<>(Collections.emptyList()),
         new HashSet<>(session.showPathsTemplateUsingOn("template1")));
 
-    session.setSchemaTemplate("template2", "root.sg.v4");
-    session.setSchemaTemplate("template2", "root.sg.v5");
-    session.setSchemaTemplate("template2", "root.sg.v6");
+    session.setSchemaTemplate("template2", "root.db.v4");
+    session.setSchemaTemplate("template2", "root.db.v5");
+    session.setSchemaTemplate("template2", "root.db.v6");
 
     assertEquals(
-        new HashSet<>(Arrays.asList("root.sg.v4", "root.sg.v5", "root.sg.v6")),
+        new HashSet<>(Arrays.asList("root.db.v4", "root.db.v5", "root.db.v6")),
         new HashSet<>(session.showPathsTemplateSetOn("template2")));
 
     assertEquals(
         new HashSet<>(
             Arrays.asList(
-                "root.sg.v1",
-                "root.sg.v2",
-                "root.sg.v3",
-                "root.sg.v4",
-                "root.sg.v5",
-                "root.sg.v6")),
+                "root.db.v1",
+                "root.db.v2",
+                "root.db.v3",
+                "root.db.v4",
+                "root.db.v5",
+                "root.db.v6")),
         new HashSet<>(session.showPathsTemplateSetOn("*")));
 
     session.insertRecord(
-        "root.sg.v1.GPS",
+        "root.db.v1.GPS",
         110L,
         Collections.singletonList("x"),
         Collections.singletonList(TSDataType.FLOAT),
         Collections.singletonList(1.0f));
 
     assertEquals(
-        new HashSet<>(Collections.singletonList("root.sg.v1.GPS")),
+        new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template1")));
 
     session.insertRecord(
-        "root.sg.v5.GPS",
+        "root.db.v5.GPS",
         110L,
         Collections.singletonList("x"),
         Collections.singletonList(TSDataType.FLOAT),
         Collections.singletonList(1.0f));
 
     assertEquals(
-        new HashSet<>(Collections.singletonList("root.sg.v1.GPS")),
+        new HashSet<>(Collections.singletonList("root.db.v1.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template1")));
 
     assertEquals(
-        new HashSet<>(Collections.singletonList("root.sg.v5.GPS")),
+        new HashSet<>(Collections.singletonList("root.db.v5.GPS")),
         new HashSet<>(session.showPathsTemplateUsingOn("template2")));
   }
 
   @Test
   public void testDropTemplate()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
-    session.setStorageGroup("root.sg");
+    session.setStorageGroup("root.db");
 
     Template temp1 = getTemplate("template1");
 
@@ -204,7 +204,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
     session.dropSchemaTemplate("template1");
     session.createSchemaTemplate(temp1);
 
-    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.setSchemaTemplate("template1", "root.db.v1");
 
     try {
       session.dropSchemaTemplate("template1");
@@ -216,7 +216,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
           e.getMessage());
     }
 
-    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    session.unsetSchemaTemplate("root.db.v1", "template1");
     session.dropSchemaTemplate("template1");
 
     session.createSchemaTemplate(temp1);

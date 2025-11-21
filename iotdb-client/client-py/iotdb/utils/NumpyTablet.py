@@ -41,7 +41,7 @@ class NumpyTablet(object):
     ):
         """
         creating a numpy tablet for insertion
-          for example using tree-model, considering device: root.sg1.d1
+          for example using tree-model, considering device: root.db1.d1
             timestamps,     m1,    m2,     m3
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2

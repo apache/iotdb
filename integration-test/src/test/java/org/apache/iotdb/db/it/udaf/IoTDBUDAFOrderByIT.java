@@ -50,48 +50,48 @@ public class IoTDBUDAFOrderByIT {
 
   protected static final String[] dataset =
       new String[] {
-        "CREATE DATABASE root.sg",
-        "CREATE TIMESERIES root.sg.d.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d.floatNum WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.d.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d.floatNum WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.db.d(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
         "flush",
-        "CREATE TIMESERIES root.sg.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.floatNum WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
+        "CREATE TIMESERIES root.db.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d2.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.db.d2.floatNum WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.db.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
       };
 
   @BeforeClass
@@ -124,7 +124,7 @@ public class IoTDBUDAFOrderByIT {
   @Test
   public void UDAFOrderByWithAggregationTest() {
     String sql =
-        "SELECT avg_udaf(num) FROM root.sg.d "
+        "SELECT avg_udaf(num) FROM root.db.d "
             + "GROUP BY SESSION(10000ms) "
             + "ORDER BY avg_udaf(num) DESC";
     double[][] ans = new double[][] {{15.0}, {13.0}, {13.0}, {11.0}, {6.4}, {4.6}};
@@ -153,7 +153,7 @@ public class IoTDBUDAFOrderByIT {
   public void UDAFOrderByWithAggregationTest2() {
     String sql =
         "SELECT avg_udaf(num) "
-            + "FROM root.sg.d "
+            + "FROM root.db.d "
             + "GROUP BY SESSION(10000ms) "
             + "ORDER BY max_value(floatNum)";
     double[][] ans =
@@ -190,7 +190,7 @@ public class IoTDBUDAFOrderByIT {
   public void UDAFOrderByWithAggregationTest3() {
     String sql =
         "SELECT avg_udaf(num) "
-            + "FROM root.sg.d GROUP BY SESSION(10000ms) "
+            + "FROM root.db.d GROUP BY SESSION(10000ms) "
             + "ORDER BY avg_udaf(num) DESC, max_value(floatNum)";
     double[] ans = new double[] {15.0, 13.0, 13.0, 11.0, 6.4, 4.6};
     long[] times =
@@ -218,7 +218,7 @@ public class IoTDBUDAFOrderByIT {
   public void UDAFOrderByWithAggregationTest4() {
     String sql =
         "SELECT avg_udaf(num) + avg_udaf(floatNum) "
-            + "FROM root.sg.d "
+            + "FROM root.db.d "
             + "GROUP BY SESSION(10000ms) "
             + "ORDER BY avg_udaf(num) + avg_udaf(floatNum)";
     double[][] ans =
@@ -272,18 +272,18 @@ public class IoTDBUDAFOrderByIT {
         };
     String[] device =
         new String[] {
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d",
-          "root.sg.d2",
-          "root.sg.d2",
-          "root.sg.d",
-          "root.sg.d2"
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d",
+          "root.db.d2",
+          "root.db.d2",
+          "root.db.d",
+          "root.db.d2"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -426,8 +426,8 @@ public class IoTDBUDAFOrderByIT {
   }
 
   private void checkSingleDouble(String sql, Object value, boolean deviceAsc) {
-    String device = "root.sg.d";
-    if (!deviceAsc) device = "root.sg.d2";
+    String device = "root.db.d";
+    if (!deviceAsc) device = "root.db.d2";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
@@ -451,10 +451,10 @@ public class IoTDBUDAFOrderByIT {
         assertEquals(device, actualDeviceList.get(0));
         assertEquals(Double.parseDouble(value.toString()), actualValueList.get(0), 1);
         // Change device name
-        if (device.equals("root.sg.d")) {
-          device = "root.sg.d2";
+        if (device.equals("root.db.d")) {
+          device = "root.db.d2";
         } else {
-          device = "root.sg.d";
+          device = "root.db.d";
         }
         assertEquals(device, actualDeviceList.get(1));
         assertEquals(Double.parseDouble(value.toString()), actualValueList.get(1), 1);

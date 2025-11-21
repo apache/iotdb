@@ -30,7 +30,7 @@ def test_tablet_insertion():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("CREATE DATABASE root.sg_test_01")
+        session.execute_non_query_statement("CREATE DATABASE root.db_test_01")
 
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
         data_types_ = [
@@ -49,17 +49,17 @@ def test_tablet_insertion():
         ]
         timestamps_ = [16, 17, 18, 19]
         tablet_ = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
         session.insert_tablet(tablet_)
         columns = []
         for measurement in measurements_:
-            columns.append("root.sg_test_01.d_01." + measurement)
+            columns.append("root.db_test_01.d_01." + measurement)
         df_input = pd.DataFrame(values_, columns=columns, dtype=object)
         df_input.insert(0, "Time", np.array(timestamps_))
 
         session_data_set = session.execute_query_statement(
-            "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
+            "select s_01, s_02, s_03, s_04, s_05, s_06 from root.db_test_01.d_01"
         )
         df_output = session_data_set.todf()
         df_output = df_output[df_input.columns.tolist()].replace(
@@ -75,7 +75,7 @@ def test_nullable_tablet_insertion():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("CREATE DATABASE root.sg_test_01")
+        session.execute_non_query_statement("CREATE DATABASE root.db_test_01")
 
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
         data_types_ = [
@@ -94,17 +94,17 @@ def test_nullable_tablet_insertion():
         ]
         timestamps_ = [16, 17, 18, 19]
         tablet_ = Tablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
         )
         session.insert_tablet(tablet_)
         columns = []
         for measurement in measurements_:
-            columns.append("root.sg_test_01.d_01." + measurement)
+            columns.append("root.db_test_01.d_01." + measurement)
         df_input = pd.DataFrame(values_, columns=columns, dtype=object)
         df_input.insert(0, "Time", np.array(timestamps_))
 
         session_data_set = session.execute_query_statement(
-            "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
+            "select s_01, s_02, s_03, s_04, s_05, s_06 from root.db_test_01.d_01"
         )
         df_output = session_data_set.todf()
         df_output = df_output[df_input.columns.tolist()]

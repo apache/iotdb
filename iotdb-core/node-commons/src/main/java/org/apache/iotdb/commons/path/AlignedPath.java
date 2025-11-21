@@ -47,7 +47,7 @@ import java.util.Objects;
 
 /**
  * VectorPartialPath represents many fullPaths of aligned timeseries. In the AlignedPath, the nodes
- * in PartialPath is deviceId e.g. VectorPartialPath nodes=root.sg1.alignedD1 measurementList=[s1,
+ * in PartialPath is deviceId e.g. VectorPartialPath nodes=root.db1.alignedD1 measurementList=[s1,
  * s2]
  */
 public class AlignedPath extends PartialPath {

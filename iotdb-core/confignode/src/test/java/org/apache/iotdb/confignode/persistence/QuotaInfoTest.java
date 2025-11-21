@@ -65,7 +65,7 @@ public class QuotaInfoTest {
 
   private void prepareSpaceQuotaInfo() {
     List<String> prefixPathList = new ArrayList<>();
-    prefixPathList.add("root.sg");
+    prefixPathList.add("root.db");
     prefixPathList.add("root.ln");
     TSpaceQuota spaceQuota = new TSpaceQuota();
     spaceQuota.setTimeserieNum(10000);

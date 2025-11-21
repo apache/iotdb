@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 
 public abstract class AbstractSeriesScanTest {
 
-  protected static final String TEST_DATABASE = "root.sg_pd";
+  protected static final String TEST_DATABASE = "root.db_pd";
   protected static final IDeviceID TEST_DEVICE =
       IDeviceID.Factory.DEFAULT_FACTORY.create(TEST_DATABASE + ".d1");
   protected static final String TEST_PATH = TEST_DEVICE.toString() + ".s1";
@@ -61,7 +61,7 @@ public abstract class AbstractSeriesScanTest {
    * The data distribution is as follows.
    *
    * <pre>
-   *  time    root.sg_pd.d1.s1
+   *  time    root.db_pd.d1.s1
    *      ┌──────────┐
    *   0  │ f1-c1-p1 │
    *      ╞══════════╡

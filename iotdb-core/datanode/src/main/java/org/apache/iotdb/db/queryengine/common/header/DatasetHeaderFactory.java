@@ -27,8 +27,8 @@ public class DatasetHeaderFactory {
     // forbidding instantiation
   }
 
-  public static DatasetHeader getCountStorageGroupHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.countStorageGroupColumnHeaders, true);
+  public static DatasetHeader getCountDatabaseHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.countDatabaseColumnHeaders, true);
   }
 
   public static DatasetHeader getCountNodesHeader() {
@@ -56,7 +56,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowDevicesWithSgHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithDbColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {

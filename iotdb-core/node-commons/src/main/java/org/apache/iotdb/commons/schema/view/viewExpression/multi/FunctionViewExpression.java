@@ -45,9 +45,9 @@ public class FunctionViewExpression extends ViewExpression {
   private final List<String> functionAttributesKeyValueList;
 
   /**
-   * example: select udf(a, b, udf(c)) from root.sg.d;
+   * example: select udf(a, b, udf(c)) from root.db.d;
    *
-   * <p>3 expressions [root.sg.d.a, root.sg.d.b, udf(root.sg.d.c)] will be in this field.
+   * <p>3 expressions [root.db.d.a, root.db.d.b, udf(root.db.d.c)] will be in this field.
    */
   private List<ViewExpression> expressions;
 

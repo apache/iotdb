@@ -92,7 +92,7 @@ public class VisibilityUtils {
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     if (isDoubleLiving) {
       return Visibility.BOTH;
     }

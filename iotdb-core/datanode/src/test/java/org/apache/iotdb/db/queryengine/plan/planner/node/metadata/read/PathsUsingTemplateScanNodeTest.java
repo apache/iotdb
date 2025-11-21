@@ -37,11 +37,11 @@ public class PathsUsingTemplateScanNodeTest {
   @Test
   public void testSerialization() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.**.*"));
     PathsUsingTemplateScanNode pathsUsingTemplateScanNode =
         new PathsUsingTemplateScanNode(
             new PlanNodeId("0"),
-            Collections.singletonList(new PartialPath("root.sg")),
+            Collections.singletonList(new PartialPath("root.db")),
             1,
             SchemaConstant.ALL_MATCH_SCOPE);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);

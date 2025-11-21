@@ -52,7 +52,7 @@ public class DataRegionInfo {
   /** Must report to the system when this value is true */
   private final AtomicBoolean needToReportToSystem = new AtomicBoolean();
 
-  /** A set of all unclosed TsFileProcessors in this SG */
+  /** A set of all unclosed TsFileProcessors in this DB */
   private final List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
   public DataRegionInfo(DataRegion dataRegion) {
@@ -106,7 +106,7 @@ public class DataRegionInfo {
 
   /**
    * When a TsFileProcessor is closing, remove it from reportedTsps, and report to systemInfo to
-   * update SG cost.
+   * update DB cost.
    *
    * @param tsFileProcessor
    */

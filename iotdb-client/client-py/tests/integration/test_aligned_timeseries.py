@@ -52,16 +52,16 @@ def test_aligned_timeseries():
             exit(1)
 
         # set and delete databases
-        session.set_storage_group("root.sg_test_01")
-        session.set_storage_group("root.sg_test_02")
-        session.set_storage_group("root.sg_test_03")
-        session.set_storage_group("root.sg_test_04")
+        session.set_storage_group("root.db_test_01")
+        session.set_storage_group("root.db_test_02")
+        session.set_storage_group("root.db_test_03")
+        session.set_storage_group("root.db_test_04")
 
-        if session.delete_storage_group("root.sg_test_02") < 0:
+        if session.delete_storage_group("root.db_test_02") < 0:
             test_fail()
             print_message("delete database failed")
 
-        if session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"]) < 0:
+        if session.delete_storage_groups(["root.db_test_03", "root.db_test_04"]) < 0:
             test_fail()
             print_message("delete databases failed")
 
@@ -79,7 +79,7 @@ def test_aligned_timeseries():
         encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
         compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
         session.create_aligned_time_series(
-            "root.sg_test_01.d_02",
+            "root.db_test_01.d_02",
             measurements_lst_,
             data_type_lst_,
             encoding_lst_,
@@ -106,7 +106,7 @@ def test_aligned_timeseries():
         encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
         compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
         session.create_aligned_time_series(
-            "root.sg_test_01.d_02",
+            "root.db_test_01.d_02",
             measurements_lst_,
             data_type_lst_,
             encoding_lst_,
@@ -117,9 +117,9 @@ def test_aligned_timeseries():
         try:
             session.delete_time_series(
                 [
-                    "root.sg_test_01.d_02.s_07",
-                    "root.sg_test_01.d_02.s_08",
-                    "root.sg_test_01.d_02.s_09",
+                    "root.db_test_01.d_02.s_07",
+                    "root.db_test_01.d_02.s_08",
+                    "root.db_test_01.d_02.s_09",
                 ]
             )
         except Exception:
@@ -128,14 +128,14 @@ def test_aligned_timeseries():
 
         # checking time series
         # s_07 expecting False
-        if session.check_time_series_exists("root.sg_test_01.d_02.s_07"):
+        if session.check_time_series_exists("root.db_test_01.d_02.s_07"):
             test_fail()
-            print_message("root.sg_test_01.d_02.s_07 shouldn't exist")
+            print_message("root.db_test_01.d_02.s_07 shouldn't exist")
 
         # s_03 expecting True
-        if not session.check_time_series_exists("root.sg_test_01.d_02.s_03"):
+        if not session.check_time_series_exists("root.db_test_01.d_02.s_03"):
             test_fail()
-            print_message("root.sg_test_01.d_02.s_03 should exist")
+            print_message("root.db_test_01.d_02.s_03 should exist")
 
         # insert one record into the database.
         measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
@@ -150,7 +150,7 @@ def test_aligned_timeseries():
         ]
         try:
             session.insert_aligned_record(
-                "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
+                "root.db_test_01.d_02", 1, measurements_, data_types_, values_
             )
         except Exception:
             test_fail()
@@ -166,7 +166,7 @@ def test_aligned_timeseries():
             [True, 77, 88, 1.25, 8.125, "test_records02"],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_02", "root.sg_test_01.d_02"]
+        device_ids_ = ["root.db_test_01.d_02", "root.db_test_01.d_02"]
         try:
             session.insert_aligned_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
@@ -184,7 +184,7 @@ def test_aligned_timeseries():
         ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
         timestamps_ = [4, 5, 6, 7]
         tablet_ = Tablet(
-            "root.sg_test_01.d_02", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_02", measurements_, data_types_, values_, timestamps_
         )
         if session.insert_aligned_tablet(tablet_) < 0:
             test_fail()
@@ -192,10 +192,10 @@ def test_aligned_timeseries():
 
         # insert multiple tablets into database
         tablet_01 = Tablet(
-            "root.sg_test_01.d_02", measurements_, data_types_, values_, [8, 9, 10, 11]
+            "root.db_test_01.d_02", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_02",
+            "root.db_test_01.d_02",
             measurements_,
             data_types_,
             values_,
@@ -214,7 +214,7 @@ def test_aligned_timeseries():
         ]  # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
         timestamps_ = [20, 21, 22, 23]
         tablet_ = Tablet(
-            "root.sg_test_01.d_02", measurements_, data_types_, values_, timestamps_
+            "root.db_test_01.d_02", measurements_, data_types_, values_, timestamps_
         )
         if session.insert_aligned_tablet(tablet_) < 0:
             test_fail()
@@ -236,7 +236,7 @@ def test_aligned_timeseries():
 
         if (
             session.insert_aligned_records_of_one_device(
-                "root.sg_test_01.d_02",
+                "root.db_test_01.d_02",
                 time_list,
                 measurements_list,
                 data_types_list,
@@ -250,17 +250,17 @@ def test_aligned_timeseries():
         # execute non-query sql statement
         try:
             session.execute_non_query_statement(
-                "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
+                "insert into root.db_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
             )
         except Exception:
             test_fail()
             print_message(
-                "execute 'insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)' failed"
+                "execute 'insert into root.db_test_01.d_02(timestamp, s_02) aligned values(16, 188)' failed"
             )
 
         # execute sql query statement
         session_data_set = session.execute_query_statement(
-            "select * from root.sg_test_01.d_02"
+            "select * from root.db_test_01.d_02"
         )
         session_data_set.set_fetch_size(1024)
         expect_count = 20

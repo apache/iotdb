@@ -56,14 +56,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.commons.schema.SchemaConstant.isDatabaseType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -258,7 +258,7 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeEntityMNode(inputStream);
         deviceProcess.accept(node.getAsDeviceMNode());
         break;
-      case STORAGE_GROUP_ENTITY_MNODE_TYPE:
+      case DATABASE_ENTITY_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeStorageGroupEntityMNode(inputStream);
         deviceProcess.accept(node.getAsDeviceMNode());
@@ -300,7 +300,7 @@ public class MemMTreeSnapshotUtil {
     }
 
     // Storage type means current node is root node, so it must be returned.
-    if (childrenNum > 0 || isStorageGroupType(type)) {
+    if (childrenNum > 0 || isDatabaseType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }
@@ -344,7 +344,7 @@ public class MemMTreeSnapshotUtil {
         AbstractDatabaseMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
         if (node.isDevice()) {
-          ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
+          ReadWriteIOUtils.write(DATABASE_ENTITY_MNODE_TYPE, outputStream);
           serializeBasicMNode(node.getBasicMNode(), outputStream);
           IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
           ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);

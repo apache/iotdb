@@ -76,11 +76,11 @@ public class IoTDBInsertNullIT {
   }
 
   private static void initCreateSQLStatement() {
-    sqls.add("CREATE DATABASE root.sg");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=BOOLEAN");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT");
-    sqls.add("CREATE TIMESERIES root.sg.d1.s3 WITH DATATYPE=INT32");
-    sqls.add("CREATE ALIGNED TIMESERIES root.sg.d2(s1 BOOLEAN,s2 FLOAT,s3 INT32)");
+    sqls.add("CREATE DATABASE root.db");
+    sqls.add("CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=BOOLEAN");
+    sqls.add("CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=FLOAT");
+    sqls.add("CREATE TIMESERIES root.db.d1.s3 WITH DATATYPE=INT32");
+    sqls.add("CREATE ALIGNED TIMESERIES root.db.d2(s1 BOOLEAN,s2 FLOAT,s3 INT32)");
   }
 
   private static void insertData() throws SQLException {
@@ -103,17 +103,17 @@ public class IoTDBInsertNullIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(1,null,1.0,1)");
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(2,true,null,2)");
-      statement.execute("insert into root.sg.d1(time,s1,s2,s3) values(3,true,3.0,null)");
+      statement.execute("insert into root.db.d1(time,s1,s2,s3) values(1,null,1.0,1)");
+      statement.execute("insert into root.db.d1(time,s1,s2,s3) values(2,true,null,2)");
+      statement.execute("insert into root.db.d1(time,s1,s2,s3) values(3,true,3.0,null)");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db.d1")) {
         assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.sg.d1.s1,root.sg.d1.s2,root.sg.d1.s3",
+                "Time,root.db.d1.s1,root.db.d1.s2,root.db.d1.s3",
                 new int[] {
                   Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.INTEGER,
                 });
@@ -149,17 +149,17 @@ public class IoTDBInsertNullIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(1,null,1.0,1)");
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(2,true,null,2)");
-      statement.execute("insert into root.sg.d2(time,s1,s2,s3) aligned values(3,true,3.0,null)");
+      statement.execute("insert into root.db.d2(time,s1,s2,s3) aligned values(1,null,1.0,1)");
+      statement.execute("insert into root.db.d2(time,s1,s2,s3) aligned values(2,true,null,2)");
+      statement.execute("insert into root.db.d2(time,s1,s2,s3) aligned values(3,true,3.0,null)");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d2")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db.d2")) {
         assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.sg.d2.s1,root.sg.d2.s2,root.sg.d2.s3",
+                "Time,root.db.d2.s1,root.db.d2.s2,root.db.d2.s3",
                 new int[] {
                   Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.INTEGER,
                 });

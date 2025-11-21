@@ -78,7 +78,7 @@ public class SessionTest {
             .build();
     Whitebox.setInternalState(session, "defaultSessionConnection", sessionConnection);
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
-    resp.setMeasurements(Arrays.asList("root.sg1.d1.s1"));
+    resp.setMeasurements(Arrays.asList("root.db1.d1.s1"));
     Mockito.when(sessionConnection.querySchemaTemplate(any())).thenReturn(resp);
     HashMap<String, TEndPoint> deviceIdToEndpoint = new HashMap<>();
     deviceIdToEndpoint.put("device1", new TEndPoint());
@@ -145,34 +145,34 @@ public class SessionTest {
 
   @Test
   public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup("root.sg1");
+    session.setStorageGroup("root.db1");
   }
 
   @Test
   public void testDeleteStorageGroup()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteStorageGroup("root.sg1");
+    session.deleteStorageGroup("root.db1");
   }
 
   @Test
   public void testDeleteStorageGroups()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteStorageGroups(Arrays.asList("root.sg1"));
+    session.deleteStorageGroups(Arrays.asList("root.db1"));
   }
 
   @Test
   public void testCreateDatabase() throws IoTDBConnectionException, StatementExecutionException {
-    session.createDatabase("root.sg1");
+    session.createDatabase("root.db1");
   }
 
   @Test
   public void testDeleteDatabase() throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteDatabase("root.sg1");
+    session.deleteDatabase("root.db1");
   }
 
   @Test
   public void testDeleteDatabases() throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteDatabases(Arrays.asList("root.sg1"));
+    session.deleteDatabases(Arrays.asList("root.db1"));
   }
 
   @Test
@@ -214,7 +214,7 @@ public class SessionTest {
   @Test
   public void testCheckTimeseriesExists()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.checkTimeseriesExists("root.sg1.d1.s1");
+    session.checkTimeseriesExists("root.db1.d1.s1");
   }
 
   @Test
@@ -229,18 +229,18 @@ public class SessionTest {
   public void testInsertRecord() throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = Arrays.asList("s1", "s2");
     List<TSDataType> types = Arrays.asList(TSDataType.TEXT, TSDataType.FLOAT);
-    session.insertRecord("root.sg1.d1", 1691999031779l, measurements, types, "测试", 22.3f);
+    session.insertRecord("root.db1.d1", 1691999031779l, measurements, types, "测试", 22.3f);
   }
 
   @Test
   public void testDeleteTimeseries() throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteTimeseries("root.sg1.d1.s1");
+    session.deleteTimeseries("root.db1.d1.s1");
   }
 
   @Test
   public void testDeleteTimeseriesList()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteTimeseries(Arrays.asList("root.sg1.d1.s1"));
+    session.deleteTimeseries(Arrays.asList("root.db1.d1.s1"));
   }
 
   @Test
@@ -249,13 +249,13 @@ public class SessionTest {
     List<String> measurements = Arrays.asList("s1", "s2");
     List<TSDataType> types = Arrays.asList(TSDataType.TEXT, TSDataType.FLOAT);
     List<Object> values = Arrays.asList("测试", 22.3f);
-    session.insertAlignedRecord("root.sg1.d1", 1691999031779l, measurements, types, values);
+    session.insertAlignedRecord("root.db1.d1", 1691999031779l, measurements, types, values);
     List<Object> values0 = Arrays.asList(null, 22.3f);
-    session.insertAlignedRecord("root.sg1.d1", 1691999031779l, measurements, types, values0);
+    session.insertAlignedRecord("root.db1.d1", 1691999031779l, measurements, types, values0);
     List<String> values1 = Arrays.asList("测试", "22.3f");
-    session.insertAlignedRecord("root.sg1.d1", 1691999031779l, measurements, values1);
+    session.insertAlignedRecord("root.db1.d1", 1691999031779l, measurements, values1);
     List<String> values2 = Arrays.asList("测试");
-    session.insertAlignedRecord("root.sg1.d1", 1691999031779l, measurements, values2);
+    session.insertAlignedRecord("root.db1.d1", 1691999031779l, measurements, values2);
   }
 
   @Test
@@ -280,35 +280,35 @@ public class SessionTest {
   @Test
   public void testExecuteRawDataQuery()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     session.executeRawDataQuery(paths, 2l, 10l, 500l);
   }
 
   @Test
   public void testExecuteLastDataQuery()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     session.executeLastDataQuery(paths, 10l);
   }
 
   @Test
   public void testExecuteLastDataQueryTimeout()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     session.executeLastDataQuery(paths, 10l, 500l);
   }
 
   @Test
   public void testExecuteLastDataQueryWithPaths()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     session.executeLastDataQuery(paths);
   }
 
   @Test
   public void testExecuteAggregationQuery()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.LAST_VALUE, TAggregationType.MAX_VALUE);
     session.executeAggregationQuery(paths, aggregations);
@@ -317,7 +317,7 @@ public class SessionTest {
   @Test
   public void testExecuteAggregationQueryWithStartTimeEndTime()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.LAST_VALUE, TAggregationType.MAX_VALUE);
     session.executeAggregationQuery(paths, aggregations, 2l, 10l);
@@ -326,7 +326,7 @@ public class SessionTest {
   @Test
   public void testExecuteAggregationQueryWithInterval()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.LAST_VALUE, TAggregationType.MAX_VALUE);
     session.executeAggregationQuery(paths, aggregations, 2l, 10000l, 5000);
@@ -335,7 +335,7 @@ public class SessionTest {
   @Test
   public void testExecuteAggregationQueryWithIntervalSlidingStep()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+    List<String> paths = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.LAST_VALUE, TAggregationType.MAX_VALUE);
     session.executeAggregationQuery(paths, aggregations, 2l, 100000l, 5000, 5000);
@@ -786,20 +786,20 @@ public class SessionTest {
   @Test
   public void testDeleteDataException()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteData("root.sg1.d1.s1", System.currentTimeMillis());
+    session.deleteData("root.db1.d1.s1", System.currentTimeMillis());
   }
 
   @Test
   public void testDeleteDataListException()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteData(Arrays.asList("root.sg1.d1.s1"), System.currentTimeMillis());
+    session.deleteData(Arrays.asList("root.db1.d1.s1"), System.currentTimeMillis());
   }
 
   @Test
   public void testDeleteDataListWithStartTimeAndEndTimeException()
       throws IoTDBConnectionException, StatementExecutionException {
     session.deleteData(
-        Arrays.asList("root.sg1.d1.s1"),
+        Arrays.asList("root.db1.d1.s1"),
         System.currentTimeMillis() - 1000 * 60 * 20,
         System.currentTimeMillis());
   }
@@ -1091,7 +1091,7 @@ public class SessionTest {
       throws IoTDBConnectionException, IOException, StatementExecutionException {
     session.addAlignedMeasurementsInTemplate(
         "template1",
-        Arrays.asList("root.sg1.d1.s1"),
+        Arrays.asList("root.db1.d1.s1"),
         Arrays.asList(TSDataType.INT64),
         Arrays.asList(TSEncoding.PLAIN),
         Arrays.asList(CompressionType.SNAPPY));
@@ -1101,7 +1101,7 @@ public class SessionTest {
   public void testAddAlignedMeasurementInTemplate()
       throws IoTDBConnectionException, IOException, StatementExecutionException {
     session.addAlignedMeasurementInTemplate(
-        "template1", "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "template1", "root.db1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
   }
 
   @Test
@@ -1109,7 +1109,7 @@ public class SessionTest {
       throws IoTDBConnectionException, IOException, StatementExecutionException {
     session.addUnalignedMeasurementsInTemplate(
         "template1",
-        Arrays.asList("root.sg1.d1.s1"),
+        Arrays.asList("root.db1.d1.s1"),
         Arrays.asList(TSDataType.INT64),
         Arrays.asList(TSEncoding.PLAIN),
         Arrays.asList(CompressionType.SNAPPY));
@@ -1119,13 +1119,13 @@ public class SessionTest {
   public void testAddUnalignedMeasurementInTemplate()
       throws IoTDBConnectionException, IOException, StatementExecutionException {
     session.addUnalignedMeasurementInTemplate(
-        "template1", "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        "template1", "root.db1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
   }
 
   @Test
   public void testDeleteNodeInTemplate()
       throws IoTDBConnectionException, IOException, StatementExecutionException {
-    session.deleteNodeInTemplate("template1", "root.sg1.d1.s1");
+    session.deleteNodeInTemplate("template1", "root.db1.d1.s1");
   }
 
   @Test
@@ -1137,13 +1137,13 @@ public class SessionTest {
   @Test
   public void testIsMeasurementInTemplate()
       throws IoTDBConnectionException, IOException, StatementExecutionException {
-    session.isMeasurementInTemplate("template1", "root.sg1.d1.s1");
+    session.isMeasurementInTemplate("template1", "root.db1.d1.s1");
   }
 
   @Test
   public void testIsPathExistInTemplate()
       throws IoTDBConnectionException, IOException, StatementExecutionException {
-    session.isPathExistInTemplate("template1", "root.sg1.d1.s1");
+    session.isPathExistInTemplate("template1", "root.db1.d1.s1");
   }
 
   @Test
@@ -1155,7 +1155,7 @@ public class SessionTest {
   @Test
   public void testShowMeasurementsInTemplatePattern()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.showMeasurementsInTemplate("template1", "root.sg1.**");
+    session.showMeasurementsInTemplate("template1", "root.db1.**");
   }
 
   @Test
@@ -1178,7 +1178,7 @@ public class SessionTest {
   @Test
   public void testUnsetSchemaTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.unsetSchemaTemplate("root.sg1.d1.**", "template1");
+    session.unsetSchemaTemplate("root.db1.d1.**", "template1");
   }
 
   @Test
@@ -1190,7 +1190,7 @@ public class SessionTest {
   @Test
   public void testCreateTimeseriesUsingSchemaTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.createTimeseriesUsingSchemaTemplate(Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+    session.createTimeseriesUsingSchemaTemplate(Arrays.asList("root.db1.d1", "root.db1.d2"));
   }
 
   @Test

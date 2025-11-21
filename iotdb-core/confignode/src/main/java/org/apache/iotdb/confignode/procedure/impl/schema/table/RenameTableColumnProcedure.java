@@ -76,18 +76,18 @@ public class RenameTableColumnProcedure
           LOGGER.info("Column check for table {}.{} when renaming column", database, tableName);
           columnCheck(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
-          preRelease(env);
+          preUpdateDataNodeCache(env);
           break;
         case RENAME_COLUMN:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
           break;
-        case COMMIT_RELEASE:
+        case COMMIT_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Commit release info of table {}.{} when renaming column", database, tableName);
-          commitRelease(env);
+          commitUpdateDataNodeCache(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized RenameTableColumnState " + state));
@@ -117,15 +117,15 @@ public class RenameTableColumnProcedure
         return;
       }
       table = result.getRight();
-      setNextState(RenameTableColumnState.PRE_RELEASE);
+      setNextState(RenameTableColumnState.PRE_UPDATE_DATANODE_CACHE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
   }
 
   @Override
-  protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env);
+  protected void preUpdateDataNodeCache(final ConfigNodeProcedureEnv env) {
+    super.preUpdateDataNodeCache(env);
     setNextState(RenameTableColumnState.RENAME_COLUMN);
   }
 
@@ -141,7 +141,7 @@ public class RenameTableColumnProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
-      setNextState(RenameTableColumnState.COMMIT_RELEASE);
+      setNextState(RenameTableColumnState.COMMIT_UPDATE_DATANODE_CACHE);
     }
   }
 
@@ -158,7 +158,7 @@ public class RenameTableColumnProcedure
               table.getTableName());
           rollbackRenameColumn(env);
           break;
-        case PRE_RELEASE:
+        case PRE_UPDATE_DATANODE_CACHE:
           LOGGER.info(
               "Start rollback pre release info of table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);

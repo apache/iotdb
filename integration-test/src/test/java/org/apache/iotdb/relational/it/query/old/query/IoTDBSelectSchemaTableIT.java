@@ -48,8 +48,8 @@ public class IoTDBSelectSchemaTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 DOUBLE FIELD)",
-        "insert into sg(time, device, s1, s2, s3) values (1, 'd1', 1, 2, 3.0)"
+        "CREATE TABLE db(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 DOUBLE FIELD)",
+        "insert into db(time, device, s1, s2, s3) values (1, 'd1', 1, 2, 3.0)"
       };
 
   @BeforeClass
@@ -88,7 +88,7 @@ public class IoTDBSelectSchemaTableIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select time, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from sg",
+                  "select time, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from db",
                   expressions[0],
                   expressions[1],
                   expressions[2],

@@ -53,7 +53,7 @@ public class IoTDBRemoveConfigNodeITFramework {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBRemoveConfigNodeITFramework.class);
   private static final String TREE_MODEL_INSERTION =
-      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
+      "INSERT INTO root.db.d1(timestamp,speed,temperature) values(100, 1, 2)";
 
   private static final String SHOW_CONFIGNODES = "show confignodes";
 

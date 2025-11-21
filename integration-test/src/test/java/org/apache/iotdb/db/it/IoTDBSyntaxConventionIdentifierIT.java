@@ -71,15 +71,15 @@ public class IoTDBSyntaxConventionIdentifierIT {
     };
 
     String[] resultTimeseries = {
-      "root.sg1.d1.add",
-      "root.sg1.d1.as",
-      "root.sg1.d1.select",
-      "root.sg1.d1.drop_trigger",
-      "root.sg1.d1.REVOKE_USER_ROLE",
-      "root.sg1.d1.pipesink",
-      "root.sg1.d1.boolean",
-      "root.sg1.d1.datatype",
-      "root.sg1.d1.device",
+      "root.db1.d1.add",
+      "root.db1.d1.as",
+      "root.db1.d1.select",
+      "root.db1.d1.drop_trigger",
+      "root.db1.d1.REVOKE_USER_ROLE",
+      "root.db1.d1.pipesink",
+      "root.db1.d1.boolean",
+      "root.db1.d1.datatype",
+      "root.db1.d1.device",
     };
 
     String[] selectNodeNames = {
@@ -109,14 +109,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String createNodeName : createNodeNames) {
-        String createSql = String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeName);
+        String createSql = String.format("CREATE TIMESERIES root.db1.d1.%s INT32", createNodeName);
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeName);
+            String.format("INSERT INTO root.db1.d1(time, %s) VALUES(1, 1)", createNodeName);
         statement.execute(createSql);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -129,10 +129,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.db1.d1 WHERE time = 1", selectNodeNames[i]);
         try (ResultSet resultSet = statement.executeQuery(selectSql)) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+          Assert.assertEquals(1, resultSet.getInt("root.db1.d1." + suffixInResultColumns[i]));
         }
       }
 
@@ -175,33 +175,33 @@ public class IoTDBSyntaxConventionIdentifierIT {
     };
 
     String[] resultTimeseries = {
-      "root.sg1.d1.a_1",
-      "root.sg1.d1.aaa",
-      "root.sg1.d1.in",
-      "root.sg1.d1.between",
-      "root.sg1.d1.is",
-      "root.sg1.d1.select",
-      "root.sg1.d1.`a.b`",
-      "root.sg1.d1.`111`",
-      "root.sg1.d1.`a``b`",
-      "root.sg1.d1.`a.\"b`",
-      "root.sg1.d1.`a.'b`",
-      "root.sg1.d1.````",
-      "root.sg1.d1.`c.d.```",
-      "root.sg1.d1.abc",
-      "root.sg1.d1.`+12`",
-      "root.sg1.d1.`1e3`",
-      "root.sg1.d1.`001`",
-      "root.sg1.d1.`-1.0`",
-      "root.sg1.d1.`01e-3`",
-      "root.sg1.d1.`+0001`",
-      "root.sg1.d1.`-0001`",
-      "root.sg1.d1.`++1`",
-      "root.sg1.d1.`+-1`",
-      "root.sg1.d1.`--1`",
-      "root.sg1.d1.123w",
-      "root.sg1.d1.123d",
-      "root.sg1.d1.123h"
+      "root.db1.d1.a_1",
+      "root.db1.d1.aaa",
+      "root.db1.d1.in",
+      "root.db1.d1.between",
+      "root.db1.d1.is",
+      "root.db1.d1.select",
+      "root.db1.d1.`a.b`",
+      "root.db1.d1.`111`",
+      "root.db1.d1.`a``b`",
+      "root.db1.d1.`a.\"b`",
+      "root.db1.d1.`a.'b`",
+      "root.db1.d1.````",
+      "root.db1.d1.`c.d.```",
+      "root.db1.d1.abc",
+      "root.db1.d1.`+12`",
+      "root.db1.d1.`1e3`",
+      "root.db1.d1.`001`",
+      "root.db1.d1.`-1.0`",
+      "root.db1.d1.`01e-3`",
+      "root.db1.d1.`+0001`",
+      "root.db1.d1.`-0001`",
+      "root.db1.d1.`++1`",
+      "root.db1.d1.`+-1`",
+      "root.db1.d1.`--1`",
+      "root.db1.d1.123w",
+      "root.db1.d1.123d",
+      "root.db1.d1.123h"
     };
 
     String[] selectNodeNames = {
@@ -267,14 +267,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String createNodeName : createNodeNames) {
-        String createSql = String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeName);
+        String createSql = String.format("CREATE TIMESERIES root.db1.d1.%s INT32", createNodeName);
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeName);
+            String.format("INSERT INTO root.db1.d1(time, %s) VALUES(1, 1)", createNodeName);
         statement.execute(createSql);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -287,10 +287,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.db1.d1 WHERE time = 1", selectNodeNames[i]);
         try (ResultSet resultSet = statement.executeQuery(selectSql)) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+          Assert.assertEquals(1, resultSet.getInt("root.db1.d1." + suffixInResultColumns[i]));
         }
       }
 
@@ -307,76 +307,76 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       // nodeName with special characters should be quoted with '`'
       try {
-        statement.execute("create timeseries root.sg1.d1.`a INT32");
+        statement.execute("create timeseries root.db1.d1.`a INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.[a INT32");
+        statement.execute("create timeseries root.db1.d1.[a INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a! INT32");
+        statement.execute("create timeseries root.db1.d1.a! INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a\" INT32");
+        statement.execute("create timeseries root.db1.d1.a\" INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a' INT32");
+        statement.execute("create timeseries root.db1.d1.a' INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // nodeName consists of numbers should be quoted with '`'
       try {
-        statement.execute("create timeseries root.sg1.d1.111 INT32");
+        statement.execute("create timeseries root.db1.d1.111 INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.012 INT32");
+        statement.execute("create timeseries root.db1.d1.012 INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // shouled use double '`' in a quoted nodeName
       try {
-        statement.execute("create timeseries root.sg1.d1.`a`` INT32");
+        statement.execute("create timeseries root.db1.d1.`a`` INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.``a` INT32");
+        statement.execute("create timeseries root.db1.d1.``a` INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // reserved words can not be identifier
       try {
-        statement.execute("create timeseries root.sg1.d1.root INT32");
+        statement.execute("create timeseries root.db1.d1.root INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.time INT32");
+        statement.execute("create timeseries root.db1.d1.time INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.timestamp INT32");
+        statement.execute("create timeseries root.db1.d1.timestamp INT32");
         fail();
       } catch (Exception ignored) {
       }
@@ -393,7 +393,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("create database root.sg1.d1.");
+        statement.execute("create database root.db1.d1.");
         fail();
       } catch (Exception ignored) {
       }
@@ -408,20 +408,20 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testExpression() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.``b` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.text TEXT");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`a.b` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`a.``b` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.text TEXT");
       int pointCnt = 3;
       for (int i = 0; i < pointCnt; i++) {
         statement.execute(
             String.format(
-                "insert into root.sg1.d1(time,%s,%s,%s) values(%d,%d,%d,%d)",
+                "insert into root.db1.d1(time,%s,%s,%s) values(%d,%d,%d,%d)",
                 "`1`", "`a.b`", "`a.``b`", i, i, i, i));
       }
 
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -430,7 +430,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1` > 1")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1 where `1` > 1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -439,7 +439,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -448,7 +448,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1`>0")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1 where `1`>0")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -456,7 +456,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -465,7 +465,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT count(`1`)+1 FROM root.sg1.d1 where `1`>1")) {
+          statement.executeQuery("SELECT count(`1`)+1 FROM root.db1.d1 where `1`>1")) {
         while (resultSet.next()) {
           Assert.assertEquals(2.0, resultSet.getDouble(1), 1e-7);
           cnt++;
@@ -474,7 +474,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -483,7 +483,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1 where `1`>1")) {
+          statement.executeQuery("SELECT sin(`1`) + 1 FROM root.db1.d1 where `1`>1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -492,7 +492,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\'")) {
+          statement.executeQuery("SELECT text FROM root.db1.d1 where text = '\'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -502,7 +502,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT text FROM root.sg1.d1 where text = '\' or text = 'asdf'")) {
+              "SELECT text FROM root.db1.d1 where text = '\' or text = 'asdf'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -511,7 +511,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\\'")) {
+          statement.executeQuery("SELECT text FROM root.db1.d1 where text = '\\'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -521,7 +521,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT text FROM root.sg1.d1 where text = '\\' and text = 'asdf'")) {
+              "SELECT text FROM root.db1.d1 where text = '\\' and text = 'asdf'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -784,22 +784,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //        Statement statement = connection.createStatement()) {
   //      try {
   //        statement.execute(
-  //            "create trigger trigger` before insert on root.sg1.d1  "
+  //            "create trigger trigger` before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      } catch (Exception ignored) {
   //      }
   //
   //      try {
   //        statement.execute(
-  //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger 111 before insert on root.sg1.d1  "
+  //            "create trigger `trigger`` before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -807,7 +799,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //
   //      try {
   //        statement.execute(
-  //            "create trigger 'tri' before insert on root.sg1.d1  "
+  //            "create trigger 111 before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -815,7 +807,15 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //
   //      try {
   //        statement.execute(
-  //            "create trigger \"tri\" before insert on root.sg1.d1  "
+  //            "create trigger 'tri' before insert on root.db1.d1  "
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger \"tri\" before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -1013,33 +1013,33 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testNodeNameWithWildcard() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.device_123.s1 INT32");
+      statement.execute("CREATE TIMESERIES root.db.device_123.s1 INT32");
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.device_123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.device_*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*_123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_12*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*_12*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*12*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*12*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*e*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*e*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }

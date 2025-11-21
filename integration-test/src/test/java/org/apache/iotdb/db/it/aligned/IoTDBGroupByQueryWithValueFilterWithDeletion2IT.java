@@ -53,8 +53,8 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletion2IT
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.db1.d1.s1 where time <= 15");
+      statement.execute("delete timeseries root.db1.d1.s2");
     } catch (Exception e) {
       e.printStackTrace();
     }

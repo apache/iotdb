@@ -40,8 +40,8 @@ public class IoTDBArithmeticDivAndModWithoutDoubleIT {
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.test",
-        "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.test.sg1(time,s1) values(1752034015183000006, 10001)",
+        "CREATE TIMESERIES root.test.db1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.test.db1(time,s1) values(1752034015183000006, 10001)",
         "flush",
       };
 
@@ -61,10 +61,10 @@ public class IoTDBArithmeticDivAndModWithoutDoubleIT {
   public void testArithmeticOperations() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR, "Time % 10", "Time / 10", "root.test.sg1.s1 % 10", "root.test.sg1.s1 / 10"
+          TIMESTAMP_STR, "Time % 10", "Time / 10", "root.test.db1.s1 % 10", "root.test.db1.s1 / 10"
         };
     String[] retArray = new String[] {"1752034015183000006,6,175203401518300000,1,1000,"};
     resultSetEqualTest(
-        "select time%10, time/10, s1%10, s1/10 from root.test.sg1", expectedHeader, retArray);
+        "select time%10, time/10, s1%10, s1/10 from root.test.db1", expectedHeader, retArray);
   }
 }

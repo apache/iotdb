@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.state.schema;
 public enum SetTemplateState {
   VALIDATE_TEMPLATE_EXISTENCE,
   PRE_SET,
-  PRE_RELEASE,
+  PRE_UPDATE_DATANODE_CACHE,
   VALIDATE_TIMESERIES_EXISTENCE,
   COMMIT_SET,
-  COMMIT_RELEASE,
+  COMMIT_UPDATE_DATANODE_CACHE,
 }

@@ -44,10 +44,10 @@ public class GroupByLevelHelper {
 
   private final int[] levels;
 
-  /** count(root.sg.d1.s1) with level = 1 -> { count(root.*.d1.s1) : count(root.sg.d1.s1) } */
+  /** count(root.db.d1.s1) with level = 1 -> { count(root.*.d1.s1) : count(root.db.d1.s1) } */
   private final Map<Expression, Set<Expression>> groupedAggregationExpressionToRawExpressionsMap;
 
-  /** count(root.sg.d1.s1) with level = 1 -> { root.sg.d1.s1 : root.sg.*.s1 } */
+  /** count(root.db.d1.s1) with level = 1 -> { root.db.d1.s1 : root.db.*.s1 } */
   private final RawPathToGroupedPathMap rawPathToGroupedPathMap;
 
   /** count(root.*.d1.s1) -> alias */
@@ -80,7 +80,7 @@ public class GroupByLevelHelper {
     Expression outputExpression = ExpressionAnalyzer.replaceSubTreeWithView(expression, analysis);
 
     // construct output expression
-    // e.g. count(root.sg.d1.s1) -> count(root.sg.*.s1)
+    // e.g. count(root.db.d1.s1) -> count(root.db.*.s1)
     Expression groupedOutputExpression =
         ExpressionAnalyzer.replaceRawPathWithGroupedPath(
             outputExpression,
@@ -148,7 +148,7 @@ public class GroupByLevelHelper {
   /**
    * Transform an originalPath to a partial path that satisfies given level. Path nodes don't
    * satisfy the given level will be replaced by "*" except the sensor level, e.g.
-   * transformPathByLevels("root.sg.dh.d1.s1", 2) will return "root.*.dh.*.s1".
+   * transformPathByLevels("root.db.dh.d1.s1", 2) will return "root.*.dh.*.s1".
    *
    * <p>Especially, if count(*), then the sensor level will be replaced by "*" too.
    *

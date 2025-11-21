@@ -43,7 +43,7 @@ public class IoTDBGroupByNaturalMonthUsPrecisionIT extends IoTDBGroupByNaturalMo
     for (long i = 1604102400000L /*  2020-10-31 00:00:00 */;
         i <= 1617148800000L /* 2021-03-31 00:00:00 */;
         i += 86400_000L) {
-      dataSet.add("insert into root.sg1.d1(timestamp, temperature) values (" + i * 1000 + ", 1)");
+      dataSet.add("insert into root.db1.d1(timestamp, temperature) values (" + i * 1000 + ", 1)");
     }
 
     // TimeRange: [2023-01-01 00:00:00, 2027-01-01 00:00:00]

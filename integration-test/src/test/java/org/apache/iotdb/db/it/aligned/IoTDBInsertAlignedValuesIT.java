@@ -221,11 +221,11 @@ public class IoTDBInsertAlignedValuesIT {
   public void testInsertAlignedValuesWithSameTimestamp() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.addBatch("insert into root.sg.d1(time,s2) aligned values(1,2)");
-      statement.addBatch("insert into root.sg.d1(time,s1) aligned values(1,2)");
+      statement.addBatch("insert into root.db.d1(time,s2) aligned values(1,2)");
+      statement.addBatch("insert into root.db.d1(time,s1) aligned values(1,2)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db.d1")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -236,7 +236,7 @@ public class IoTDBInsertAlignedValuesIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db.d1")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -355,9 +355,9 @@ public class IoTDBInsertAlignedValuesIT {
   public void testInsertAlignedValuesWithThreeLevelPath() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg_device(time, status) aligned values (4000, true)");
+      statement.execute("insert into root.db_device(time, status) aligned values (4000, true)");
 
-      try (ResultSet resultSet = statement.executeQuery("select ** from root.sg_device")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_device")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
         assertFalse(resultSet.next());
@@ -384,7 +384,7 @@ public class IoTDBInsertAlignedValuesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "insert into root.sg1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
+          "insert into root.db1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
@@ -396,7 +396,7 @@ public class IoTDBInsertAlignedValuesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "insert into root.sg1.d1(time, s98, s99) aligned values(10, 2, 271840880000000000000000)");
+          "insert into root.db1.d1(time, s98, s99) aligned values(10, 2, 271840880000000000000000)");
     } catch (SQLException e) {
       fail();
     }

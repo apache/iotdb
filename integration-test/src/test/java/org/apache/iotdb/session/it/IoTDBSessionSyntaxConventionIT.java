@@ -69,12 +69,12 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void createTimeSeriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String database = "root.sg";
+      String database = "root.db";
       session.setStorageGroup(database);
 
       try {
         session.createTimeseries(
-            "root.sg.d1.`a.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db.d1.`a.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("is not a legal path"));
@@ -82,13 +82,13 @@ public class IoTDBSessionSyntaxConventionIT {
 
       try {
         session.createTimeseries(
-            "root.sg.d1.a`.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db.d1.a`.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("is not a legal path"));
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.db.**");
       assertFalse(dataSet.hasNext());
 
       session.deleteDatabase(database);
@@ -101,7 +101,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void insertTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
 
       measurements.add("`\"a“（Φ）”b\"`");
@@ -121,15 +121,15 @@ public class IoTDBSessionSyntaxConventionIT {
 
       session.insertRecord(deviceId, 1L, measurements, values);
 
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a“（Φ）”b\"`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a>b\"`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.```a.b```"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a“（Φ）”b'`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a>b'`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.aaa"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`\"a“（Φ）”b\"`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`\"a>b\"`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.```a.b```"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`'a“（Φ）”b'`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`'a>b'`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`a“（Φ）”b`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`a>b`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.`\\\"a`"));
+      assertTrue(session.checkTimeseriesExists("root.db1.d1.aaa"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -139,7 +139,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void inserRecordWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
       List<String> values = new ArrayList<>();
       measurements.add("a.b");
@@ -221,7 +221,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void insertRecordsWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("a.b");
       measurements.add("111");
@@ -256,7 +256,7 @@ public class IoTDBSessionSyntaxConventionIT {
 
   @Test
   public void insertTabletWithIllegalMeasurementTest() {
-    String deviceId = "root.sg1.d1";
+    String deviceId = "root.db1.d1";
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("wrong`", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -292,7 +292,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void createAlignedTimeseriesWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("111");
       measurements.add("a.b");
@@ -322,7 +322,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void createAlignedTimeseriesWithIllegalMeasurementAliasTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("s1");
       measurements.add("s2");
@@ -363,8 +363,8 @@ public class IoTDBSessionSyntaxConventionIT {
   public void createMultiTimeseriesWithIllegalMeasurementAliasTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<String> paths = new ArrayList<>();
-      paths.add("root.sg1.d1.s1");
-      paths.add("root.sg1.d1.s2");
+      paths.add("root.db1.d1.s1");
+      paths.add("root.db1.d1.s2");
       List<TSDataType> tsDataTypes = new ArrayList<>();
       tsDataTypes.add(TSDataType.DOUBLE);
       tsDataTypes.add(TSDataType.DOUBLE);

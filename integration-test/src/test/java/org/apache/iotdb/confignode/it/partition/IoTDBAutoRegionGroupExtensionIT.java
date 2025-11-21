@@ -104,8 +104,8 @@ public class IoTDBAutoRegionGroupExtensionIT {
 
       // Delete all Databases
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
-        String curSg = DATABASE + i;
-        client.deleteDatabase(new TDeleteDatabaseReq(curSg));
+        String curDb = DATABASE + i;
+        client.deleteDatabase(new TDeleteDatabaseReq(curDb));
       }
       boolean isAllRegionGroupDeleted = false;
       for (int retry = 0; retry < retryNum; retry++) {
@@ -134,19 +134,19 @@ public class IoTDBAutoRegionGroupExtensionIT {
       throws TException, IllegalPathException, IOException {
 
     for (int i = 0; i < TEST_DATABASE_NUM; i++) {
-      String curSg = DATABASE + i;
+      String curDb = DATABASE + i;
       TSStatus status =
           client.setDatabase(
-              new TDatabaseSchema(curSg)
+              new TDatabaseSchema(curDb)
                   .setMinSchemaRegionGroupNum(TEST_MIN_SCHEMA_REGION_GROUP_NUM)
                   .setMinDataRegionGroupNum(TEST_MIN_DATA_REGION_GROUP_NUM));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Insert SchemaPartitions to create SchemaRegionGroups
-      String d0 = curSg + ".d0.s";
-      String d1 = curSg + ".d1.s";
-      String d2 = curSg + ".d2.s";
-      String d3 = curSg + ".d3.s";
+      String d0 = curDb + ".d0.s";
+      String d1 = curDb + ".d1.s";
+      String d2 = curDb + ".d2.s";
+      String d3 = curDb + ".d3.s";
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
       TSchemaPartitionTableResp schemaPartitionTableResp;
       ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d0, d1, d2, d3});
@@ -159,7 +159,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
       // Insert DataPartitions to create DataRegionGroups
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              curSg, 0, 10, 0, 10, TEST_TIME_PARTITION_INTERVAL);
+              curDb, 0, 10, 0, 10, TEST_TIME_PARTITION_INTERVAL);
       TDataPartitionTableResp dataPartitionTableResp =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
       Assert.assertEquals(

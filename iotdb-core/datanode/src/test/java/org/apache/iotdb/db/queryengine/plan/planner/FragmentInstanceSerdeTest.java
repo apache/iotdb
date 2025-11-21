@@ -140,13 +140,13 @@ public class FragmentInstanceSerdeTest {
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.DESC);
     SeriesScanNode seriesScanNode1 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.db.d1.s2"));
     seriesScanNode1.setScanOrder(Ordering.DESC);
     SeriesScanNode seriesScanNode2 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.db.d2.s1"));
     seriesScanNode2.setScanOrder(Ordering.DESC);
     SeriesScanNode seriesScanNode3 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.db.d2.s2"));
     seriesScanNode3.setScanOrder(Ordering.DESC);
 
     // build tree

@@ -75,13 +75,13 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
 
       try {
-        statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
+        statement.execute("INSERT INTO root.db1(timestamp, s0) VALUES (1, 1)");
         fail();
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Path [root.sg1.s0] does not exist"));
+        assertTrue(e.getMessage().contains("Path [root.db1.s0] does not exist"));
       }
     }
   }
@@ -91,12 +91,12 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 datatype=text");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 datatype=double");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 datatype=text");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 datatype=double");
 
       try {
-        statement.execute("INSERT INTO root.sg.d1(time,s1,s2) VALUES(100,'test','test')");
+        statement.execute("INSERT INTO root.db.d1(time,s1,s2) VALUES(100,'test','test')");
       } catch (SQLException e) {
         // ignore
       }
@@ -124,16 +124,16 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.db.d1")) {
         assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
-          assertEquals("test", resultSet.getString("root.sg.d1.s1"));
+          assertEquals("test", resultSet.getString("root.db.d1.s1"));
         }
         assertEquals(1, cnt);
       }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM root.db.d1")) {
         assertNotNull(resultSet);
         assertFalse(resultSet.next());
       }
@@ -144,14 +144,14 @@ public class IoTDBPartialInsertionIT {
   public void testPartialInsertTablet() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.createTimeseries(
-          "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+          "root.db1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
       session.createTimeseries(
-          "root.sg1.d1.s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+          "root.db1.d1.s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList, 300);
+      Tablet tablet = new Tablet("root.db1.d1", schemaList, 300);
       long timestamp = 0;
       for (long row = 0; row < 100; row++) {
         int rowIndex = tablet.getRowSize();
@@ -179,11 +179,11 @@ public class IoTDBPartialInsertionIT {
           fail(e.getMessage());
         }
       }
-      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.db1.d1")) {
         assertEquals(dataSet.getColumnNames().size(), 3);
         assertEquals(dataSet.getColumnNames().get(0), "Time");
-        assertEquals(dataSet.getColumnNames().get(1), "root.sg1.d1.s1");
-        assertEquals(dataSet.getColumnNames().get(2), "root.sg1.d1.s2");
+        assertEquals(dataSet.getColumnNames().get(1), "root.db1.d1.s1");
+        assertEquals(dataSet.getColumnNames().get(2), "root.db1.d1.s2");
         int cnt = 0;
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();

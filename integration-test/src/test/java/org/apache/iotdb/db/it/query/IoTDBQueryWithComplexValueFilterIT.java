@@ -57,7 +57,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
+              "select s1 from root.db1.d1 where (time > 4 and s1 <= 6) or (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -76,7 +76,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1 from root.sg1.d1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
+              "select s1 from root.db1.d1 where (time > 4 and s1 <= 6) and (s2 > 3 and time <= 5)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -95,7 +95,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 == '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -104,7 +104,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 == '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 == '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -113,7 +113,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 == 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 == 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -122,7 +122,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 != '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 != '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -131,7 +131,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 != '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 != '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -140,7 +140,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 != 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 != 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -158,7 +158,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 > '0'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 > '0'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -167,7 +167,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 > '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 > '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -176,7 +176,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 > 0")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 > 0")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -185,7 +185,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 < '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 < '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -194,7 +194,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 < '2024-01-02'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 < '2024-01-02'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -203,7 +203,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 < 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 < 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -212,7 +212,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 >= '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 >= '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -221,7 +221,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 >= '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 >= '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -230,7 +230,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 >= 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 >= 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -239,7 +239,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 <= '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 <= '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -248,7 +248,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 <= '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 <= '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -257,7 +257,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 <= 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 <= 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -275,7 +275,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 == '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -284,7 +284,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s3 == '1'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -293,7 +293,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s4 == '2024-01-01'")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s4 == '2024-01-01'")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -302,7 +302,7 @@ public class IoTDBQueryWithComplexValueFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from root.sg1.d1 where s5 == 1")) {
+          statement.executeQuery("select s1 from root.db1.d1 where s5 == 1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -318,28 +318,28 @@ public class IoTDBQueryWithComplexValueFilterIT {
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create database root.sg1");
-      statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s3 with datatype=STRING,encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s4 with datatype=DATE,encoding=PLAIN");
-      statement.execute("create timeseries root.sg1.d1.s5 with datatype=TIMESTAMP,encoding=PLAIN");
+      statement.execute("create database root.db1");
+      statement.execute("create timeseries root.db1.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("create timeseries root.db1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("create timeseries root.db1.d1.s3 with datatype=STRING,encoding=PLAIN");
+      statement.execute("create timeseries root.db1.d1.s4 with datatype=DATE,encoding=PLAIN");
+      statement.execute("create timeseries root.db1.d1.s5 with datatype=TIMESTAMP,encoding=PLAIN");
       statement.execute(
-          "insert into root.sg1.d1(time,s1,s2,s3,s4,s5) values(0,0,0,'0','2024-01-01',0)");
+          "insert into root.db1.d1(time,s1,s2,s3,s4,s5) values(0,0,0,'0','2024-01-01',0)");
       statement.execute(
-          "insert into root.sg1.d1(time,s1,s2,s3,s4,s5) values(1,1,1,'1','2024-01-02',1)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(2,2,2)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(3,3,3)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(4,4,4)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(5,5,5)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(6,6,6)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(7,7,7)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(8,8,8)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(9,9,9)");
+          "insert into root.db1.d1(time,s1,s2,s3,s4,s5) values(1,1,1,'1','2024-01-02',1)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(2,2,2)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(3,3,3)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(4,4,4)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(5,5,5)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(6,6,6)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(7,7,7)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(8,8,8)");
+      statement.execute("insert into root.db1.d1(time,s1,s2) values(9,9,9)");
       //      for (int i = 0; i < 10; i++) {
       //        statement.addBatch(
       //            String.format(
-      //                "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
+      //                "insert into root.db1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
       //      }
       //      statement.executeBatch();
     } catch (Exception e) {

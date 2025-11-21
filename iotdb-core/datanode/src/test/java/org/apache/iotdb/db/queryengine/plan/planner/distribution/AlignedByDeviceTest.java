@@ -56,7 +56,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d333,root.sg.d4444 align by device";
+    String sql = "select count(s1) from root.db.d333,root.db.d4444 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -81,7 +81,7 @@ public class AlignedByDeviceTest {
         f2Root.getChildren().get(0).getChildren().get(0) instanceof SeriesAggregationScanNode);
 
     // test of MULTI_SERIES
-    sql = "select count(s1),count(s2) from root.sg.d333,root.sg.d4444 align by device";
+    sql = "select count(s1),count(s2) from root.db.d333,root.db.d4444 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -123,7 +123,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d333,root.sg.d4444 where s1 <= 4 align by device";
+    String sql = "select count(s1) from root.db.d333,root.db.d4444 where s1 <= 4 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -150,7 +150,7 @@ public class AlignedByDeviceTest {
 
     // test of MULTI_SERIES
     sql =
-        "select count(s1),count(s2) from root.sg.d333,root.sg.d4444 where s1 <= 4 align by device";
+        "select count(s1),count(s2) from root.db.d333,root.db.d4444 where s1 <= 4 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -196,7 +196,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d333,root.sg.d4444 order by time align by device";
+    String sql = "select count(s1) from root.db.d333,root.db.d4444 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -233,7 +233,7 @@ public class AlignedByDeviceTest {
 
     // test of MULTI_SERIES
     sql =
-        "select count(s1),count(s2) from root.sg.d333,root.sg.d4444 order by time align by device";
+        "select count(s1),count(s2) from root.db.d333,root.db.d4444 order by time align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -347,7 +347,7 @@ public class AlignedByDeviceTest {
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
     String sql =
-        "select count(s1) from root.sg.d333,root.sg.d4444 where s1 <= 4 order by time align by device";
+        "select count(s1) from root.db.d333,root.db.d4444 where s1 <= 4 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -384,7 +384,7 @@ public class AlignedByDeviceTest {
 
     // test of MULTI_SERIES
     sql =
-        "select count(s1),count(s2) from root.sg.d333,root.sg.d4444 where s1 <= 4 order by time align by device";
+        "select count(s1),count(s2) from root.db.d333,root.db.d4444 where s1 <= 4 order by time align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -507,7 +507,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d1,root.sg.d333 align by device";
+    String sql = "select count(s1) from root.db.d1,root.db.d333 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -533,7 +533,7 @@ public class AlignedByDeviceTest {
     assertTrue(f3Root.getChildren().get(0) instanceof DeviceViewNode);
 
     // test of MULTI_SERIES
-    sql = "select count(s1),count(s2) from root.sg.d1,root.sg.d333 align by device";
+    sql = "select count(s1),count(s2) from root.db.d1,root.db.d333 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -571,10 +571,10 @@ public class AlignedByDeviceTest {
    *       ├──DeviceView-14
    *       │   ├──AggregationNode-10
    *       │   │   └──FilterNode-9
-   *       │   │       └──SeriesScanNode-8:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       └──SeriesScanNode-8:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │   └──AggregationNode-13
    *       │       └──FilterNode-12
-   *       │           └──SeriesScanNode-11:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-11:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-24: [SourceAddress:192.0.2.1/test.2.0/26]
    *       └──ExchangeNode-25: [SourceAddress:192.0.4.1/test.3.0/27]
    *
@@ -582,13 +582,13 @@ public class AlignedByDeviceTest {
    *   └──DeviceView-18
    *       └──AggregationNode-17
    *           └──FilterNode-16
-   *               └──SeriesScanNode-15:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-15:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-27
    *   └──DeviceView-22
    *       └──AggregationNode-21
    *           └──FilterNode-20
-   *               └──SeriesScanNode-19:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-19:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void testAggregation2Device3RegionWithValueFilter() {
@@ -596,7 +596,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d1,root.sg.d333 where s1 <= 4 align by device";
+    String sql = "select count(s1) from root.db.d1,root.db.d333 where s1 <= 4 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -618,7 +618,7 @@ public class AlignedByDeviceTest {
     assertTrue(f3Root.getChildren().get(0) instanceof DeviceViewNode);
 
     // test of MULTI_SERIES
-    sql = "select count(s1),count(s2) from root.sg.d1,root.sg.d333 where s1 <= 4 align by device";
+    sql = "select count(s1),count(s2) from root.db.d1,root.db.d333 where s1 <= 4 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -648,7 +648,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
-    String sql = "select count(s1) from root.sg.d1,root.sg.d333 order by time align by device";
+    String sql = "select count(s1) from root.db.d1,root.db.d333 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -686,7 +686,7 @@ public class AlignedByDeviceTest {
     assertTrue(f3Root.getChildren().get(0) instanceof SeriesSourceNode);
 
     // test of MULTI_SERIES
-    sql = "select count(s1),count(s2) from root.sg.d1,root.sg.d333 order by time align by device";
+    sql = "select count(s1),count(s2) from root.db.d1,root.db.d333 order by time align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -802,7 +802,7 @@ public class AlignedByDeviceTest {
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     // test of SINGLE_SERIES
     String sql =
-        "select count(s1) from root.sg.d1,root.sg.d333 where s1 <= 4 order by time align by device";
+        "select count(s1) from root.db.d1,root.db.d333 where s1 <= 4 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -841,7 +841,7 @@ public class AlignedByDeviceTest {
 
     // test of MULTI_SERIES
     sql =
-        "select count(s1),count(s2) from root.sg.d1,root.sg.d333 where s1 <= 4 order by time align by device";
+        "select count(s1),count(s2) from root.db.d1,root.db.d333 where s1 <= 4 order by time align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -1051,7 +1051,7 @@ public class AlignedByDeviceTest {
     QueryId queryId = new QueryId("test_special_process_align_by_device_2_device_2_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select diff(s1), diff(s2) from root.sg.d333,root.sg.d4444 align by device";
+    String sql = "select diff(s1), diff(s2) from root.db.d333,root.db.d4444 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -1077,7 +1077,7 @@ public class AlignedByDeviceTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     String sql =
-        "select diff(s1), diff(s2) from root.sg.d333,root.sg.d4444 order by time align by device";
+        "select diff(s1), diff(s2) from root.db.d333,root.db.d4444 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -1131,7 +1131,7 @@ public class AlignedByDeviceTest {
     //                                        /      \
     //                                  d1.s1[2]    d1.s2[2]
     // ------------------------------------------------------------------------------------------------
-    String sql = "select diff(s1), diff(s2) from root.sg.d1,root.sg.d22 align by device";
+    String sql = "select diff(s1), diff(s2) from root.db.d1,root.db.d22 align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -1183,7 +1183,7 @@ public class AlignedByDeviceTest {
     //                                  d1.s1[2]    d1.s2[2]
     // ------------------------------------------------------------------------------------------------
     String sql =
-        "select diff(s1), diff(s2) from root.sg.d1,root.sg.d22 order by time align by device";
+        "select diff(s1), diff(s2) from root.db.d1,root.db.d22 order by time align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =
@@ -1223,7 +1223,7 @@ public class AlignedByDeviceTest {
     QueryId queryId = new QueryId("test");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-    String sql = "select * from root.sg.d1 order by time asc align by device";
+    String sql = "select * from root.db.d1 order by time asc align by device";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     assertTrue(logicalPlanNode instanceof DeviceViewNode);
@@ -1232,7 +1232,7 @@ public class AlignedByDeviceTest {
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(2, plan.getInstances().size());
 
-    sql = "select * from root.sg.d22 order by time asc align by device";
+    sql = "select * from root.db.d22 order by time asc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     assertTrue(logicalPlanNode instanceof DeviceViewNode);

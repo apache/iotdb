@@ -45,12 +45,12 @@ import static org.junit.Assert.fail;
 public class IoTDBUDAFMiscIT {
   private static final String[] dataset =
       new String[] {
-        "CREATE DATABASE root.sg;",
-        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(1, 1, 1);",
-        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(2, 2, 2);",
-        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(3, 3, 3);",
+        "CREATE DATABASE root.db;",
+        "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.db.d1(time, s1, s2) VALUES(1, 1, 1);",
+        "INSERT INTO root.db.d1(time, s1, s2) VALUES(2, 2, 2);",
+        "INSERT INTO root.db.d1(time, s1, s2) VALUES(3, 3, 3);",
         "flush;",
       };
 
@@ -92,7 +92,7 @@ public class IoTDBUDAFMiscIT {
 
       int count = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT udaf(udf(s1, s2)) AS res " + "FROM root.sg.d1 ")) {
+          statement.executeQuery("SELECT udaf(udf(s1, s2)) AS res " + "FROM root.db.d1 ")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("res");
           Assert.assertEquals(expected[count], actual);
@@ -112,7 +112,7 @@ public class IoTDBUDAFMiscIT {
 
       int count = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT udaf(s1) + udaf(s2) AS res " + "FROM root.sg.d1 ")) {
+          statement.executeQuery("SELECT udaf(s1) + udaf(s2) AS res " + "FROM root.db.d1 ")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("res");
           Assert.assertEquals(expected[count], actual);

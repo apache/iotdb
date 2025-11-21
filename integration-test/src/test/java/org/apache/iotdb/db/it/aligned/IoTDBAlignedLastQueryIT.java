@@ -76,17 +76,17 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "40,root.sg1.d1.s2,40,INT32",
-                "30,root.sg1.d1.s3,30,INT64",
-                "30,root.sg1.d1.s4,false,BOOLEAN",
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+                "23,root.db1.d1.s1,230000.0,FLOAT",
+                "40,root.db1.d1.s2,40,INT32",
+                "30,root.db1.d1.s3,30,INT64",
+                "30,root.db1.d1.s4,false,BOOLEAN",
+                "40,root.db1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.d1 order by timeseries asc")) {
+          statement.executeQuery("select last * from root.db1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -115,22 +115,22 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "40,root.sg1.d1.s2,40,INT32",
-                "30,root.sg1.d1.s3,30,INT64",
-                "30,root.sg1.d1.s4,false,BOOLEAN",
-                "40,root.sg1.d1.s5,aligned_test40,TEXT",
-                "20,root.sg1.d2.s1,20.0,FLOAT",
-                "40,root.sg1.d2.s2,40,INT32",
-                "30,root.sg1.d2.s3,30,INT64",
-                "30,root.sg1.d2.s4,false,BOOLEAN",
-                "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
+                "23,root.db1.d1.s1,230000.0,FLOAT",
+                "40,root.db1.d1.s2,40,INT32",
+                "30,root.db1.d1.s3,30,INT64",
+                "30,root.db1.d1.s4,false,BOOLEAN",
+                "40,root.db1.d1.s5,aligned_test40,TEXT",
+                "20,root.db1.d2.s1,20.0,FLOAT",
+                "40,root.db1.d2.s2,40,INT32",
+                "30,root.db1.d2.s3,30,INT64",
+                "30,root.db1.d2.s4,false,BOOLEAN",
+                "40,root.db1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.*  order by timeseries asc")) {
+          statement.executeQuery("select last * from root.db1.*  order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -158,14 +158,14 @@ public class IoTDBAlignedLastQueryIT {
 
     Set<String> retSet =
         new HashSet<>(
-            Arrays.asList("40,root.sg1.d1.s2,40,INT32", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+            Arrays.asList("40,root.db1.d1.s2,40,INT32", "40,root.db1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last * from root.sg1.d1 where time > 30 order by timeseries asc")) {
+              "select last * from root.db1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -193,16 +193,16 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "23,root.sg1.d1.s1,230000.0,FLOAT",
-                "30,root.sg1.d1.s4,false,BOOLEAN",
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+                "23,root.db1.d1.s1,230000.0,FLOAT",
+                "30,root.db1.d1.s4,false,BOOLEAN",
+                "40,root.db1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last s1, s4, s5 from root.sg1.d1 order by timeseries asc")) {
+              "select last s1, s4, s5 from root.db1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -229,13 +229,13 @@ public class IoTDBAlignedLastQueryIT {
   public void selectSomeAlignedLastTest2() {
     Set<String> retSet =
         new HashSet<>(
-            Arrays.asList("23,root.sg1.d1.s1,230000.0,FLOAT", "30,root.sg1.d1.s4,false,BOOLEAN"));
+            Arrays.asList("23,root.db1.d1.s1,230000.0,FLOAT", "30,root.db1.d1.s4,false,BOOLEAN"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4 from root.sg1.d1 order by timeseries asc")) {
+          statement.executeQuery("select last s1, s4 from root.db1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -262,14 +262,14 @@ public class IoTDBAlignedLastQueryIT {
   public void selectSomeAlignedLastWithTimeFilterTest() {
 
     Set<String> retSet =
-        new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
+        new HashSet<>(Collections.singletonList("40,root.db1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last s1, s4, s5 from root.sg1.d1 where time > 30 order by timeseries asc")) {
+              "select last s1, s4, s5 from root.db1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -298,8 +298,8 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "40,root.sg1.d1.s5,aligned_test40,TEXT",
-                "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
+                "40,root.db1.d1.s5,aligned_test40,TEXT",
+                "40,root.db1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -307,7 +307,7 @@ public class IoTDBAlignedLastQueryIT {
       // 1 4 5
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timeseries asc")) {
+              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.db1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =

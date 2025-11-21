@@ -64,7 +64,7 @@ public interface ISchemaTree extends Accountable {
   /**
    * Get database name by device path
    *
-   * <p>e.g., root.sg1 is a database and device path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.db1 is a database and device path = root.db1.d1, return root.db1
    *
    * @param pathName only full device path, cannot be path pattern
    * @return database in the given path

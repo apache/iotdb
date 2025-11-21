@@ -53,22 +53,22 @@ public class IoTDBInIT {
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE root.ln",
-        "CREATE DATABASE root.sg",
-        "create timeseries root.sg.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,'qrcode001')",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,'qrcode002')",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465720000,'qrcode003')",
-        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465780000,'qrcode004')",
-        "create timeseries root.sg.d1.s2.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465720000,'qrcode002')",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465780000,'qrcode003')",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465840000,'qrcode004')",
-        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465900000,'qrcode005')",
-        "create timeseries root.sg.d2.s1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465780000,'qrcode002')",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465840000,'qrcode003')",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465900000,'qrcode004')",
-        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,'qrcode005')",
+        "CREATE DATABASE root.db",
+        "create timeseries root.db.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.db.d1.s1(timestamp,qrcode) values(1509465600000,'qrcode001')",
+        "insert into root.db.d1.s1(timestamp,qrcode) values(1509465660000,'qrcode002')",
+        "insert into root.db.d1.s1(timestamp,qrcode) values(1509465720000,'qrcode003')",
+        "insert into root.db.d1.s1(timestamp,qrcode) values(1509465780000,'qrcode004')",
+        "create timeseries root.db.d1.s2.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.db.d1.s2(timestamp,qrcode) values(1509465720000,'qrcode002')",
+        "insert into root.db.d1.s2(timestamp,qrcode) values(1509465780000,'qrcode003')",
+        "insert into root.db.d1.s2(timestamp,qrcode) values(1509465840000,'qrcode004')",
+        "insert into root.db.d1.s2(timestamp,qrcode) values(1509465900000,'qrcode005')",
+        "create timeseries root.db.d2.s1.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.db.d2.s1(timestamp,qrcode) values(1509465780000,'qrcode002')",
+        "insert into root.db.d2.s1(timestamp,qrcode) values(1509465840000,'qrcode003')",
+        "insert into root.db.d2.s1(timestamp,qrcode) values(1509465900000,'qrcode004')",
+        "insert into root.db.d2.s1(timestamp,qrcode) values(1509465960000,'qrcode005')",
         "create timeseries root.test.s1 with datatype=INT32,encoding=PLAIN",
         "create timeseries root.test.s2 with datatype=INT64,encoding=PLAIN",
         "create timeseries root.test.s3 with datatype=FLOAT,encoding=PLAIN",
@@ -135,12 +135,12 @@ public class IoTDBInIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select qrcode from root.sg.d1.* where qrcode in ('qrcode002', 'qrcode003')")) {
+              "select qrcode from root.db.d1.* where qrcode in ('qrcode002', 'qrcode003')")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.sg.d1.s1.qrcode,root.sg.d1.s2.qrcode,",
+                "Time,root.db.d1.s1.qrcode,root.db.d1.s2.qrcode,",
                 new int[] {
                   Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR,
                 });
@@ -177,12 +177,12 @@ public class IoTDBInIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')")) {
+              "select qrcode from root.db.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.sg.d1.s1.qrcode,root.sg.d1.s2.qrcode,root.sg.d2.s1.qrcode,",
+                "Time,root.db.d1.s1.qrcode,root.db.d1.s2.qrcode,root.db.d2.s1.qrcode,",
                 new int[] {
                   Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 });
@@ -214,12 +214,12 @@ public class IoTDBInIT {
   public void selectWithAlignByDeviceTest() {
     String[] retArray =
         new String[] {
-          "1509465660000,root.sg.d1.s1,qrcode002,",
-          "1509465780000,root.sg.d1.s1,qrcode004,",
-          "1509465720000,root.sg.d1.s2,qrcode002,",
-          "1509465840000,root.sg.d1.s2,qrcode004,",
-          "1509465780000,root.sg.d2.s1,qrcode002,",
-          "1509465900000,root.sg.d2.s1,qrcode004,",
+          "1509465660000,root.db.d1.s1,qrcode002,",
+          "1509465780000,root.db.d1.s1,qrcode004,",
+          "1509465720000,root.db.d1.s2,qrcode002,",
+          "1509465840000,root.db.d1.s2,qrcode004,",
+          "1509465780000,root.db.d2.s1,qrcode002,",
+          "1509465900000,root.db.d2.s1,qrcode004,",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -227,7 +227,7 @@ public class IoTDBInIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode004') align by device")) {
+              "select qrcode from root.db.*.* where qrcode in ('qrcode002', 'qrcode004') align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(

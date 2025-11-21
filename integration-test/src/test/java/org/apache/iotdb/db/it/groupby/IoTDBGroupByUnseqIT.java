@@ -39,36 +39,36 @@ public class IoTDBGroupByUnseqIT {
 
   private static final String[] dataSet1 =
       new String[] {
-        "CREATE DATABASE root.sg1",
-        "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg1.d1(time,s1) values(1, 1)",
-        "INSERT INTO root.sg1.d1(time,s1) values(2, 2)",
-        "INSERT INTO root.sg1.d1(time,s1) values(3, 3)",
-        "INSERT INTO root.sg1.d1(time,s1) values(4, 4)",
-        "INSERT INTO root.sg1.d1(time,s1) values(8, 8)",
-        "INSERT INTO root.sg1.d1(time,s1) values(10, 10)",
-        "INSERT INTO root.sg1.d1(time,s1) values(11, 11)",
-        "INSERT INTO root.sg1.d1(time,s1) values(12, 12)",
+        "CREATE DATABASE root.db1",
+        "CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db1.d1(time,s1) values(1, 1)",
+        "INSERT INTO root.db1.d1(time,s1) values(2, 2)",
+        "INSERT INTO root.db1.d1(time,s1) values(3, 3)",
+        "INSERT INTO root.db1.d1(time,s1) values(4, 4)",
+        "INSERT INTO root.db1.d1(time,s1) values(8, 8)",
+        "INSERT INTO root.db1.d1(time,s1) values(10, 10)",
+        "INSERT INTO root.db1.d1(time,s1) values(11, 11)",
+        "INSERT INTO root.db1.d1(time,s1) values(12, 12)",
         "flush",
-        "INSERT INTO root.sg1.d1(time,s1) values(7, 7)",
-        "INSERT INTO root.sg1.d1(time,s1) values(9, 9)",
+        "INSERT INTO root.db1.d1(time,s1) values(7, 7)",
+        "INSERT INTO root.db1.d1(time,s1) values(9, 9)",
         "flush"
       };
 
   private static final String[] dataSet2 =
       new String[] {
-        "CREATE DATABASE root.sg2",
-        "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg2.d1(time,s1) values(1, 1)",
-        "INSERT INTO root.sg2.d1(time,s1) values(10, 10)",
+        "CREATE DATABASE root.db2",
+        "CREATE TIMESERIES root.db2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db2.d1(time,s1) values(1, 1)",
+        "INSERT INTO root.db2.d1(time,s1) values(10, 10)",
         "flush",
-        "INSERT INTO root.sg2.d1(time,s1) values(19, 19)",
-        "INSERT INTO root.sg2.d1(time,s1) values(30, 30)",
+        "INSERT INTO root.db2.d1(time,s1) values(19, 19)",
+        "INSERT INTO root.db2.d1(time,s1) values(30, 30)",
         "flush",
-        "INSERT INTO root.sg2.d1(time,s1) values(5, 5)",
-        "INSERT INTO root.sg2.d1(time,s1) values(15, 15)",
-        "INSERT INTO root.sg2.d1(time,s1) values(26, 26)",
-        "INSERT INTO root.sg2.d1(time,s1) values(30, 30)",
+        "INSERT INTO root.db2.d1(time,s1) values(5, 5)",
+        "INSERT INTO root.db2.d1(time,s1) values(15, 15)",
+        "INSERT INTO root.db2.d1(time,s1) values(26, 26)",
+        "INSERT INTO root.db2.d1(time,s1) values(30, 30)",
         "flush"
       };
 
@@ -86,7 +86,7 @@ public class IoTDBGroupByUnseqIT {
   public void test1() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxNumberOfPointsInPage(4);
     EnvFactory.getEnv().initClusterEnvironment();
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg1.d1.s1")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.db1.d1.s1")};
     String[] retArray =
         new String[] {
           "1,3,", "4,1,", "7,3,", "10,3,",
@@ -94,7 +94,7 @@ public class IoTDBGroupByUnseqIT {
 
     prepareData(dataSet1);
     resultSetEqualTest(
-        "select count(s1) from root.sg1.d1 group by ([1, 13), 3ms)", expectedHeader, retArray);
+        "select count(s1) from root.db1.d1 group by ([1, 13), 3ms)", expectedHeader, retArray);
   }
 
   /**
@@ -112,11 +112,11 @@ public class IoTDBGroupByUnseqIT {
         .setMaxNumberOfPointsInPage(4)
         .setTargetChunkPointNum(2);
     EnvFactory.getEnv().initClusterEnvironment();
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg2.d1.s1")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.db2.d1.s1")};
     String[] retArray = new String[] {"5,1,", "10,1,", "15,2,", "20,0,", "25,1,"};
 
     prepareData(dataSet2);
     resultSetEqualTest(
-        "select count(s1) from root.sg2.d1 group by ([5, 30), 5ms)", expectedHeader, retArray);
+        "select count(s1) from root.db2.d1 group by ([5, 30), 5ms)", expectedHeader, retArray);
   }
 }

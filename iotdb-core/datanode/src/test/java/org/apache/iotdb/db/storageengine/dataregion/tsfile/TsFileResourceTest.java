@@ -72,16 +72,16 @@ public class TsFileResourceTest {
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
         .forEach(
-            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i));
     ArrayDeviceTimeIndex deviceTimeIndex =
         new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
               deviceTimeIndex.updateStartTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i);
               deviceTimeIndex.updateEndTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -117,11 +117,11 @@ public class TsFileResourceTest {
       Assert.assertEquals(
           0,
           ((long)
-              tsFileResource.getStartTime(Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)).get()));
+              tsFileResource.getStartTime(Factory.DEFAULT_FACTORY.create("root.db1.d" + i)).get()));
       Assert.assertEquals(
           DEVICE_NUM,
           ((long)
-              tsFileResource.getEndTime(Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)).get()));
+              tsFileResource.getEndTime(Factory.DEFAULT_FACTORY.create("root.db1.d" + i)).get()));
     }
   }
 

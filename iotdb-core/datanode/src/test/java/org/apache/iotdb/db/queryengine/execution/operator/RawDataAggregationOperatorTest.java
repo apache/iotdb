@@ -116,7 +116,7 @@ public class RawDataAggregationOperatorTest {
    *
    * <p>Example SQL: select count(s0), sum(s0), min_time(s0), max_time(s0), min_value(s0),
    * max_value(s0), count(s1), sum(s1), min_time(s1), max_time(s1), min_value(s1), max_value(s1)
-   * from root.sg.d0 where s1 > 10 and s2 < 15
+   * from root.db.d0 where s1 > 10 and s2 < 15
    *
    * <p>For convenience, we don't use FilterOperator in test though rawDataAggregateOperator is
    * always used with value filter.
@@ -166,7 +166,7 @@ public class RawDataAggregationOperatorTest {
    * Test aggregating raw data without group by interval.
    *
    * <p>Example SQL: select avg(s0), avg(s1), first_value(s0), first_value(s1), last_value(s0),
-   * last_value(s1) from root.sg.d0 where s1 > 10 and s2 < 15
+   * last_value(s1) from root.db.d0 where s1 > 10 and s2 < 15
    *
    * <p>For convenience, we don't use FilterOperator in test though rawDataAggregateOperator is
    * always used with value filter.

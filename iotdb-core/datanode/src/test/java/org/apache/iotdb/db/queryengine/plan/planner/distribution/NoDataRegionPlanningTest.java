@@ -39,7 +39,7 @@ public class NoDataRegionPlanningTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select d1.s1, d1.s2, d333.s1,d55555.s1 from root.sg limit 10";
+    String sql = "select d1.s1, d1.s2, d333.s1,d55555.s1 from root.db limit 10";
     Analysis analysis = Util.analyze(sql, context);
     PlanNode root = Util.genLogicalPlan(analysis, context);
     DistributionPlanner planner =

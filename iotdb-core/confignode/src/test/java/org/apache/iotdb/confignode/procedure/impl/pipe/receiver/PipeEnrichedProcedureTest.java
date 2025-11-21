@@ -94,7 +94,7 @@ public class PipeEnrichedProcedureTest {
   public void deleteDatabaseTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    DeleteDatabaseProcedure p1 = new DeleteDatabaseProcedure(new TDatabaseSchema("root.sg"), true);
+    DeleteDatabaseProcedure p1 = new DeleteDatabaseProcedure(new TDatabaseSchema("root.db"), true);
 
     try {
       p1.serialize(outputStream);
@@ -114,8 +114,8 @@ public class PipeEnrichedProcedureTest {
   public void deleteTimeseriesTest() throws IllegalPathException, IOException {
     String queryId = "1";
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
-    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.db2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
         new DeleteTimeSeriesProcedure(queryId, patternTree, true, false);
@@ -154,8 +154,8 @@ public class PipeEnrichedProcedureTest {
         new TSEncoding[] {TSEncoding.BITMAP, TSEncoding.PLAIN},
         new CompressionType[] {CompressionType.GZIP, CompressionType.UNCOMPRESSED});
 
-    templateSetInfo.put(new PartialPath("root.sg1.**"), Arrays.asList(t1, t2));
-    templateSetInfo.put(new PartialPath("root.sg2.**"), Arrays.asList(t2, t1));
+    templateSetInfo.put(new PartialPath("root.db1.**"), Arrays.asList(t1, t2));
+    templateSetInfo.put(new PartialPath("root.db2.**"), Arrays.asList(t2, t1));
 
     DeactivateTemplateProcedure deactivateTemplateProcedure =
         new DeactivateTemplateProcedure(queryId, templateSetInfo, true);
@@ -183,7 +183,7 @@ public class PipeEnrichedProcedureTest {
         new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
         new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
         new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
-    PartialPath path = new PartialPath("root.sg");
+    PartialPath path = new PartialPath("root.db");
     UnsetTemplateProcedure unsetTemplateProcedure =
         new UnsetTemplateProcedure(queryId, template, path, true);
 
@@ -202,7 +202,7 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void setTemplateTest() throws IOException {
     SetTemplateProcedure setTemplateProcedure =
-        new SetTemplateProcedure("1", "t1", "root.sg", true);
+        new SetTemplateProcedure("1", "t1", "root.db", true);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -224,7 +224,7 @@ public class PipeEnrichedProcedureTest {
             new HashMap<PartialPath, ViewExpression>() {
               {
                 put(
-                    new PartialPath("root.sg"),
+                    new PartialPath("root.db"),
                     new ConstantViewOperand(TSDataType.BOOLEAN, "true"));
               }
             },
@@ -359,7 +359,7 @@ public class PipeEnrichedProcedureTest {
     final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
     // test1
-    PartialPath path = new PartialPath("root.test.sg1.group1.group1.**");
+    PartialPath path = new PartialPath("root.test.db1.group1.group1.**");
     SetTTLPlan setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), 1928300234200L);
     SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan, true);
 
@@ -766,8 +766,8 @@ public class PipeEnrichedProcedureTest {
   public void alterEncodingCompressorTest() throws IllegalPathException, IOException {
     final String queryId = "1";
     final PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
-    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.db2.*.s1"));
     patternTree.constructTree();
     final AlterEncodingCompressorProcedure alterEncodingCompressorProcedure =
         new AlterEncodingCompressorProcedure(

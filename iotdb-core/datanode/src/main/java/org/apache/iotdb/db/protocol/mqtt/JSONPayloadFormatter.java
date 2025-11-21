@@ -35,10 +35,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The JSON payload formatter. two json format supported: { "device":"root.sg.d1",
+ * The JSON payload formatter. two json format supported: { "device":"root.db.d1",
  * "timestamp":1586076045524, "measurements":["s1","s2"], "values":[0.530635,0.530635] }
  *
- * <p>{ "device":"root.sg.d1", "timestamps":[1586076045524,1586076065526],
+ * <p>{ "device":"root.db.d1", "timestamps":[1586076045524,1586076065526],
  * "measurements":["s1","s2"], "values":[[0.530635,0.530635], [0.530655,0.530695]] }
  */
 public class JSONPayloadFormatter implements PayloadFormatter {

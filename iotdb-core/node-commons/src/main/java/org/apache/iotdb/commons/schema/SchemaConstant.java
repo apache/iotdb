@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.schema;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
@@ -35,20 +34,11 @@ public class SchemaConstant {
 
   public static final String MTREE_PREFIX = "mtree";
   private static final String MTREE_VERSION = "1";
-  public static final String MTREE_TXT_SNAPSHOT_OLD_VERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot";
-  public static final String MTREE_SNAPSHOT_OLD_VERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin";
-  public static final String MTREE_SNAPSHOT_TMP_OLDVERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
 
   public static final String ROOT = "root";
-  public static final String METADATA_TXT_LOG = "mlog.txt";
   public static final String METADATA_LOG = "mlog.bin";
   public static final String METADATA_LOG_DESCRIPTION = "mlog.description";
   public static final String TAG_LOG = "tlog.txt";
-  public static final String TEMPLATE_FILE = "template_log.bin";
-  public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
   public static final String PBTREE_FILE_NAME = "pbtree.pst";
   public static final String PBTREE_LOG_FILE_NAME = "pbtree_log.bin";
 
@@ -94,17 +84,17 @@ public class SchemaConstant {
   public static final byte DATABASE_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;
   public static final byte ENTITY_MNODE_TYPE = 3;
-  public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
+  public static final byte DATABASE_ENTITY_MNODE_TYPE = 4;
 
   public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
 
   public static final byte TABLE_MNODE_TYPE = 6;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
-  public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
+  public static final String DATABASE_MNODE_TYPE_NAME = "DatabaseMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
-  public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
+  public static final String DATABASE_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
 
@@ -121,13 +111,13 @@ public class SchemaConstant {
       case INTERNAL_MNODE_TYPE:
         return INTERNAL_MNODE_TYPE_NAME;
       case DATABASE_MNODE_TYPE:
-        return STORAGE_GROUP_MNODE_TYPE_NAME;
+        return DATABASE_MNODE_TYPE_NAME;
       case MEASUREMENT_MNODE_TYPE:
         return MEASUREMENT_MNODE_TYPE_NAME;
       case ENTITY_MNODE_TYPE:
         return ENTITY_MNODE_TYPE_NAME;
-      case STORAGE_GROUP_ENTITY_MNODE_TYPE:
-        return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
+      case DATABASE_ENTITY_MNODE_TYPE:
+        return DATABASE_ENTITY_MNODE_TYPE_NAME;
       case LOGICAL_VIEW_MNODE_TYPE:
         return LOGICAL_VIEW_MNODE_TYPE_NAME;
       case TABLE_MNODE_TYPE:
@@ -137,7 +127,7 @@ public class SchemaConstant {
     }
   }
 
-  public static boolean isStorageGroupType(byte type) {
-    return type == DATABASE_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
+  public static boolean isDatabaseType(byte type) {
+    return type == DATABASE_MNODE_TYPE || type == DATABASE_ENTITY_MNODE_TYPE;
   }
 }

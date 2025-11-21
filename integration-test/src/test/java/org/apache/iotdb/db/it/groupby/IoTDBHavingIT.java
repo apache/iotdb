@@ -47,49 +47,49 @@ public class IoTDBHavingIT {
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.test",
-        "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
         "CREATE TIMESERIES root.test.sg5.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg5.s9 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(1, true, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(1, false, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg1(timestamp, s2) values(2, 2)",
-        "INSERT INTO root.test.sg1(timestamp, s3) values(2, 2.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) values(2, 2)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(2, true, 2, 2.0, 2)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) values(1, true, 1, 1.0, 1)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) values(1, false, 1, 1.0, 1)",
+        "INSERT INTO root.test.db1(timestamp, s2) values(2, 2)",
+        "INSERT INTO root.test.db1(timestamp, s3) values(2, 2.0)",
+        "INSERT INTO root.test.db1(timestamp, s4) values(2, 2)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) values(2, true, 2, 2.0, 2)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) values(3, false)",
-        "INSERT INTO root.test.sg1(timestamp, s2) values(5, 5)",
-        "INSERT INTO root.test.sg1(timestamp, s3) values(5, 5.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s2) values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s3) values(5, 5.0)",
-        "INSERT INTO root.test.sg2(timestamp, s4) values(5, 5)",
+        "INSERT INTO root.test.db1(timestamp, s1) values(3, false)",
+        "INSERT INTO root.test.db1(timestamp, s2) values(5, 5)",
+        "INSERT INTO root.test.db1(timestamp, s3) values(5, 5.0)",
+        "INSERT INTO root.test.db1(timestamp, s4) values(5, 5)",
+        "INSERT INTO root.test.db2(timestamp, s2) values(5, 5)",
+        "INSERT INTO root.test.db2(timestamp, s3) values(5, 5.0)",
+        "INSERT INTO root.test.db2(timestamp, s4) values(5, 5)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg1(timestamp, s1) values(7, true)",
-        "INSERT INTO root.test.sg1(timestamp, s3) values(7, 7.0)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3) values(7, true, 7, 7.0)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.db1(timestamp, s1) values(7, true)",
+        "INSERT INTO root.test.db1(timestamp, s3) values(7, 7.0)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3) values(7, true, 7, 7.0)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) values(8, true)",
-        "INSERT INTO root.test.sg1(timestamp, s2) values(8, 8)",
-        "INSERT INTO root.test.sg1(timestamp, s3) values(8, 8.0)",
-        "INSERT INTO root.test.sg2(timestamp, s3) values(8, 8.0)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(9, false, 9, 9.0, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s1) values(9, true)",
+        "INSERT INTO root.test.db1(timestamp, s1) values(8, true)",
+        "INSERT INTO root.test.db1(timestamp, s2) values(8, 8)",
+        "INSERT INTO root.test.db1(timestamp, s3) values(8, 8.0)",
+        "INSERT INTO root.test.db2(timestamp, s3) values(8, 8.0)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) values(9, false, 9, 9.0, 9)",
+        "INSERT INTO root.test.db2(timestamp, s1) values(9, true)",
         "flush",
-        "INSERT INTO root.test.sg2(timestamp, s2) values(9, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s4) values(9, 9)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.db2(timestamp, s2) values(9, 9)",
+        "INSERT INTO root.test.db2(timestamp, s4) values(9, 9)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
         "flush",
         "INSERT INTO root.test.sg3(time, s5, s6, s7, s8) aligned values(1, 1, true, 1.0, 1)",
         "INSERT INTO root.test.sg3(time, s6, s7, s8) aligned values(2, false, 2.0, 2)",
@@ -144,19 +144,19 @@ public class IoTDBHavingIT {
 
   @Test
   public void groupByTimeWithHavingTest() {
-    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.sg1.s1")};
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.db1.s1")};
     String[] retArray = new String[] {"1,1,", "5,1,", "9,2,"};
     resultSetEqualWithDescOrderTest(
-        "select count(sg1.s1) from root.** "
+        "select count(db1.s1) from root.** "
             + "GROUP BY ([1,11), 2ms) "
-            + "Having count(sg1.s2) > 1",
+            + "Having count(db1.s2) > 1",
         expectedHeader,
         retArray);
 
     resultSetEqualWithDescOrderTest(
-        "select count(sg1.s1) from root.**"
+        "select count(db1.s1) from root.**"
             + "GROUP BY ([1,11), 2ms) "
-            + "Having count(sg1.s2) > 2",
+            + "Having count(db1.s2) > 2",
         expectedHeader,
         new String[] {});
   }
@@ -166,12 +166,12 @@ public class IoTDBHavingIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", count("s1"), count("s2")};
     String[] retArray =
         new String[] {
-          "1,root.test.sg1,1,2,",
-          "5,root.test.sg1,1,2,",
-          "9,root.test.sg1,2,2,",
-          "1,root.test.sg2,2,2,",
-          "5,root.test.sg2,1,2,",
-          "9,root.test.sg2,2,2,",
+          "1,root.test.db1,1,2,",
+          "5,root.test.db1,1,2,",
+          "9,root.test.db1,2,2,",
+          "1,root.test.db2,2,2,",
+          "5,root.test.db2,1,2,",
+          "9,root.test.db2,2,2,",
         };
     resultSetEqualTest(
         "select count(s1), count(s2) from root.** "
@@ -269,8 +269,8 @@ public class IoTDBHavingIT {
         new String[] {
           TIMESTAMP_STR,
           lastValue("root.test.sg5.s1"),
-          lastValue("root.test.sg1.s1"),
-          lastValue("root.test.sg2.s1"),
+          lastValue("root.test.db1.s1"),
+          lastValue("root.test.db2.s1"),
         };
     String[] retArray =
         new String[] {
@@ -295,14 +295,14 @@ public class IoTDBHavingIT {
     expectedHeader = new String[] {TIMESTAMP_STR, "Device", lastValue("s1")};
     retArray =
         new String[] {
-          "1,root.test.sg1,true,",
-          "5,root.test.sg1,true,",
-          "7,root.test.sg1,true,",
-          "9,root.test.sg1,true,",
-          "1,root.test.sg2,true,",
-          "5,root.test.sg2,true,",
-          "7,root.test.sg2,true,",
-          "9,root.test.sg2,true,"
+          "1,root.test.db1,true,",
+          "5,root.test.db1,true,",
+          "7,root.test.db1,true,",
+          "9,root.test.db1,true,",
+          "1,root.test.db2,true,",
+          "5,root.test.db2,true,",
+          "7,root.test.db2,true,",
+          "9,root.test.db2,true,"
         };
     resultSetEqualTest(
         "select last_value(s1) from root.** "

@@ -49,78 +49,78 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   // https://docs.google.com/spreadsheets/d/11tNRIaHmNdFWc0RC4yAloO6JJbmo9S5qxwAqWxeVY6c/edit#gid=0
   public static final String[] common_insert_sqls =
       new String[] {
-        "create aligned timeseries root.sg.aligned.d1(s1 INT32 encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY)",
-        "create aligned timeseries root.sg.aligned.d2(s3 BOOLEAN, s4 TEXT)",
-        "create timeseries root.sg.unaligned.d2.s1 WITH DATATYPE=INT64, encoding=RLE",
-        "create timeseries root.sg.unaligned.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
-        "create timeseries root.sg.unaligned.d3.s4 WITH DATATYPE=INT32, encoding=Gorilla",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(1, 1, 2)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(2, 2, 3)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(3, 3, 4)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(5, 5, 6)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(6, 6, 7)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(7, 7, 8)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(8, null, 9)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(9, 9, 10)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(10, 10, 11)",
+        "create aligned timeseries root.db.aligned.d1(s1 INT32 encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY)",
+        "create aligned timeseries root.db.aligned.d2(s3 BOOLEAN, s4 TEXT)",
+        "create timeseries root.db.unaligned.d2.s1 WITH DATATYPE=INT64, encoding=RLE",
+        "create timeseries root.db.unaligned.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
+        "create timeseries root.db.unaligned.d3.s4 WITH DATATYPE=INT32, encoding=Gorilla",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(1, 1, 2)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(2, 2, 3)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(3, 3, 4)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(5, 5, 6)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(6, 6, 7)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(7, 7, 8)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(8, null, 9)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(9, 9, 10)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(10, 10, 11)",
         "flush",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(5, FALSE, 'aligned_test1')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(6, TRUE, 'aligned_test2')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(7, TRUE, 'aligned_test3')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(8, null, 'aligned_test4')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(9, TRUE, 'aligned_test5')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(10, TRUE, 'aligned_test6')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(12, TRUE, 'aligned_test8')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(13, TRUE, null)",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(14, TRUE, 'aligned_test10')",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(11, 11, 12)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(12, 12, 13)",
-        "insert into root.sg.unaligned.d2(time, s1) values(1, 1)",
-        "insert into root.sg.unaligned.d2(time, s1) values(2, 2)",
-        "insert into root.sg.unaligned.d2(time, s1) values(3, 3)",
-        "insert into root.sg.unaligned.d2(time, s1) values(4, 4)",
-        "insert into root.sg.unaligned.d2(time, s1) values(5, 5)",
-        "insert into root.sg.unaligned.d2(time, s1) values(7, null)",
-        "insert into root.sg.unaligned.d2(time, s1) values(8, 8)",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(5, FALSE, 'aligned_test1')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(6, TRUE, 'aligned_test2')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(7, TRUE, 'aligned_test3')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(8, null, 'aligned_test4')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(9, TRUE, 'aligned_test5')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(10, TRUE, 'aligned_test6')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(12, TRUE, 'aligned_test8')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(13, TRUE, null)",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(14, TRUE, 'aligned_test10')",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(11, 11, 12)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(12, 12, 13)",
+        "insert into root.db.unaligned.d2(time, s1) values(1, 1)",
+        "insert into root.db.unaligned.d2(time, s1) values(2, 2)",
+        "insert into root.db.unaligned.d2(time, s1) values(3, 3)",
+        "insert into root.db.unaligned.d2(time, s1) values(4, 4)",
+        "insert into root.db.unaligned.d2(time, s1) values(5, 5)",
+        "insert into root.db.unaligned.d2(time, s1) values(7, null)",
+        "insert into root.db.unaligned.d2(time, s1) values(8, 8)",
         "flush",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(20, 1, 2)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(22, 2, 3)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(23, 3, 4)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(25, 5, 6)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(26, 6, 7)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(27, 7, 8)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(28, null, 9)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(29, 9, 10)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(30, 10, 11)",
-        "insert into root.sg.unaligned.d2(time, s2) values(22, 1)",
-        "insert into root.sg.unaligned.d2(time, s2) values(24, 2)",
-        "insert into root.sg.unaligned.d3(time, s4) values(22, 1)",
-        "insert into root.sg.unaligned.d3(time, s4) values(23, 2)",
-        "insert into root.sg.unaligned.d3(time, s4) values(24, 3)",
-        "insert into root.sg.unaligned.d3(time, s4) values(25, 4)",
-        "insert into root.sg.unaligned.d3(time, s4) values(26, 5)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(20, 1, 2)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(22, 2, 3)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(23, 3, 4)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(25, 5, 6)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(26, 6, 7)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(27, 7, 8)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(28, null, 9)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(29, 9, 10)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(30, 10, 11)",
+        "insert into root.db.unaligned.d2(time, s2) values(22, 1)",
+        "insert into root.db.unaligned.d2(time, s2) values(24, 2)",
+        "insert into root.db.unaligned.d3(time, s4) values(22, 1)",
+        "insert into root.db.unaligned.d3(time, s4) values(23, 2)",
+        "insert into root.db.unaligned.d3(time, s4) values(24, 3)",
+        "insert into root.db.unaligned.d3(time, s4) values(25, 4)",
+        "insert into root.db.unaligned.d3(time, s4) values(26, 5)",
         "flush",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(40, TRUE, 'aligned_test1')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(42, TRUE, 'aligned_test2')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(41, TRUE, 'aligned_test3')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(43, TRUE, 'aligned_test4')",
-        "insert into root.sg.aligned.d2(time, s3, s4) aligned values(44, TRUE, 'aligned_test5')",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(40, 1, 2)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(42, 2, 3)",
-        "insert into root.sg.aligned.d1(time, s1, s2) aligned values(44, 3, 4)",
-        "insert into root.sg.unaligned.d2(time, s1) values(40, 1)",
-        "insert into root.sg.unaligned.d2(time, s1) values(41, 2)",
-        "insert into root.sg.unaligned.d2(time, s1) values(42, 3)",
-        "insert into root.sg.unaligned.d2(time, s1) values(43, 4)",
-        "insert into root.sg.unaligned.d2(time, s1) values(44, 5)",
-        "insert into root.sg.unaligned.d2(time, s1) values(45, 6)",
-        "insert into root.sg.unaligned.d2(time, s2) values(40, 1)",
-        "insert into root.sg.unaligned.d2(time, s2) values(41, 2)",
-        "insert into root.sg.unaligned.d2(time, s2) values(42, 3)",
-        "insert into root.sg.unaligned.d2(time, s2) values(43, 4)",
-        "insert into root.sg.unaligned.d3(time, s4) values(40, 1)",
-        "insert into root.sg.unaligned.d3(time, s4) values(41, 2)",
-        "insert into root.sg.unaligned.d3(time, s4) values(42, 3)",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(40, TRUE, 'aligned_test1')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(42, TRUE, 'aligned_test2')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(41, TRUE, 'aligned_test3')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(43, TRUE, 'aligned_test4')",
+        "insert into root.db.aligned.d2(time, s3, s4) aligned values(44, TRUE, 'aligned_test5')",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(40, 1, 2)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(42, 2, 3)",
+        "insert into root.db.aligned.d1(time, s1, s2) aligned values(44, 3, 4)",
+        "insert into root.db.unaligned.d2(time, s1) values(40, 1)",
+        "insert into root.db.unaligned.d2(time, s1) values(41, 2)",
+        "insert into root.db.unaligned.d2(time, s1) values(42, 3)",
+        "insert into root.db.unaligned.d2(time, s1) values(43, 4)",
+        "insert into root.db.unaligned.d2(time, s1) values(44, 5)",
+        "insert into root.db.unaligned.d2(time, s1) values(45, 6)",
+        "insert into root.db.unaligned.d2(time, s2) values(40, 1)",
+        "insert into root.db.unaligned.d2(time, s2) values(41, 2)",
+        "insert into root.db.unaligned.d2(time, s2) values(42, 3)",
+        "insert into root.db.unaligned.d2(time, s2) values(43, 4)",
+        "insert into root.db.unaligned.d3(time, s4) values(40, 1)",
+        "insert into root.db.unaligned.d3(time, s4) values(41, 2)",
+        "insert into root.db.unaligned.d3(time, s4) values(42, 3)",
       };
 
   public static final String[] SHOW_DEVICES_COLUMN_NAMES =
@@ -184,7 +184,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time = 4";
     String[] retArray =
         new String[] {
-          "root.sg.unaligned.d2",
+          "root.db.unaligned.d2",
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
@@ -198,7 +198,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time >= 6 and time <=10";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d2",
+          "root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d2",
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
@@ -212,7 +212,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time >= 6 and time <=30";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d2", "root.sg.unaligned.d3"
+          "root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d2", "root.db.unaligned.d3"
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
@@ -224,7 +224,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   @Test
   public void showActiveDeviceTest4() {
     String sql = "show devices where time >= 25 and time <= 28";
-    String[] retArray = new String[] {"root.sg.aligned.d1", "root.sg.unaligned.d3"};
+    String[] retArray = new String[] {"root.db.aligned.d1", "root.db.unaligned.d3"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     sql = "count devices where time >= 25 and time <= 28";
@@ -237,7 +237,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time >= 40 and time <= 44";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d2", "root.sg.unaligned.d3"
+          "root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d2", "root.db.unaligned.d3"
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
@@ -251,22 +251,22 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time >= 43 and time < 44";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d2", "root.sg.unaligned.d2",
+          "root.db.aligned.d2", "root.db.unaligned.d2",
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
   }
 
   @Test
   public void showActiveDeviceTest7() {
-    String sql = "show devices root.sg.** where time > 45";
+    String sql = "show devices root.db.** where time > 45";
     String[] retArray = new String[] {};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
   }
 
   @Test
   public void showActiveDeviceTest8() {
-    String sql = "show devices root.sg.** where time > 44 or time < 4";
-    String[] retArray = new String[] {"root.sg.aligned.d1", "root.sg.unaligned.d2"};
+    String sql = "show devices root.db.** where time > 44 or time < 4";
+    String[] retArray = new String[] {"root.db.aligned.d1", "root.db.unaligned.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
   }
 
@@ -274,7 +274,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   public void showActiveDeviceTest9() {
     String sql = "show devices where time = 8";
     String[] retArray =
-        new String[] {"root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d2"};
+        new String[] {"root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
   }
 
@@ -283,7 +283,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show devices where time < 50";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1", "root.sg.aligned.d2", "root.sg.unaligned.d3", "root.sg.unaligned.d2"
+          "root.db.aligned.d1", "root.db.aligned.d2", "root.db.unaligned.d3", "root.db.unaligned.d2"
         };
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
   }
@@ -315,7 +315,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time = 4";
     String[] retArray =
         new String[] {
-          "root.sg.unaligned.d2.s1",
+          "root.db.unaligned.d2.s1",
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
   }
@@ -325,11 +325,11 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time >= 6 and time <=10";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1.s1",
-          "root.sg.aligned.d1.s2",
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
+          "root.db.aligned.d1.s1",
+          "root.db.aligned.d1.s2",
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
         };
 
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
@@ -340,13 +340,13 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time >= 6 and time <=30";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1.s1",
-          "root.sg.aligned.d1.s2",
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
-          "root.sg.unaligned.d2.s2",
-          "root.sg.unaligned.d3.s4"
+          "root.db.aligned.d1.s1",
+          "root.db.aligned.d1.s2",
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
+          "root.db.unaligned.d2.s2",
+          "root.db.unaligned.d3.s4"
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
   }
@@ -355,7 +355,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   public void showActiveTimeseriesTest4() {
     String sql = "show timeseries where time >= 25 and time <= 28";
     String[] retArray =
-        new String[] {"root.sg.aligned.d1.s1", "root.sg.aligned.d1.s2", "root.sg.unaligned.d3.s4"};
+        new String[] {"root.db.aligned.d1.s1", "root.db.aligned.d1.s2", "root.db.unaligned.d3.s4"};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
   }
 
@@ -364,13 +364,13 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time >= 40 and time <= 44";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1.s1",
-          "root.sg.aligned.d1.s2",
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
-          "root.sg.unaligned.d2.s2",
-          "root.sg.unaligned.d3.s4"
+          "root.db.aligned.d1.s1",
+          "root.db.aligned.d1.s2",
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
+          "root.db.unaligned.d2.s2",
+          "root.db.unaligned.d3.s4"
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
@@ -384,10 +384,10 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time >= 43 and time < 44";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
-          "root.sg.unaligned.d2.s2"
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
+          "root.db.unaligned.d2.s2"
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
@@ -398,23 +398,23 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
 
   @Test
   public void showActiveTimeseriesTest7() {
-    String sql = "show timeseries root.sg.** where time > 45";
+    String sql = "show timeseries root.db.** where time > 45";
     String[] retArray = new String[] {};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
-    sql = "count timeseries root.sg.** where time > 45";
+    sql = "count timeseries root.db.** where time > 45";
     long value = 0;
     basicCountActiveDeviceTest(sql, COUNT_TIMESERIES_COLUMN_NAMES, value);
   }
 
   @Test
   public void showActiveTimeseriesTest8() {
-    String sql = "show timeseries root.sg.** where time > 44 or time < 4";
+    String sql = "show timeseries root.db.** where time > 44 or time < 4";
     String[] retArray =
-        new String[] {"root.sg.aligned.d1.s1", "root.sg.aligned.d1.s2", "root.sg.unaligned.d2.s1"};
+        new String[] {"root.db.aligned.d1.s1", "root.db.aligned.d1.s2", "root.db.unaligned.d2.s1"};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
-    sql = "count timeseries root.sg.** where time > 44 or time < 4";
+    sql = "count timeseries root.db.** where time > 44 or time < 4";
     long value = 3;
     basicCountActiveDeviceTest(sql, COUNT_TIMESERIES_COLUMN_NAMES, value);
   }
@@ -423,7 +423,7 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   public void showActiveTimeseriesTest9() {
     String sql = "show timeseries where time = 8";
     String[] retArray =
-        new String[] {"root.sg.aligned.d1.s2", "root.sg.aligned.d2.s4", "root.sg.unaligned.d2.s1"};
+        new String[] {"root.db.aligned.d1.s2", "root.db.aligned.d2.s4", "root.db.unaligned.d2.s1"};
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 
     sql = "count timeseries where time = 8";
@@ -436,13 +436,13 @@ public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
     String sql = "show timeseries where time < 50";
     String[] retArray =
         new String[] {
-          "root.sg.aligned.d1.s1",
-          "root.sg.aligned.d1.s2",
-          "root.sg.aligned.d2.s3",
-          "root.sg.aligned.d2.s4",
-          "root.sg.unaligned.d2.s1",
-          "root.sg.unaligned.d2.s2",
-          "root.sg.unaligned.d3.s4"
+          "root.db.aligned.d1.s1",
+          "root.db.aligned.d1.s2",
+          "root.db.aligned.d2.s3",
+          "root.db.aligned.d2.s4",
+          "root.db.unaligned.d2.s1",
+          "root.db.unaligned.d2.s2",
+          "root.db.unaligned.d3.s4"
         };
     basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
 

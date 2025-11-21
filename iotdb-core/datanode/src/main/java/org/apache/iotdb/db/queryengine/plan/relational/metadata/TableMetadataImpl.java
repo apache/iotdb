@@ -1428,16 +1428,16 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public DataPartition getDataPartition(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return partitionFetcher.getDataPartition(
-        Collections.singletonMap(database, sgNameToQueryParamsMap));
+        Collections.singletonMap(database, dbNameToQueryParamsMap));
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      String database, List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
-        Collections.singletonMap(database, sgNameToQueryParamsMap));
+        Collections.singletonMap(database, dbNameToQueryParamsMap));
   }
 
   @Override

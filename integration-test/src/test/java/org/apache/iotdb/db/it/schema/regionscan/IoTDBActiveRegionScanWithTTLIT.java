@@ -44,23 +44,23 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
 
   private static String[] sqls =
       new String[] {
-        "create timeseries root.sg.d1.s1 WITH DATATYPE=INT64, encoding=RLE",
-        "create timeseries root.sg.d1.s2 WITH DATATYPE=INT32, encoding=Gorilla",
-        "create timeseries root.sg.d2.s1 WITH DATATYPE=INT64, encoding=RLE",
-        "create timeseries root.sg.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
-        "insert into root.sg.d1(time, s1, s2) values(1, 1, 2)",
-        "insert into root.sg.d1(time, s1, s2) values(2, 2, 3)",
-        "insert into root.sg.d1(time, s1, s2) values(3, 3, 4)",
-        "insert into root.sg.d1(time, s1, s2) values(5, 5, 6)",
-        "insert into root.sg.d1(time, s1, s2) values(6, 6, 7)",
-        "insert into root.sg.d1(time, s1, s2) values(7, 7, 8)",
-        "insert into root.sg.d1(time, s1, s2) values(8, null, 9)",
-        "insert into root.sg.d1(time, s1, s2) values(9, 9, 10)",
-        "insert into root.sg.d1(time, s1, s2) values(10, 10, 11)",
+        "create timeseries root.db.d1.s1 WITH DATATYPE=INT64, encoding=RLE",
+        "create timeseries root.db.d1.s2 WITH DATATYPE=INT32, encoding=Gorilla",
+        "create timeseries root.db.d2.s1 WITH DATATYPE=INT64, encoding=RLE",
+        "create timeseries root.db.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
+        "insert into root.db.d1(time, s1, s2) values(1, 1, 2)",
+        "insert into root.db.d1(time, s1, s2) values(2, 2, 3)",
+        "insert into root.db.d1(time, s1, s2) values(3, 3, 4)",
+        "insert into root.db.d1(time, s1, s2) values(5, 5, 6)",
+        "insert into root.db.d1(time, s1, s2) values(6, 6, 7)",
+        "insert into root.db.d1(time, s1, s2) values(7, 7, 8)",
+        "insert into root.db.d1(time, s1, s2) values(8, null, 9)",
+        "insert into root.db.d1(time, s1, s2) values(9, 9, 10)",
+        "insert into root.db.d1(time, s1, s2) values(10, 10, 11)",
         "flush",
-        "insert into root.sg.d2(time, s1, s2) values(now(), null, 9)",
-        "insert into root.sg.d2(time, s1, s2) values(now(), 9, 10)",
-        "insert into root.sg.d2(time, s1, s2) values(now(), 10, 11)"
+        "insert into root.db.d2(time, s1, s2) values(now(), null, 9)",
+        "insert into root.db.d2(time, s1, s2) values(now(), 9, 10)",
+        "insert into root.db.d2(time, s1, s2) values(now(), 10, 11)"
       };
 
   public static void insertData() {
@@ -77,7 +77,7 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
   }
 
   private static void setTTL() {
-    final String[] ttl_sqls = {"set ttl to root.sg.d1 3600000", "set ttl to root.sg.d2 3600000"};
+    final String[] ttl_sqls = {"set ttl to root.db.d1 3600000", "set ttl to root.db.d2 3600000"};
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       for (final String sql : ttl_sqls) {
@@ -90,7 +90,7 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
   }
 
   private static void unsetTTL() {
-    final String[] ttl_sqls = {"unset ttl to root.sg.d1", "unset ttl to root.sg.d2"};
+    final String[] ttl_sqls = {"unset ttl to root.db.d1", "unset ttl to root.db.d2"};
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       for (final String sql : ttl_sqls) {
@@ -123,13 +123,13 @@ public class IoTDBActiveRegionScanWithTTLIT extends AbstractSchemaIT {
 
   @Test
   public void showActiveDataWithMods() {
-    final String sql = "show devices root.sg.** where time > 0";
-    String[] retArray = new String[] {"root.sg.d1", "root.sg.d2"};
+    final String sql = "show devices root.db.** where time > 0";
+    String[] retArray = new String[] {"root.db.d1", "root.db.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     setTTL();
 
-    retArray = new String[] {"root.sg.d2"};
+    retArray = new String[] {"root.db.d2"};
     basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
 
     unsetTTL();

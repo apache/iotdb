@@ -53,13 +53,13 @@ import java.util.Map;
 public class MLogParserTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
+  private String[] storageGroups = new String[] {"root.db0", "root.db1", "root.db"};
   private int[] schemaRegionIds = new int[] {0, 1, 2};
 
   /*
-   * For root.sg0, we prepare 50 CreateTimeseriesPlan.
-   * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
-   * For root.sg, we prepare none schema plan.
+   * For root.db0, we prepare 50 CreateTimeseriesPlan.
+   * For root.db1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
+   * For root.db, we prepare none schema plan.
    *
    * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
    * There' still 1 CreateTemplatePlan in template_log.bin
@@ -102,7 +102,7 @@ public class MLogParserTest {
                 .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
                 .createTimeSeries(
                     SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                        new MeasurementPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
+                        new MeasurementPath("root.db" + i + "." + "device" + j + "." + "s" + k),
                         TSDataType.INT32,
                         TSEncoding.PLAIN,
                         CompressionType.GZIP,
@@ -120,7 +120,7 @@ public class MLogParserTest {
 
     try {
       PathPatternTree patternTree = new PathPatternTree();
-      patternTree.appendPathPattern(new PartialPath("root.sg1.device1.s1"));
+      patternTree.appendPathPattern(new PartialPath("root.db1.device1.s1"));
       patternTree.constructTree();
       schemaEngine.getSchemaRegion(new SchemaRegionId(1)).constructSchemaBlackList(patternTree);
       schemaEngine.getSchemaRegion(new SchemaRegionId(1)).deleteTimeseriesInBlackList(patternTree);
@@ -128,18 +128,18 @@ public class MLogParserTest {
       tags.put("tag1", "value1");
       schemaEngine
           .getSchemaRegion(new SchemaRegionId(1))
-          .addTags(tags, new PartialPath("root.sg1.device1.s2"));
+          .addTags(tags, new PartialPath("root.db1.device1.s2"));
       schemaEngine
           .getSchemaRegion(new SchemaRegionId(1))
           .upsertAliasAndTagsAndAttributes(
-              "hello", null, null, new PartialPath("root.sg1.device1.s3"));
+              "hello", null, null, new PartialPath("root.db1.device1.s3"));
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
     }
 
     try {
       SchemaEngine.getInstance()
-          .createSchemaRegion("root.sg", new SchemaRegionId(schemaRegionIds[2]));
+          .createSchemaRegion("root.db", new SchemaRegionId(schemaRegionIds[2]));
     } catch (MetadataException e) {
       e.printStackTrace();
     }

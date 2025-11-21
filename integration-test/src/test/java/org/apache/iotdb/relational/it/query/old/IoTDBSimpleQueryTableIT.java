@@ -356,12 +356,12 @@ public class IoTDBSimpleQueryTableIT {
   public void testShowDevicesWithLimitOffset() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d3(timestamp, s4) VALUES (5, 5)");
 
-      List<String> exps = Arrays.asList("root.sg1.d1,false", "root.sg1.d2,false");
+      List<String> exps = Arrays.asList("root.db1.d1,false", "root.db1.d2,false");
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
         while (resultSet.next()) {
@@ -380,12 +380,12 @@ public class IoTDBSimpleQueryTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d0,false", "root.sg1.d1,false");
+      List<String> exps = Arrays.asList("root.db1.d0,false", "root.db1.d1,false");
 
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d3(timestamp, s4) VALUES (5, 5)");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {

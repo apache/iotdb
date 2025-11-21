@@ -47,9 +47,9 @@ public class FilterNodeSerdeTest {
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
             fullOuterTimeJoinNode,
-            new Expression[] {new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))},
+            new Expression[] {new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))},
             new GreaterThanExpression(
-                new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                new TimeSeriesOperand(new PartialPath("root.db.d1.s1")),
                 new ConstantOperand(TSDataType.INT64, "100")),
             false,
             Ordering.ASC,

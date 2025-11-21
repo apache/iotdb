@@ -32,13 +32,13 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * This is a not active test class, which can be used for general index testing when there is a new
+ * This is not an active test class, which can be used for general index testing when there is a new
  * DeviceGroup hash algorithm
  */
 public class DeviceGroupHashExecutorManualTest {
 
   private static final int deviceGroupCount = 10_000;
-  private static final String sg = "root.SGGroup.";
+  private static final String DB = "root.DB.";
   private static final int batchCount = 10_000;
   private static final int batchSize = 10_000;
   private static final String chars =
@@ -51,7 +51,7 @@ public class DeviceGroupHashExecutorManualTest {
     int deviceLength = random.nextInt(5) + 5;
 
     for (int i = 0; i < batchSize; i++) {
-      StringBuilder curDevice = new StringBuilder(sg);
+      StringBuilder curDevice = new StringBuilder(DB);
       for (int j = 0; j < fatherLength; j++) {
         curDevice.append(chars.charAt(random.nextInt(chars.length())));
       }

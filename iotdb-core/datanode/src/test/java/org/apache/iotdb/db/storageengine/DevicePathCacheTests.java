@@ -41,16 +41,16 @@ public class DevicePathCacheTests {
         DataNodeDevicePathCache.getInstance().getDeviceId("root.testdb.testd1.select");
     Assert.assertEquals(path2, deviceId2);
 
-    String path3 = "root.sg.`a``b`";
-    String deviceId3 = DataNodeDevicePathCache.getInstance().getDeviceId("root.sg.`a``b`");
+    String path3 = "root.db.`a``b`";
+    String deviceId3 = DataNodeDevicePathCache.getInstance().getDeviceId("root.db.`a``b`");
     Assert.assertEquals(path3, deviceId3);
 
-    String path4 = "root.sg.`a.b`";
-    String deviceId4 = DataNodeDevicePathCache.getInstance().getDeviceId("root.sg.`a.b`");
+    String path4 = "root.db.`a.b`";
+    String deviceId4 = DataNodeDevicePathCache.getInstance().getDeviceId("root.db.`a.b`");
     Assert.assertEquals(path4, deviceId4);
 
-    String path5 = "root.sg.`111`";
-    String deviceId5 = DataNodeDevicePathCache.getInstance().getDeviceId("root.sg.`111`");
+    String path5 = "root.db.`111`";
+    String deviceId5 = DataNodeDevicePathCache.getInstance().getDeviceId("root.db.`111`");
     Assert.assertEquals(path5, deviceId5);
   }
 

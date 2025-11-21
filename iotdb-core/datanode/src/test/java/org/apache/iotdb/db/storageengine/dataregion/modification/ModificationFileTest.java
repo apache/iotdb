@@ -134,7 +134,7 @@ public class ModificationFileTest {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
-                new MeasurementPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "db", "d1"}),
                 Long.MIN_VALUE,
                 time += 5000));
       }
@@ -161,7 +161,7 @@ public class ModificationFileTest {
       while (modificationFile.getFileLength() < 1024 * 100) {
         modificationFile.write(
             new TreeDeletionEntry(
-                new MeasurementPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "db", "d1"}),
                 Long.MIN_VALUE,
                 time += 5000));
       }
@@ -183,7 +183,7 @@ public class ModificationFileTest {
       while (modificationFile.getFileLength() < 1024 * 1024) {
         modificationFile.write(
             new TreeDeletionEntry(
-                new MeasurementPath(new String[] {"root", "sg", "d1"}),
+                new MeasurementPath(new String[] {"root", "db", "d1"}),
                 Long.MIN_VALUE,
                 Long.MAX_VALUE));
       }
@@ -210,12 +210,12 @@ public class ModificationFileTest {
         for (int i = 0; i < 5; i++) {
           modificationFile.write(
               new TreeDeletionEntry(
-                  new MeasurementPath(new String[] {"root", "sg", "d1"}),
+                  new MeasurementPath(new String[] {"root", "db", "d1"}),
                   Long.MIN_VALUE,
                   time += 5000));
           modificationFile.write(
               new TreeDeletionEntry(
-                  new MeasurementPath(new String[] {"root", "sg", "*"}),
+                  new MeasurementPath(new String[] {"root", "db", "*"}),
                   Long.MIN_VALUE,
                   time += 5000));
         }
@@ -348,12 +348,12 @@ public class ModificationFileTest {
 
       modsFile.write(
           new TreeDeletionEntry(
-              new MeasurementPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "db", "d1"}),
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       modsSettleFile.write(
           new TreeDeletionEntry(
-              new MeasurementPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "db", "d1"}),
               Long.MIN_VALUE,
               Long.MAX_VALUE));
 
@@ -378,7 +378,7 @@ public class ModificationFileTest {
     try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName, false)) {
       modsSettleFile.write(
           new TreeDeletionEntry(
-              new MeasurementPath(new String[] {"root", "sg", "d1"}),
+              new MeasurementPath(new String[] {"root", "db", "d1"}),
               Long.MIN_VALUE,
               Long.MAX_VALUE));
       modsSettleFile.close();

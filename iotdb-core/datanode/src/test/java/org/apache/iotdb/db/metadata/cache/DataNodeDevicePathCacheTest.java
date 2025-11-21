@@ -44,7 +44,7 @@ public class DataNodeDevicePathCacheTest {
   @Test
   public void testGetPartialPath() {
     try {
-      dataNodeDevicePathCache.getPartialPath("root.sg.d1");
+      dataNodeDevicePathCache.getPartialPath("root.db.d1");
     } catch (IllegalPathException e) {
       Assert.fail();
     }
@@ -53,11 +53,11 @@ public class DataNodeDevicePathCacheTest {
   @Test(expected = IllegalPathException.class)
   public void testGetIllegalPartialPath() throws Exception {
     try {
-      dataNodeDevicePathCache.getPartialPath("root.sg.1");
+      dataNodeDevicePathCache.getPartialPath("root.db.1");
     } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.1 is not a legal path", e.getMessage());
+      Assert.assertEquals("root.db.1 is not a legal path", e.getMessage());
       throw e;
     }
-    Assert.fail("root.sg.1 should be an illegal path");
+    Assert.fail("root.db.1 should be an illegal path");
   }
 }

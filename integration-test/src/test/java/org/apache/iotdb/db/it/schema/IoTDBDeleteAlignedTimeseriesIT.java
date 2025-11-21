@@ -160,23 +160,23 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
+      statement.execute("INSERT INTO root.db3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
       }
       cnt = 0;
-      statement.execute("DELETE timeseries root.sg3.d1.s1");
-      statement.execute("DELETE timeseries root.sg3.d1.s2");
-      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
+      statement.execute("DELETE timeseries root.db3.d1.s1");
+      statement.execute("DELETE timeseries root.db3.d1.s2");
+      statement.execute("INSERT INTO root.db3.d1(timestamp,s1,s2) VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("false", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.db3.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -188,16 +188,16 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
         }
       }
       cnt = 0;
-      statement.execute("DELETE timeseries root.sg3.d1.s1");
-      statement.execute("DELETE timeseries root.sg3.d1.s2");
-      statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
+      statement.execute("DELETE timeseries root.db3.d1.s1");
+      statement.execute("DELETE timeseries root.db3.d1.s2");
+      statement.execute("INSERT INTO root.db3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db3.**")) {
         while (resultSet.next()) {
           Assert.assertEquals("true", resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.db3.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -217,21 +217,21 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String insertSql = "insert into root.sg.d1(time, s1) aligned values(%d, %d)";
+      String insertSql = "insert into root.db.d1(time, s1) aligned values(%d, %d)";
       for (int i = 1; i <= 4; i++) {
         statement.execute(String.format(insertSql, i, i));
       }
       statement.execute("flush");
 
-      statement.execute("delete from root.sg.d1.s1 where time >= 1 and time <= 2");
-      statement.execute("delete from root.sg.d1.s1 where time >= 3 and time <= 4");
+      statement.execute("delete from root.db.d1.s1 where time >= 1 and time <= 2");
+      statement.execute("delete from root.db.d1.s1 where time >= 3 and time <= 4");
 
       int cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1) from root.sg.d1 where time >= 3 and time <= 4")) {
+              "select count(s1) from root.db.d1 where time >= 3 and time <= 4")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(count("root.sg.d1.s1"));
+          String ans = resultSet.getString(count("root.db.d1.s1"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }

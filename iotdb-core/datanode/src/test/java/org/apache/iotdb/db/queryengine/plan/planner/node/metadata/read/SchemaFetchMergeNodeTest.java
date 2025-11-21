@@ -41,11 +41,11 @@ public class SchemaFetchMergeNodeTest {
     SchemaFetchMergeNode schemaFetchMergeNode =
         new SchemaFetchMergeNode(new PlanNodeId("0"), Arrays.asList("root.db1", "root.db2"));
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.**.*"));
     SeriesSchemaFetchScanNode seriesSchemaFetchScanNode =
         new SeriesSchemaFetchScanNode(
             new PlanNodeId("0"),
-            new PartialPath("root.sg"),
+            new PartialPath("root.db"),
             patternTree,
             Collections.emptyMap(),
             true,

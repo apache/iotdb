@@ -55,30 +55,30 @@ public class IoTDBGroupByLevelQueryIT {
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.db2");
       statement.execute(
-          "create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
+          "create aligned timeseries root.db2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
                 Locale.ENGLISH,
-                "insert into root.sg2.d1(time, s1) aligned values(%d,%f)",
+                "insert into root.db2.d1(time, s1) aligned values(%d,%f)",
                 i,
                 (double) i));
       }
       for (int i = 11; i <= 20; i++) {
         statement.execute(
-            String.format("insert into root.sg2.d1(time, s2) aligned values(%d,%d)", i, i));
+            String.format("insert into root.db2.d1(time, s2) aligned values(%d,%d)", i, i));
       }
       for (int i = 21; i <= 30; i++) {
         statement.execute(
-            String.format("insert into root.sg2.d1(time, s3) aligned values(%d,%d)", i, i));
+            String.format("insert into root.db2.d1(time, s3) aligned values(%d,%d)", i, i));
       }
       for (int i = 31; i <= 40; i++) {
         statement.execute(
             String.format(
                 Locale.ENGLISH,
-                "insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
+                "insert into root.db2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
                 i,
                 (double) i,
                 i,
@@ -98,7 +98,7 @@ public class IoTDBGroupByLevelQueryIT {
   public void countFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{39, 20}};
-    String[] columnNames1 = {"count(root.sg1.*.s1)", "count(root.sg2.*.s1)"};
+    String[] columnNames1 = {"count(root.db1.*.s1)", "count(root.db2.*.s1)"};
     resultSetEqualTest("select count(s1) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
     double[][] retArray2 = new double[][] {{40, 19}};
@@ -111,7 +111,7 @@ public class IoTDBGroupByLevelQueryIT {
     // multi level = 1,2
     double[][] retArray4 = new double[][] {{20, 19, 20}};
     String[] columnNames4 = {
-      "count(root.sg1.d1.s1)", "count(root.sg1.d2.s1)", "count(root.sg2.d1.s1)"
+      "count(root.db1.d1.s1)", "count(root.db1.d2.s1)", "count(root.db2.d1.s1)"
     };
     resultSetEqualTest(
         "select count(s1) from root.*.* group by level=1,2", retArray4, columnNames4);
@@ -134,7 +134,7 @@ public class IoTDBGroupByLevelQueryIT {
   public void sumFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{131111, 510}};
-    String[] columnNames1 = {"sum(root.sg1.*.s2)", "sum(root.sg2.*.s2)"};
+    String[] columnNames1 = {"sum(root.db1.*.s2)", "sum(root.db2.*.s2)"};
     resultSetEqualTest("select sum(s2) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
     double[][] retArray2 = new double[][] {{131059, 562}};
@@ -146,7 +146,7 @@ public class IoTDBGroupByLevelQueryIT {
     resultSetEqualTest("select sum(s2) from root.*.* group by level=3", retArray3, columnNames3);
     // multi level = 1,2
     double[][] retArray4 = new double[][] {{130549, 562, 510}};
-    String[] columnNames4 = {"sum(root.sg1.d1.s2)", "sum(root.sg1.d2.s2)", "sum(root.sg2.d1.s2)"};
+    String[] columnNames4 = {"sum(root.db1.d1.s2)", "sum(root.db1.d2.s2)", "sum(root.db2.d1.s2)"};
     resultSetEqualTest("select sum(s2) from root.*.* group by level=1,2", retArray4, columnNames4);
     // level=2 with time filter
     double[][] retArray5 =
@@ -167,7 +167,7 @@ public class IoTDBGroupByLevelQueryIT {
   public void avgFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
-    String[] columnNames1 = {"avg(root.sg1.*.s2)", "avg(root.sg2.*.s2)"};
+    String[] columnNames1 = {"avg(root.db1.*.s2)", "avg(root.db2.*.s2)"};
     resultSetEqualTest("select avg(s2) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
     double[][] retArray2 = new double[][] {{2674.6734693877547, 19.379310344827587}};
@@ -179,7 +179,7 @@ public class IoTDBGroupByLevelQueryIT {
     resultSetEqualTest("select avg(s2) from root.*.* group by level=3", retArray3, columnNames3);
     // multi level = 1,2
     double[][] retArray4 = new double[][] {{4501.68965517241, 19.379310344827587, 25.5}};
-    String[] columnNames4 = {"avg(root.sg1.d1.s2)", "avg(root.sg1.d2.s2)", "avg(root.sg2.d1.s2)"};
+    String[] columnNames4 = {"avg(root.db1.d1.s2)", "avg(root.db1.d2.s2)", "avg(root.db2.d1.s2)"};
     resultSetEqualTest("select avg(s2) from root.*.* group by level=1,2", retArray4, columnNames4);
     //     level=2 with time filter
     double[][] retArray5 =
@@ -228,7 +228,7 @@ public class IoTDBGroupByLevelQueryIT {
   public void nestedQueryTest1() {
     // level = 1
     double[][] retArray1 = new double[][] {{40.0, 21.0}};
-    String[] columnNames1 = {"count(root.sg1.*.s1 + 1) + 1", "count(root.sg2.*.s1 + 1) + 1"};
+    String[] columnNames1 = {"count(root.db1.*.s1 + 1) + 1", "count(root.db2.*.s1 + 1) + 1"};
     resultSetEqualTest(
         "select count(s1 + 1) + 1 from root.*.* group by level=1", retArray1, columnNames1);
 
@@ -250,10 +250,10 @@ public class IoTDBGroupByLevelQueryIT {
     // level = 1
     double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
     String[] columnNames1 = {
-      "count(root.sg1.*.s1) + sum(root.sg1.*.s1)",
-      "count(root.sg1.*.s1) + sum(root.sg2.*.s1)",
-      "count(root.sg2.*.s1) + sum(root.sg1.*.s1)",
-      "count(root.sg2.*.s1) + sum(root.sg2.*.s1)"
+      "count(root.db1.*.s1) + sum(root.db1.*.s1)",
+      "count(root.db1.*.s1) + sum(root.db2.*.s1)",
+      "count(root.db2.*.s1) + sum(root.db1.*.s1)",
+      "count(root.db2.*.s1) + sum(root.db2.*.s1)"
     };
     resultSetEqualTest(
         "select count(s1) + sum(s1) from root.*.* group by level=1", retArray1, columnNames1);
@@ -281,12 +281,12 @@ public class IoTDBGroupByLevelQueryIT {
     double[][] retArray = new double[][] {{39, 20, 39, 20, 39, 20}};
 
     String[] columnNames1 = {
-      "count(root.sg1.*.s1)",
-      "count(root.sg2.*.s1)",
-      "COUNT(root.sg1.*.s1)",
-      "COUNT(root.sg2.*.s1)",
-      "cOuNt(root.sg1.*.s1)",
-      "cOuNt(root.sg2.*.s1)"
+      "count(root.db1.*.s1)",
+      "count(root.db2.*.s1)",
+      "COUNT(root.db1.*.s1)",
+      "COUNT(root.db2.*.s1)",
+      "cOuNt(root.db1.*.s1)",
+      "cOuNt(root.db2.*.s1)"
     };
     resultSetEqualTest(
         "select count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
@@ -294,12 +294,12 @@ public class IoTDBGroupByLevelQueryIT {
         columnNames1);
 
     String[] columnNames2 = {
-      "Count(root.sg1.*.s1)",
-      "Count(root.sg2.*.s1)",
-      "COUNT(root.sg1.*.s1)",
-      "COUNT(root.sg2.*.s1)",
-      "cOuNt(root.sg1.*.s1)",
-      "cOuNt(root.sg2.*.s1)"
+      "Count(root.db1.*.s1)",
+      "Count(root.db2.*.s1)",
+      "COUNT(root.db1.*.s1)",
+      "COUNT(root.db2.*.s1)",
+      "cOuNt(root.db1.*.s1)",
+      "cOuNt(root.db2.*.s1)"
     };
     resultSetEqualTest(
         "select Count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",

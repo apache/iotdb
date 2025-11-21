@@ -552,7 +552,7 @@ public class PipePlanTreePatternParseVisitorTest {
         new CreateLogicalViewNode(
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(
-                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
+                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.db1.d1"))),
         IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitCreateLogicalView(
                 new CreateLogicalViewNode(
@@ -561,10 +561,10 @@ public class PipePlanTreePatternParseVisitorTest {
                       {
                         put(
                             new PartialPath("root.db.device.a1"),
-                            new TimeSeriesViewOperand("root.sg1.d1"));
+                            new TimeSeriesViewOperand("root.db1.d1"));
                         put(
                             new PartialPath("root.db1.device.a1"),
-                            new TimeSeriesViewOperand("root.sg1.d2"));
+                            new TimeSeriesViewOperand("root.db1.d2"));
                       }
                     }),
                 prefixPathPattern)
@@ -577,7 +577,7 @@ public class PipePlanTreePatternParseVisitorTest {
         new AlterLogicalViewNode(
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(
-                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
+                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.db1.d1"))),
         IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
             .visitAlterLogicalView(
                 new AlterLogicalViewNode(
@@ -586,10 +586,10 @@ public class PipePlanTreePatternParseVisitorTest {
                       {
                         put(
                             new PartialPath("root.db.device.a1"),
-                            new TimeSeriesViewOperand("root.sg1.d1"));
+                            new TimeSeriesViewOperand("root.db1.d1"));
                         put(
                             new PartialPath("root.db1.device.a1"),
-                            new TimeSeriesViewOperand("root.sg1.d2"));
+                            new TimeSeriesViewOperand("root.db1.d2"));
                       }
                     }),
                 prefixPathPattern)

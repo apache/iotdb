@@ -383,8 +383,8 @@ public class IoTDBRestartIT {
   public void testInsertLoadAndRecover() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.sg.d1.s1 with datatype=int32");
-      statement.execute("insert into root.sg.d1(time,s1) values(2,2)");
+      statement.execute("create timeseries root.db.d1.s1 with datatype=int32");
+      statement.execute("insert into root.db.d1(time,s1) values(2,2)");
       statement.execute("flush");
     }
     File tmpDir = new File(Files.createTempDirectory("load").toUri());
@@ -392,14 +392,14 @@ public class IoTDBRestartIT {
     try {
       try (final TsFileGenerator generator = new TsFileGenerator(tsfile)) {
         generator.registerTimeseries(
-            "root.sg.d1", Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
-        generator.generateData("root.sg.d1", 1, 2, false);
+            "root.db.d1", Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
+        generator.generateData("root.db.d1", 1, 2, false);
       }
       try (Connection connection = EnvFactory.getEnv().getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg.d1(time,s1) values(1,1)");
+        statement.execute("insert into root.db.d1(time,s1) values(1,1)");
         statement.execute(String.format("load \"%s\" ", tsfile.getAbsolutePath()));
-        try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1")) {
+        try (ResultSet resultSet = statement.executeQuery("select s1 from root.db.d1")) {
           assertNotNull(resultSet);
           int cnt = 0;
           while (resultSet.next()) {
@@ -415,7 +415,7 @@ public class IoTDBRestartIT {
 
       try (Connection connection = EnvFactory.getEnv().getConnection();
           Statement statement = connection.createStatement()) {
-        try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1")) {
+        try (ResultSet resultSet = statement.executeQuery("select s1 from root.db.d1")) {
           assertNotNull(resultSet);
           int cnt = 0;
           while (resultSet.next()) {

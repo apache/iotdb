@@ -47,18 +47,18 @@ public class IoTDBJDBCMetadataIT {
 
   protected static final String[] SQLs =
       new String[] {
-        "CREATE DATABASE root.sg_type;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_boolean BOOLEAN;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_int32 INT32;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_int64 INT64;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_float FLOAT;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_double DOUBLE;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_text TEXT;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_timestamp TIMESTAMP;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_date DATE;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_blob BLOB;",
-        "CREATE TIMESERIES root.sg_type.d_0.s_string STRING;",
-        "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_text) VALUES (0, 0, 0, 0.000000, 0.000000, 'text0');"
+        "CREATE DATABASE root.db_type;",
+        "CREATE TIMESERIES root.db_type.d_0.s_boolean BOOLEAN;",
+        "CREATE TIMESERIES root.db_type.d_0.s_int32 INT32;",
+        "CREATE TIMESERIES root.db_type.d_0.s_int64 INT64;",
+        "CREATE TIMESERIES root.db_type.d_0.s_float FLOAT;",
+        "CREATE TIMESERIES root.db_type.d_0.s_double DOUBLE;",
+        "CREATE TIMESERIES root.db_type.d_0.s_text TEXT;",
+        "CREATE TIMESERIES root.db_type.d_0.s_timestamp TIMESTAMP;",
+        "CREATE TIMESERIES root.db_type.d_0.s_date DATE;",
+        "CREATE TIMESERIES root.db_type.d_0.s_blob BLOB;",
+        "CREATE TIMESERIES root.db_type.d_0.s_string STRING;",
+        "INSERT INTO root.db_type.d_0(time, s_int32, s_int64, s_float, s_double, s_text) VALUES (0, 0, 0, 0.000000, 0.000000, 'text0');"
       };
 
   @BeforeClass
@@ -113,14 +113,14 @@ public class IoTDBJDBCMetadataIT {
         };
     String[] values =
         new String[] {
-          "0", "root.sg_type.d_0", null, "0", "0", "0.0", "0.0", "text0", null, null, null, null
+          "0", "root.db_type.d_0", null, "0", "0", "0.0", "0.0", "text0", null, null, null, null
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s_boolean, s_int32, s_int64, s_float, s_double, s_text, s_timestamp, s_date, s_blob, s_string from root.sg_type.d_0 align by device")) {
+              "select s_boolean, s_int32, s_int64, s_float, s_double, s_text, s_timestamp, s_date, s_blob, s_string from root.db_type.d_0 align by device")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(columnNames.length, metaData.getColumnCount());
         assertTrue(resultSet.next());

@@ -975,11 +975,11 @@ public class OperatorMemoryTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
+      MeasurementPath measurementPath = new MeasurementPath("root.db.d1.s1", TSDataType.TEXT);
       TypeProvider typeProvider = new TypeProvider();
-      typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
-      typeProvider.setTreeModelType("min_time(root.sg.d1.s1)", TSDataType.INT64);
-      typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+      typeProvider.setTreeModelType("count(root.db.d1.s1)", TSDataType.INT64);
+      typeProvider.setTreeModelType("min_time(root.db.d1.s1)", TSDataType.INT64);
+      typeProvider.setTreeModelType("first_value(root.db.d1.s1)", TSDataType.TEXT);
 
       // case1: without group by, step is SINGLE
       List<AggregationDescriptor> aggregationDescriptors1 =
@@ -1235,10 +1235,10 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
+    MeasurementPath measurementPath = new MeasurementPath("root.db.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.db.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.db.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
@@ -1309,10 +1309,10 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
-    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
+    MeasurementPath measurementPath = new MeasurementPath("root.db.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.db.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.db.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
@@ -1391,10 +1391,10 @@ public class OperatorMemoryTest {
       children.add(child);
     }
 
-    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
+    MeasurementPath measurementPath = new MeasurementPath("root.db.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.db.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.db.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(

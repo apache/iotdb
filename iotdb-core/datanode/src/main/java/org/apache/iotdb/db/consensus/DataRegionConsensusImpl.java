@@ -175,11 +175,11 @@ public class DataRegionConsensusImpl {
                           .build())
                   .setPipe(
                       PipeConsensusConfig.Pipe.newBuilder()
-                          .setExtractorPluginName(
+                          .setSourcePluginName(
                               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                           .setProcessorPluginName(
                               BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
-                          .setConnectorPluginName(
+                          .setSinkPluginName(
                               BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
                           // name
                           .setConsensusPipeDispatcher(new ConsensusPipeDataNodeDispatcher())

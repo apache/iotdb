@@ -85,11 +85,11 @@ public class IoTDBSessionComplexIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
       createTimeseries(session);
       insertByStr(session);
       insertViaSQL(session);
-      queryByDevice(session, "root.sg1.d1");
+      queryByDevice(session, "root.db1.d1");
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -99,7 +99,7 @@ public class IoTDBSessionComplexIT {
 
   private void createTimeseries(ISession session)
       throws StatementExecutionException, IoTDBConnectionException {
-    createTimeseries(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+    createTimeseries(session, Arrays.asList("root.db1.d1", "root.db1.d2"));
   }
 
   private void createTimeseries(ISession session, List<String> deviceIds)
@@ -116,7 +116,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertByStr(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = "root.db1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -134,7 +134,7 @@ public class IoTDBSessionComplexIT {
   private void insertViaSQL(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
     session.executeNonQueryStatement(
-        "insert into root.sg1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
+        "insert into root.db1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
   }
 
   private void queryByDevice(ISession session, String deviceId)
@@ -153,10 +153,10 @@ public class IoTDBSessionComplexIT {
     }
 
     switch (deviceId) {
-      case "root.sg1.d1":
+      case "root.db1.d1":
         assertEquals(101, count);
         break;
-      case "root.sg1.d2":
+      case "root.db1.d2":
         assertEquals(500, count);
         break;
     }
@@ -168,10 +168,10 @@ public class IoTDBSessionComplexIT {
   public void insertByObjectTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
       createTimeseries(session);
 
-      String deviceId = "root.sg1.d1";
+      String deviceId = "root.db1.d1";
       List<String> measurements = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
       measurements.add("s1");
@@ -184,30 +184,30 @@ public class IoTDBSessionComplexIT {
       // auth test
       try (ISession authSession =
           EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
+        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s1");
+        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s2");
         try {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
           if (!e.getMessage()
               .contains(
-                  "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
+                  "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db1.d1.s3]")) {
             fail(e.getMessage());
           }
         }
 
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
+        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s3");
         try {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
           if (!e.getMessage()
               .contains(
-                  "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
+                  "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db1.d1.s1, root.db1.d1.s2, root.db1.d1.s3]")) {
             fail(e.getMessage());
           }
         }
 
-        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
+        grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
         try {
           authSession.insertRecord(deviceId, 0, measurements, types, 1L, 2L, 3L);
         } catch (Exception e) {
@@ -226,10 +226,10 @@ public class IoTDBSessionComplexIT {
       } catch (Exception e) {
         fail(e.getMessage());
       }
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
-      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
+      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s1");
+      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s2");
+      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s3");
+      revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
       revokeUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
 
       for (long time = 0; time < 100; time++) {
@@ -237,7 +237,7 @@ public class IoTDBSessionComplexIT {
       }
 
       insertViaSQL(session);
-      queryByDevice(session, "root.sg1.d1");
+      queryByDevice(session, "root.db1.d1");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -249,11 +249,11 @@ public class IoTDBSessionComplexIT {
   public void alignByDeviceTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
       createTimeseries(session);
-      insertTablet(session, "root.sg1.d1");
+      insertTablet(session, "root.db1.d1");
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select s1 from root.sg1.d1 align by device");
+          session.executeQueryStatement("select s1 from root.db1.d1 align by device");
       sessionDataSet.setFetchSize(1024);
       int count = 0;
 
@@ -264,7 +264,7 @@ public class IoTDBSessionComplexIT {
         for (Field f : fields) {
           sb.append(f.getStringValue()).append(",");
         }
-        assertEquals("root.sg1.d1,0,", sb.toString());
+        assertEquals("root.db1.d1,0,", sb.toString());
       }
       assertEquals(100, count);
       sessionDataSet.closeOperationHandle();
@@ -446,13 +446,13 @@ public class IoTDBSessionComplexIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       createTimeseries(session);
 
-      insertTablet(session, "root.sg1.d1");
+      insertTablet(session, "root.db1.d1");
 
       session.executeNonQueryStatement("FLUSH");
-      session.executeNonQueryStatement("FLUSH root.sg1");
+      session.executeNonQueryStatement("FLUSH root.db1");
 
       List<String> deviceIds = new ArrayList<>();
-      queryForBatch(Collections.singletonList("root.sg1.d1"), 400);
+      queryForBatch(Collections.singletonList("root.db1.d1"), 400);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -499,12 +499,12 @@ public class IoTDBSessionComplexIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection(nodeList)) {
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
 
       createTimeseries(session);
       insertByStr(session);
       insertViaSQL(session);
-      queryByDevice(session, "root.sg1.d1");
+      queryByDevice(session, "root.db1.d1");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -532,17 +532,17 @@ public class IoTDBSessionComplexIT {
   public void insertWithMultipleTimeSlotsTest() {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      createTimeseries(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-      queryForBatch(Arrays.asList("root.sg1.d1", "root.sg1.d2"), 400);
+      createTimeseries(session, Arrays.asList("root.db1.d1", "root.db1.d2"));
+      insertRecords(session, Arrays.asList("root.db1.d1", "root.db1.d2"));
+      queryForBatch(Arrays.asList("root.db1.d1", "root.db1.d2"), 400);
 
-      createTimeseries(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
-      insertMultiTablets(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
-      queryForBatch(Arrays.asList("root.sg2.d1", "root.sg2.d2"), 400);
+      createTimeseries(session, Arrays.asList("root.db2.d1", "root.db2.d2"));
+      insertMultiTablets(session, Arrays.asList("root.db2.d1", "root.db2.d2"));
+      queryForBatch(Arrays.asList("root.db2.d1", "root.db2.d2"), 400);
 
-      createTimeseries(session, Collections.singletonList("root.sg3.d1"));
-      insertRecordsOfOneDevice(session, "root.sg3.d1");
-      queryForBatch(Collections.singletonList("root.sg3.d1"), 400);
+      createTimeseries(session, Collections.singletonList("root.db3.d1"));
+      insertRecordsOfOneDevice(session, "root.db3.d1");
+      queryForBatch(Collections.singletonList("root.db3.d1"), 400);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -555,42 +555,42 @@ public class IoTDBSessionComplexIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='false'");
-      session.createDatabase("root.sg1");
-      session.createDatabase("root.sg2");
-      session.createDatabase("root.sg3");
+      session.createDatabase("root.db1");
+      session.createDatabase("root.db2");
+      session.createDatabase("root.db3");
 
       try {
-        insertTablet(session, "root.sg1.d1");
+        insertTablet(session, "root.db1.d1");
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                && e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+                && e.getMessage().contains("Path [root.db1.d1.s1] does not exist"));
       }
 
       try {
-        insertRecords(session, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertRecords(session, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                    && e.getMessage().contains("Path [root.sg1.d2.s1] does not exist")
-                || e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+                    && e.getMessage().contains("Path [root.db1.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.db1.d1.s1] does not exist"));
       }
 
       try {
-        insertMultiTablets(session, Arrays.asList("root.sg2.d1", "root.sg2.d2"));
+        insertMultiTablets(session, Arrays.asList("root.db2.d1", "root.db2.d2"));
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                    && e.getMessage().contains("Path [root.sg2.d2.s1] does not exist")
-                || e.getMessage().contains("Path [root.sg2.d1.s1] does not exist"));
+                    && e.getMessage().contains("Path [root.db2.d2.s1] does not exist")
+                || e.getMessage().contains("Path [root.db2.d1.s1] does not exist"));
       }
 
       try {
-        insertRecordsOfOneDevice(session, "root.sg3.d1");
+        insertRecordsOfOneDevice(session, "root.db3.d1");
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage() != null
-                && e.getMessage().contains("Path [root.sg3.d1.s1] does not exist"));
+                && e.getMessage().contains("Path [root.db3.d1.s1] does not exist"));
       }
 
     } catch (Exception e) {
@@ -602,73 +602,73 @@ public class IoTDBSessionComplexIT {
   public void testAuth() {
     // auth test
     try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d2.**");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s1");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s2");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d2.**");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d2.**");
       try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertRecords(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
             .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
+                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db1.d1.s3]")) {
           fail(e.getMessage());
         }
       }
       try {
-        insertTablet(authSession, "root.sg1.d1");
+        insertTablet(authSession, "root.db1.d1");
       } catch (Exception e) {
         if (!e.getMessage()
             .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
+                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db1.d1.s3]")) {
           fail(e.getMessage());
         }
       }
       try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d1"));
+        insertMultiTablets(authSession, Arrays.asList("root.db1.d1", "root.db1.d1"));
       } catch (Exception e) {
         if (!e.getMessage()
             .contains(
-                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s3]")) {
+                "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db1.d1.s3]")) {
           fail(e.getMessage());
         }
       }
 
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s3");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.d1.s3");
       try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertRecords(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
                 .contains(
                     "No permissions for this operation, please add privilege WRITE_SCHEMA on ")
-            && !e.getMessage().contains("root.sg1.d1.s1")
-            && !e.getMessage().contains("root.sg1.d1.s2")
-            && !e.getMessage().contains("root.sg1.d1.s3")) {
+            && !e.getMessage().contains("root.db1.d1.s1")
+            && !e.getMessage().contains("root.db1.d1.s2")
+            && !e.getMessage().contains("root.db1.d1.s3")) {
           fail(e.getMessage());
         }
       }
       try {
-        insertTablet(authSession, "root.sg1.d1");
+        insertTablet(authSession, "root.db1.d1");
       } catch (Exception e) {
         if (!e.getMessage()
             .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
+                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db1.d1.s1, root.db1.d1.s2, root.db1.d1.s3]")) {
           fail(e.getMessage());
         }
       }
       try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertMultiTablets(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
             .contains(
-                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d1.s3]")) {
+                "No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db1.d1.s1, root.db1.d1.s2, root.db1.d1.s3]")) {
           fail(e.getMessage());
         }
       }
 
-      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
+      grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
       try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertRecords(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
             .contains("No permissions for this operation, please add privilege SYSTEM")) {
@@ -676,7 +676,7 @@ public class IoTDBSessionComplexIT {
         }
       }
       try {
-        insertTablet(authSession, "root.sg1.d1");
+        insertTablet(authSession, "root.db1.d1");
       } catch (Exception e) {
         if (!e.getMessage()
             .contains("No permissions for this operation, please add privilege SYSTEM")) {
@@ -684,7 +684,7 @@ public class IoTDBSessionComplexIT {
         }
       }
       try {
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertMultiTablets(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         if (!e.getMessage()
             .contains("No permissions for this operation, please add privilege SYSTEM")) {
@@ -694,15 +694,15 @@ public class IoTDBSessionComplexIT {
 
       grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
       try {
-        insertRecords(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
-        insertTablet(authSession, "root.sg1.d1");
-        insertMultiTablets(authSession, Arrays.asList("root.sg1.d1", "root.sg1.d2"));
+        insertRecords(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
+        insertTablet(authSession, "root.db1.d1");
+        insertMultiTablets(authSession, Arrays.asList("root.db1.d1", "root.db1.d2"));
       } catch (Exception e) {
         fail(e.getMessage());
       }
     } catch (Exception e) {
       fail(e.getMessage());
     }
-    executeNonQuery("drop timeseries root.sg1.d1.**, root.sg1.d2.**");
+    executeNonQuery("drop timeseries root.db1.d1.**, root.db1.d2.**");
   }
 }

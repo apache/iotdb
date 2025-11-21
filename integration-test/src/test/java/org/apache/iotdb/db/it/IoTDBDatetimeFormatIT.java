@@ -93,11 +93,11 @@ public class IoTDBDatetimeFormatIT {
       for (int i = 0; i < datetimeStrings.length; i++) {
         String insertSql =
             String.format(
-                "INSERT INTO root.sg1.d1(time, s1) values (%s, %d)", datetimeStrings[i], i);
+                "INSERT INTO root.db1.d1(time, s1) values (%s, %d)", datetimeStrings[i], i);
         statement.execute(insertSql);
       }
 
-      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
+      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.db1.d1");
       Assert.assertNotNull(resultSet);
 
       int cnt = 0;
@@ -117,20 +117,20 @@ public class IoTDBDatetimeFormatIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg");
+      statement.execute("CREATE DATABASE root.db");
 
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
 
-      statement.execute("insert into root.sg.d1(time,s2) values (1618283005586000, 8.76);");
-      statement.execute("select * from root.sg.d1;");
-      statement.execute("select * from root.sg.d1 where time=53251-05-07T17:06:26.000+08:00");
+      statement.execute("insert into root.db.d1(time,s2) values (1618283005586000, 8.76);");
+      statement.execute("select * from root.db.d1;");
+      statement.execute("select * from root.db.d1 where time=53251-05-07T17:06:26.000+08:00");
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s2) values (16182830055860000000, 8.76);");
+      statement.execute("insert into root.db.d1(time,s2) values (16182830055860000000, 8.76);");
       fail();
     } catch (SQLException e) {
       Assert.assertTrue(

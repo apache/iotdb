@@ -165,7 +165,7 @@ public class IoTDBSetConfigurationIT {
         statement.execute("INSERT INTO root.fail(timestamp, s1) VALUES (1, 1)");
       } catch (SQLException e) {
         assertEquals(
-            "509: An error occurred when executing getDeviceToDatabase():root.fail is not a legal path, because it is no longer than default sg level: 3",
+            "509: An error occurred when executing getDeviceToDatabase():root.fail is not a legal path, because it is no longer than default db level: 3",
             e.getMessage());
       }
 
@@ -204,7 +204,7 @@ public class IoTDBSetConfigurationIT {
         statement.execute("CREATE TIMESERIES root.db1.s3 WITH datatype=INT32");
       } catch (SQLException e) {
         assertEquals(
-            "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default sg level: 3",
+            "509: An error occurred when executing getDeviceToDatabase():root.db1 is not a legal path, because it is no longer than default db level: 3",
             e.getMessage());
       }
     }

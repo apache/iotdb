@@ -60,7 +60,7 @@ public class TsFileSelfCheckToolTest {
           .concat(File.separator)
           .concat("sequence")
           .concat(File.separator)
-          .concat("root.sg1")
+          .concat("root.db1")
           .concat(File.separator)
           .concat("0")
           .concat(File.separator)

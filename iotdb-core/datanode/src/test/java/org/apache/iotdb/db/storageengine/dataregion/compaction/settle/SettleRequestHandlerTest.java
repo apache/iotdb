@@ -61,9 +61,9 @@ public class SettleRequestHandlerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private SettleRequestHandler reqHandler;
-  private String storageGroup = "root.sg.d1";
+  private String storageGroup = "root.db.d1";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
-  private String deviceId = "root.sg.d1";
+  private String deviceId = "root.db.d1";
   private String measurementId = "s0";
   private List<String> paths = new ArrayList<>();
   private DataRegion dataRegion;

@@ -33,7 +33,7 @@ public class PathPatternTreeUtils {
    *
    * @param patternTree any pattern tree
    * @param fullPathPrefixTree the included pattern must be fullPath or prefix pattern(e.g.
-   *     root.sg.**)
+   *     root.db.**)
    * @return the intersected pattern tree
    */
   public static PathPatternTree intersectWithFullPathPrefixTree(

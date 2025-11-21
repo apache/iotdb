@@ -47,7 +47,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   public DatabaseSchemaStatement(final DatabaseSchemaStatementType subType) {
     super();
     this.subType = subType;
-    statementType = StatementType.STORAGE_GROUP_SCHEMA;
+    statementType = StatementType.DATABASE_SCHEMA;
   }
 
   public DatabaseSchemaStatementType getSubType() {

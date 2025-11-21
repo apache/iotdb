@@ -76,8 +76,8 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   @Test
   public void createTimeseriesTest() throws ClassNotFoundException {
     String[] sqls = {
-      "CREATE TIMESERIES root.sg0.d1.s2 WITH DATATYPE=INT32,ENCODING=RLE",
-      "INSERT INTO root.sg0.d1(timestamp,s2) values(1,123)",
+      "CREATE TIMESERIES root.db0.d1.s2 WITH DATATYPE=INT32,ENCODING=RLE",
+      "INSERT INTO root.db0.d1(timestamp,s2) values(1,123)",
     };
     executeSQL(sqls);
   }
@@ -86,9 +86,9 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   @Test
   public void insertTest1() throws ClassNotFoundException {
     String[] sqls = {
-      "CREATE DATABASE root.sg0",
-      "INSERT INTO root.sg0.d1(timestamp,s2) values(1,123.123)",
-      "INSERT INTO root.sg0.d1(timestamp,s3) values(1,\"abc\")",
+      "CREATE DATABASE root.db0",
+      "INSERT INTO root.db0.d1(timestamp,s2) values(1,123.123)",
+      "INSERT INTO root.db0.d1(timestamp,s3) values(1,\"abc\")",
     };
     executeSQL(sqls);
   }
@@ -97,9 +97,9 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   @Test
   public void insertTest2() throws ClassNotFoundException {
     String[] sqls = {
-      "INSERT INTO root.sg0.d1(timestamp,s2) values(1,\"abc\")",
-      "INSERT INTO root.sg0.d2(timestamp,s3) values(1,123.123)",
-      "INSERT INTO root.sg0.d2(timestamp,s4) values(1,123456)",
+      "INSERT INTO root.db0.d1(timestamp,s2) values(1,\"abc\")",
+      "INSERT INTO root.db0.d2(timestamp,s3) values(1,123.123)",
+      "INSERT INTO root.db0.d2(timestamp,s4) values(1,123456)",
     };
     executeSQL(sqls);
   }
@@ -164,8 +164,8 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
    */
   @Test
   public void testInsertAutoCreate2() throws Exception {
-    String database = "root.sg2.a.b.c";
-    String timeSeriesPrefix = "root.sg2.a.b";
+    String database = "root.db2.a.b.c";
+    String timeSeriesPrefix = "root.db2.a.b";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -213,8 +213,8 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   @Test
   public void testInsertAutoCreate3() throws SQLException {
     String[] sqls = {
-      "INSERT INTO root.sg0.d3(timestamp,s1) values(1,null)",
-      "INSERT INTO root.sg0.d3(timestamp,s1,s2) values(1,null,2)",
+      "INSERT INTO root.db0.d3(timestamp,s1) values(1,null)",
+      "INSERT INTO root.db0.d3(timestamp,s1,s2) values(1,null,2)",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -222,7 +222,7 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
         try {
           statement.execute(sql);
         } catch (SQLException e) {
-          Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+          Assert.assertTrue(e.getMessage().contains("Path [root.db0.d3.s1] does not exist"));
         }
       }
     }
@@ -234,34 +234,34 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   @Test
   public void testAutoCreateDataType() throws SQLException {
     String SQL =
-        "INSERT INTO root.sg0.d1(time,s1,s2,s3,s4,s5,s6) values(1,true,1,now(),X'cafe',\"string\",\"2024-01-01\")";
+        "INSERT INTO root.db0.d1(time,s1,s2,s3,s4,s5,s6) values(1,true,1,now(),X'cafe',\"string\",\"2024-01-01\")";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(SQL);
       ResultSet resultSet = statement.executeQuery("show timeseries");
       while (resultSet.next()) {
         switch (resultSet.getString(ColumnHeaderConstant.TIMESERIES)) {
-          case "root.sg0.d1.s1":
+          case "root.db0.d1.s1":
             assertEquals(
                 TSDataType.BOOLEAN.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
-          case "root.sg0.d1.s2":
+          case "root.db0.d1.s2":
             assertEquals(
                 TSDataType.DOUBLE.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
-          case "root.sg0.d1.s3":
+          case "root.db0.d1.s3":
             assertEquals(
                 TSDataType.INT64.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
-          case "root.sg0.d1.s4":
+          case "root.db0.d1.s4":
             assertEquals(
                 TSDataType.BLOB.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
-          case "root.sg0.d1.s5":
+          case "root.db0.d1.s5":
             assertEquals(
                 TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
-          case "root.sg0.d1.s6":
+          case "root.db0.d1.s6":
             assertEquals(
                 TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;

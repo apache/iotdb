@@ -63,15 +63,15 @@ public class IoTDBTimePartitionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTimePartitionIT.class);
   private static final String INSERTION_1 =
-      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(0, 1, 2)";
+      "INSERT INTO root.db1.d1(timestamp,speed,temperature) values(0, 1, 2)";
   private static final String INSERTION_2 =
-      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(1000, 1, 2)";
+      "INSERT INTO root.db1.d1(timestamp,speed,temperature) values(1000, 1, 2)";
   private static final String INSERTION_3 =
-      "INSERT INTO root.sg1.d1(timestamp,speed,temperature) values(3601000, 1, 2)";
+      "INSERT INTO root.db1.d1(timestamp,speed,temperature) values(3601000, 1, 2)";
 
   private List<Long> timestatmps = Arrays.asList(0L, 1000L, 3601000L);
 
-  private static final String SHOW_TIME_PARTITION = "show timePartition where database = root.sg1";
+  private static final String SHOW_TIME_PARTITION = "show timePartition where database = root.db1";
 
   private static final TGetDatabaseReq showAllDatabasesReq;
 

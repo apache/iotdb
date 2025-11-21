@@ -54,49 +54,49 @@ public class IoTDBClusterMixQuotaIT extends IoTDBClusterQuotaIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+            "create timeseries root.db1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
-        statement.execute("create timeseries of device template on root.sg2.d2;");
+        statement.execute("create timeseries of device template on root.db2.d2;");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       // delete some timeseries and database
-      statement.execute("delete database root.sg2;");
-      statement.execute("delete timeseries root.sg1.d0.s0;");
+      statement.execute("delete database root.db2;");
+      statement.execute("delete timeseries root.db1.d0.s0;");
       Thread.sleep(2000); // wait heartbeat
       // now we can create 3 new timeseries and 1 new device
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d4");
-      statement.execute("create timeseries of device template on root.sg1.d4");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.db1.d4");
+      statement.execute("create timeseries of device template on root.db1.d4");
       statement.execute(
-          "create timeseries root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       Thread.sleep(2000); // wait heartbeat
       try {
         statement.execute(
-            "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+            "create timeseries root.db1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
         statement.execute(
-            "create timeseries root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+            "create timeseries root.db1.d1.s4 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
-        statement.execute("insert into root.sg1.d1(timestamp,s4) values(1,1.0)");
+        statement.execute("insert into root.db1.d1(timestamp,s4) values(1,1.0)");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
-        statement.execute("insert into root.sg1.d4(timestamp,s4) values(1,1.0)");
+        statement.execute("insert into root.db1.d4(timestamp,s4) values(1,1.0)");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));

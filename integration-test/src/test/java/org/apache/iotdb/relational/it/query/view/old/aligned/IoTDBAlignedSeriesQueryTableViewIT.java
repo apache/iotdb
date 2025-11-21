@@ -913,7 +913,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.*")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.db1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -2138,7 +2138,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg1.* align by device")) {
+          statement.executeQuery("select count(*) from root.db1.* align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -2617,7 +2617,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s1) from root.sg1.* "
+              "select count(s1), sum(s2), avg(s1) from root.db1.* "
                   + "where time > 5 GROUP BY ([1, 41), 4ms, 6ms) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
@@ -2902,7 +2902,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(d1.s1), sum(d2.s2), avg(d2.s1), count(d1.s3), sum(d1.s2), avg(d2.s3) "
-                  + "from root.sg1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
+                  + "from root.db1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -2928,7 +2928,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(d1.s1), sum(d2.s2), avg(d2.s1), count(d1.s3), sum(d1.s2), avg(d2.s3) "
-                  + "from root.sg1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
+                  + "from root.db1 where time > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -3158,7 +3158,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
           statement.executeQuery(
               "select max_value(d2.s3), min_value(d1.s1), max_time(d2.s2), min_time(d1.s3), "
                   + "max_value(d1.s3), min_value(d2.s1), max_time(d1.s2), min_time(d2.s3) "
-                  + "from root.sg1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms)")) {
+                  + "from root.db1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -3189,7 +3189,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
           statement.executeQuery(
               "select max_value(d2.s3), min_value(d1.s1), max_time(d2.s2), min_time(d1.s3), "
                   + "max_value(d1.s3), min_value(d2.s1), max_time(d1.s2), min_time(d2.s3) "
-                  + "from root.sg1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
+                  + "from root.db1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -3393,7 +3393,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select last_value(d2.s5), first_value(d1.s4), last_value(d1.s5), first_value(d2.s4) "
-                  + "from root.sg1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms)")) {
+                  + "from root.db1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -3415,7 +3415,7 @@ public class IoTDBAlignedSeriesQueryTableViewIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select last_value(d2.s5), first_value(d1.s4), last_value(d1.s5), first_value(d2.s4) "
-                  + "from root.sg1 where time > 5 and time < 38 "
+                  + "from root.db1 where time > 5 and time < 38 "
                   + "GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {

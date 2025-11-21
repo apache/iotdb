@@ -48,7 +48,7 @@ public class UnsetTemplateProcedureTest {
         new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
         new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
         new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
-    PartialPath path = new PartialPath("root.sg");
+    PartialPath path = new PartialPath("root.db");
     UnsetTemplateProcedure unsetTemplateProcedure =
         new UnsetTemplateProcedure(queryId, template, path, false);
 

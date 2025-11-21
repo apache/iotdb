@@ -59,14 +59,14 @@ public class IoTDBInsertAlignedValues4IT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(1,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(2,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(3,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(4,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(5,'test','test')");
-      statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(6,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s2) aligned values(1,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s2) aligned values(2,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s2) aligned values(3,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s2) aligned values(4,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s3) aligned values(5,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s2) aligned values(6,'test','test')");
       statement.execute("flush");
-      statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(7,'test','test')");
+      statement.execute("insert into root.db.d1(time,s1,s3) aligned values(7,'test','test')");
     } catch (SQLException e) {
       fail();
     }

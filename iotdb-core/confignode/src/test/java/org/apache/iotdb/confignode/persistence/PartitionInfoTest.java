@@ -302,9 +302,9 @@ public class PartitionInfoTest {
 
     OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
     offerPlan.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
+        new RegionCreateTask(dataNodeLocation, "root.db", regionReplicaSet));
     offerPlan.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
+        new RegionCreateTask(dataNodeLocation, "root.db", regionReplicaSet));
     offerPlan.appendRegionMaintainTask(
         new RegionDeleteTask(
             dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));

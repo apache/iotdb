@@ -144,7 +144,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     // initialize metric components
     pipeConsensusSinkMetrics = new PipeConsensusSinkMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
+        .addConsensusPipeSink(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusSinkMetrics);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
@@ -701,7 +701,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
+        .removeConsensusPipeSink(new ConsensusPipeName(consensusPipeName));
     MetricService.getInstance().removeMetricSet(this.pipeConsensusSinkMetrics);
   }
 

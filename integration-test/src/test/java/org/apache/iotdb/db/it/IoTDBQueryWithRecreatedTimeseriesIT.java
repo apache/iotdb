@@ -53,23 +53,23 @@ public class IoTDBQueryWithRecreatedTimeseriesIT {
   public void testQueryDiffTypeTimeseries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
+      statement.execute("CREATE DATABASE root.db");
       Thread.sleep(100);
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES(11000, 10, 20)");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES(11000, 10, 20)");
       Thread.sleep(100);
       statement.execute("FLUSH");
       Thread.sleep(100);
-      statement.execute("DELETE TIMESERIES root.sg.d1.s1");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("DELETE TIMESERIES root.db.d1.s1");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT s1 FROM root.sg.d1 WHERE s1 > 10")) {
+          statement.executeQuery("SELECT s1 FROM root.db.d1 WHERE s1 > 10")) {
         Assert.assertFalse(resultSet.next());
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT s1 FROM root.sg.d1 WHERE s1 <= 10")) {
+          statement.executeQuery("SELECT s1 FROM root.db.d1 WHERE s1 <= 10")) {
         Assert.assertFalse(resultSet.next());
       }
     } catch (Exception e) {

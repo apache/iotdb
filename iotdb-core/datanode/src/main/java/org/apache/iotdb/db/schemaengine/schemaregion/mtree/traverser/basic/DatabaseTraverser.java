@@ -31,7 +31,7 @@ public abstract class DatabaseTraverser<R, N extends IMNode<N>> extends Traverse
   protected boolean collectInternal = false;
 
   /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   * To traverse subtree under root.db, e.g., init Traverser(root, "root.db.**")
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse

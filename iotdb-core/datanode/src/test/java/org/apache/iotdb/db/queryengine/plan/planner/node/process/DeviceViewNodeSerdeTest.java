@@ -54,9 +54,9 @@ public class DeviceViewNodeSerdeTest {
             Arrays.asList("s1", "s2"),
             new HashMap<>());
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), fullOuterTimeJoinNode1);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), fullOuterTimeJoinNode1);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), fullOuterTimeJoinNode2);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), fullOuterTimeJoinNode2);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deviceViewNode.serialize(byteBuffer);

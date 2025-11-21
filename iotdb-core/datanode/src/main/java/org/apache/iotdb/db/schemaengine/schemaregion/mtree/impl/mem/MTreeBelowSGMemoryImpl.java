@@ -426,7 +426,7 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode cur = databaseMNode;
     IMemMNode child;
     String childName;
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+    // e.g, path = root.db.d1.s1,  create internal nodes and set cur to db node, parent of d1
     for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
@@ -446,7 +446,7 @@ public class MTreeBelowSGMemoryImpl {
       final String deviceName, final IMemMNode deviceParent)
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
-      // device is sg
+      // device is db
       return databaseMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
@@ -753,7 +753,7 @@ public class MTreeBelowSGMemoryImpl {
   /**
    * Add an interval path to MTree. This is only used for automatically creating schema
    *
-   * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
+   * <p>e.g., get root.db.d1, get or create all internal nodes and return the node of d1
    */
   public IMemMNode getDeviceNodeWithAutoCreating(final PartialPath deviceId)
       throws MetadataException {
