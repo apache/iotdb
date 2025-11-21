@@ -175,7 +175,7 @@ public class PatternDFATest {
     }
 
     String[] patterns2 = {
-      "root2.sg1.d1.s1",
+      "root2.db1.d1.s1",
       "root.db1.*.s2",
       "root.*.d2.s1",
       "root.*",

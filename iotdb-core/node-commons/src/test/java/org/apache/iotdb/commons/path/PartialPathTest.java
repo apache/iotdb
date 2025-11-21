@@ -373,7 +373,7 @@ public class PartialPathTest {
   public void testConcatPath() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     String[] arr2 = new String[2];
     arr2[0] = "d1";
@@ -387,7 +387,7 @@ public class PartialPathTest {
 
   @Test
   public void testConcatArray() throws IllegalPathException {
-    PartialPath a = new PartialPath("root", "sg1");
+    PartialPath a = new PartialPath("root", "db1");
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
@@ -399,7 +399,7 @@ public class PartialPathTest {
   public void testConcatNode() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     PartialPath b = a.concatNode("d1");
     Assert.assertEquals("[root, db1, d1]", Arrays.toString(b.getNodes()));
@@ -482,7 +482,7 @@ public class PartialPathTest {
     }
 
     String[] patterns2 = {
-      "root2.sg1.d1.s1",
+      "root2.db1.d1.s1",
       "root.db1.*.s2",
       "root.*.d2.s1",
       "root.*.d*.s2",
@@ -511,7 +511,7 @@ public class PartialPathTest {
       Assert.assertTrue(pattern1.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList12 = {
-      "root2.sg1.d1.s1",
+      "root2.db1.d1.s1",
       "root.db2.d1.s1",
       "root.db1.d2.s1",
       "root.db1.d2",
@@ -530,7 +530,7 @@ public class PartialPathTest {
       Assert.assertTrue(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList22 = {
-      "root2.sg1.d1.s1", "root.db1.d2.s1", "root.db1.d2", "root2.sg2", "root2"
+      "root2.db1.d1.s1", "root.db1.d2.s1", "root.db1.d2", "root2.db2", "root2"
     };
     for (String prefixPath : prefixPathList22) {
       Assert.assertFalse(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
@@ -542,7 +542,7 @@ public class PartialPathTest {
       Assert.assertTrue(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList32 = {
-      "root2.sg1.d1.s1", "root.db2.d2.s1", "root.db1.d1.s1.o1", "root.db2", "root2"
+      "root2.db1.d1.s1", "root.db2.d2.s1", "root.db1.d1.s1.o1", "root.db2", "root2"
     };
     for (String prefixPath : prefixPathList32) {
       Assert.assertFalse(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
@@ -553,7 +553,7 @@ public class PartialPathTest {
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList42 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList42 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList42) {
       Assert.assertFalse(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -566,7 +566,7 @@ public class PartialPathTest {
     for (String prefixPath : prefixPathList51) {
       Assert.assertTrue(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList52 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList52 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList52) {
       Assert.assertFalse(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -576,7 +576,7 @@ public class PartialPathTest {
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList62 = {"root2.sg1.d1.s1", "root.db2.d1.s1"};
+    String[] prefixPathList62 = {"root2.db1.d1.s1", "root.db2.d1.s1"};
     for (String prefixPath : prefixPathList62) {
       Assert.assertFalse(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -589,7 +589,7 @@ public class PartialPathTest {
     for (String prefixPath : prefixPathList71) {
       Assert.assertTrue(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList72 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList72 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList72) {
       Assert.assertFalse(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
     }

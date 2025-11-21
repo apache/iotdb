@@ -74,13 +74,13 @@ public class IoTDBDatabaseSetAndDeleteIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // set Database0 by default values
-      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(sg0);
+      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(db0);
       status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // set Database1 by specific values
       TDatabaseSchema databaseSchema1 =
-          new TDatabaseSchema(sg1)
+          new TDatabaseSchema(db1)
               .setSchemaReplicationFactor(5)
               .setDataReplicationFactor(5)
               .setTimePartitionInterval(2048L);
@@ -98,7 +98,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test count one Database
       countResp =
           client.countMatchedDatabases(
-              new TGetDatabaseReq(Arrays.asList("root", "sg0"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db0"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
@@ -111,15 +111,15 @@ public class IoTDBDatabaseSetAndDeleteIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(2, schemaMap.size());
-      TDatabaseSchema databaseSchema = schemaMap.get(sg0);
+      TDatabaseSchema databaseSchema = schemaMap.get(db0);
       Assert.assertNotNull(databaseSchema);
-      Assert.assertEquals(sg0, databaseSchema.getName());
+      Assert.assertEquals(db0, databaseSchema.getName());
       Assert.assertEquals(1, databaseSchema.getSchemaReplicationFactor());
       Assert.assertEquals(1, databaseSchema.getDataReplicationFactor());
       Assert.assertEquals(604800000, databaseSchema.getTimePartitionInterval());
-      databaseSchema = schemaMap.get(sg1);
+      databaseSchema = schemaMap.get(db1);
       Assert.assertNotNull(databaseSchema);
-      Assert.assertEquals(sg1, databaseSchema.getName());
+      Assert.assertEquals(db1, databaseSchema.getName());
       Assert.assertEquals(5, databaseSchema.getSchemaReplicationFactor());
       Assert.assertEquals(5, databaseSchema.getDataReplicationFactor());
       Assert.assertEquals(2048L, databaseSchema.getTimePartitionInterval());
@@ -129,29 +129,29 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(), status.getCode());
 
       // test Database setter interfaces
-      PartialPath patternPath = new PartialPath(sg1);
+      PartialPath patternPath = new PartialPath(db1);
       status =
           client.setTTL(
               new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE, false));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
+      status = client.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(db1, 1));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 1));
+      status = client.setDataReplicationFactor(new TSetDataReplicationFactorReq(db1, 1));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setTimePartitionInterval(new TSetTimePartitionIntervalReq(sg1, 604800L));
+      status = client.setTimePartitionInterval(new TSetTimePartitionIntervalReq(db1, 604800L));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test setter results
       getResp =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg1"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db1"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(1, schemaMap.size());
-      databaseSchema = schemaMap.get(sg1);
+      databaseSchema = schemaMap.get(db1);
       Assert.assertNotNull(databaseSchema);
-      Assert.assertEquals(sg1, databaseSchema.getName());
+      Assert.assertEquals(db1, databaseSchema.getName());
       Assert.assertEquals(1, databaseSchema.getSchemaReplicationFactor());
       Assert.assertEquals(1, databaseSchema.getDataReplicationFactor());
       Assert.assertEquals(604800, databaseSchema.getTimePartitionInterval());
@@ -166,16 +166,16 @@ public class IoTDBDatabaseSetAndDeleteIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(sg0);
+      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(db0);
       // set Database0 by default values
       status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // set Database1 by specific values
-      TDatabaseSchema databaseSchema1 = new TDatabaseSchema(sg1);
+      TDatabaseSchema databaseSchema1 = new TDatabaseSchema(db1);
       status = client.setDatabase(databaseSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       TDeleteDatabasesReq deleteDatabasesReq = new TDeleteDatabasesReq();
-      List<String> dbs = Arrays.asList(sg0, db1);
+      List<String> dbs = Arrays.asList(db0, db1);
       deleteDatabasesReq.setPrefixPathList(sgs);
       TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =

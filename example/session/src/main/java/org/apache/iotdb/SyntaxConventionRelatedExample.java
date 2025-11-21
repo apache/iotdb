@@ -54,28 +54,28 @@ public class SyntaxConventionRelatedExample {
    * when using session API, path is represented using String. The path should be written as
    * "root.db1.select".
    */
-  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.db1.select";
+  private static final String ROOT_DB1_KEYWORD_EXAMPLE = "root.db1.select";
 
   /**
    * if you want to create a time series named root.db1.111, a possible SQL statement would be like:
    * create timeseries root.db1.`111` with datatype=FLOAT, encoding=RLE The path should be written
    * as "root.db1.`111`".
    */
-  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.db1.`111`";
+  private static final String ROOT_DB1_DIGITS_EXAMPLE = "root.db1.`111`";
 
   /**
    * if you want to create a time series named root.db1.`a"b'c``, a possible SQL statement would be
    * like: create timeseries root.db1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
    * written as "root.db1.`a"b`c```".
    */
-  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.db1.`a\"b'c```";
+  private static final String ROOT_DB1_SPECIAL_CHARACTER_EXAMPLE = "root.db1.`a\"b'c```";
 
   /**
    * if you want to create a time series named root.db1.a, a possible SQL statement would be like:
    * create timeseries root.db1.a with datatype=FLOAT, encoding=RLE The path should be written as
    * "root.db1.a".
    */
-  private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.db1.a";
+  private static final String ROOT_DB1_NORMAL_NODE_EXAMPLE = "root.db1.a";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -133,24 +133,24 @@ public class SyntaxConventionRelatedExample {
 
   private static void createTimeSeries()
       throws IoTDBConnectionException, StatementExecutionException {
-    if (!session.checkTimeseriesExists(ROOT_SG1_KEYWORD_EXAMPLE)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_KEYWORD_EXAMPLE)) {
       session.createTimeseries(
-          ROOT_SG1_KEYWORD_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_KEYWORD_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists(ROOT_SG1_DIGITS_EXAMPLE)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_DIGITS_EXAMPLE)) {
       session.createTimeseries(
-          ROOT_SG1_DIGITS_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_DIGITS_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists(ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_SPECIAL_CHARACTER_EXAMPLE)) {
       session.createTimeseries(
-          ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE,
+          ROOT_DB1_SPECIAL_CHARACTER_EXAMPLE,
           TSDataType.FLOAT,
           TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists(ROOT_SG1_NORMAL_NODE_EXAMPLE)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_NORMAL_NODE_EXAMPLE)) {
       session.createTimeseries(
-          ROOT_SG1_NORMAL_NODE_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_NORMAL_NODE_EXAMPLE, TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
     }
   }
 }

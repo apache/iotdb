@@ -59,14 +59,14 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
    */
   @Test
   public void testTsFileDecompositionWithMods() {
-    TableModelUtils.createDataBaseAndTable(senderEnv, "table1", "sg1");
-    TableModelUtils.createDataBaseAndTable(receiverEnv, "table1", "sg1");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "table1", "db1");
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "table1", "db1");
 
-    TableModelUtils.insertData("sg1", "table1", 1, 6, senderEnv);
+    TableModelUtils.insertData("db1", "table1", 1, 6, senderEnv);
 
-    TableModelUtils.createDataBaseAndTable(senderEnv, "table1", "sg2");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "table1", "db2");
     for (int i = 1; i <= 110; i++) {
-      TableModelUtils.insertData("sg2", "table1", 10, 15, (i - 1) * 100, i * 100, senderEnv);
+      TableModelUtils.insertData("db2", "table1", 10, 15, (i - 1) * 100, i * 100, senderEnv);
     }
 
     executeNonQueryWithRetry(senderEnv, "FLUSH");
@@ -76,7 +76,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 2 AND time <= 4",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg1",
+        "db1",
         "table");
 
     executeNonQueryWithRetry(
@@ -84,7 +84,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 3 AND time <= 5",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg1",
+        "db1",
         "table");
 
     executeNonQueryWithRetry(
@@ -92,7 +92,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 0 AND time < 10000 AND s0 ='t10' AND s1='t10' AND s2='t10' AND s3='t10'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
+        "db2",
         "table");
 
     executeNonQueryWithRetry(
@@ -100,7 +100,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 0 AND time <= 11000 AND s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
+        "db2",
         "table");
 
     executeNonQueryWithRetry(
@@ -108,7 +108,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 5000 AND time < 10100 AND s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
+        "db2",
         "table");
 
     executeNonQueryWithRetry(
@@ -116,7 +116,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 0 AND time < 10000 AND s0 ='t13' AND s1='t13' AND s2='t13' AND s3='t13'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
+        "db2",
         "table");
 
     executeNonQueryWithRetry(
@@ -124,7 +124,7 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "DELETE FROM table1 WHERE time >= 10000 AND time <= 11000 AND s0 ='t14' AND s1='t14' AND s2='t14' AND s3='t14'",
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
-        "sg2",
+        "db2",
         "table");
 
     executeNonQueryWithRetry(senderEnv, "FLUSH");
@@ -145,48 +145,48 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         TableModelUtils.getQuerySql("table1"),
         TableModelUtils.generateHeaderResults(),
         expectedResults,
-        "sg1");
+        "db1");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT s4 FROM table1 WHERE time >= 2 AND time <= 4",
         "s4,",
         Collections.emptySet(),
-        "sg1");
+        "db1");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t10' AND s1='t10' AND s2='t10' AND s3='t10'",
         "count,",
         Collections.singleton("1000,"),
-        "sg2");
+        "db2");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
         "count,",
         Collections.singleton("0,"),
-        "sg2");
+        "db2");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
         "count,",
         Collections.singleton("5900,"),
-        "sg2");
+        "db2");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t13' AND s1='t13' AND s2='t13' AND s3='t13'",
         "count,",
         Collections.singleton("1000,"),
-        "sg2");
+        "db2");
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t14' AND s1='t14' AND s2='t14' AND s3='t14'",
         "count,",
         Collections.singleton("10000,"),
-        "sg2");
+        "db2");
   }
 }

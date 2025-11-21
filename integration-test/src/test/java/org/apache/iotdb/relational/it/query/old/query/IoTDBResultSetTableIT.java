@@ -144,7 +144,7 @@ public class IoTDBResultSetTableIT {
 
   @Test
   public void emptyQueryTest1() {
-    tableAssertTestFail("select * from db1", "550: Table 'test.sg1' does not exist", DATABASE_NAME);
+    tableAssertTestFail("select * from db1", "550: Table 'test.db1' does not exist", DATABASE_NAME);
   }
 
   @Test

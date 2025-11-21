@@ -79,9 +79,9 @@ import static org.junit.Assert.fail;
 
 public class TTLTest {
 
-  private String db1Device = "root.TTL_SG1.d1";
+  private String db1Device = "root.TTL_DB1.d1";
   private DataRegionId dataRegionId1 = new DataRegionId(1);
-  private String db2Device = "root.TTL_SG2.d1";
+  private String db2Device = "root.TTL_DB2.d1";
   private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
   private DataRegion dataRegion;
@@ -118,7 +118,7 @@ public class TTLTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
-            new PartialPath(sg1Device),
+            new PartialPath(db1Device),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT64},
@@ -130,7 +130,7 @@ public class TTLTest {
 
     // ok without ttl
     dataRegion.insert(node);
-    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1000);
+    DataNodeTTLCache.getInstance().setTTLForTree(db1Device, 1000);
     // with ttl
     node.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
@@ -148,7 +148,7 @@ public class TTLTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId("0"),
-            new PartialPath(sg1Device),
+            new PartialPath(db1Device),
             false,
             new String[] {"s1"},
             new TSDataType[] {TSDataType.INT64},
@@ -186,7 +186,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
+            IDeviceID.Factory.DEFAULT_FACTORY.create(db1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -195,13 +195,13 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(db1Device, 500);
 
     // files after ttl
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
+            IDeviceID.Factory.DEFAULT_FACTORY.create(db1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -229,11 +229,11 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(db1Device, 1);
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
+            IDeviceID.Factory.DEFAULT_FACTORY.create(db1Device),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -283,27 +283,27 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
     DataNodeTTLCache.getInstance().setTTLForTree("root.**", 500);
-    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
     DataNodeTTLCache.getInstance().setTTLForTree("root.test.**", 500);
-    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
     DataNodeTTLCache.getInstance().setTTLForTree("root.test1.**", 500);
-    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
-    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg1.**", 500);
-    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.db1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
-    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg2.**", 500);
-    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.db2.**", 500);
+    Assert.assertFalse(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
-    DataNodeTTLCache.getInstance().setTTLForTree("root.test.sg1.d1.**", 500);
-    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.sg1"));
+    DataNodeTTLCache.getInstance().setTTLForTree("root.test.db1.d1.**", 500);
+    Assert.assertTrue(DataNodeTTLCache.getInstance().dataInDatabaseMayHaveTTL("root.test.db1"));
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
 
     DataNodeTTLCache.getInstance().setTTLForTree("root.`1.1`.**", 500);
@@ -313,7 +313,7 @@ public class TTLTest {
 
   private NonAlignedFullPath mockMeasurementPath() {
     return new NonAlignedFullPath(
-        IDeviceID.Factory.DEFAULT_FACTORY.create(sg1Device),
+        IDeviceID.Factory.DEFAULT_FACTORY.create(db1Device),
         new MeasurementSchema(
             s1,
             TSDataType.INT64,
@@ -377,7 +377,7 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(db1Device, 500);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
@@ -437,13 +437,13 @@ public class TTLTest {
         (SetTTLStatement)
             StatementGenerator.createStatement(
                 "SET TTL TO " + db1Device + " 10000", ZoneId.systemDefault());
-    assertEquals(sg1Device, statement1.getPath().getFullPath());
+    assertEquals(db1Device, statement1.getPath().getFullPath());
     assertEquals(10000, statement1.getTTL());
 
     UnSetTTLStatement statement2 =
         (UnSetTTLStatement)
             StatementGenerator.createStatement("UNSET TTL TO " + db2Device, ZoneId.systemDefault());
-    assertEquals(sg2Device, statement2.getPath().getFullPath());
+    assertEquals(db2Device, statement2.getPath().getFullPath());
     assertEquals(TTLCache.NULL_TTL, statement2.getTTL());
   }
 
@@ -468,7 +468,7 @@ public class TTLTest {
     assertEquals(4, dataRegion.getSequenceFileList().size());
     assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    DataNodeTTLCache.getInstance().setTTLForTree(sg1Device, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(db1Device, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);

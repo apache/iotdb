@@ -79,16 +79,16 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(6000);
       // schemaRegion1
-      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseMNode(null, "db1");
       db1.setFullPath("root.db1");
       final long size1 = db1.estimateSize();
       if (size1 != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
         // There are two possibilities here in PartialMemory mode:
-        // 1. only the "sg1" node remains
-        // 2. the "sg1" node and the "n" node remain
+        // 1. only the "db1" node remains
+        // 2. the "db1" node and the "n" node remain
         Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
         Assert.assertEquals(
-            size1 + nodeFactory.createDeviceMNode(sg1.getAsMNode(), "n").estimateSize(),
+            size1 + nodeFactory.createDeviceMNode(db1.getAsMNode(), "n").estimateSize(),
             schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
         ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
         Assert.assertEquals(
@@ -126,12 +126,12 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "db1");
       db1.setFullPath("root.db1");
       final long size1 = db1.estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "db2");
       db2.setFullPath("root.db2");
       long size2 = db2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -142,10 +142,10 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "db1");
       db1.setFullPath("root.db1");
       long size1 = db1.estimateSize();
-      IMNode<?> tmp = nodeFactory.createDeviceMNode(sg1, "v");
+      IMNode<?> tmp = nodeFactory.createDeviceMNode(db1, "v");
       size1 += tmp.estimateSize();
       tmp =
           nodeFactory.createMeasurementMNode(
@@ -155,7 +155,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                   "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
               null);
       size1 += tmp.estimateSize();
-      tmp = nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1");
+      tmp = nodeFactory.createInternalMNode(db1.getAsMNode(), "d1");
       size1 += tmp.estimateSize();
       tmp = nodeFactory.createInternalMNode(tmp, "s2");
       size1 += tmp.estimateSize();
@@ -172,10 +172,10 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "db2");
       db2.setFullPath("root.db2");
       long size2 = db2.estimateSize();
-      tmp = nodeFactory.createInternalMNode(sg2, "d1");
+      tmp = nodeFactory.createInternalMNode(db2, "d1");
       size2 += tmp.estimateSize();
       tmp = nodeFactory.createDeviceMNode(tmp, "v");
       size2 += tmp.estimateSize();
@@ -188,7 +188,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                       "s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
                   null)
               .estimateSize();
-      tmp = nodeFactory.createInternalMNode(sg2, "d2");
+      tmp = nodeFactory.createInternalMNode(db2, "d2");
       size2 += tmp.estimateSize();
       tmp = nodeFactory.createDeviceMNode(tmp, "v");
       size2 += tmp.estimateSize();
@@ -235,10 +235,10 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
+      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseDeviceMNode(null, "db1");
       db1.setFullPath("root.db1");
       final long size1 = db1.estimateSize();
-      if (sg1.estimateSize() != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
+      if (db1.estimateSize() != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
         // "d0" or "d1" node may remain in PartialMemory mode
         Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
         final long d0ExistSize =
@@ -252,7 +252,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                         null)
                     .estimateSize();
         final long d1ExistSize =
-            size1 + nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1").estimateSize();
+            size1 + nodeFactory.createInternalMNode(db1.getAsMNode(), "d1").estimateSize();
         Assert.assertTrue(
             d0ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()
                 || d1ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -263,7 +263,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       }
       // schemaRegion2
-      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "db2");
       db2.setFullPath("root.db2");
       final long size2 = db2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -274,7 +274,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      final IMNode<?> db1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
+      final IMNode<?> db1 = nodeFactory.createDatabaseDeviceMNode(null, "db1");
       db1.setFullPath("root.db1");
       long size1 = db1.estimateSize();
       IMNode<?> tmp =
@@ -285,7 +285,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                   "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
               null);
       size1 += tmp.estimateSize();
-      tmp = nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1");
+      tmp = nodeFactory.createInternalMNode(db1.getAsMNode(), "d1");
       size1 += tmp.estimateSize();
       tmp = nodeFactory.createDeviceMNode(tmp, "s2");
       size1 += tmp.estimateSize();
@@ -300,10 +300,10 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "db2");
       db2.setFullPath("root.db2");
       long size2 = db2.estimateSize();
-      tmp = nodeFactory.createDeviceMNode(sg2, "d1");
+      tmp = nodeFactory.createDeviceMNode(db2, "d1");
       size2 += tmp.estimateSize();
       size2 +=
           nodeFactory
@@ -314,7 +314,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                       "s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
                   null)
               .estimateSize();
-      tmp = nodeFactory.createDeviceMNode(sg2, "d2");
+      tmp = nodeFactory.createDeviceMNode(db2, "d2");
       size2 += tmp.estimateSize();
       size2 +=
           nodeFactory

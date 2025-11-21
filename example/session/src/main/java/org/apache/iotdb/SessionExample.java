@@ -54,13 +54,13 @@ public class SessionExample {
 
   private static Session session;
   private static Session sessionEnableRedirect;
-  private static final String ROOT_SG1_D1_S1 = "root.db1.d1.s1";
-  private static final String ROOT_SG1_D1_S2 = "root.db1.d1.s2";
-  private static final String ROOT_SG1_D1_S3 = "root.db1.d1.s3";
-  private static final String ROOT_SG1_D1_S4 = "root.db1.d1.s4";
-  private static final String ROOT_SG1_D1_S5 = "root.db1.d1.s5";
-  private static final String ROOT_SG1_D1 = "root.db1.d1";
-  private static final String ROOT_SG1 = "root.db1";
+  private static final String ROOT_DB1_D1_S1 = "root.db1.d1.s1";
+  private static final String ROOT_DB1_D1_S2 = "root.db1.d1.s2";
+  private static final String ROOT_DB1_D1_S3 = "root.db1.d1.s3";
+  private static final String ROOT_DB1_D1_S4 = "root.db1.d1.s4";
+  private static final String ROOT_DB1_D1_S5 = "root.db1.d1.s5";
+  private static final String ROOT_DB1_D1 = "root.db1.d1";
+  private static final String ROOT_DB1 = "root.db1";
   private static final String LOCAL_HOST = "127.0.0.1";
   public static final String SELECT_D1 = "select * from root.db1.d1";
 
@@ -150,27 +150,27 @@ public class SessionExample {
   private static void createTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_D1_S1)) {
       session.createTimeseries(
-          ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_D1_S2)) {
       session.createTimeseries(
-          ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_D1_S3)) {
       session.createTimeseries(
-          ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+          ROOT_DB1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
 
     // create timeseries with tags and attributes
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_D1_S4)) {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
       Map<String, String> attributes = new HashMap<>();
       attributes.put("description", "v1");
       session.createTimeseries(
-          ROOT_SG1_D1_S4,
+          ROOT_DB1_D1_S4,
           TSDataType.INT64,
           TSEncoding.RLE,
           CompressionType.SNAPPY,
@@ -181,7 +181,7 @@ public class SessionExample {
     }
 
     // create timeseries with SDT property, SDT will take place when flushing
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
+    if (!session.checkTimeseriesExists(ROOT_DB1_D1_S5)) {
       // COMPDEV is required
       // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
       Map<String, String> props = new HashMap<>();
@@ -190,7 +190,7 @@ public class SessionExample {
       props.put("COMPMINTIME", "2");
       props.put("COMPMAXTIME", "10");
       session.createTimeseries(
-          ROOT_SG1_D1_S5,
+          ROOT_DB1_D1_S5,
           TSDataType.INT64,
           TSEncoding.RLE,
           CompressionType.SNAPPY,
@@ -308,7 +308,7 @@ public class SessionExample {
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D1;
+    String deviceId = ROOT_DB1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -354,7 +354,7 @@ public class SessionExample {
 
   private static void insertStrRecord()
       throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D1;
+    String deviceId = ROOT_DB1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -371,7 +371,7 @@ public class SessionExample {
 
   private static void insertRecordInObject()
       throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D1;
+    String deviceId = ROOT_DB1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -387,7 +387,7 @@ public class SessionExample {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D1;
+    String deviceId = ROOT_DB1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -447,7 +447,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
+    Tablet tablet = new Tablet(ROOT_DB1_D1, schemaList, 100);
 
     long timestamp = System.currentTimeMillis();
 
@@ -488,7 +488,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
+    Tablet tablet = new Tablet(ROOT_DB1_D1, schemaList, 100);
 
     long timestamp = System.currentTimeMillis();
 
@@ -543,7 +543,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
+    Tablet tablet = new Tablet(ROOT_DB1_D1, schemaList, 100);
 
     insertTablet1(schemaList, tablet);
   }
@@ -583,12 +583,12 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet1 = new Tablet(ROOT_SG1_D1, schemaList, 100);
+    Tablet tablet1 = new Tablet(ROOT_DB1_D1, schemaList, 100);
     Tablet tablet2 = new Tablet("root.db1.d2", schemaList, 100);
     Tablet tablet3 = new Tablet("root.db1.d3", schemaList, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    tabletMap.put(ROOT_SG1_D1, tablet1);
+    tabletMap.put(ROOT_DB1_D1, tablet1);
     tabletMap.put("root.db1.d2", tablet2);
     tabletMap.put("root.db1.d3", tablet3);
 
@@ -675,7 +675,7 @@ public class SessionExample {
   }
 
   private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {
-    String path = ROOT_SG1_D1_S1;
+    String path = ROOT_DB1_D1_S1;
     long deleteTime = 99;
     session.deleteData(path, deleteTime);
   }
@@ -683,9 +683,9 @@ public class SessionExample {
   private static void deleteTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add(ROOT_DB1_D1_S1);
+    paths.add(ROOT_DB1_D1_S2);
+    paths.add(ROOT_DB1_D1_S3);
     session.deleteTimeseries(paths);
   }
 
@@ -740,9 +740,9 @@ public class SessionExample {
 
   private static void rawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add(ROOT_DB1_D1_S1);
+    paths.add(ROOT_DB1_D1_S2);
+    paths.add(ROOT_DB1_D1_S3);
     long startTime = 10L;
     long endTime = 200L;
     long timeOut = 60000;
@@ -754,9 +754,9 @@ public class SessionExample {
 
   private static void lastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add(ROOT_DB1_D1_S1);
+    paths.add(ROOT_DB1_D1_S2);
+    paths.add(ROOT_DB1_D1_S3);
     try (SessionDataSet dataSet = session.executeLastDataQuery(paths, 3, 60000)) {
       printDataSet(dataSet);
     }
@@ -771,7 +771,7 @@ public class SessionExample {
     paths.add("s3");
     try (SessionDataSet dataSet =
         sessionEnableRedirect.executeLastDataQueryForOneDevice(
-            ROOT_SG1, ROOT_SG1_D1, paths, true)) {
+            ROOT_DB1, ROOT_DB1_D1, paths, true)) {
       printDataSet(dataSet);
     }
   }
@@ -781,7 +781,7 @@ public class SessionExample {
     System.out.println("-------fastLastQueryForOnePrefix------");
     try (SessionDataSet dataSet =
         sessionEnableRedirect.executeFastLastDataQueryForOnePrefixPath(
-            Arrays.asList("root", "sg1"))) {
+            Arrays.asList("root", "db1"))) {
       printDataSet(dataSet);
     }
   }
@@ -789,9 +789,9 @@ public class SessionExample {
   private static void aggregationQuery()
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add(ROOT_DB1_D1_S1);
+    paths.add(ROOT_DB1_D1_S2);
+    paths.add(ROOT_DB1_D1_S3);
 
     List<TAggregationType> aggregations = new ArrayList<>();
     aggregations.add(TAggregationType.COUNT);
@@ -804,9 +804,9 @@ public class SessionExample {
 
   private static void groupByQuery() throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add(ROOT_DB1_D1_S1);
+    paths.add(ROOT_DB1_D1_S2);
+    paths.add(ROOT_DB1_D1_S3);
 
     List<TAggregationType> aggregations = new ArrayList<>();
     aggregations.add(TAggregationType.COUNT);
@@ -855,8 +855,8 @@ public class SessionExample {
         }
 
         // get third column
-        if (!iterator.isNull(ROOT_SG1_D1_S2)) {
-          builder.append(iterator.getLong(ROOT_SG1_D1_S2)).append(",");
+        if (!iterator.isNull(ROOT_DB1_D1_S2)) {
+          builder.append(iterator.getLong(ROOT_DB1_D1_S2)).append(",");
         } else {
           builder.append("null").append(",");
         }
@@ -869,8 +869,8 @@ public class SessionExample {
         }
 
         // get fifth column
-        if (!iterator.isNull(ROOT_SG1_D1_S4)) {
-          builder.append(iterator.getObject(ROOT_SG1_D1_S4));
+        if (!iterator.isNull(ROOT_DB1_D1_S4)) {
+          builder.append(iterator.getObject(ROOT_DB1_D1_S4));
         } else {
           builder.append("null");
         }

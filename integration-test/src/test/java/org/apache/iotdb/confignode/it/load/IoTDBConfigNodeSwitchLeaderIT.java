@@ -102,9 +102,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Set Databases
-      status = client.setDatabase((new TDatabaseSchema(sg0)));
+      status = client.setDatabase((new TDatabaseSchema(db0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setDatabase((new TDatabaseSchema(sg1)));
+      status = client.setDatabase((new TDatabaseSchema(db1)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Create SchemaRegionGroups through getOrCreateSchemaPartition and record
@@ -125,8 +125,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
-      dbSlotsMap.put(sg0, seriesSlotMap);
-      dbSlotsMap.put(sg1, seriesSlotMap);
+      dbSlotsMap.put(db0, seriesSlotMap);
+      dbSlotsMap.put(db1, seriesSlotMap);
       dataPartitionTableResp0 =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
       Assert.assertEquals(
@@ -153,8 +153,8 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
-      dbSlotsMap.put(sg0, seriesSlotMap);
-      dbSlotsMap.put(sg1, seriesSlotMap);
+      dbSlotsMap.put(db0, seriesSlotMap);
+      dbSlotsMap.put(db1, seriesSlotMap);
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
     }

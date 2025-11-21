@@ -44,14 +44,14 @@ public class MNodeChildBufferTest {
 
     ICachedMNode speedNode =
         rootNode
-            .addChild(nodeFactory.createInternalMNode(null, "sg1"))
+            .addChild(nodeFactory.createInternalMNode(null, "db1"))
             .addChild(nodeFactory.createInternalMNode(null, "device"))
             .addChild(nodeFactory.createInternalMNode(null, "speed"));
     assertEquals("root.db1.device.speed", speedNode.getFullPath());
 
     ICachedMNode temperatureNode =
         rootNode
-            .getChild("sg1")
+            .getChild("db1")
             .addChild(nodeFactory.createInternalMNode(null, "device11"))
             .addChild(nodeFactory.createInternalMNode(null, "temperature"));
     assertEquals("root.db1.device11.temperature", temperatureNode.getFullPath());

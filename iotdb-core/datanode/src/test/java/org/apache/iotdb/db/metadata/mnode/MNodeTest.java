@@ -37,7 +37,7 @@ public class MNodeTest {
 
     IMemMNode speedNode =
         rootNode
-            .addChild(nodeFactory.createInternalMNode(null, "sg1"))
+            .addChild(nodeFactory.createInternalMNode(null, "db1"))
             .addChild(nodeFactory.createInternalMNode(null, "a"))
             .addChild(nodeFactory.createInternalMNode(null, "b"))
             .addChild(nodeFactory.createInternalMNode(null, "c"))
@@ -48,7 +48,7 @@ public class MNodeTest {
 
     IMemMNode temperatureNode =
         rootNode
-            .getChild("sg1")
+            .getChild("db1")
             .addChild(nodeFactory.createInternalMNode(null, "aa"))
             .addChild(nodeFactory.createInternalMNode(null, "bb"))
             .addChild(nodeFactory.createInternalMNode(null, "cc"))

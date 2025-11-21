@@ -499,7 +499,7 @@ public class IoTDBRestServiceTest {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("sg25");
+            add("db25");
           }
         };
 

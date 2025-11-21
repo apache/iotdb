@@ -180,11 +180,11 @@ public class ConfigMTree {
   public void deleteDatabase(final PartialPath path) throws MetadataException {
     final IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
     IConfigMNode cur = databaseMNode.getParent();
-    // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
+    // Suppose current system has root.a.b.db1, root.a.db2, and delete root.a.b.db1
     // delete the database node db1
     store.deleteChild(cur, databaseMNode.getName());
 
-    // delete node a while retain root.a.sg2
+    // delete node a while retain root.a.db2
     while (cur.getParent() != null && cur.getChildren().isEmpty()) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
@@ -450,7 +450,7 @@ public class ConfigMTree {
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
-   * <p>e.g., MTree has [root.a.sg1.d1.s1, root.b.sg1.d1.s2, root.c.sg1.d2.s1] given path = root
+   * <p>e.g., MTree has [root.a.db1.d1.s1, root.b.db1.d1.s2, root.c.db1.d2.s1] given path = root
    * return [root.a, root.b]
    *
    * @param pathPattern The given path

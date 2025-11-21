@@ -601,13 +601,13 @@ public class SchemaRegionSnapshotParserTest {
     template.addMeasurement("date", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
     final HashMap<String, ISchemaRegionPlan> planMap = new HashMap<>();
     planMap.put(
-        "root.db.sg1.s1.t1",
+        "root.db.db1.s1.t1",
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.db.sg1.s1.t1"), 3, 1));
+            new PartialPath("root.db.db1.s1.t1"), 3, 1));
     planMap.put(
-        "root.db.sg1.s1.t2.temperature",
+        "root.db.db1.s1.t2.temperature",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.db.sg1.s1.t2.temperature"),
+            new MeasurementPath("root.db.db1.s1.t2.temperature"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -616,9 +616,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.db.sg1.s1.t2.status",
+        "root.db.db1.s1.t2.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.db.sg1.s1.t2.status"),
+            new MeasurementPath("root.db.db1.s1.t2.status"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -627,9 +627,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             "statusA"));
     planMap.put(
-        "root.db.sg2.t1",
+        "root.db.db2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.db.sg2.t1"),
+            new PartialPath("root.db.db2.t1"),
             new ArrayList<String>() {
               {
                 add("status");
@@ -671,9 +671,9 @@ public class SchemaRegionSnapshotParserTest {
               }
             }));
     planMap.put(
-        "root.db.sg2.t2.level",
+        "root.db.db2.t2.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.db.sg2.t2.level"),
+            new MeasurementPath("root.db.db2.t2.level"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.UNCOMPRESSED,
@@ -690,9 +690,9 @@ public class SchemaRegionSnapshotParserTest {
             },
             null));
     planMap.put(
-        "root.db.sg2.t2.t1",
+        "root.db.db2.t2.t1",
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.db.sg2.t2.t1"),
+            new PartialPath("root.db.db2.t2.t1"),
             new ArrayList<String>() {
               {
                 add("temperature");

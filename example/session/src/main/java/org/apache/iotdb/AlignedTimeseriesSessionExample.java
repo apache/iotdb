@@ -45,14 +45,14 @@ import java.util.Map;
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1 = "root.db_1.d1";
-  private static final String ROOT_SG1_D1_VECTOR2 = "root.db_1.d1.vector2";
-  private static final String ROOT_SG1_D1_VECTOR3 = "root.db_1.d1.vector3";
-  private static final String ROOT_SG2_D1_VECTOR4 = "root.db_2.d1.vector4";
-  private static final String ROOT_SG2_D1_VECTOR5 = "root.db_2.d1.vector5";
-  private static final String ROOT_SG2_D1_VECTOR6 = "root.db_2.d1.vector6";
-  private static final String ROOT_SG2_D1_VECTOR7 = "root.db_2.d1.vector7";
-  private static final String ROOT_SG2_D1_VECTOR8 = "root.db_2.d1.vector8";
+  private static final String ROOT_DB1_D1 = "root.db_1.d1";
+  private static final String ROOT_DB1_D1_VECTOR2 = "root.db_1.d1.vector2";
+  private static final String ROOT_DB1_D1_VECTOR3 = "root.db_1.d1.vector3";
+  private static final String ROOT_DB2_D1_VECTOR4 = "root.db_2.d1.vector4";
+  private static final String ROOT_DB2_D1_VECTOR5 = "root.db_2.d1.vector5";
+  private static final String ROOT_DB2_D1_VECTOR6 = "root.db_2.d1.vector6";
+  private static final String ROOT_DB2_D1_VECTOR7 = "root.db_2.d1.vector7";
+  private static final String ROOT_DB2_D1_VECTOR8 = "root.db_2.d1.vector8";
   public static final String FLUSH = "flush";
 
   public static void main(String[] args)
@@ -274,7 +274,7 @@ public class AlignedTimeseriesSessionExample {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
+        ROOT_DB1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
   }
 
   private static void createAlignedTimeseriesWithNullPartical()
@@ -311,7 +311,7 @@ public class AlignedTimeseriesSessionExample {
     alias.add(null);
 
     session.createAlignedTimeseries(
-        ROOT_SG1_D1,
+        ROOT_DB1_D1,
         measurements,
         dataTypes,
         encodings,
@@ -349,7 +349,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_DB1_D1, schemaList);
     long timestamp = 1;
 
     for (long row = 1; row < 100; row++) {
@@ -384,7 +384,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
+    Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR2, schemaList);
 
     for (long time = 100; time < 200; time++) {
       int row = tablet.getRowSize();
@@ -416,7 +416,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
+    Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR3, schemaList);
 
     for (long time = 200; time < 300; time++) {
       int row = tablet.getRowSize();
@@ -456,7 +456,7 @@ public class AlignedTimeseriesSessionExample {
       List<Object> values = new ArrayList<>();
       values.add(time);
       values.add((int) time);
-      session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
+      session.insertAlignedRecord(ROOT_DB1_D1, time, measurements, types, values);
     }
     session.executeNonQueryStatement(FLUSH);
     // second file we only have s1's data
@@ -467,7 +467,7 @@ public class AlignedTimeseriesSessionExample {
     for (long time = 10; time < 20; time++) {
       List<Object> values = new ArrayList<>();
       values.add(time);
-      session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
+      session.insertAlignedRecord(ROOT_DB1_D1, time, measurements, types, values);
     }
   }
 
@@ -481,7 +481,7 @@ public class AlignedTimeseriesSessionExample {
       List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
-      session.insertAlignedRecord(ROOT_SG2_D1_VECTOR5, time, measurements, values);
+      session.insertAlignedRecord(ROOT_DB2_D1_VECTOR5, time, measurements, values);
     }
   }
 
@@ -506,7 +506,7 @@ public class AlignedTimeseriesSessionExample {
       values.add(1L);
       values.add(2);
 
-      deviceIds.add(ROOT_SG2_D1_VECTOR4);
+      deviceIds.add(ROOT_DB2_D1_VECTOR4);
       times.add(time);
       measurementsList.add(measurements);
       typeList.add(types);
@@ -531,7 +531,7 @@ public class AlignedTimeseriesSessionExample {
       values.add("3");
       values.add("4");
 
-      deviceIds.add(ROOT_SG2_D1_VECTOR5);
+      deviceIds.add(ROOT_DB2_D1_VECTOR5);
       times.add(time);
       measurementsList.add(measurements);
       valueList.add(values);
@@ -565,7 +565,7 @@ public class AlignedTimeseriesSessionExample {
       valueList.add(values);
     }
     session.insertAlignedRecordsOfOneDevice(
-        ROOT_SG2_D1_VECTOR4, times, measurementsList, typeList, valueList);
+        ROOT_DB2_D1_VECTOR4, times, measurementsList, typeList, valueList);
   }
 
   private static void insertTabletsWithAlignedTimeseries()
@@ -583,14 +583,14 @@ public class AlignedTimeseriesSessionExample {
     schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
 
-    Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
-    Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
-    Tablet tablet3 = new Tablet(ROOT_SG2_D1_VECTOR8, schemaList3, 100);
+    Tablet tablet1 = new Tablet(ROOT_DB2_D1_VECTOR6, schemaList1, 100);
+    Tablet tablet2 = new Tablet(ROOT_DB2_D1_VECTOR7, schemaList2, 100);
+    Tablet tablet3 = new Tablet(ROOT_DB2_D1_VECTOR8, schemaList3, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    tabletMap.put(ROOT_SG2_D1_VECTOR6, tablet1);
-    tabletMap.put(ROOT_SG2_D1_VECTOR7, tablet2);
-    tabletMap.put(ROOT_SG2_D1_VECTOR8, tablet3);
+    tabletMap.put(ROOT_DB2_D1_VECTOR6, tablet1);
+    tabletMap.put(ROOT_DB2_D1_VECTOR7, tablet2);
+    tabletMap.put(ROOT_DB2_D1_VECTOR8, tablet3);
 
     // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
@@ -639,14 +639,14 @@ public class AlignedTimeseriesSessionExample {
     schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
 
-    Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
-    Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
-    Tablet tablet3 = new Tablet(ROOT_SG2_D1_VECTOR8, schemaList3, 100);
+    Tablet tablet1 = new Tablet(ROOT_DB2_D1_VECTOR6, schemaList1, 100);
+    Tablet tablet2 = new Tablet(ROOT_DB2_D1_VECTOR7, schemaList2, 100);
+    Tablet tablet3 = new Tablet(ROOT_DB2_D1_VECTOR8, schemaList3, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    tabletMap.put(ROOT_SG2_D1_VECTOR6, tablet1);
-    tabletMap.put(ROOT_SG2_D1_VECTOR7, tablet2);
-    tabletMap.put(ROOT_SG2_D1_VECTOR8, tablet3);
+    tabletMap.put(ROOT_DB2_D1_VECTOR6, tablet1);
+    tabletMap.put(ROOT_DB2_D1_VECTOR7, tablet2);
+    tabletMap.put(ROOT_DB2_D1_VECTOR8, tablet3);
 
     // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();

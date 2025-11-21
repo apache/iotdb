@@ -41,7 +41,7 @@ public class SetTTLProcedureTest {
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
     // test1
-    PartialPath path = new PartialPath("root.test.sg1.group1.group1.**");
+    PartialPath path = new PartialPath("root.test.db1.group1.group1.**");
     SetTTLPlan setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), 1928300234200L);
     SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan, false);
 

@@ -47,49 +47,49 @@ public class IoTDBWithoutNullAllFilterIT {
   private static String[] dataSet1 =
       new String[] {
         "CREATE DATABASE root.test",
-        "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg1.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.sg2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db1.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.db2.s4 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
         "CREATE TIMESERIES root.test.sg5.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg5.s9 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(2, 2)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(2, 2.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) " + "values(2, 2)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(2, true, 2, 2.0, 2)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
+        "INSERT INTO root.test.db1(timestamp, s2) " + "values(2, 2)",
+        "INSERT INTO root.test.db1(timestamp, s3) " + "values(2, 2.0)",
+        "INSERT INTO root.test.db1(timestamp, s4) " + "values(2, 2)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) " + "values(2, true, 2, 2.0, 2)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(3, false)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(5, 5)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(5, 5.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) " + "values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s2) " + "values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s3) " + "values(5, 5.0)",
-        "INSERT INTO root.test.sg2(timestamp, s4) " + "values(5, 5)",
+        "INSERT INTO root.test.db1(timestamp, s1) " + "values(3, false)",
+        "INSERT INTO root.test.db1(timestamp, s2) " + "values(5, 5)",
+        "INSERT INTO root.test.db1(timestamp, s3) " + "values(5, 5.0)",
+        "INSERT INTO root.test.db1(timestamp, s4) " + "values(5, 5)",
+        "INSERT INTO root.test.db2(timestamp, s2) " + "values(5, 5)",
+        "INSERT INTO root.test.db2(timestamp, s3) " + "values(5, 5.0)",
+        "INSERT INTO root.test.db2(timestamp, s4) " + "values(5, 5)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(7, true)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(7, 7.0)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3) " + "values(7, true, 7, 7.0)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.db1(timestamp, s1) " + "values(7, true)",
+        "INSERT INTO root.test.db1(timestamp, s3) " + "values(7, 7.0)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3) " + "values(7, true, 7, 7.0)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(8, true)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(8, 8)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(8, 8.0)",
-        "INSERT INTO root.test.sg2(timestamp, s3) " + "values(8, 8.0)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(9, false, 9, 9.0, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s1) " + "values(9, true)",
+        "INSERT INTO root.test.db1(timestamp, s1) " + "values(8, true)",
+        "INSERT INTO root.test.db1(timestamp, s2) " + "values(8, 8)",
+        "INSERT INTO root.test.db1(timestamp, s3) " + "values(8, 8.0)",
+        "INSERT INTO root.test.db2(timestamp, s3) " + "values(8, 8.0)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) " + "values(9, false, 9, 9.0, 9)",
+        "INSERT INTO root.test.db2(timestamp, s1) " + "values(9, true)",
         "flush",
-        "INSERT INTO root.test.sg2(timestamp, s2) " + "values(9, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s4) " + "values(9, 9)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.db2(timestamp, s2) " + "values(9, 9)",
+        "INSERT INTO root.test.db2(timestamp, s4) " + "values(9, 9)",
+        "INSERT INTO root.test.db1(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.db2(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
         "flush",
         "INSERT INTO root.test.sg3(time, s5, s6, s7, s8) aligned values(1, 1, true, 1.0, 1)",
         "INSERT INTO root.test.sg3(time, s6, s7, s8) aligned values(2, false, 2.0, 2)",
@@ -185,19 +185,19 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.test.sg1 where s2 is not null || s3 is not null")) {
+              "select * from root.test.db1 where s2 is not null || s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -205,38 +205,38 @@ public class IoTDBWithoutNullAllFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.test.sg1 where s1 is not null")) {
+          statement.executeQuery("select * from root.test.db1 where s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.sg1")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.db1")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }
@@ -245,19 +245,19 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.test.sg1 where s1 is not null || s2 is not null || s3 is not null || s4 is not null")) {
+              "select * from root.test.db1 where s1 is not null || s2 is not null || s3 is not null || s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray4[cnt], ans);
           cnt++;
         }
@@ -296,19 +296,19 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.test.sg1 where s1 = false && (s2 is not null || s3 is not null)")) {
+              "select * from root.test.db1 where s1 = false && (s2 is not null || s3 is not null)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           // Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -316,19 +316,19 @@ public class IoTDBWithoutNullAllFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.test.sg1 where s2 = 1 && s1 is not null")) {
+          statement.executeQuery("select * from root.test.db1 where s2 = 1 && s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
@@ -336,24 +336,24 @@ public class IoTDBWithoutNullAllFilterIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.test.sg1 where s2 = 2 && s1 is not null")) {
+          statement.executeQuery("select * from root.test.db1 where s2 = 2 && s1 is not null")) {
         Assert.assertFalse(resultSet.next());
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.test.sg1 where s1 = true")) {
+          statement.executeQuery("select * from root.test.db1 where s1 = true")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }
@@ -362,19 +362,19 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.test.sg1 where s1 = true && (s1 is not null || s2 is not null || s3 is not null || s4 is not null)")) {
+              "select * from root.test.db1 where s1 = true && (s1 is not null || s2 is not null || s3 is not null || s4 is not null)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s3")
+                  + resultSet.getString("root.test.db1.s3")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s4");
           Assert.assertEquals(retArray4[cnt], ans);
           cnt++;
         }
@@ -434,29 +434,29 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where s2 is not null && s4 is not null && s2 + s4 is not null")) {
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.db1 where s2 is not null && s4 is not null && s2 + s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("-root.test.sg1.s2")
+                  + resultSet.getString("-root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 + root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 + root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 - root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 * root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 / root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s2 % root.test.db1.s4");
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -465,29 +465,29 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where s2 is not null || s4 is not null || s2 / s4 is not null")) {
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.db1 where s2 is not null || s4 is not null || s2 / s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("-root.test.sg1.s2")
+                  + resultSet.getString("-root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 + root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 + root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 - root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 * root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 / root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s2 % root.test.db1.s4");
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
@@ -496,30 +496,30 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1"
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.db1"
                   + " where s2 is not null || s4 is not null || s2 % s4 is not null || s2 % s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("-root.test.sg1.s2")
+                  + resultSet.getString("-root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 + root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 + root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 - root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 * root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 / root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s2 % root.test.db1.s4");
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }
@@ -528,30 +528,30 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1"
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.db1"
                   + " where s2 is not null || s4 is not null || s2 / s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("-root.test.sg1.s2")
+                  + resultSet.getString("-root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 + root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 + root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 - root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 * root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
+                  + resultSet.getString("root.test.db1.s2 / root.test.db1.s4")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
+                  + resultSet.getString("root.test.db1.s2 % root.test.db1.s4");
           Assert.assertEquals(retArray4[cnt], ans);
           cnt++;
         }
@@ -615,32 +615,32 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1, sin(s2), cos(s2), tan(s2) from root.test.sg1 where sin(s2) is not null || s1 is not null")) {
+              "select s1, sin(s2), cos(s2), tan(s2) from root.test.db1 where sin(s2) is not null || s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + (resultSet.getString("sin(root.test.sg1.s2)") == null
-                          || resultSet.getString("sin(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("sin(root.test.db1.s2)") == null
+                          || resultSet.getString("sin(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("sin(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("sin(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
-                  + (resultSet.getString("cos(root.test.sg1.s2)") == null
-                          || resultSet.getString("cos(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("cos(root.test.db1.s2)") == null
+                          || resultSet.getString("cos(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("cos(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("cos(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
-                  + (resultSet.getString("tan(root.test.sg1.s2)") == null
-                          || resultSet.getString("tan(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("tan(root.test.db1.s2)") == null
+                          || resultSet.getString("tan(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("tan(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("tan(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString());
           Assert.assertEquals(retArray1[cnt], ans);
@@ -651,14 +651,14 @@ public class IoTDBWithoutNullAllFilterIT {
 
       String[] columns =
           new String[] {
-            "root.test.sg1.s1",
-            "sin(root.test.sg1.s2) + cos(root.test.sg1.s2)",
-            "cos(sin(root.test.sg1.s2 + root.test.sg1.s4) + root.test.sg1.s2)"
+            "root.test.db1.s1",
+            "sin(root.test.db1.s2) + cos(root.test.db1.s2)",
+            "cos(sin(root.test.db1.s2 + root.test.db1.s4) + root.test.db1.s2)"
           };
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 where sin(s2) + cos(s2) is not null || cos(sin(s2 + s4) + s2) is not null")) {
+              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.db1 where sin(s2) + cos(s2) is not null || cos(sin(s2 + s4) + s2) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -687,7 +687,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1, cos(sin(s2 + s4) + s2) from root.test.sg1 where (cos(sin(s2 + s4) + s2)) is not null")) {
+              "select s1, cos(sin(s2 + s4) + s2) from root.test.db1 where (cos(sin(s2 + s4) + s2)) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -709,7 +709,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 where  s1 is not null || s2 is not null || s4 is not null")) {
+              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.db1 where  s1 is not null || s2 is not null || s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -762,23 +762,23 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select avg(s4), sum(s2) from root.test.sg1 group by ([1,10), 2ms) without null all(sum(s2))")) {
+              "select avg(s4), sum(s2) from root.test.db1 group by ([1,10), 2ms) without null all(sum(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + (resultSet.getString("avg(root.test.sg1.s4)") == null
-                          || resultSet.getString("avg(root.test.sg1.s4)").equals("null")
+                  + (resultSet.getString("avg(root.test.db1.s4)") == null
+                          || resultSet.getString("avg(root.test.db1.s4)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("avg(root.test.sg1.s4)"))
+                      : new BigDecimal(resultSet.getString("avg(root.test.db1.s4)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
-                  + (resultSet.getString("sum(root.test.sg1.s2)") == null
-                          || resultSet.getString("sum(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("sum(root.test.db1.s2)") == null
+                          || resultSet.getString("sum(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("sum(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("sum(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString());
           Assert.assertEquals(retArray1[cnt], ans);
@@ -789,12 +789,12 @@ public class IoTDBWithoutNullAllFilterIT {
 
       String[] columns =
           new String[] {
-            "avg(root.test.sg1.s4)", "sum(root.test.sg1.s2)", "count(root.test.sg1.s3)"
+            "avg(root.test.db1.s4)", "sum(root.test.db1.s2)", "count(root.test.db1.s3)"
           };
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) without null all(avg(s4), sum(s2))")) {
+              "select avg(s4), sum(s2), count(s3) from root.test.db1 group by ([1,10), 2ms) without null all(avg(s4), sum(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -823,7 +823,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select avg(s4) as t, avg(s2) from root.test.sg1 group by ([1,10), 1ms) without null all(t, avg(s2))")) {
+              "select avg(s4) as t, avg(s2) from root.test.db1 group by ([1,10), 1ms) without null all(t, avg(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -835,10 +835,10 @@ public class IoTDBWithoutNullAllFilterIT {
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
-                  + (resultSet.getString("avg(root.test.sg1.s2)") == null
-                          || resultSet.getString("avg(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("avg(root.test.db1.s2)") == null
+                          || resultSet.getString("avg(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("avg(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("avg(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString());
           Assert.assertEquals(retArray3[cnt], ans);
@@ -849,16 +849,16 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select avg(s4), sum(s3) as t, avg(s2) from root.test.sg1 group by ([1,10), 2ms) without null all(t, avg(s2))")) {
+              "select avg(s4), sum(s3) as t, avg(s2) from root.test.db1 group by ([1,10), 2ms) without null all(t, avg(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + (resultSet.getString("avg(root.test.sg1.s4)") == null
-                          || resultSet.getString("avg(root.test.sg1.s4)").equals("null")
+                  + (resultSet.getString("avg(root.test.db1.s4)") == null
+                          || resultSet.getString("avg(root.test.db1.s4)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("avg(root.test.sg1.s4)"))
+                      : new BigDecimal(resultSet.getString("avg(root.test.db1.s4)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
@@ -868,10 +868,10 @@ public class IoTDBWithoutNullAllFilterIT {
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString())
                   + ","
-                  + (resultSet.getString("avg(root.test.sg1.s2)") == null
-                          || resultSet.getString("avg(root.test.sg1.s2)").equals("null")
+                  + (resultSet.getString("avg(root.test.db1.s2)") == null
+                          || resultSet.getString("avg(root.test.db1.s2)").equals("null")
                       ? "null"
-                      : new BigDecimal(resultSet.getString("avg(root.test.sg1.s2)"))
+                      : new BigDecimal(resultSet.getString("avg(root.test.db1.s2)"))
                           .setScale(2, RoundingMode.HALF_UP)
                           .toPlainString());
           Assert.assertEquals(retArray4[cnt], ans);
@@ -909,7 +909,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       String[] columns =
           new String[] {
-            "avg(root.*.sg1.s2)", "avg(root.*.sg2.s2)", "sum(root.*.sg1.s4)", "sum(root.*.sg2.s4)"
+            "avg(root.*.db1.s2)", "avg(root.*.db2.s2)", "sum(root.*.db1.s4)", "sum(root.*.db2.s4)"
           };
 
       int cnt;
@@ -997,7 +997,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select avg(s2), sum(s4) as t from root.*.sg1 group by ([1, 10), 2ms), level = 1 without null all(avg(s2), t)")) {
+              "select avg(s2), sum(s4) as t from root.*.db1 group by ([1, 10), 2ms), level = 1 without null all(avg(s2), t)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1029,9 +1029,9 @@ public class IoTDBWithoutNullAllFilterIT {
   @Ignore
   @Test
   public void withoutNullColumnsIsFullPathQueryTest() {
-    // select s2, s3 from root.test.** without null all(root.test.sg1.s2, root.test.sg2.s3)
-    // select s2, s3 from root.test.sg1, root.test.sg2 without null all(root.test.sg1.s2)
-    // select s2, s3 from root.test.sg1, root.test.sg2 without null all(root.test.sg1.s2, s3)
+    // select s2, s3 from root.test.** without null all(root.test.db1.s2, root.test.db2.s3)
+    // select s2, s3 from root.test.db1, root.test.db2 without null all(root.test.db1.s2)
+    // select s2, s3 from root.test.db1, root.test.db2 without null all(root.test.db1.s2, s3)
     System.out.println("withoutNullColumnsIsFullPathQueryTest");
     String[] retArray1 =
         new String[] {
@@ -1082,13 +1082,13 @@ public class IoTDBWithoutNullAllFilterIT {
 
       String[] columns =
           new String[] {
-            "root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg2.s2", "root.test.sg2.s3"
+            "root.test.db1.s2", "root.test.db1.s3", "root.test.db2.s2", "root.test.db2.s3"
           };
 
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, s3 from root.test.** where root.test.sg1.s2 is not null || root.test.sg2.s3 is not null")) {
+              "select s2, s3 from root.test.** where root.test.db1.s2 is not null || root.test.db2.s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1109,7 +1109,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, s3 from root.test.sg1, root.test.sg2 where root.test.sg1.s2 is not null")) {
+              "select s2, s3 from root.test.db1, root.test.db2 where root.test.db1.s2 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1130,7 +1130,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, s3 from root.test.sg1, root.test.sg2 where root.test.sg1.s2 is not null || s3 is not null")) {
+              "select s2, s3 from root.test.db1, root.test.db2 where root.test.db1.s2 is not null || s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1151,7 +1151,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, s3 from root.test.sg1, root.test.sg2 where root.test.*.s2 is not null")) {
+              "select s2, s3 from root.test.db1, root.test.db2 where root.test.*.s2 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1182,10 +1182,10 @@ public class IoTDBWithoutNullAllFilterIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "root.test.sg1.s1",
-          "root.test.sg1.s2",
-          "root.test.sg1.s3",
-          "root.test.sg1.s4",
+          "root.test.db1.s1",
+          "root.test.db1.s2",
+          "root.test.db1.s3",
+          "root.test.db1.s4",
         };
     String[] retArray =
         new String[] {
@@ -1198,7 +1198,7 @@ public class IoTDBWithoutNullAllFilterIT {
           "10,true,10,10.0,10,"
         };
     resultSetEqualTest(
-        "select s1, s2, s3, s4 from root.test.sg1 where s1 is not null || usage is not null",
+        "select s1, s2, s3, s4 from root.test.db1 where s1 is not null || usage is not null",
         expectedHeader,
         retArray);
   }
@@ -1254,7 +1254,7 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s2), last_value(s3)) align by device")) {
+              "select last_value(*) from root.test.db1 group by([1,10), 2ms) without null all(last_value(s2), last_value(s3)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1275,7 +1275,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s2)) align by device")) {
+              "select last_value(*) from root.test.db1 group by([1,10), 2ms) without null all(last_value(s2)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1338,7 +1338,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.sg1 group by([1,10), 2ms) without null all(t, last_value(s3)) align by device")) {
+              "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.db1 group by([1,10), 2ms) without null all(t, last_value(s3)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1357,7 +1357,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s1,s2,s9 from root.test.sg1,root.test.sg5 without null all(s2) align by device")) {
+              "select s1,s2,s9 from root.test.db1,root.test.sg5 without null all(s2) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1438,9 +1438,9 @@ public class IoTDBWithoutNullAllFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
                   + resultSet.getString("root.test.sg3.s5")
                   + ","
@@ -1450,7 +1450,7 @@ public class IoTDBWithoutNullAllFilterIT {
                   + ","
                   + resultSet.getString("root.test.sg3.s8")
                   + ","
-                  + resultSet.getString("root.test.sg2.s3");
+                  + resultSet.getString("root.test.db2.s3");
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -1464,11 +1464,11 @@ public class IoTDBWithoutNullAllFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg2.s3")
+                  + resultSet.getString("root.test.db2.s3")
                   + ","
                   + resultSet.getString("root.test.sg3.s5")
                   + ","
@@ -1491,11 +1491,11 @@ public class IoTDBWithoutNullAllFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg2.s3")
+                  + resultSet.getString("root.test.db2.s3")
                   + ","
                   + resultSet.getString("root.test.sg3.s5")
                   + ","
@@ -1518,11 +1518,11 @@ public class IoTDBWithoutNullAllFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg2.s3")
+                  + resultSet.getString("root.test.db2.s3")
                   + ","
                   + resultSet.getString("root.test.sg3.s5")
                   + ","
@@ -1545,11 +1545,11 @@ public class IoTDBWithoutNullAllFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString("root.test.sg1.s1")
+                  + resultSet.getString("root.test.db1.s1")
                   + ","
-                  + resultSet.getString("root.test.sg1.s2")
+                  + resultSet.getString("root.test.db1.s2")
                   + ","
-                  + resultSet.getString("root.test.sg2.s3")
+                  + resultSet.getString("root.test.db2.s3")
                   + ","
                   + resultSet.getString("root.test.sg3.s5")
                   + ","
@@ -1585,7 +1585,7 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s2), last_value(s3)) limit 5 offset 3 align by device")) {
+              "select last_value(*) from root.test.db1 group by([1,10), 2ms) without null all(last_value(s2), last_value(s3)) limit 5 offset 3 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1606,7 +1606,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s4), last_value(s3)) limit 5 offset 2 slimit 3 align by device")) {
+              "select last_value(*) from root.test.db1 group by([1,10), 2ms) without null all(last_value(s4), last_value(s3)) limit 5 offset 2 slimit 3 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1625,7 +1625,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null all(last_value(s2)) limit 5 offset 2 slimit 3 soffset 1 align by device")) {
+              "select last_value(*) from root.test.db1 group by([1,10), 2ms) without null all(last_value(s2)) limit 5 offset 2 slimit 3 soffset 1 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =

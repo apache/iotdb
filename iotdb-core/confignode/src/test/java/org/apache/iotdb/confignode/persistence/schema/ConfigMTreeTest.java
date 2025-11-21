@@ -195,10 +195,10 @@ public class ConfigMTreeTest {
   @Test
   public void testCountStorageGroup() throws MetadataException {
     root.setStorageGroup(new PartialPath("root.db1"));
-    root.setStorageGroup(new PartialPath("root.a.sg1"));
-    root.setStorageGroup(new PartialPath("root.a.b.sg1"));
+    root.setStorageGroup(new PartialPath("root.a.db1"));
+    root.setStorageGroup(new PartialPath("root.a.b.db1"));
     root.setStorageGroup(new PartialPath("root.db2"));
-    root.setStorageGroup(new PartialPath("root.a.sg2"));
+    root.setStorageGroup(new PartialPath("root.a.db2"));
     root.setStorageGroup(new PartialPath("root.db3"));
     root.setStorageGroup(new PartialPath("root.a.b.sg3"));
 
@@ -209,9 +209,9 @@ public class ConfigMTreeTest {
     assertEquals(
         2, root.getDatabaseNum(new PartialPath("root.*.*.*"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        1, root.getDatabaseNum(new PartialPath("root.*.sg1"), ALL_MATCH_SCOPE, false, false));
+        1, root.getDatabaseNum(new PartialPath("root.*.db1"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        2, root.getDatabaseNum(new PartialPath("root.**.sg1"), ALL_MATCH_SCOPE, false, false));
+        2, root.getDatabaseNum(new PartialPath("root.**.db1"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
         1, root.getDatabaseNum(new PartialPath("root.db3"), ALL_MATCH_SCOPE, false, false));
     assertEquals(

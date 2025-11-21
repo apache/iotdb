@@ -57,29 +57,29 @@ public class IoTDBTtlIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("SET TTL TO root.TTL_SG1 1000");
+        statement.execute("SET TTL TO root.TTL_DB1 1000");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
-        statement.execute("UNSET TTL TO root.TTL_SG1");
+        statement.execute("UNSET TTL TO root.TTL_DB1");
       } catch (SQLException e) {
         assertEquals(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
-      statement.execute("CREATE DATABASE root.TTL_SG1");
-      statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.TTL_DB1");
+      statement.execute("CREATE TIMESERIES root.TTL_DB1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
-        statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
+        statement.execute("SET TTL TO root.TTL_DB1.s1 1000");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      statement.execute("CREATE DATABASE root.TTL_SG2");
-      statement.execute("CREATE TIMESERIES root.TTL_SG2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.TTL_DB2");
+      statement.execute("CREATE TIMESERIES root.TTL_DB2.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       try {
-        statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
+        statement.execute("SET TTL TO root.TTL_DB2.s1 1000");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -102,15 +102,15 @@ public class IoTDBTtlIT {
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
+                "INSERT INTO root.TTL_DB1(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
       }
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+                "INSERT INTO root.TTL_DB1(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_DB1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -118,8 +118,8 @@ public class IoTDBTtlIT {
         assertEquals(200, cnt);
       }
 
-      statement.execute("SET TTL TO root.TTL_SG1 10000");
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
+      statement.execute("SET TTL TO root.TTL_DB1 10000");
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_DB1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -132,14 +132,14 @@ public class IoTDBTtlIT {
         try {
           statement.execute(
               String.format(
-                  "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
+                  "INSERT INTO root.TTL_DB1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
         } catch (SQLException e) {
           assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), e.getErrorCode());
         }
       }
 
       Thread.sleep(1000);
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_DB1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -147,16 +147,16 @@ public class IoTDBTtlIT {
         assertEquals(100, cnt);
       }
 
-      statement.execute("UNSET TTL TO root.TTL_SG1");
+      statement.execute("UNSET TTL TO root.TTL_DB1");
       // make sure other nodes have applied UNSET TTL
       Thread.sleep(1000);
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+                "INSERT INTO root.TTL_DB1(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_DB1")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;

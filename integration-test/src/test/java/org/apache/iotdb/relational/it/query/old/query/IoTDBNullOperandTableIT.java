@@ -214,7 +214,7 @@ public class IoTDBNullOperandTableIT {
 
     retArray =
         new String[] {
-          "1,root.test.sg1,1,0,", "2,root.test.sg1,1,0,", "3,root.test.sg1,1,0,",
+          "1,root.test.db1,1,0,", "2,root.test.db1,1,0,", "3,root.test.db1,1,0,",
         };
     expectedHeader =
         new String[] {

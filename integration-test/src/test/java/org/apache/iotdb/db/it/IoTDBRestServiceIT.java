@@ -464,13 +464,13 @@ public class IoTDBRestServiceIT {
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.`sg23"
+              + "\",\"deviceId\":\"root.`db23"
               + i
               + "`\"}");
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.`sg24"
+              + "\",\"deviceId\":\"root.`db24"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
@@ -558,13 +558,13 @@ public class IoTDBRestServiceIT {
       insertTablet_right_json_list_v2.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
               + isAligned
-              + ",\"device\":\"root.`sg23"
+              + ",\"device\":\"root.`db23"
               + i
               + "`\"}");
       insertTablet_right_json_list_v2.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
               + isAligned
-              + ",\"device\":\"root.`sg24"
+              + ",\"device\":\"root.`db24"
               + i
               + "`\"}");
       insertTablet_error_json_list_v2.add(
@@ -582,7 +582,7 @@ public class IoTDBRestServiceIT {
       insertTablet_error_json_list_v2.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
               + isAligned
-              + ",\"device\":\"root.`sg26"
+              + ",\"device\":\"root.`db26"
               + i
               + "`\"}");
       insertTablet_error_json_list_v2.add(

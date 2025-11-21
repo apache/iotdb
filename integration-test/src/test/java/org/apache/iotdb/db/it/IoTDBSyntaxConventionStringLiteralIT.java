@@ -197,7 +197,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
@@ -207,10 +207,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, `string`)");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
 
-    String errorMsg2 =
+    String errorMdb2 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:47 extraneous input 'string' expecting {',', ')'}";
@@ -220,7 +220,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, ''string')");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg2, e.getMessage());
+      Assert.assertEquals(errorMdb2, e.getMessage());
     }
 
     String errorMsg3 =
@@ -255,7 +255,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: line 1:7 no viable alternative at input 'REMOVE path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -263,10 +263,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("REMOVE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
 
-    String errorMsg2 =
+    String errorMdb2 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:7 mismatched input 'path' expecting {ROOT, STRING_LITERAL}";
@@ -275,7 +275,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("SETTLE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg2, e.getMessage());
+      Assert.assertEquals(errorMdb2, e.getMessage());
     }
   }
 
@@ -295,7 +295,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
@@ -306,7 +306,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("CREATE USER test `test123456789`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
   }
 
@@ -352,7 +352,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     // Illegal name with back quote
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
@@ -363,7 +363,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("create function udf as `org.apache.iotdb.db.query.udf.example.Adder`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
   }
 

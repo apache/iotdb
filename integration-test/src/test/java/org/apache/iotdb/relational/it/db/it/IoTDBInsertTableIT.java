@@ -1012,7 +1012,7 @@ public class IoTDBInsertTableIT {
       long timestamp = 0;
       Tablet tablet =
           new Tablet(
-              "sg23",
+              "db23",
               IMeasurementSchema.getMeasurementNameList(schemaList),
               IMeasurementSchema.getDataTypeList(schemaList),
               columnTypes,
