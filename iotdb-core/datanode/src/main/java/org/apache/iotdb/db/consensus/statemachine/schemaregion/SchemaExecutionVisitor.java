@@ -179,7 +179,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final PartialPath devicePath = node.getDevicePath();
     final MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
-    final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
+    final List<TSStatus> existingTimeSeriesAndAlignmentMismatch = new ArrayList<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
 
     if (node.isAligned()) {
@@ -187,7 +187,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           devicePath,
           measurementGroup,
           schemaRegion,
-          alreadyExistingTimeSeries,
+          existingTimeSeriesAndAlignmentMismatch,
           failingStatus,
           node.isGeneratedByPipe());
     } else {
@@ -195,7 +195,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           devicePath,
           measurementGroup,
           schemaRegion,
-          alreadyExistingTimeSeries,
+          existingTimeSeriesAndAlignmentMismatch,
           failingStatus,
           node.isGeneratedByPipe());
     }
@@ -204,8 +204,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeSeries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeSeries);
+    if (!existingTimeSeriesAndAlignmentMismatch.isEmpty()) {
+      return RpcUtils.getStatus(existingTimeSeriesAndAlignmentMismatch);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -217,7 +217,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
 
-    final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
+    final List<TSStatus> existingTimeSeriesAndAlignmentMismatch = new ArrayList<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
 
     for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
@@ -229,7 +229,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             devicePath,
             measurementGroup,
             schemaRegion,
-            alreadyExistingTimeSeries,
+            existingTimeSeriesAndAlignmentMismatch,
             failingStatus,
             node.isGeneratedByPipe());
       } else {
@@ -237,7 +237,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             devicePath,
             measurementGroup,
             schemaRegion,
-            alreadyExistingTimeSeries,
+            existingTimeSeriesAndAlignmentMismatch,
             failingStatus,
             node.isGeneratedByPipe());
       }
@@ -247,8 +247,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       return RpcUtils.getStatus(failingStatus);
     }
 
-    if (!alreadyExistingTimeSeries.isEmpty()) {
-      return RpcUtils.getStatus(alreadyExistingTimeSeries);
+    if (!existingTimeSeriesAndAlignmentMismatch.isEmpty()) {
+      return RpcUtils.getStatus(existingTimeSeriesAndAlignmentMismatch);
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -258,11 +258,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       final PartialPath devicePath,
       final MeasurementGroup measurementGroup,
       final ISchemaRegion schemaRegion,
-      final List<TSStatus> alreadyExistingTimeSeries,
+      final List<TSStatus> existingTimeSeriesAndAlignmentMismatch,
       final List<TSStatus> failingStatus,
       final boolean withMerge) {
     final int size = measurementGroup.getMeasurements().size();
     // todo implement batch creation of one device in SchemaRegion
+    boolean alignedIsSet = false;
     for (int i = 0; i < size; i++) {
       try {
         final ICreateTimeSeriesPlan createTimeSeriesPlan =
@@ -273,11 +274,17 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // Thus the original ones are not altered
         ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(withMerge);
         schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+        if (((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).getAligned().get() && !alignedIsSet) {
+          existingTimeSeriesAndAlignmentMismatch.add(
+              new TSStatus(TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode())
+                  .setMessage(PartialPath.transformDataToString(devicePath)));
+          alignedIsSet = true;
+        }
       } catch (final MeasurementAlreadyExistException e) {
         // There's no need to internal create time series.
-        alreadyExistingTimeSeries.add(
+        existingTimeSeriesAndAlignmentMismatch.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
+                e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
       } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -289,7 +296,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       final PartialPath devicePath,
       final MeasurementGroup measurementGroup,
       final ISchemaRegion schemaRegion,
-      final List<TSStatus> alreadyExistingTimeSeries,
+      final List<TSStatus> existingTimeSeriesAndAlignmentMismatch,
       final List<TSStatus> failingStatus,
       final boolean withMerge) {
     final List<String> measurementList = measurementGroup.getMeasurements();
@@ -326,9 +333,9 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // The existence check will be executed before truly creation
         // There's no need to internal create time series.
         final MeasurementPath measurementPath = e.getMeasurementPath();
-        alreadyExistingTimeSeries.add(
+        existingTimeSeriesAndAlignmentMismatch.add(
             RpcUtils.getStatus(
-                e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
+                e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
 
         // remove the existing time series from plan
         final int index = measurementList.indexOf(measurementPath.getMeasurement());
@@ -378,6 +385,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         shouldRetry = false;
       }
+    }
+    if (!((CreateAlignedTimeSeriesPlanImpl) createAlignedTimeSeriesPlan).getAligned().get()) {
+      existingTimeSeriesAndAlignmentMismatch.add(
+          new TSStatus(TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode())
+              .setMessage(PartialPath.transformDataToString(devicePath)));
     }
   }
 
