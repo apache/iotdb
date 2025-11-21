@@ -551,7 +551,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
-    return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
+    return databaseSchemaResp.convertToRPCDatabaseSchemaResp();
   }
 
   @Override
