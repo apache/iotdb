@@ -318,7 +318,7 @@ public class TableHeaderSchemaValidator {
     final int measurementCount = measurementInfo.getMeasurementCount();
 
     if (measurementCount == 0) {
-      throw new SemanticException("No measurements present, please check the request");
+      throw new SemanticException("No column other than Time present, please check the request");
     }
 
     TsTable table =
@@ -481,7 +481,7 @@ public class TableHeaderSchemaValidator {
       final String database,
       final InsertNodeMeasurementInfo measurementInfo) {
     DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
-    final TsTable tsTable = measurementInfo.toTsTable();
+    final TsTable tsTable = toTsTable(measurementInfo);
     AuthorityChecker.getAccessControl()
         .checkCanCreateTable(
             context.getSession().getUserName(),
@@ -595,6 +595,54 @@ public class TableHeaderSchemaValidator {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Convert to TsTable object
+   *
+   * @return converted TsTable object
+   */
+  public TsTable toTsTable(InsertNodeMeasurementInfo measurementInfo) {
+    final TsTable tsTable = new TsTable(measurementInfo.getTableName());
+    final String[] measurements = measurementInfo.getMeasurements();
+    final TsTableColumnCategory[] columnCategories = measurementInfo.getColumnCategories();
+
+    if (measurements == null || measurements.length == 0) {
+      return tsTable;
+    }
+
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+
+      final String columnName = measurements[i];
+      // Determine column category
+      final TsTableColumnCategory category =
+          measurementInfo.getColumnCategories() != null
+                  && i < columnCategories.length
+                  && columnCategories[i] != null
+              ? columnCategories[i]
+              : null;
+      if (category == null) {
+        throw new ColumnCreationFailException(
+            "Cannot create column " + columnName + " category is not provided");
+      }
+
+      if (tsTable.getColumnSchema(columnName) != null) {
+        throw new SemanticException(
+            String.format("Columns in table shall not share the same name %s.", columnName));
+      }
+
+      TSDataType dataType = measurementInfo.getType(i);
+      if (dataType == null && (dataType = measurementInfo.getTypeForFirstValue(i)) == null) {
+        throw new ColumnCreationFailException(
+            "Cannot create column " + columnName + " datatype is not provided");
+      }
+
+      tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
+    }
+    return tsTable;
   }
 
   private void addColumnSchema(final List<ColumnSchema> columnSchemas, final TsTable tsTable) {

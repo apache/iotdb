@@ -167,8 +167,8 @@ public class TsTable {
   public List<TsTableColumnSchema> getTagColumnSchemaList() {
     List<TsTableColumnSchema> tagColumnSchemaList = tagColumnSchemas.get();
     if (tagColumnSchemaList != null
-        && lastReadVersion.get() == instanceVersion.get()
-        && isNotWrite.get()) {
+        && isNotWrite.get()
+        && lastReadVersion.get() == instanceVersion.get()) {
       return tagColumnSchemaList;
     }
 

@@ -19,15 +19,9 @@
 
 package org.apache.iotdb.commons.schema.table;
 
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -229,62 +223,6 @@ public class InsertNodeMeasurementInfo {
       semanticCheckedSetter.accept(checked);
     }
     return this;
-  }
-
-  /**
-   * Convert to TsTable object
-   *
-   * @return converted TsTable object
-   */
-  public TsTable toTsTable() {
-    final TsTable tsTable = new TsTable(tableName);
-
-    if (measurements == null || measurements.length == 0) {
-      return tsTable;
-    }
-
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-
-      final String columnName = measurements[i];
-      final TSDataType dataType = dataTypes[i];
-      final TSEncoding encoding =
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder(dataType));
-      final CompressionType compressor =
-          TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
-
-      // Determine column category
-      final TsTableColumnCategory columnCategory =
-          columnCategories != null && i < columnCategories.length && columnCategories[i] != null
-              ? columnCategories[i]
-              : TsTableColumnCategory.FIELD;
-
-      // Create corresponding ColumnSchema based on column category
-      switch (columnCategory) {
-        case FIELD:
-          tsTable.addColumnSchema(
-              new FieldColumnSchema(columnName, dataType, encoding, compressor));
-          break;
-        case TAG:
-          tsTable.addColumnSchema(new TagColumnSchema(columnName, dataType));
-          break;
-        case ATTRIBUTE:
-          tsTable.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
-          break;
-        case TIME:
-          // TIME column is usually added during TsTable construction, skip here
-          break;
-        default:
-          // Default to FIELD
-          tsTable.addColumnSchema(
-              new FieldColumnSchema(columnName, dataType, encoding, compressor));
-          break;
-      }
-    }
-
-    return tsTable;
   }
 
   @Override

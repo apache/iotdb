@@ -505,6 +505,7 @@ public class IoTDBInsertTableIT {
   public void testInsertMultiRowWithNull() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
+      st1.execute("SET CONFIGURATION enable_auto_create_schema='false'");
       st1.execute("use \"test\"");
       st1.execute(
           "create table wf14 (tag1 string tag, status boolean field, temperature float field)");
@@ -829,6 +830,7 @@ public class IoTDBInsertTableIT {
   @Test
   public void testInsertKeyword() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
       session.executeNonQueryStatement("USE \"test\"");
       session.executeNonQueryStatement(
           "create table table20 ("
@@ -1066,6 +1068,7 @@ public class IoTDBInsertTableIT {
   public void testInsertUnsequenceData()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
       session.executeNonQueryStatement("USE \"test\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(
