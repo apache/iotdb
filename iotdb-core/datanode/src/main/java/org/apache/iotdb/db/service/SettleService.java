@@ -72,18 +72,18 @@ public class SettleService implements IService {
 
     /* Classify the file paths by the DB, and then call the methods of StorageGroupProcessor of each
     DB in turn to get the TsFileResources.*/
-    Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // dbPath -> tsFilePaths
+    Map<PartialPath, List<String>> tmpDbResourcesMap = new HashMap<>(); // dbPath -> tsFilePaths
     try {
       for (String filePath : TsFileAndModSettleTool.getInstance().recoverSettleFileMap.keySet()) {
         PartialPath dbPath = getDBByFilePath(filePath);
-        if (tmpSgResourcesMap.containsKey(dbPath)) {
-          List<String> filePaths = tmpSgResourcesMap.get(dbPath);
+        if (tmpDbResourcesMap.containsKey(dbPath)) {
+          List<String> filePaths = tmpDbResourcesMap.get(dbPath);
           filePaths.add(filePath);
-          tmpSgResourcesMap.put(dbPath, filePaths);
+          tmpDbResourcesMap.put(dbPath, filePaths);
         } else {
           List<String> tsFilePaths = new ArrayList<>();
           tsFilePaths.add(filePath);
-          tmpSgResourcesMap.put(dbPath, tsFilePaths);
+          tmpDbResourcesMap.put(dbPath, tsFilePaths);
         }
       }
 
