@@ -872,7 +872,7 @@ public class IoTDBConfig {
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 30000;
+  private long slowQueryThreshold = 10000;
 
   private int patternMatchingThreshold = 1000000;
 
