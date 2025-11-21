@@ -37,6 +37,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -178,17 +179,9 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testUnaryWrongType() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      tsAssertTestFail(
-          statement, "select -s5 from root.sg.d1", "Invalid input expression data type");
-      tsAssertTestFail(
-          statement, "select -s6 from root.sg.d1", "Invalid input expression data type");
-      tsAssertTestFail(
-          statement, "select -s9 from root.sg.d1", "Invalid input expression data type");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    assertTestFail("select -s5 from root.sg.d1", "Invalid input expression data type");
+    assertTestFail("select -s6 from root.sg.d1", "Invalid input expression data type");
+    assertTestFail("select -s9 from root.sg.d1", "Invalid input expression data type");
   }
 
   @Test
@@ -312,15 +305,10 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testDivisionByZero() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      tsAssertTestFail(statement, "select s1/0 from root.sg.d1", "Division by zero");
-      tsAssertTestFail(statement, "select s2/0 from root.sg.d1", "Division by zero");
-      tsAssertTestFail(statement, "select s1%0 from root.sg.d1", "Division by zero");
-      tsAssertTestFail(statement, "select s2%0 from root.sg.d1", "Division by zero");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    assertTestFail("select s1/0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s2/0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s1%0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s2%0 from root.sg.d1", "Division by zero");
   }
 
   @Test
@@ -365,17 +353,12 @@ public class IoTDBArithmeticIT {
 
   @Test
   public void testBinaryWrongType() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      tsAssertTestFail(statement, "select s9 * s1 from root.sg.d1", "Invalid");
-      tsAssertTestFail(statement, "select s9 / s1 from root.sg.d1", "Invalid");
-      tsAssertTestFail(statement, "select s9 % s1 from root.sg.d1", "Invalid");
-      tsAssertTestFail(statement, "select s10 * s1 from root.sg.d1", "Invalid");
-      tsAssertTestFail(statement, "select s10 / s1 from root.sg.d1", "Invalid");
-      tsAssertTestFail(statement, "select s10 % s1 from root.sg.d1", "Invalid");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    assertTestFail("select s9 * s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s9 / s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s9 % s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 * s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 / s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 % s1 from root.sg.d1", "Invalid");
   }
 
   @Test
@@ -414,24 +397,17 @@ public class IoTDBArithmeticIT {
               Integer.MIN_VALUE / 2 - 1,
               Integer.MAX_VALUE / 2 + 1));
 
-      tsAssertTestFail(
-          statement, "select s1+s7 from root.sg.d2 where time=1", "int Addition overflow");
-      tsAssertTestFail(
-          statement, "select s1-s8 from root.sg.d2 where time=2", "int Subtraction overflow");
-      tsAssertTestFail(
-          statement, "select s1*s7 from root.sg.d2 where time=1", "int Multiplication overflow");
+      assertTestFail("select s1+s7 from root.sg.d2 where time=1", "int Addition overflow");
+      assertTestFail("select s1-s8 from root.sg.d2 where time=2", "int Subtraction overflow");
+      assertTestFail("select s1*s7 from root.sg.d2 where time=1", "int Multiplication overflow");
 
-      tsAssertTestFail(
-          statement, "select s2+s2 from root.sg.d2 where time=1", "long Addition overflow");
-      tsAssertTestFail(
-          statement, "select s3-s2 from root.sg.d2 where time=1", "long Subtraction overflow");
+      assertTestFail("select s2+s2 from root.sg.d2 where time=1", "long Addition overflow");
+      assertTestFail("select s3-s2 from root.sg.d2 where time=1", "long Subtraction overflow");
 
-      tsAssertTestFail(
-          statement,
+      assertTestFail(
           String.format("select s10+%d from root.sg.d2 where time=1", Long.MAX_VALUE),
           "long Addition overflow");
-      tsAssertTestFail(
-          statement,
+      assertTestFail(
           String.format("select s10-(%d) from root.sg.d2 where time=1", Long.MIN_VALUE),
           "long Subtraction overflow");
 
@@ -448,27 +424,14 @@ public class IoTDBArithmeticIT {
       statement.execute("insert into root.sg.d3(time, date) values (1, '9999-12-31')");
       statement.execute("insert into root.sg.d3(time, date) values (2, '1000-01-01')");
 
-      tsAssertTestFail(
-          statement,
+      assertTestFail(
           "select date + 86400000 from root.sg.d3 where time = 1",
           "Year must be between 1000 and 9999");
-      tsAssertTestFail(
-          statement,
+      assertTestFail(
           "select date - 86400000 from root.sg.d3 where time = 2",
           "Year must be between 1000 and 9999");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
-    }
-  }
-
-  private void tsAssertTestFail(Statement statement, String sql, String expectedErrorMsg) {
-    try {
-      statement.executeQuery(sql);
-      fail("Expected exception with message: " + expectedErrorMsg);
-    } catch (SQLException e) {
-      assertTrue(
-          "Expected error message '" + expectedErrorMsg + "' but got: " + e.getMessage(),
-          e.getMessage().contains(expectedErrorMsg));
     }
   }
 }
