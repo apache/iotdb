@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import javax.annotation.Nullable;
@@ -123,6 +124,7 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
+  @TableModel
   SchemaPartition getSchemaPartition(
       final String database, final @Nullable List<IDeviceID> deviceIDs);
 }

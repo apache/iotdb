@@ -269,6 +269,7 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
       columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
       columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
+      columnBuilders[7].writeBoolean(currentDatabase.isNeedLastCache());
       resultBuilder.declarePosition();
       currentDatabase = null;
     }
@@ -323,6 +324,7 @@ public class InformationSchemaContentSupplierFactory {
                               table.getTableName(),
                               table.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                       info.setState(TableNodeStatus.USING.ordinal());
+                      info.setNeedLastCache(false);
                       return info;
                     })
                 .collect(Collectors.toList()));
@@ -357,6 +359,7 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[5].writeBinary(
             new Binary(TableType.BASE_TABLE.getName(), TSFileConfig.STRING_CHARSET));
       }
+      columnBuilders[6].writeBoolean(currentTable.isNeedLastCache());
       resultBuilder.declarePosition();
       currentTable = null;
     }
