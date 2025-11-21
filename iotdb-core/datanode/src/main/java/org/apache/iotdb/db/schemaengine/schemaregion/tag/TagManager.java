@@ -80,7 +80,7 @@ public class TagManager {
 
   private final MemSchemaRegionStatistics regionStatistics;
 
-  public TagManager(String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
+  public TagManager(String dbSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     tagLogFile = new TagLogFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
     this.regionStatistics = regionStatistics;
@@ -127,7 +127,7 @@ public class TagManager {
   }
 
   public static TagManager loadFromSnapshot(
-      File snapshotDir, String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
+      File snapshotDir, String dbSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);

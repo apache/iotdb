@@ -581,11 +581,11 @@ public class SchemaRegionSnapshotParserTest {
     //                              /
     //                           t2------temperature(INT64, TS_2DIFF,LZ4)
     //                          /
-    //               sg1------s1------t1(activate template: t1)
+    //               db1------s1------t1(activate template: t1)
     //              /
     // root -> db ->|
     //              \
-    //               sg2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
+    //               db2-------t1(aligned)------status(INT64, TS_2DIFF, LZMA2){attr1:atr1}
     //                 \
     //                  t2-------level{tags:"tag1"="t1", attributes: "attri1"="attr1"}
     //                   \

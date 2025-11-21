@@ -79,7 +79,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private String operationType = "";
   private List<String> columns = null;
-  private List<String> sgColumns = null;
+  private List<String> dbColumns = null;
   private Charset charset = TSFileConfig.STRING_CHARSET;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
 
@@ -559,7 +559,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     }
     return new IoTDBResultMetadata(
         nonAlign,
-        sgColumns,
+        dbColumns,
         operationTypeColumn,
         ioTDBRpcDataSet.getColumnNameList(),
         ioTDBRpcDataSet.getColumnTypeList(),
@@ -1321,7 +1321,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   public List<String> getSgColumns() {
-    return sgColumns;
+    return dbColumns;
   }
 
   public TSDataType getColumnTypeByIndex(int columnIndex) {

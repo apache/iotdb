@@ -151,7 +151,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    String sgName = COMPACTION_TEST_SG + "test1";
+    String dbName = COMPACTION_TEST_SG + "test1";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -165,7 +165,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -176,7 +176,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -276,7 +276,7 @@ public class CompactionSchedulerTest {
                 * 1024L
                 * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
     try {
-      String sgName = COMPACTION_TEST_SG + "test2";
+      String dbName = COMPACTION_TEST_SG + "test2";
       try {
         CompactionTaskManager.getInstance().restart();
         TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -290,7 +290,7 @@ public class CompactionSchedulerTest {
           pagePointsNum.add(100L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
-              CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+              CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
           tsFileManager.add(tsFileResource, true);
@@ -301,7 +301,7 @@ public class CompactionSchedulerTest {
           pagePointsNum.add(100L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
-              CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+              CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
           tsFileManager.add(tsFileResource, false);
@@ -387,7 +387,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
-    String sgName = COMPACTION_TEST_SG + "test3";
+    String dbName = COMPACTION_TEST_SG + "test3";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -401,7 +401,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -412,7 +412,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -485,7 +485,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    String sgName = COMPACTION_TEST_SG + "test4";
+    String dbName = COMPACTION_TEST_SG + "test4";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -499,7 +499,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -510,7 +510,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -569,7 +569,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
-    String sgName = COMPACTION_TEST_SG + "test5";
+    String dbName = COMPACTION_TEST_SG + "test5";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -583,7 +583,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -594,7 +594,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -684,7 +684,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
-    String sgName = COMPACTION_TEST_SG + "test6";
+    String dbName = COMPACTION_TEST_SG + "test6";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -698,7 +698,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -709,7 +709,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -790,7 +790,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
-    String sgName = COMPACTION_TEST_SG + "test7";
+    String dbName = COMPACTION_TEST_SG + "test7";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -804,7 +804,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -815,7 +815,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -892,7 +892,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(100);
-    String sgName = COMPACTION_TEST_SG + "test8";
+    String dbName = COMPACTION_TEST_SG + "test8";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -907,7 +907,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -919,7 +919,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -980,7 +980,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test9";
+    String dbName = COMPACTION_TEST_SG + "test9";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -995,7 +995,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1007,7 +1007,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1084,7 +1084,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test10";
+    String dbName = COMPACTION_TEST_SG + "test10";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1099,7 +1099,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1111,7 +1111,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1192,7 +1192,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test11";
+    String dbName = COMPACTION_TEST_SG + "test11";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1207,7 +1207,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1219,7 +1219,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1296,7 +1296,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test12";
+    String dbName = COMPACTION_TEST_SG + "test12";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1311,7 +1311,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1323,7 +1323,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1405,7 +1405,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test13";
+    String dbName = COMPACTION_TEST_SG + "test13";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1420,7 +1420,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1432,7 +1432,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1515,7 +1515,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test14";
+    String dbName = COMPACTION_TEST_SG + "test14";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1530,7 +1530,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1542,7 +1542,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1633,7 +1633,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
-    String sgName = COMPACTION_TEST_SG + "test16";
+    String dbName = COMPACTION_TEST_SG + "test16";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
@@ -1647,7 +1647,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
         tsFileManager.add(tsFileResource, true);
@@ -1659,7 +1659,7 @@ public class CompactionSchedulerTest {
         pagePointsNum.add(100L);
         chunkPagePointsNum.add(pagePointsNum);
         TsFileResource tsFileResource =
-            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, sgName);
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1, dbName);
         CompactionFileGeneratorUtils.writeTsFile(
             fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
         tsFileManager.add(tsFileResource, false);
@@ -1727,7 +1727,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     long originTargetSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024 * 1024);
-    String sgName = COMPACTION_TEST_SG + "test17";
+    String dbName = COMPACTION_TEST_SG + "test17";
     try {
       CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");

@@ -426,7 +426,7 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode cur = databaseMNode;
     IMemMNode child;
     String childName;
-    // e.g, path = root.db.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+    // e.g, path = root.db.d1.s1,  create internal nodes and set cur to db node, parent of d1
     for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
@@ -446,7 +446,7 @@ public class MTreeBelowSGMemoryImpl {
       final String deviceName, final IMemMNode deviceParent)
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
-      // device is sg
+      // device is db
       return databaseMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);

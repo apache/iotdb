@@ -93,9 +93,9 @@ public class IoTDBInsertTableIT {
       statement.execute("create database if not exists test");
       statement.execute("use test");
       statement.execute(
-          "CREATE TABLE sg10(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
+          "CREATE TABLE db10(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
       statement.execute(
-          "CREATE TABLE sg11(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
+          "CREATE TABLE db11(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
     }
   }
 
@@ -109,11 +109,11 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("create table sg1 (tag1 string tag, s1 int32 field)");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',1,2)");
+      statement.execute("create table db1 (tag1 string tag, s1 int32 field)");
+      statement.execute("insert into db1(tag1,time,s1) values('d1',1,2)");
       statement.execute("flush");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',2,2)");
-      statement.execute("insert into sg1(tag1,time,s1) values('d1',604800001,2)");
+      statement.execute("insert into db1(tag1,time,s1) values('d1',2,2)");
+      statement.execute("insert into db1(tag1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
     } catch (Exception e) {
       fail(e.getMessage());
@@ -126,11 +126,11 @@ public class IoTDBInsertTableIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("create table sg2 (tag1 string tag, s1 int32 field)");
-      statement.execute("insert into sg2(tag1,time,s1) values('d1',1,2)");
+      statement.execute("create table db2 (tag1 string tag, s1 int32 field)");
+      statement.execute("insert into db2(tag1,time,s1) values('d1',1,2)");
       statement.execute("flush");
-      statement.execute("insert into sg2(tag1,time,s1) values('d1',2,2)");
-      statement.execute("insert into sg2(tag1,time,s1) values('d1',604800001,2)");
+      statement.execute("insert into db2(tag1,time,s1) values('d1',2,2)");
+      statement.execute("insert into db2(tag1,time,s1) values('d1',604800001,2)");
       statement.execute("flush");
 
       // Test show regions in table model
@@ -210,8 +210,8 @@ public class IoTDBInsertTableIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("USE \"test\"");
-        statement.execute("create table sg4 (tag1 string tag, s0 int32 field)");
-        statement.execute("INSERT INTO sg4(tag1, timestamp, s0) VALUES ('tag', 1, 1)");
+        statement.execute("create table db4 (tag1 string tag, s0 int32 field)");
+        statement.execute("INSERT INTO db4(tag1, timestamp, s0) VALUES ('tag', 1, 1)");
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Unknown column category"));
@@ -225,7 +225,7 @@ public class IoTDBInsertTableIT {
       session.executeNonQueryStatement("use \"test\"");
       session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
-          "create table sg6 (tag1 string tag, s1 int64 field, s2 int64 field)");
+          "create table db6 (tag1 string tag, s1 int64 field, s2 int64 field)");
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -278,7 +278,7 @@ public class IoTDBInsertTableIT {
       } finally {
         session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       }
-      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM db6")) {
         assertEquals(dataSet.getColumnNames().size(), 4);
         assertEquals(dataSet.getColumnNames().get(0), "time");
         assertEquals(dataSet.getColumnNames().get(1), "tag1");
@@ -311,12 +311,12 @@ public class IoTDBInsertTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
       statement.execute(
-          "CREATE TABLE sg7 (tag1 string tag, s1 boolean field, s2 float field, s3 int32 field)");
-      statement.execute("insert into sg7(tag1,time,s1,s2,s3) values('d2',1,null,1.0,1)");
-      statement.execute("insert into sg7(tag1,time,s1,s2,s3) values('d2',2,true,null,2)");
-      statement.execute("insert into sg7(tag1,time,s1,s2,s3) values('d2',3,true,3.0,null)");
+          "CREATE TABLE db7 (tag1 string tag, s1 boolean field, s2 float field, s3 int32 field)");
+      statement.execute("insert into db7(tag1,time,s1,s2,s3) values('d2',1,null,1.0,1)");
+      statement.execute("insert into db7(tag1,time,s1,s2,s3) values('d2',2,true,null,2)");
+      statement.execute("insert into db7(tag1,time,s1,s2,s3) values('d2',3,true,3.0,null)");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from sg7")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from db7")) {
         assertNotNull(resultSet);
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
@@ -358,26 +358,26 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("CREATE TABLE sg8 (tag1 string tag, s1 float field, s2 double field)");
+      statement.execute("CREATE TABLE db8 (tag1 string tag, s1 float field, s2 double field)");
       // NaN should be a string literal, i.e., 'NaN', not NaN or "NaN"
       try {
-        statement.execute("insert into sg8(tag1,time,s1,s2) values('d2',1,NaN,NaN)");
+        statement.execute("insert into db8(tag1,time,s1,s2) values('d2',1,NaN,NaN)");
         fail("expected exception");
       } catch (SQLException e) {
         assertEquals(
             "701: Cannot insert identifier NaN, please use string literal", e.getMessage());
       }
       try {
-        statement.execute("insert into sg8(tag1,time,s1,s2) values('d2',1,\"NaN\",\"NaN\")");
+        statement.execute("insert into db8(tag1,time,s1,s2) values('d2',1,\"NaN\",\"NaN\")");
         fail("expected exception");
       } catch (SQLException e) {
         assertEquals(
             "701: Cannot insert identifier \"NaN\", please use string literal", e.getMessage());
       }
 
-      statement.execute("insert into sg8(tag1,time,s1,s2) values('d2',1,'NaN','NaN')");
+      statement.execute("insert into db8(tag1,time,s1,s2) values('d2',1,'NaN','NaN')");
 
-      try (ResultSet resultSet = statement.executeQuery("select * from sg8")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from db8")) {
         assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {
@@ -401,16 +401,16 @@ public class IoTDBInsertTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE \"test\"");
       statement.execute(
-          "CREATE TABLE sg9(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
-      statement.execute("insert into sg9(tag1, s1, s2, s3) values ('d1',1, 1, '1')");
+          "CREATE TABLE db9(tag1 string tag, s1 int64 field, s2 float field, s3 string field)");
+      statement.execute("insert into db9(tag1, s1, s2, s3) values ('d1',1, 1, '1')");
       Thread.sleep(1);
-      statement.execute("insert into sg9(tag1, s2, s1, s3) values ('d1',2, 2, '2')");
+      statement.execute("insert into db9(tag1, s2, s1, s3) values ('d1',2, 2, '2')");
       Thread.sleep(1);
-      statement.execute("insert into sg9(tag1, s3, s2, s1) values ('d1','3', 3, 3)");
+      statement.execute("insert into db9(tag1, s3, s2, s1) values ('d1','3', 3, 3)");
       Thread.sleep(1);
-      statement.execute("insert into sg9(tag1, s1) values ('d1',1)");
-      statement.execute("insert into sg9(tag1, s2) values ('d1',2)");
-      statement.execute("insert into sg9(tag1, s3) values ('d1','3')");
+      statement.execute("insert into db9(tag1, s1) values ('d1',1)");
+      statement.execute("insert into db9(tag1, s2) values ('d1',2)");
+      statement.execute("insert into db9(tag1, s3) values ('d1','3')");
     } catch (SQLException | InterruptedException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -419,17 +419,17 @@ public class IoTDBInsertTableIT {
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2"};
     String[] retArray = new String[] {"4,4,4,"};
     tableResultSetEqualTest(
-        "select count(s1), count(s2), count(s3) from sg9", expectedHeader, retArray, "test");
+        "select count(s1), count(s2), count(s3) from db9", expectedHeader, retArray, "test");
   }
 
   @Test
   public void testInsertMultiRow() {
     assertTableNonQueryTestFail(
-        "insert into sg10(s3) values ('d1', '1'), ('d1', '2')",
+        "insert into db10(s3) values ('d1', '1'), ('d1', '2')",
         "need timestamps when insert multi rows",
         "test");
     assertTableNonQueryTestFail(
-        "insert into sg10(tag1, s1, s2) values ('d1', 1, 1), ('d1', 2, 2)",
+        "insert into db10(tag1, s1, s2) values ('d1', 1, 1), ('d1', 2, 2)",
         "need timestamps when insert multi rows",
         "test");
   }
@@ -437,11 +437,11 @@ public class IoTDBInsertTableIT {
   @Test
   public void testInsertWithMultiTimesColumns() {
     assertTableNonQueryTestFail(
-        "insert into sg11(tag1, time, time) values ('d1', 1, 1)",
+        "insert into db11(tag1, time, time) values ('d1', 1, 1)",
         "One row should only have one time value",
         "test");
     assertTableNonQueryTestFail(
-        "insert into sg11(tag1, time, s1, time) values ('d1', 1, 1, 1)",
+        "insert into db11(tag1, time, s1, time) values ('d1', 1, 1, 1)",
         "One row should only have one time value",
         "test");
   }
@@ -556,14 +556,14 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
-      st1.execute("create table sg17 (tag1 string tag, s1 int32 field)");
-      st1.execute("insert into sg17(tag1, time, s1) values('d1', 604800010,1)");
+      st1.execute("create table db17 (tag1 string tag, s1 int32 field)");
+      st1.execute("insert into db17(tag1, time, s1) values('d1', 604800010,1)");
       st1.execute("flush");
       st1.execute(
-          "insert into sg17(tag1, time, s1) values('d1', 604799990,1), ('d1', 604800001,1)");
+          "insert into db17(tag1, time, s1) values('d1', 604799990,1), ('d1', 604800001,1)");
       st1.execute("flush");
 
-      ResultSet rs1 = st1.executeQuery("select time, s1 from sg17");
+      ResultSet rs1 = st1.executeQuery("select time, s1 from db17");
       assertTrue(rs1.next());
       assertEquals(604799990, rs1.getLong("time"));
       assertTrue(rs1.next());
@@ -580,11 +580,11 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
       st1.execute(
-          "create table if not exists sg18 (tag1 string tag, s1 string attribute, s2 int32 field)");
-      st1.execute("insert into sg18(tag1, s1, s2) values('d1','1', 1)");
-      st1.execute("insert into sg18(tag1, s1, s2) values('d2', 2, 2)");
+          "create table if not exists db18 (tag1 string tag, s1 string attribute, s2 int32 field)");
+      st1.execute("insert into db18(tag1, s1, s2) values('d1','1', 1)");
+      st1.execute("insert into db18(tag1, s1, s2) values('d2', 2, 2)");
 
-      ResultSet rs1 = st1.executeQuery("select time, s1, s2 from sg18 order by s1");
+      ResultSet rs1 = st1.executeQuery("select time, s1, s2 from db18 order by s1");
       assertTrue(rs1.next());
       assertEquals("1", rs1.getString("s1"));
       assertTrue(rs1.next());
@@ -601,18 +601,18 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
       st1.execute(
-          "create table if not exists sg19 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
+          "create table if not exists db19 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
       // lower case
-      st1.execute("insert into sg19(time, tag1, ss1, ss2) values(1, 'd1','1', 1)");
-      st1.execute("insert into sg19(time, tag1, ss1, ss2) values(2, 'd2', 2, 2)");
+      st1.execute("insert into db19(time, tag1, ss1, ss2) values(1, 'd1','1', 1)");
+      st1.execute("insert into db19(time, tag1, ss1, ss2) values(2, 'd2', 2, 2)");
       // upper case
-      st1.execute("insert into sg19(TIME, TAG1, SS1, SS2) values(3, 'd3','3', 3)");
-      st1.execute("insert into sg19(TIME, TAG1, SS1, SS2) values(4, 'd4', 4, 4)");
+      st1.execute("insert into db19(TIME, TAG1, SS1, SS2) values(3, 'd3','3', 3)");
+      st1.execute("insert into db19(TIME, TAG1, SS1, SS2) values(4, 'd4', 4, 4)");
       // mixed
-      st1.execute("insert into sg19(TIme, Tag1, Ss1, Ss2) values(5, 'd5','5', 5)");
-      st1.execute("insert into sg19(TIme, Tag1, sS1, sS2) values(6, 'd6', 6, 6)");
+      st1.execute("insert into db19(TIme, Tag1, Ss1, Ss2) values(5, 'd5','5', 5)");
+      st1.execute("insert into db19(TIme, Tag1, sS1, sS2) values(6, 'd6', 6, 6)");
 
-      ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from sg19 order by time");
+      ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from db19 order by time");
       for (int i = 1; i <= 6; i++) {
         assertTrue(rs1.next());
         assertEquals(i, rs1.getLong("time"));
@@ -929,16 +929,16 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
       st1.execute(
-          "create table if not exists sg21 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
+          "create table if not exists db21 (tag1 string tag, ss1 string attribute, ss2 int32 field)");
       // only tag
       try {
-        st1.execute("insert into sg21(tag1) values('1')");
+        st1.execute("insert into db21(tag1) values('1')");
       } catch (SQLException e) {
         assertEquals("507: No Field column present, please check the request", e.getMessage());
       }
       // only time
       try {
-        st1.execute("insert into sg21(time) values(1)");
+        st1.execute("insert into db21(time) values(1)");
       } catch (SQLException e) {
         assertEquals(
             "507: No column other than Time present, please check the request", e.getMessage());
@@ -947,25 +947,25 @@ public class IoTDBInsertTableIT {
       Thread.sleep(10);
       // only attribute
       try {
-        st1.execute("insert into sg21(ss1) values('1')");
+        st1.execute("insert into db21(ss1) values('1')");
       } catch (SQLException e) {
         assertEquals("507: No Field column present, please check the request", e.getMessage());
       }
       // sleep a while to avoid the same timestamp between two insertions
       Thread.sleep(10);
       // only field
-      st1.execute("insert into sg21(ss2) values(1)");
+      st1.execute("insert into db21(ss2) values(1)");
 
-      ResultSet rs1 = st1.executeQuery("show devices from sg21");
+      ResultSet rs1 = st1.executeQuery("show devices from db21");
       assertTrue(rs1.next());
-      // from "insert into sg21(ss2) values(1)"
+      // from "insert into db21(ss2) values(1)"
       assertEquals(null, rs1.getString("tag1"));
       assertFalse(rs1.next());
-      // from "insert into sg21(tag1) values('1')"
+      // from "insert into db21(tag1) values('1')"
       assertEquals(null, rs1.getString("tag1"));
       assertFalse(rs1.next());
 
-      rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
+      rs1 = st1.executeQuery("select time, ss1, ss2 from db21 order by time");
       assertTrue(rs1.next());
       rs1.getString("ss1");
       assertTrue(rs1.wasNull());
@@ -981,11 +981,11 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("create table sg22 (tag1 string tag, s1 int64 field)");
-      statement.execute("alter table sg22 set properties TTL=1");
+      statement.execute("create table db22 (tag1 string tag, s1 int64 field)");
+      statement.execute("alter table db22 set properties TTL=1");
       statement.execute(
           String.format(
-              "insert into sg22(tag1,time,s1) values('d1',%s,2)",
+              "insert into db22(tag1,time,s1) values('d1',%s,2)",
               System.currentTimeMillis() - 10000));
       fail();
     } catch (Exception e) {
@@ -999,8 +999,8 @@ public class IoTDBInsertTableIT {
     long ttl = 1;
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("use \"test\"");
-      session.executeNonQueryStatement("create table sg23 (tag1 string tag, s1 int64 field)");
-      session.executeNonQueryStatement("alter table sg23 set properties TTL=" + ttl);
+      session.executeNonQueryStatement("create table db23 (tag1 string tag, s1 int64 field)");
+      session.executeNonQueryStatement("alter table db23 set properties TTL=" + ttl);
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
@@ -1051,7 +1051,7 @@ public class IoTDBInsertTableIT {
 
       // part of data is indeed inserted
       long timeLowerBound = System.currentTimeMillis() - ttl;
-      SessionDataSet dataSet = session.executeQueryStatement("select time, s1 from sg23");
+      SessionDataSet dataSet = session.executeQueryStatement("select time, s1 from db23");
       int count = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();

@@ -302,7 +302,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
+    final File dbSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
         logger.info("create database schema folder {}", databaseDirPath);

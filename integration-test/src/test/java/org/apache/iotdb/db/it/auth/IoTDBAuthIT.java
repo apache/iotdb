@@ -193,7 +193,7 @@ public class IoTDBAuthIT {
   public void testSetDeleteSG() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER sgtest 'sgtest123456'");
+      adminStmt.execute("CREATE USER dbtest 'sgtest123456'");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("sgtest", "sgtest123456");
           Statement userStmt = userCon.createStatement()) {
@@ -201,7 +201,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("CREATE DATABASE root.dbtest"));
 
-        adminStmt.execute("GRANT SYSTEM ON root.** TO USER sgtest");
+        adminStmt.execute("GRANT SYSTEM ON root.** TO USER dbtest");
 
         try {
           userStmt.execute("CREATE DATABASE root.dbtest");

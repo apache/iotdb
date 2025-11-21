@@ -105,7 +105,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
   @Test
   public void testPartitionInfoSnapshot() throws Exception {
-    final String sg = "root.db";
+    final String db = "root.db";
     final int databaseNum = 10;
     final int seriesPartitionSlotsNum = 10;
     final int timePartitionSlotsNum = 10;
@@ -119,7 +119,7 @@ public class IoTDBConfigNodeSnapshotIT {
       Set<TCQEntry> expectedCQEntries = createCQs(client);
 
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
         TSStatus status = client.setDatabase(databaseSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

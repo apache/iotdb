@@ -244,12 +244,12 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.addBatch("create table sg3 (tag1 string tag, s2 double field, s1 double field)");
-      statement.addBatch("insert into sg3(tag1,time,s2) values('d1',1,2)");
-      statement.addBatch("insert into sg3(tag1,time,s1) values('d1',1,2)");
+      statement.addBatch("create table db3 (tag1 string tag, s2 double field, s1 double field)");
+      statement.addBatch("insert into db3(tag1,time,s2) values('d1',1,2)");
+      statement.addBatch("insert into db3(tag1,time,s1) values('d1',1,2)");
       statement.executeBatch();
 
-      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from sg3")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from db3")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -260,7 +260,7 @@ public class IoTDBInsertAlignedValuesTableIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from sg3")) {
+      try (ResultSet resultSet = statement.executeQuery("select time, s1, s2 from db3")) {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
@@ -337,9 +337,9 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute("create table sg8 (tag1 string tag, s1 int32 field, s2 int32 field)");
+      statement.execute("create table db8 (tag1 string tag, s1 int32 field, s2 int32 field)");
       statement.execute(
-          "insert into sg8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)");
+          "insert into db8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)");
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
@@ -351,9 +351,9 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute("create table sg9 (tag1 string tag, s98 int64 field, s99 int64 field)");
+      statement.execute("create table db9 (tag1 string tag, s98 int64 field, s99 int64 field)");
       statement.execute(
-          "insert into sg9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)");
+          "insert into db9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)");
       fail("Exception expected");
     } catch (SQLException e) {
       assertEquals(
@@ -440,13 +440,13 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute("create table sg11 (tag1 string tag, s1 string field, s2 string field)");
+      statement.execute("create table db11 (tag1 string tag, s1 string field, s2 string field)");
 
-      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
-      statement.execute("insert into sg11(tag1, time, s1, s2) values('d2', 1,'aa','bb')");
+      statement.execute("insert into db11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into db11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into db11(tag1, time, s1, s2) values('d2', 1,'aa','bb')");
       statement.execute("flush");
-      statement.execute("insert into sg11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
+      statement.execute("insert into db11(tag1, time, s1, s2) values('d1', 1,'aa','bb')");
     }
   }
 
@@ -456,20 +456,20 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.addBatch("create table sg12 (tag1 string tag, s1 int32 field, s2 int32 field)");
-      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 3,1)");
-      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 3,1)");
-      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 1,1)");
-      statement.addBatch("insert into sg12(tag1, time, s1) values('tag1', 2,1)");
-      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 2,2)");
-      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 1,2)");
-      statement.addBatch("insert into sg12(tag1, time, s2) values('tag1', 3,2)");
-      statement.addBatch("insert into sg12(tag1, time, s3) values('tag1', 1,3)");
-      statement.addBatch("insert into sg12(tag1, time, s3) values('tag1', 3,3)");
+      statement.addBatch("create table db12 (tag1 string tag, s1 int32 field, s2 int32 field)");
+      statement.addBatch("insert into db12(tag1, time, s1) values('tag1', 3,1)");
+      statement.addBatch("insert into db12(tag1, time, s1) values('tag1', 3,1)");
+      statement.addBatch("insert into db12(tag1, time, s1) values('tag1', 1,1)");
+      statement.addBatch("insert into db12(tag1, time, s1) values('tag1', 2,1)");
+      statement.addBatch("insert into db12(tag1, time, s2) values('tag1', 2,2)");
+      statement.addBatch("insert into db12(tag1, time, s2) values('tag1', 1,2)");
+      statement.addBatch("insert into db12(tag1, time, s2) values('tag1', 3,2)");
+      statement.addBatch("insert into db12(tag1, time, s3) values('tag1', 1,3)");
+      statement.addBatch("insert into db12(tag1, time, s3) values('tag1', 3,3)");
       statement.executeBatch();
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s1), count(s2), count(s3) from sg12")) {
+          statement.executeQuery("select count(s1), count(s2), count(s3) from db12")) {
 
         assertTrue(resultSet.next());
         assertEquals(3, resultSet.getInt(1));
@@ -481,7 +481,7 @@ public class IoTDBInsertAlignedValuesTableIT {
 
       statement.execute("flush");
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s1), count(s2), count(s3) from sg12")) {
+          statement.executeQuery("select count(s1), count(s2), count(s3) from db12")) {
 
         assertTrue(resultSet.next());
         assertEquals(3, resultSet.getInt(1));
@@ -568,15 +568,15 @@ public class IoTDBInsertAlignedValuesTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"t1\"");
-      statement.execute("create table sg14 (tag1 string tag, s1 string field, s2 string field)");
-      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',1,'test','test')");
-      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',2,'test','test')");
-      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')");
-      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',4,'test','test')");
-      statement.execute("insert into sg14(tag1,time,s1,s3) values('d1',5,'test','test')");
-      statement.execute("insert into sg14(tag1,time,s1,s2) values('d1',6,'test','test')");
+      statement.execute("create table db14 (tag1 string tag, s1 string field, s2 string field)");
+      statement.execute("insert into db14(tag1,time,s1,s2) values('d1',1,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s2) values('d1',2,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s2) values('d1',3,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s2) values('d1',4,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s3) values('d1',5,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s2) values('d1',6,'test','test')");
       statement.execute("flush");
-      statement.execute("insert into sg14(tag1,time,s1,s3) values('d1',7,'test','test')");
+      statement.execute("insert into db14(tag1,time,s1,s3) values('d1',7,'test','test')");
       fail();
     } catch (SQLException ignored) {
     }

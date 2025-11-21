@@ -233,7 +233,7 @@ public class StorageEngine implements IService {
     WALRecoverManager.getInstance()
         .setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(recoverDataRegionNum));
     for (Map.Entry<String, List<DataRegionId>> entry : localDataRegionInfo.entrySet()) {
-      String sgName = entry.getKey();
+      String dbName = entry.getKey();
       for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
@@ -242,7 +242,7 @@ public class StorageEngine implements IService {
                 dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
-                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+                    "Failed to recover data region {}[{}]", dbName, dataRegionId.getId(), e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
@@ -260,16 +260,16 @@ public class StorageEngine implements IService {
   /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
-    File[] sgDirs = system.listFiles();
+    File[] dbDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
     if (sgDirs == null) {
       return localDataRegionInfo;
     }
-    for (File sgDir : sgDirs) {
+    for (File dbDir : dbDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
-      String sgName = sgDir.getName();
+      String dbName = dbDir.getName();
       List<DataRegionId> dataRegionIdList = new ArrayList<>();
       for (File dataRegionDir : Objects.requireNonNull(sgDir.listFiles())) {
         if (!dataRegionDir.isDirectory()) {

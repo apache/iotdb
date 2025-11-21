@@ -91,10 +91,10 @@ public class SeriesReaderTestUtil {
       List<String> deviceIds,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      String sgName)
+      String dbName)
       throws MetadataException, IOException, WriteProcessException {
-    prepareSeries(measurementSchemas, deviceIds, sgName);
-    prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, sgName);
+    prepareSeries(measurementSchemas, deviceIds, dbName);
+    prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, dbName);
   }
 
   public static void tearDown(
@@ -113,7 +113,7 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> unseqResources,
       List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
-      String sgName)
+      String dbName)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i));
@@ -195,7 +195,7 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<IMeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
+      List<IMeasurementSchema> measurementSchemas, List<String> deviceIds, String dbName) {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(

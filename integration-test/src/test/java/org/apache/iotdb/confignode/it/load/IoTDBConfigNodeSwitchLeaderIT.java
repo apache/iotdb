@@ -88,12 +88,12 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
   @Test
   public void basicDataInheritIT() throws Exception {
-    final String sg0 = "root.db0";
-    final String sg1 = "root.db1";
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
+    final String d00 = db0 + ".d0.s";
+    final String d01 = db0 + ".d1.s";
+    final String d10 = db1 + ".d0.s";
+    final String d11 = db1 + ".d1.s";
 
     TSStatus status;
     TSchemaPartitionTableResp schemaPartitionTableResp0;
@@ -124,9 +124,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TSeriesPartitionSlot(1),
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-      sgSlotsMap.put(sg0, seriesSlotMap);
-      sgSlotsMap.put(sg1, seriesSlotMap);
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+      dbSlotsMap.put(sg0, seriesSlotMap);
+      dbSlotsMap.put(sg1, seriesSlotMap);
       dataPartitionTableResp0 =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
       Assert.assertEquals(
@@ -152,9 +152,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TSeriesPartitionSlot(1),
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-      sgSlotsMap.put(sg0, seriesSlotMap);
-      sgSlotsMap.put(sg1, seriesSlotMap);
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+      dbSlotsMap.put(sg0, seriesSlotMap);
+      dbSlotsMap.put(sg1, seriesSlotMap);
       Assert.assertEquals(
           dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
     }

@@ -93,7 +93,7 @@ public class NodeBuffer implements INodeBuffer {
     CacheEntry cacheEntry = parent.getCacheEntry();
 
     // make sure that the nodeBuffer contains all the root node of volatile subTree
-    // give that root.db.d.s, if sg and d have been persisted and s are volatile, then d
+    // give that root.db.d.s, if db and d have been persisted and s are volatile, then d
     // will be added to nodeBuffer
     synchronized (cacheEntry) {
       // the cacheEntry may be set to volatile concurrently, the unVolatile node should not be

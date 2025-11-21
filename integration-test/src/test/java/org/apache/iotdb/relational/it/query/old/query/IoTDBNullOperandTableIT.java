@@ -43,10 +43,10 @@ public class IoTDBNullOperandTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 BOOLEAN FIELD, s4 BOOLEAN FIELD, s5 TEXT FIELD)",
-        "INSERT INTO sg1(time,device,s1,s3,s4) values(1, 'd1', 1, true, false)",
-        "INSERT INTO sg1(time,device,s1,s3) values(2, 'd1', 2, true)",
-        "INSERT INTO sg1(time,device,s1,s4) values(3, 'd1', 3, false)",
+        "CREATE TABLE db1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 BOOLEAN FIELD, s4 BOOLEAN FIELD, s5 TEXT FIELD)",
+        "INSERT INTO db1(time,device,s1,s3,s4) values(1, 'd1', 1, true, false)",
+        "INSERT INTO db1(time,device,s1,s3) values(2, 'd1', 2, true)",
+        "INSERT INTO db1(time,device,s1,s4) values(3, 'd1', 3, false)",
         "flush",
       };
 
@@ -80,7 +80,7 @@ public class IoTDBNullOperandTableIT {
           "null,null,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select s1+s2, s1-s2, s1*s2, s1/s2, s1%s2, s2%s2 from sg1",
+        "select s1+s2, s1-s2, s1*s2, s1/s2, s1%s2, s2%s2 from db1",
         expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -102,7 +102,7 @@ public class IoTDBNullOperandTableIT {
           "null,null,null,null,null,null,",
         };
     tableResultSetEqualTest(
-        "select s1=s2, s1>s2, s1<s2, s5 like 'test' , s2 in (1,2), s2 between 1 and 3 from sg1",
+        "select s1=s2, s1>s2, s1<s2, s5 like 'test' , s2 in (1,2), s2 between 1 and 3 from db1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -121,7 +121,7 @@ public class IoTDBNullOperandTableIT {
           "1,true,false,true,false,", "2,true,false,true,false,", "3,true,false,true,false,",
         };
     tableResultSetEqualTest(
-        "select s1,s2 is null, s2 is not null, s5 is null, s5 is not null from sg1",
+        "select s1,s2 is null, s2 is not null, s5 is null, s5 is not null from db1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -144,7 +144,7 @@ public class IoTDBNullOperandTableIT {
           "true,false,true,false,", "true,null,true,null,", "null,false,null,false,",
         };
     tableResultSetEqualTest(
-        "select s3 or s3, s4 and s4, s3 or s4, s3 and s4  from sg1",
+        "select s3 or s3, s4 and s4, s3 or s4, s3 and s4  from db1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -158,17 +158,17 @@ public class IoTDBNullOperandTableIT {
         };
     String[] retArray = new String[] {};
     tableResultSetEqualTest(
-        "select s1, s3, s4 from sg1 where s2>0", expectedHeader, retArray, DATABASE_NAME);
+        "select s1, s3, s4 from db1 where s2>0", expectedHeader, retArray, DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "select s1, s3, s4 from sg1 where s2 is not null", expectedHeader, retArray, DATABASE_NAME);
+        "select s1, s3, s4 from db1 where s2 is not null", expectedHeader, retArray, DATABASE_NAME);
 
     retArray =
         new String[] {
           "1,true,false,", "2,true,null,", "3,null,false,",
         };
     tableResultSetEqualTest(
-        "select s1, s3, s4 from sg1 where s2 is null and s5 is null",
+        "select s1, s3, s4 from db1 where s2 is null and s5 is null",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -182,7 +182,7 @@ public class IoTDBNullOperandTableIT {
           "s1", "s3", "s4",
         };
     tableResultSetEqualTest(
-        "select s1, s3, s4 from sg1 where s2 is null and s5 is null order by device",
+        "select s1, s3, s4 from db1 where s2 is null and s5 is null order by device",
         expectedHeader,
         retArray,
         DATABASE_NAME);

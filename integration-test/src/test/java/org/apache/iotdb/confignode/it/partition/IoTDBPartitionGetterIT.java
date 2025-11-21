@@ -83,7 +83,7 @@ public class IoTDBPartitionGetterIT {
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 5;
 
-  private static final String sg = "root.db";
+  private static final String db = "root.db";
   private static final int databaseNum = 2;
   private static final int testSeriesPartitionSlotNum = 1000;
   private static final int seriesPartitionBatchSize = 10;
@@ -123,13 +123,13 @@ public class IoTDBPartitionGetterIT {
       }
 
       /* Create SchemaPartitions */
-      final String sg0 = "root.db0";
-      final String sg1 = "root.db1";
+      final String db0 = "root.db0";
+      final String db1 = "root.db1";
 
-      final String d00 = sg0 + ".d0.s";
-      final String d01 = sg0 + ".d1.s";
-      final String d10 = sg1 + ".d0.s";
-      final String d11 = sg1 + ".d1.s";
+      final String d00 = db0 + ".d0.s";
+      final String d01 = db0 + ".d1.s";
+      final String d10 = db1 + ".d0.s";
+      final String d11 = db1 + ".d1.s";
 
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
       TSchemaPartitionTableResp schemaPartitionTableResp;
@@ -150,7 +150,7 @@ public class IoTDBPartitionGetterIT {
 
       /* Create DataPartitions */
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
@@ -202,11 +202,11 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSchemaPartition() throws Exception {
-    final String sg = "root.db";
-    final String sg0 = "root.db0";
-    final String sg1 = "root.db1";
+    final String db = "root.db";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
-    final String d11 = sg1 + ".d1.s";
+    final String d11 = db1 + ".d1.s";
 
     final String allPaths = "root.db*";
     final String allSg0 = "root.db0.**";
@@ -276,7 +276,7 @@ public class IoTDBPartitionGetterIT {
       // Prepare partitionSlotsMap
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg + 10, 0, 10, 0, 10, testTimePartitionInterval);
+              db + 10, 0, 10, 0, 10, testTimePartitionInterval);
 
       // Test getDataPartitionTable, the result should be empty
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
@@ -299,7 +299,7 @@ public class IoTDBPartitionGetterIT {
       leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testDataRegionGroupPerDatabase);
 
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
           for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
@@ -344,8 +344,8 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSlots() throws Exception {
-    final String sg0 = "root.db0";
-    final String sg1 = "root.db1";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
     final IDeviceID d00 = Factory.DEFAULT_FACTORY.create(sg0 + ".d0.s");
     final IDeviceID d01 = Factory.DEFAULT_FACTORY.create(sg0 + ".d1.s");
@@ -394,7 +394,7 @@ public class IoTDBPartitionGetterIT {
 
       // Get all RegionIds within database
       for (int i = 0; i < databaseNum; i++) {
-        String curSg = sg + i;
+        String curSg = db + i;
         getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
         getRegionIdReq.setDatabase(curSg);
         getRegionIdResp = client.getRegionId(getRegionIdReq);

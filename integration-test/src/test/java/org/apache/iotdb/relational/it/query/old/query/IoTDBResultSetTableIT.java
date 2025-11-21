@@ -57,7 +57,7 @@ public class IoTDBResultSetTableIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "CREATE TABLE t1(device STRING TAG, status BOOLEAN FIELD, temperature FLOAT FIELD, type INT32 FIELD, grade INT64 FIELD)",
-        "CREATE TABLE sg(device STRING TAG, status FLOAT FIELD)",
+        "CREATE TABLE db(device STRING TAG, status FLOAT FIELD)",
       };
 
   private static final String[] emptyResultSet = new String[] {};
@@ -119,7 +119,7 @@ public class IoTDBResultSetTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
 
-      try (ResultSet resultSet = statement.executeQuery("select * from sg")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from db")) {
         Assert.assertTrue(!resultSet.next());
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(3, metaData.getColumnCount());
@@ -144,7 +144,7 @@ public class IoTDBResultSetTableIT {
 
   @Test
   public void emptyQueryTest1() {
-    tableAssertTestFail("select * from sg1", "550: Table 'test.sg1' does not exist", DATABASE_NAME);
+    tableAssertTestFail("select * from db1", "550: Table 'test.sg1' does not exist", DATABASE_NAME);
   }
 
   @Test
@@ -201,6 +201,6 @@ public class IoTDBResultSetTableIT {
             + ","
             + ColumnHeaderConstant.DATATYPE
             + ",";
-    resultSetEqualTest("select last s1 from sg", expectedHeader, emptyResultSet);
+    resultSetEqualTest("select last s1 from db", expectedHeader, emptyResultSet);
   }
 }

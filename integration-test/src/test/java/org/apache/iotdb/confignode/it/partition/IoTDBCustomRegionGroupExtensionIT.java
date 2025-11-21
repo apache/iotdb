@@ -62,7 +62,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
 
-  private static final String sg = "root.db";
+  private static final String db = "root.db";
   private static final int testSgNum = 2;
 
   @Before
@@ -96,7 +96,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       for (int i = 0; i < testSgNum; i++) {
-        String curSg = sg + i;
+        String curSg = db + i;
 
         /* Set Database */
         TSStatus status = client.setDatabase(new TDatabaseSchema(curSg));

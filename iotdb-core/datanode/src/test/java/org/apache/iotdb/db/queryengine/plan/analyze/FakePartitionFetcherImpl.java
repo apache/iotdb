@@ -129,7 +129,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     String device1 = "root.db.d1";
     String device2 = "root.db.d22";
     String device3 = "root.db.d333";
@@ -140,7 +140,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbPartitionMap =
         new HashMap<>();
 
     List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
@@ -205,11 +205,11 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
     d3DataRegionMap.put(new TTimePartitionSlot(), d3DataRegions);
 
-    sgPartitionMap.put(new TSeriesPartitionSlot(device1.length()), d1DataRegionMap);
-    sgPartitionMap.put(new TSeriesPartitionSlot(device2.length()), d2DataRegionMap);
-    sgPartitionMap.put(new TSeriesPartitionSlot(device3.length()), d3DataRegionMap);
+    dbPartitionMap.put(new TSeriesPartitionSlot(device1.length()), d1DataRegionMap);
+    dbPartitionMap.put(new TSeriesPartitionSlot(device2.length()), d2DataRegionMap);
+    dbPartitionMap.put(new TSeriesPartitionSlot(device3.length()), d3DataRegionMap);
 
-    dataPartitionMap.put("root.db", sgPartitionMap);
+    dataPartitionMap.put("root.db", dbPartitionMap);
 
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
@@ -218,13 +218,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     return getDataPartition(sgNameToQueryParamsMap);
   }
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     return null;
   }
 
@@ -240,9 +240,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbPartitionMap =
         new HashMap<>();
-    dataPartitionMap.put("root.db", sgPartitionMap);
+    dataPartitionMap.put("root.db", dbPartitionMap);
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
     List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
@@ -285,7 +285,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
       TSeriesPartitionSlot seriesPartitionSlot =
           partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
-          sgPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
+          dbPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
       for (TTimePartitionSlot timePartitionSlot :
           dataPartitionQueryParam.getTimePartitionSlotList()) {
         if (timePartitionSlot.startTime == 0) {

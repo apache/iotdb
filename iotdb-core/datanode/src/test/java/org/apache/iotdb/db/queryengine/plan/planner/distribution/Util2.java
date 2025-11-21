@@ -97,20 +97,20 @@ public class Util2 {
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbPartitionMap =
         new HashMap<>();
 
     SeriesPartitionExecutor executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
-    sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
+    dbPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
+    dbPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    dataPartitionMap.put("root.db", sgPartitionMap);
+    dataPartitionMap.put("root.db", dbPartitionMap);
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
     Analysis analysis = new Analysis();
@@ -151,15 +151,15 @@ public class Util2 {
   private static ISchemaTree genSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
-    root.addChild("sg", sg);
+    SchemaNode db = new SchemaInternalNode("sg");
+    root.addChild("sg", db);
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
     SchemaMeasurementNode s2 =
         new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
     d1.addChild("s1", s1);
     d1.addChild("s2", s2);
 
@@ -170,7 +170,7 @@ public class Util2 {
         new SchemaMeasurementNode("s2", new MeasurementSchema("t2", TSDataType.DOUBLE));
     SchemaMeasurementNode t3 =
         new SchemaMeasurementNode("s3", new MeasurementSchema("t3", TSDataType.DOUBLE));
-    sg.addChild("d2", d2);
+    db.addChild("d2", d2);
     d2.addChild("s1", t1);
     d2.addChild("s2", t2);
     d2.addChild("s3", t3);
@@ -295,19 +295,19 @@ public class Util2 {
 
       @Override
       public DataPartition getDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 

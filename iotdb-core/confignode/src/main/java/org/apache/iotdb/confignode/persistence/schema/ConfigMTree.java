@@ -159,7 +159,7 @@ public class ConfigMTree {
     // only write operations on mtree will be synchronized
     synchronized (this) {
       if (store.hasChild(cur, nodeNames[i])) {
-        // node b has child sg
+        // node b has child db
         throw store.getChild(cur, nodeNames[i]).isDatabase()
             ? new DatabaseAlreadySetException(path.getFullPath())
             : new DatabaseConflictException(path.getFullPath(), true);
@@ -181,7 +181,7 @@ public class ConfigMTree {
     final IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
     IConfigMNode cur = databaseMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
-    // delete the database node sg1
+    // delete the database node db1
     store.deleteChild(cur, databaseMNode.getName());
 
     // delete node a while retain root.a.sg2
@@ -289,7 +289,7 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.db is database given [root, sg], if the give path is not a database, throw exception
+   * E.g., root.db is database given [root, db], if the give path is not a database, throw exception
    */
   public IDatabaseMNode<IConfigMNode> getDatabaseNodeByDatabasePath(final PartialPath databasePath)
       throws MetadataException {
@@ -320,7 +320,7 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.db is database given [root, sg], return the MNode of root.db given [root, sg,
+   * E.g., root.db is database given [root, db], return the MNode of root.db given [root, db,
    * device], return the MNode of root.db Get database node, the give path don't need to be database
    * path.
    */

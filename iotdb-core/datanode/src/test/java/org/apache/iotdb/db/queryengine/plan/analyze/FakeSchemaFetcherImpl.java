@@ -109,8 +109,8 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
-    root.addChild("sg", sg);
+    SchemaNode db = new SchemaInternalNode("sg");
+    root.addChild("sg", db);
 
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
@@ -127,14 +127,14 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     s2.setAlias("status");
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
     d1.addChild("s1", s1);
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
     d1.addChild("s3", s3);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
-    sg.addChild("d2", d2);
+    db.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);

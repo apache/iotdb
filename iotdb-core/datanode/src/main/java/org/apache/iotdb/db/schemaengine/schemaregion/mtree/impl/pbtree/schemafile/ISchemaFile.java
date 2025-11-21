@@ -38,10 +38,10 @@ public interface ISchemaFile {
   /**
    * Modify header of pbtree file corresponding to the database node synchronously
    *
-   * @param sgNode node to be updated
+   * @param dbNode node to be updated
    * @return true if success
    */
-  boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException;
+  boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> dbNode) throws IOException;
 
   /**
    * Only database node along with its descendents could be flushed into pbtree file.

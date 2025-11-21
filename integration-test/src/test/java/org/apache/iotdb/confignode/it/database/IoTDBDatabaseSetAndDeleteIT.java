@@ -68,8 +68,8 @@ public class IoTDBDatabaseSetAndDeleteIT {
   @Test
   public void testSetAndQueryDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.db0";
-    final String sg1 = "root.db1";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -161,8 +161,8 @@ public class IoTDBDatabaseSetAndDeleteIT {
   @Test
   public void testDeleteDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.db0";
-    final String sg1 = "root.db1";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -175,7 +175,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       status = client.setDatabase(databaseSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       TDeleteDatabasesReq deleteDatabasesReq = new TDeleteDatabasesReq();
-      List<String> sgs = Arrays.asList(sg0, sg1);
+      List<String> dbs = Arrays.asList(sg0, db1);
       deleteDatabasesReq.setPrefixPathList(sgs);
       TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =

@@ -379,7 +379,7 @@ public class PartialPathTest {
     arr2[0] = "d1";
     arr2[1] = "s1";
     PartialPath b = new PartialPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
     Assert.assertEquals("s1", b.getTailNode());
     Assert.assertEquals("root.db1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
     Assert.assertEquals("root.db1", a.toString());
@@ -392,7 +392,7 @@ public class PartialPathTest {
     arr2[0] = "d1";
     arr2[1] = "s1";
     a.concatPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.getNodes()));
   }
 
   @Test
@@ -402,7 +402,7 @@ public class PartialPathTest {
     arr1[1] = "sg1";
     PartialPath a = new PartialPath(arr1);
     PartialPath b = a.concatNode("d1");
-    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(b.getNodes()));
+    Assert.assertEquals("[root, db1, d1]", Arrays.toString(b.getNodes()));
     Assert.assertEquals("root.db1.d1", b.getFullPath());
     Assert.assertTrue(b.startsWithOrPrefixOf(arr1));
     Assert.assertEquals("root", b.getFirstNode());

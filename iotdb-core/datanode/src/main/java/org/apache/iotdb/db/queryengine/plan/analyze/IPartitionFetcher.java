@@ -55,27 +55,27 @@ public interface IPartitionFetcher {
   /**
    * Get data partition, used in query scenarios.
    *
-   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   * @param dbNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
-  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap);
 
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
    *
-   * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   * @return dbNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap);
 
   /**
    * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is
    * true and database/series/time slots not exists, then automatically create.
    *
-   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   * @param dbNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getOrCreateDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap);
 
   /**
    * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is

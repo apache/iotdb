@@ -139,7 +139,7 @@ public class MetaUtilsTest {
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals(
-          "root is not a legal path, because it is no longer than default sg level: 1",
+          "root is not a legal path, because it is no longer than default db level: 1",
           e.getMessage());
     }
     assertTrue(caughtException);

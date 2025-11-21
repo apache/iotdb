@@ -88,7 +88,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private final String storageGroup = "root.vehicle";
-  private DataRegionInfo sgInfo;
+  private DataRegionInfo dbInfo;
   private final String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private final String deviceId = "root.vehicle.d0";
   private final String measurementId = "s0";
@@ -112,7 +112,7 @@ public class TsFileProcessorTest {
     defaultTargetChunkPointNum = config.getTargetChunkPointNum();
     defaultTargetChunkSize = config.getTargetChunkSize();
     EnvironmentUtils.envSetUp();
-    sgInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
+    dbInfo = new DataRegionInfo(new DataRegionTest.DummyDataRegion(systemDir, storageGroup));
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
@@ -141,7 +141,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -216,7 +216,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -291,7 +291,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -370,7 +370,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -456,7 +456,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -545,7 +545,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -628,7 +628,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -670,7 +670,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -721,7 +721,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -815,7 +815,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -866,7 +866,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -886,7 +886,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -959,7 +959,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -981,7 +981,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -1063,7 +1063,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -1087,7 +1087,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -1123,7 +1123,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -1148,7 +1148,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
@@ -1185,7 +1185,7 @@ public class TsFileProcessorTest {
         new TsFileProcessor(
             storageGroup,
             SystemFileFactory.INSTANCE.getFile(filePath),
-            sgInfo,
+            dbInfo,
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);

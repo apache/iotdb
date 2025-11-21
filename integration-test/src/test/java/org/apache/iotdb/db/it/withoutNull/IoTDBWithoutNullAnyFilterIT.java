@@ -1337,7 +1337,7 @@ public class IoTDBWithoutNullAnyFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.* is not null && sg1.s2 is not null")) {
+              "select db1.s1, db1.s2, db2.s3, db3.* from root.test where db3.* is not null && db1.s2 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1364,7 +1364,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.* is not null")) {
+              "select db1.s1, db1.s2, db2.s3, db3.* from root.test where db3.* is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1391,7 +1391,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.s5 is not null && sg3.s6 is not null")) {
+              "select db1.s1, db1.s2, db2.s3, db3.* from root.test where db3.s5 is not null && db3.s6 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1418,7 +1418,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.s5 is not null && sg3.s6 is not null && sg2.s3 is not null")) {
+              "select db1.s1, db1.s2, db2.s3, db3.* from root.test where db3.s5 is not null && db3.s6 is not null && db2.s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1445,7 +1445,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg1.s1 is not null && sg1.s2 is not null && sg2.s3 is not null && sg3.* is not null")) {
+              "select db1.s1, db1.s2, db2.s3, db3.* from root.test where db1.s1 is not null && db1.s2 is not null && db2.s3 is not null && db3.* is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =

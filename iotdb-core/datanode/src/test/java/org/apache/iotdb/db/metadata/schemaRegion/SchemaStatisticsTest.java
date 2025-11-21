@@ -79,9 +79,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(6000);
       // schemaRegion1
-      final IMNode<ICachedMNode> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
-      sg1.setFullPath("root.db1");
-      final long size1 = sg1.estimateSize();
+      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      db1.setFullPath("root.db1");
+      final long size1 = db1.estimateSize();
       if (size1 != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
         // There are two possibilities here in PartialMemory mode:
         // 1. only the "sg1" node remains
@@ -126,14 +126,14 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      final IMNode<?> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
-      sg1.setFullPath("root.db1");
-      final long size1 = sg1.estimateSize();
+      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      db1.setFullPath("root.db1");
+      final long size1 = db1.estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
-      sg2.setFullPath("root.db2");
-      long size2 = sg2.estimateSize();
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      db2.setFullPath("root.db2");
+      long size2 = db2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
       Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     } else {
@@ -142,9 +142,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      final IMNode<?> sg1 = nodeFactory.createDatabaseMNode(null, "sg1");
-      sg1.setFullPath("root.db1");
-      long size1 = sg1.estimateSize();
+      final IMNode<?> db1 = nodeFactory.createDatabaseMNode(null, "sg1");
+      db1.setFullPath("root.db1");
+      long size1 = db1.estimateSize();
       IMNode<?> tmp = nodeFactory.createDeviceMNode(sg1, "v");
       size1 += tmp.estimateSize();
       tmp =
@@ -172,9 +172,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
-      sg2.setFullPath("root.db2");
-      long size2 = sg2.estimateSize();
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      db2.setFullPath("root.db2");
+      long size2 = db2.estimateSize();
       tmp = nodeFactory.createInternalMNode(sg2, "d1");
       size2 += tmp.estimateSize();
       tmp = nodeFactory.createDeviceMNode(tmp, "v");
@@ -235,9 +235,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      final IMNode<ICachedMNode> sg1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
-      sg1.setFullPath("root.db1");
-      final long size1 = sg1.estimateSize();
+      final IMNode<ICachedMNode> db1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
+      db1.setFullPath("root.db1");
+      final long size1 = db1.estimateSize();
       if (sg1.estimateSize() != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
         // "d0" or "d1" node may remain in PartialMemory mode
         Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
@@ -245,7 +245,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
             size1
                 + nodeFactory
                     .createMeasurementMNode(
-                        sg1.getAsDeviceMNode(),
+                        db1.getAsDeviceMNode(),
                         "d0",
                         new MeasurementSchema(
                             "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
@@ -263,9 +263,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       }
       // schemaRegion2
-      final IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
-      sg2.setFullPath("root.db2");
-      final long size2 = sg2.estimateSize();
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      db2.setFullPath("root.db2");
+      final long size2 = db2.estimateSize();
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
       Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     } else {
@@ -274,12 +274,12 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
               : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
-      final IMNode<?> sg1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
-      sg1.setFullPath("root.db1");
-      long size1 = sg1.estimateSize();
+      final IMNode<?> db1 = nodeFactory.createDatabaseDeviceMNode(null, "sg1");
+      db1.setFullPath("root.db1");
+      long size1 = db1.estimateSize();
       IMNode<?> tmp =
           nodeFactory.createMeasurementMNode(
-              sg1.getAsDeviceMNode(),
+              db1.getAsDeviceMNode(),
               "d0",
               new MeasurementSchema(
                   "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
@@ -300,9 +300,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               .estimateSize();
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
-      final IMNode<?> sg2 = nodeFactory.createDatabaseMNode(null, "sg2");
-      sg2.setFullPath("root.db2");
-      long size2 = sg2.estimateSize();
+      final IMNode<?> db2 = nodeFactory.createDatabaseMNode(null, "sg2");
+      db2.setFullPath("root.db2");
+      long size2 = db2.estimateSize();
       tmp = nodeFactory.createDeviceMNode(sg2, "d1");
       size2 += tmp.estimateSize();
       size2 +=

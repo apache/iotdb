@@ -597,7 +597,7 @@ public class MTreeBelowSGCachedImpl {
     ICachedMNode child;
     String childName;
     try {
-      // e.g, path = root.db.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+      // e.g, path = root.db.d1.s1,  create internal nodes and set cur to db node, parent of d1
       for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
@@ -620,7 +620,7 @@ public class MTreeBelowSGCachedImpl {
   private ICachedMNode checkAndAutoCreateDeviceNode(String deviceName, ICachedMNode deviceParent)
       throws MetadataException {
     if (deviceParent == null) {
-      // device is sg
+      // device is db
       pinMNode(databaseMNode);
       return databaseMNode;
     }

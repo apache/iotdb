@@ -31,7 +31,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   private List<String> columnInfoList;
   private List<String> columnTypeList;
   private boolean ignoreTimestamp;
-  private List<String> sgColumns;
+  private List<String> dbColumns;
   private String operationType = "";
   private boolean nonAlign = false;
 
@@ -53,12 +53,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
       Boolean nonAlign,
-      List<String> sgColumns,
+      List<String> dbColumns,
       String operationType,
       List<String> columnInfoList,
       List<String> columnTypeList,
       boolean ignoreTimestamp) {
-    this.sgColumns = sgColumns;
+    this.sgColumns = dbColumns;
     this.operationType = operationType;
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
@@ -134,9 +134,9 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       return systemNull;
     }
     if (nonAlign) {
-      return sgColumns.get(column - 1);
+      return dbColumns.get(column - 1);
     } else {
-      return sgColumns.get(column - 2);
+      return dbColumns.get(column - 2);
     }
   }
 

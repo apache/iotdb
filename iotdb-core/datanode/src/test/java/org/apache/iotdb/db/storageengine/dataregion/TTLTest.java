@@ -79,14 +79,14 @@ import static org.junit.Assert.fail;
 
 public class TTLTest {
 
-  private String sg1Device = "root.TTL_SG1.d1";
+  private String db1Device = "root.TTL_SG1.d1";
   private DataRegionId dataRegionId1 = new DataRegionId(1);
-  private String sg2Device = "root.TTL_SG2.d1";
+  private String db2Device = "root.TTL_SG2.d1";
   private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
   private DataRegion dataRegion;
   private String s1 = "s1";
-  private String g1s1 = sg1Device + IoTDBConstant.PATH_SEPARATOR + s1;
+  private String g1s1 = db1Device + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
   @Before
@@ -99,7 +99,7 @@ public class TTLTest {
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
-            sg1Device);
+            db1Device);
     //    createSchemas();
   }
 
@@ -336,8 +336,8 @@ public class TTLTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
-    File seqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, true), sg1Device);
-    File unseqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, false), sg1Device);
+    File seqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, true), db1Device);
+    File unseqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, false), db1Device);
 
     List<File> seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {
@@ -436,13 +436,13 @@ public class TTLTest {
     SetTTLStatement statement1 =
         (SetTTLStatement)
             StatementGenerator.createStatement(
-                "SET TTL TO " + sg1Device + " 10000", ZoneId.systemDefault());
+                "SET TTL TO " + db1Device + " 10000", ZoneId.systemDefault());
     assertEquals(sg1Device, statement1.getPath().getFullPath());
     assertEquals(10000, statement1.getTTL());
 
     UnSetTTLStatement statement2 =
         (UnSetTTLStatement)
-            StatementGenerator.createStatement("UNSET TTL TO " + sg2Device, ZoneId.systemDefault());
+            StatementGenerator.createStatement("UNSET TTL TO " + db2Device, ZoneId.systemDefault());
     assertEquals(sg2Device, statement2.getPath().getFullPath());
     assertEquals(TTLCache.NULL_TTL, statement2.getTTL());
   }

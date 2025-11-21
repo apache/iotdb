@@ -300,7 +300,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
+    File dbSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
         logger.info("create database schema folder {}", databaseDirPath);

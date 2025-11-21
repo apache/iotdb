@@ -2246,11 +2246,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             CONFIG.getSeriesPartitionExecutorClass(),
             CONFIG.getSeriesPartitionSlotNum());
       }
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap = new HashMap<>();
       for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
             new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
+        dbNameToQueryParamsMap
             .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
@@ -3574,13 +3574,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSchemaTree(schemaTree);
     context.setReleaseSchemaTreeAfterAnalyzing(false);
 
-    Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+    Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap = new HashMap<>();
 
     deduplicatedDeviceIDs.forEach(
         deviceID -> {
           DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
           queryParam.setDeviceID(deviceID);
-          sgNameToQueryParamsMap
+          dbNameToQueryParamsMap
               .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
               .add(queryParam);
         });

@@ -43,14 +43,14 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
    * Test IoTDB pipe handling TsFile decomposition with Mods (modification operations) in table
    * model
    *
-   * <p>Test scenario: 1. Create two storage groups sg1 and sg2, each containing table1 2. Insert
-   * small amount of data in sg1 (1-6 rows), insert large amount of data in sg2 (110 batches, 100
+   * <p>Test scenario: 1. Create two storage groups db1 and db2, each containing table1 2. Insert
+   * small amount of data in db1 (1-6 rows), insert large amount of data in db2 (110 batches, 100
    * rows per batch) 3. Execute FLUSH operation to persist data to TsFile 4. Execute multiple DELETE
-   * operations on sg1, deleting data in time ranges 2-4 and 3-5 5. Execute multiple DELETE
-   * operations on sg2, deleting data matching specific conditions (s0-s3 field values) 6. Execute
+   * operations on db1, deleting data in time ranges 2-4 and 3-5 5. Execute multiple DELETE
+   * operations on db2, deleting data matching specific conditions (s0-s3 field values) 6. Execute
    * FLUSH operation again 7. Create pipe with mods enabled, synchronize data to receiver 8. Verify
-   * correctness of receiver data: - sg1 only retains time=1 data, time=2-4 data is correctly
-   * deleted - sg2 DELETE operation results meet expectations (t10 retains 1000 rows, t11 all
+   * correctness of receiver data: - db1 only retains time=1 data, time=2-4 data is correctly
+   * deleted - db2 DELETE operation results meet expectations (t10 retains 1000 rows, t11 all
    * deleted, t12 retains 5900 rows, etc.)
    *
    * <p>Test purpose: Verify that IoTDB pipe can correctly handle Mods (modification operations) in

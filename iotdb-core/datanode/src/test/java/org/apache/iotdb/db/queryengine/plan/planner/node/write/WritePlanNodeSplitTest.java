@@ -105,7 +105,7 @@ public class WritePlanNodeSplitTest {
             new TEndPoint("127.0.0.1", 10740),
             new TEndPoint("127.0.0.1", 10760),
             new TEndPoint("127.0.0.1", 10750)));
-    // sg1 has 7 data regions
+    // db1 has 7 data regions
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = -2; t < 5; t++) {
@@ -124,7 +124,7 @@ public class WritePlanNodeSplitTest {
 
     dataPartitionMap.put("root.db1", seriesPartitionSlotMap);
 
-    // sg2 has 1 data region
+    // db2 has 1 data region
     seriesPartitionSlotMap = new HashMap<>();
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();

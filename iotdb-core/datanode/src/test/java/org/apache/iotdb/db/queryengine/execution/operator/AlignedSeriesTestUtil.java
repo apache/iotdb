@@ -63,10 +63,10 @@ public class AlignedSeriesTestUtil {
       List<IMeasurementSchema> measurementSchemas,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      String sgName)
+      String dbName)
       throws MetadataException, IOException, WriteProcessException {
-    prepareSeries(measurementSchemas, sgName);
-    prepareFiles(seqResources, unseqResources, measurementSchemas, sgName);
+    prepareSeries(measurementSchemas, dbName);
+    prepareFiles(seqResources, unseqResources, measurementSchemas, dbName);
   }
 
   public static void tearDown(
@@ -84,7 +84,7 @@ public class AlignedSeriesTestUtil {
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       List<IMeasurementSchema> measurementSchemas,
-      String sgName)
+      String dbName)
       throws IOException, WriteProcessException {
     int seqFileNum = 5;
     long ptNum = 100;
@@ -106,7 +106,7 @@ public class AlignedSeriesTestUtil {
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(
-          sgName,
+          dbName,
           tsFileResource,
           i * ptNum,
           ptNum * (i + 1) / unseqFileNum,
@@ -124,7 +124,7 @@ public class AlignedSeriesTestUtil {
   }
 
   private static void prepareFile(
-      String sgName,
+      String dbName,
       TsFileResource tsFileResource,
       long timeOffset,
       long ptNum,
@@ -137,9 +137,9 @@ public class AlignedSeriesTestUtil {
     }
     TsFileWriter fileWriter = new TsFileWriter(file);
 
-    String device0 = sgName + PATH_SEPARATOR + "device0";
-    String device1 = sgName + PATH_SEPARATOR + "device1";
-    String device2 = sgName + PATH_SEPARATOR + "device2";
+    String device0 = dbName + PATH_SEPARATOR + "device0";
+    String device1 = dbName + PATH_SEPARATOR + "device1";
+    String device2 = dbName + PATH_SEPARATOR + "device2";
 
     fileWriter.registerAlignedTimeseries(new Path(device0), measurementSchemas);
     fileWriter.registerAlignedTimeseries(new Path(device1), measurementSchemas);
@@ -180,7 +180,7 @@ public class AlignedSeriesTestUtil {
     fileWriter.close();
   }
 
-  private static void prepareSeries(List<IMeasurementSchema> measurementSchemas, String sgName)
+  private static void prepareSeries(List<IMeasurementSchema> measurementSchemas, String dbName)
       throws MetadataException {
 
     measurementSchemas.add(

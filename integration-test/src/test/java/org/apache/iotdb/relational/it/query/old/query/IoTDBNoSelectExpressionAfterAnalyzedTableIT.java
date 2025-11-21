@@ -42,9 +42,9 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD)",
-        "insert into sg(time,device,s1) values(1,'d1',1)",
-        "insert into sg(time,device,s1,s2) values(1,'d1',1,1)"
+        "CREATE TABLE db(device STRING TAG, s1 INT32 FIELD)",
+        "insert into db(time,device,s1) values(1,'d1',1)",
+        "insert into db(time,device,s1,s2) values(1,'d1',1,1)"
       };
 
   @BeforeClass
@@ -63,24 +63,24 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR};
     String[] retArray = new String[] {};
     tableAssertTestFail(
-        "select s2 from sg where s1>0 order by device",
+        "select s2 from db where s1>0 order by device",
         "616: Column 's2' cannot be resolved",
         DATABASE_NAME);
 
     // TODO After Aggregation supported
     /*tableResultSetEqualTest(
-    "select count(s2) from sg where s1>0 order by device", expectedHeader, retArray,DATABASE_NAME);*/
+    "select count(s2) from db where s1>0 order by device", expectedHeader, retArray,DATABASE_NAME);*/
 
     // mix test
     /* expectedHeader = new String[] {DEVICE, count(s1), count(s2)};
     retArray = new String[] {"sg,1,null,", "root.db.d2,1,1,"};
     tableResultSetEqualTest(
-        "select count(s1), count(s2) from sg where s1>0 order by device",
+        "select count(s1), count(s2) from db where s1>0 order by device",
         expectedHeader,
         retArray,DATABASE_NAME);*/
 
     tableAssertTestFail(
-        "select s1, s2 from sg where s1>0 order by device",
+        "select s1, s2 from db where s1>0 order by device",
         "616: Column 's2' cannot be resolved",
         DATABASE_NAME);
   }
@@ -88,8 +88,8 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
   @Test
   public void testAlignByTime() {
     tableAssertTestFail(
-        "select s2 from sg where s1>0", "616: Column 's2' cannot be resolved", DATABASE_NAME);
+        "select s2 from db where s1>0", "616: Column 's2' cannot be resolved", DATABASE_NAME);
 
-    /*tableResultSetEqualTest("select count(s2) from sg where s1>0", expectedHeader, retArray,DATABASE_NAME);*/
+    /*tableResultSetEqualTest("select count(s2) from db where s1>0", expectedHeader, retArray,DATABASE_NAME);*/
   }
 }

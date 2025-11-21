@@ -69,7 +69,7 @@ public class SchemaFile implements ISchemaFile {
   // TODO: Useless
   private long dataTTL;
   private boolean isEntity;
-  private int sgNodeTemplateIdWithState;
+  private int dbNodeTemplateIdWithState;
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
@@ -84,10 +84,10 @@ public class SchemaFile implements ISchemaFile {
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
-  private static String getDirPath(String sgName, int schemaRegionId) {
+  private static String getDirPath(String dbName, int schemaRegionId) {
     return SchemaFileConfig.SCHEMA_FOLDER
         + File.separator
-        + sgName
+        + dbName
         + File.separator
         + schemaRegionId;
   }
@@ -97,10 +97,10 @@ public class SchemaFile implements ISchemaFile {
   // todo refactor constructor for schema file in Jan.
   @SuppressWarnings("java:S899")
   private SchemaFile(
-      String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
+      String dbName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
-    this.storageGroupName = sgName;
+    this.storageGroupName = dbName;
     this.filePath = dirPath + File.separator + SchemaConstant.PBTREE_FILE_NAME;
     this.logPath = dirPath + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
 
@@ -148,13 +148,13 @@ public class SchemaFile implements ISchemaFile {
   }
 
   // load or init
-  public static SchemaFile initSchemaFile(String sgName, int schemaRegionId)
+  public static SchemaFile initSchemaFile(String dbName, int schemaRegionId)
       throws IOException, MetadataException {
     File pmtFile =
         SystemFileFactory.INSTANCE.getFile(
             getDirPath(sgName, schemaRegionId) + File.separator + SchemaConstant.PBTREE_FILE_NAME);
     return new SchemaFile(
-        sgName,
+        dbName,
         schemaRegionId,
         !pmtFile.exists()
             || IoTDBDescriptor.getInstance()
@@ -165,7 +165,7 @@ public class SchemaFile implements ISchemaFile {
         false);
   }
 
-  public static SchemaFile loadSchemaFile(String sgName, int schemaRegionId)
+  public static SchemaFile loadSchemaFile(String dbName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
   }
@@ -182,21 +182,21 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public ICachedMNode init() throws MetadataException {
     ICachedMNode resNode;
-    String[] sgPathNodes =
+    String[] dbPathNodes =
         storageGroupName == null
             ? new String[] {"noName"}
             : PathUtils.splitPathToDetachedNodes(storageGroupName);
     if (isEntity) {
       resNode =
           setNodeAddress(
-              nodeFactory.createDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1]), 0L);
+              nodeFactory.createDatabaseDeviceMNode(null, dbPathNodes[sgPathNodes.length - 1]), 0L);
       resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
       resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
               nodeFactory
-                  .createDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1])
+                  .createDatabaseMNode(null, dbPathNodes[sgPathNodes.length - 1])
                   .getAsMNode(),
               0L);
     }
@@ -205,10 +205,10 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException {
-    this.isEntity = sgNode.isDevice();
+  public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> dbNode) throws IOException {
+    this.isEntity = dbNode.isDevice();
     if (sgNode.isDevice()) {
-      this.sgNodeTemplateIdWithState = sgNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
+      this.sgNodeTemplateIdWithState = dbNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
     }
     updateHeaderBuffer();
     return true;
@@ -365,7 +365,7 @@ public class SchemaFile implements ISchemaFile {
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
-      sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
+      dbNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
       lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
 
       if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
@@ -478,7 +478,7 @@ public class SchemaFile implements ISchemaFile {
     }
   }
 
-  public static SchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
+  public static SchemaFile loadSnapshot(File snapshotDir, String dbName, int schemaRegionId)
       throws IOException, MetadataException {
     File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     if (!snapshot.exists()) {

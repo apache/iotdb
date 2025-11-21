@@ -72,10 +72,10 @@ public class SettleService implements IService {
 
     /* Classify the file paths by the SG, and then call the methods of StorageGroupProcessor of each
     SG in turn to get the TsFileResources.*/
-    Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // sgPath -> tsFilePaths
+    Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // dbPath -> tsFilePaths
     try {
       for (String filePath : TsFileAndModSettleTool.getInstance().recoverSettleFileMap.keySet()) {
-        PartialPath sgPath = getSGByFilePath(filePath);
+        PartialPath dbPath = getSGByFilePath(filePath);
         if (tmpSgResourcesMap.containsKey(sgPath)) {
           List<String> filePaths = tmpSgResourcesMap.get(sgPath);
           filePaths.add(filePath);
@@ -145,16 +145,16 @@ public class SettleService implements IService {
   }
 
   public PartialPath getSGByFilePath(String tsFilePath) throws WriteProcessException {
-    PartialPath sgPath = null;
+    PartialPath dbPath = null;
     try {
-      sgPath =
+      dbPath =
           new PartialPath(
               new File(tsFilePath).getParentFile().getParentFile().getParentFile().getName());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(
-          "Fail to get sg of this tsFile while parsing the file path.", e);
+          "Fail to get db of this tsFile while parsing the file path.", e);
     }
-    return sgPath;
+    return dbPath;
   }
 
   private void submitSettleTask(SettleTask settleTask) throws WriteProcessException {

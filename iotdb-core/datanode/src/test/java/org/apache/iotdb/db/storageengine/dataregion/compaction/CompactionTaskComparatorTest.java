@@ -317,7 +317,7 @@ public class CompactionTaskComparatorTest {
       tsFileManagers[i] = new TsFileManager("fakeSg" + i, "0", "/");
       for (int j = 0; j < 10; ++j) {
         List<TsFileResource> resources = new ArrayList<>();
-        // the j th compaction task for i th sg
+        // the j th compaction task for i th db
         for (int k = 0; k < 10; ++k) {
           resources.add(
               new FakedTsFileResource(

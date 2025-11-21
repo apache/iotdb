@@ -105,8 +105,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+        dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
@@ -155,8 +155,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+        dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
@@ -271,8 +271,8 @@ public class IoTDBRegionGroupLeaderDistributionIT {
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+        dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
