@@ -360,7 +360,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(
           String.format(
               "delete timeseries %s.%s",
-              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
+              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
     }
   }
 
