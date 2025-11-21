@@ -72,7 +72,7 @@ public class PipeConsensusSyncLagManager {
         .orElse(0L);
   }
 
-  public void addConsensusPipeConnector(
+  public void addConsensusPipeSink(
       ConsensusPipeName consensusPipeName, ConsensusPipeSink consensusPipeSink) {
     lock.lock();
     try {
@@ -82,7 +82,7 @@ public class PipeConsensusSyncLagManager {
     }
   }
 
-  public void removeConsensusPipeConnector(ConsensusPipeName consensusPipeName) {
+  public void removeConsensusPipeSink(ConsensusPipeName consensusPipeName) {
     lock.lock();
     try {
       consensusPipe2SinkMap.remove(consensusPipeName);
