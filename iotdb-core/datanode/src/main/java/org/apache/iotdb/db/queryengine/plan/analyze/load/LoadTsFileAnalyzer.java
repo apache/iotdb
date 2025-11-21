@@ -678,6 +678,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
         throw e;
       } catch (Exception e) {
+        if (e.getCause() instanceof LoadAnalyzeTypeMismatchException && isConvertOnTypeMismatch) {
+          throw (LoadAnalyzeTypeMismatchException) e.getCause();
+        }
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(
