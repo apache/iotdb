@@ -552,7 +552,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     try {
       if (statement.getResultSet() != null) {
         operationTypeColumn = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+        this.dbColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getDbColumns();
       }
     } catch (SQLException throwables) {
       LOGGER.error("get meta data error: {}", throwables.getMessage());
@@ -1320,7 +1320,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     return this.columns;
   }
 
-  public List<String> getSgColumns() {
+  public List<String> getDbColumns() {
     return dbColumns;
   }
 

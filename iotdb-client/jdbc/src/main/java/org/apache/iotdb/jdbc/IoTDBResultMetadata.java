@@ -58,7 +58,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       List<String> columnInfoList,
       List<String> columnTypeList,
       boolean ignoreTimestamp) {
-    this.sgColumns = dbColumns;
+    this.dbColumns = dbColumns;
     this.operationType = operationType;
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
