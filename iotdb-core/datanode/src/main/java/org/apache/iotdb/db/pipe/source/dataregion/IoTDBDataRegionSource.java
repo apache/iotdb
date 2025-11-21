@@ -69,7 +69,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_STREAMING_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
@@ -79,16 +79,16 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_BATCH_MODE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_FILE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_FORCED_LOG_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_LOG_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY;
@@ -173,7 +173,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                 Arrays.asList(
                     PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                     PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     final boolean isTreeModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTree;
     final boolean isTableModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTable;
     if (!isTreeModelDataAllowedToBeCaptured
@@ -257,14 +257,14 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                 .getParameters()
                 .getBooleanOrDefault(
                     Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-                    EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE));
+                        SOURCE_REALTIME_ENABLE_DEFAULT_VALUE));
 
     // Validate source.realtime.mode
     if (validator
             .getParameters()
             .getBooleanOrDefault(
                 Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-                EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)
+                    SOURCE_REALTIME_ENABLE_DEFAULT_VALUE)
         || validator
             .getParameters()
             .hasAnyAttributes(
@@ -277,12 +277,12 @@ public class IoTDBDataRegionSource extends IoTDBSource {
               ? EXTRACTOR_REALTIME_MODE_KEY
               : SOURCE_REALTIME_MODE_KEY,
           true,
-          EXTRACTOR_REALTIME_MODE_FILE_VALUE,
-          EXTRACTOR_REALTIME_MODE_HYBRID_VALUE,
-          EXTRACTOR_REALTIME_MODE_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE,
-          EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
+              SOURCE_REALTIME_MODE_FILE_VALUE,
+              SOURCE_REALTIME_MODE_HYBRID_VALUE,
+              SOURCE_REALTIME_MODE_LOG_VALUE,
+              SOURCE_REALTIME_MODE_FORCED_LOG_VALUE,
+              SOURCE_REALTIME_MODE_STREAM_MODE_VALUE,
+              SOURCE_REALTIME_MODE_BATCH_MODE_VALUE);
     }
 
     checkInvalidParameters(validator);
@@ -388,7 +388,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     // Check if specifying mode.snapshot or mode.streaming when disable realtime source
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-        EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+            SOURCE_REALTIME_ENABLE_DEFAULT_VALUE)) {
       if (parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
         LOGGER.warn(
             "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
@@ -431,7 +431,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     // Use heartbeat only source if disable realtime source
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-        EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+            SOURCE_REALTIME_ENABLE_DEFAULT_VALUE)) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatSource();
       LOGGER.info(
           "Pipe: '{}' ('{}') is set to false, use heartbeat realtime source.",
@@ -464,7 +464,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
       final boolean isStreamingMode =
           parameters.getBooleanOrDefault(
               Arrays.asList(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY),
-              EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE);
+                  SOURCE_MODE_STREAMING_DEFAULT_VALUE);
       if (isStreamingMode) {
         realtimeExtractor = new PipeRealtimeDataRegionHybridSource();
       } else {
@@ -474,16 +474,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
 
     switch (parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
-      case EXTRACTOR_REALTIME_MODE_FILE_VALUE:
-      case EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE:
+      case SOURCE_REALTIME_MODE_FILE_VALUE:
+      case SOURCE_REALTIME_MODE_BATCH_MODE_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionTsFileSource();
         break;
-      case EXTRACTOR_REALTIME_MODE_HYBRID_VALUE:
-      case EXTRACTOR_REALTIME_MODE_LOG_VALUE:
-      case EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE:
+      case SOURCE_REALTIME_MODE_HYBRID_VALUE:
+      case SOURCE_REALTIME_MODE_LOG_VALUE:
+      case SOURCE_REALTIME_MODE_STREAM_MODE_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionHybridSource();
         break;
-      case EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE:
+      case SOURCE_REALTIME_MODE_FORCED_LOG_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionLogSource();
         break;
       default:

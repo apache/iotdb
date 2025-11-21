@@ -111,7 +111,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
@@ -594,7 +594,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final boolean isRealtimeEnable =
         parameters.getBooleanOrDefault(
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+                SOURCE_REALTIME_ENABLE_DEFAULT_VALUE);
 
     return isHistoryEnable && isRealtimeEnable;
   }
@@ -742,7 +742,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     // Realtime source is enabled by default, so we only need to check the source realtime
     if (!sourceParameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-        EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+            SOURCE_REALTIME_ENABLE_DEFAULT_VALUE)) {
       return;
     }
 
@@ -751,8 +751,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         sourceParameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
             PipeSourceConstant.SOURCE_REALTIME_MODE_KEY);
-    if (PipeSourceConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
-        || PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
+    if (PipeSourceConstant.SOURCE_REALTIME_MODE_BATCH_MODE_VALUE.equals(realtimeMode)
+        || PipeSourceConstant.SOURCE_REALTIME_MODE_FILE_VALUE.equals(realtimeMode)) {
       return;
     }
 
