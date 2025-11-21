@@ -89,8 +89,8 @@ public class IoTDBConfig {
       new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
-  public static final Pattern DATABASE_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
+  private static final String DATABASE_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
+  public static final Pattern DATABASE_PATTERN = Pattern.compile(DATABASE_MATCHER);
 
   // e.g., a31+/$%#&[]{}3e4, "a.b", 'a.b'
   private static final String NODE_NAME_MATCHER = "([^\n\t]+)";
@@ -3432,8 +3432,8 @@ public class IoTDBConfig {
     String[] notShowArray = {
       "NODE_NAME_MATCHER",
       "PARTIAL_NODE_MATCHER",
-      "STORAGE_GROUP_MATCHER",
-      "STORAGE_GROUP_PATTERN",
+      "DATABASE_MATCHER",
+      "DATABASE_PATTERN",
       "NODE_MATCHER",
       "NODE_PATTERN"
     };

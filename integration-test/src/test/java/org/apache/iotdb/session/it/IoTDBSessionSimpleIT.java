@@ -1561,10 +1561,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg,
-                        TSStatusCode.ILLEGAL_PATH,
-                        OperationType.SET_STORAGE_GROUP,
-                        "root..sg")));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.SET_DATABASE, "root..sg")));
       }
 
       try {

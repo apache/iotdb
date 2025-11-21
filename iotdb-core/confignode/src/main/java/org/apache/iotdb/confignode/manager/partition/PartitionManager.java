@@ -211,9 +211,10 @@ public class PartitionManager {
    * Get SchemaPartition and create a new one if it does not exist.
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @return SchemaPartitionResp with DataPartition and TSStatus. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some Databases don't exist.
    */
   public SchemaPartitionResp getOrCreateSchemaPartition(final GetOrCreateSchemaPartitionPlan req) {
     // Check if the related Databases exist
@@ -534,12 +535,13 @@ public class PartitionManager {
   // ======================================================
 
   /**
-   * Allocate more RegionGroup to the specified StorageGroups if necessary.
+   * Allocate more RegionGroup to the specified Databases if necessary.
    *
    * @param unassignedPartitionSlotsCountMap Map<StorageGroup, unassigned Partition count>
    * @param consensusGroupType SchemaRegion or DataRegion
-   * @return SUCCESS_STATUS when RegionGroup extension successful; NOT_ENOUGH_DATA_NODE when there
-   *     are not enough DataNodes; STORAGE_GROUP_NOT_EXIST when some StorageGroups don't exist
+   * @return {@link TSStatusCode#SUCCESS_STATUS} when RegionGroup extension successful; {@link
+   *     TSStatusCode#NO_ENOUGH_DATANODE} when there are not enough DataNodes; {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} when some Databases don't exist
    */
   private TSStatus extendRegionGroupIfNecessary(
       final Map<String, Integer> unassignedPartitionSlotsCountMap,

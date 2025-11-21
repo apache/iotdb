@@ -41,19 +41,19 @@ import static org.junit.Assert.assertTrue;
 public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
-  private String storageGroup = "storage_group1";
-  private String dataRegionId = "1";
-  private String filePath =
+  private final String database = "database1";
+  private final String dataRegionId = "1";
+  private final String filePath =
       TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
-  private long startTime = 1;
-  private long endTime = 100;
+  private final long startTime = 1;
+  private final long endTime = 100;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
-    memTable = new PrimitiveMemTable(storageGroup, dataRegionId);
+    memTable = new PrimitiveMemTable(database, dataRegionId);
   }
 
   @After
@@ -74,7 +74,7 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, database, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(
@@ -111,7 +111,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, database, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -139,7 +139,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceNullableVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, database, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)

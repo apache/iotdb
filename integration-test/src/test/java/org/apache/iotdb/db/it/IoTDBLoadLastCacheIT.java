@@ -126,8 +126,8 @@ public class IoTDBLoadLastCacheIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_0);
-      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_1);
+      statement.execute("CREATE DATABASE " + SchemaConfig.DATABASE_0);
+      statement.execute("CREATE DATABASE " + SchemaConfig.DATABASE_1);
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00));
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_01));
@@ -182,8 +182,8 @@ public class IoTDBLoadLastCacheIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
+      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_1));
     } catch (final IoTDBSQLException ignored) {
     }
   }
@@ -283,7 +283,7 @@ public class IoTDBLoadLastCacheIT {
 
   @Test
   public void testTableModelLoadWithLastCache() throws Exception {
-    final String database = SchemaConfig.DATABASE_0;
+    final String database = SchemaConfig.TABLE_DATABASE;
     final String table = SchemaConfig.TABLE_0;
     final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
 
@@ -581,10 +581,10 @@ public class IoTDBLoadLastCacheIT {
 
   private static class SchemaConfig {
 
-    private static final String DATABASE_0 = "db";
+    private static final String TABLE_DATABASE = "db";
     private static final String TABLE_0 = "test";
-    private static final String STORAGE_GROUP_0 = "root.sg.test_0";
-    private static final String STORAGE_GROUP_1 = "root.sg.test_1";
+    private static final String DATABASE_0 = "root.sg.test_0";
+    private static final String DATABASE_1 = "root.sg.test_1";
 
     // device 0, nonaligned, sg 0
     private static final String DEVICE_0 = "root.sg.test_0.d_0";

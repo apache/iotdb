@@ -94,17 +94,17 @@ public class SchemaConstant {
   public static final byte DATABASE_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;
   public static final byte ENTITY_MNODE_TYPE = 3;
-  public static final byte STORAGE_GROUP_ENTITY_MNODE_TYPE = 4;
+  public static final byte DATABASE_ENTITY_MNODE_TYPE = 4;
 
   public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
 
   public static final byte TABLE_MNODE_TYPE = 6;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
-  public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
+  public static final String DATABASE_MNODE_TYPE_NAME = "DatabaseMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
-  public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
+  public static final String DATABASE_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
 
@@ -121,13 +121,13 @@ public class SchemaConstant {
       case INTERNAL_MNODE_TYPE:
         return INTERNAL_MNODE_TYPE_NAME;
       case DATABASE_MNODE_TYPE:
-        return STORAGE_GROUP_MNODE_TYPE_NAME;
+        return DATABASE_MNODE_TYPE_NAME;
       case MEASUREMENT_MNODE_TYPE:
         return MEASUREMENT_MNODE_TYPE_NAME;
       case ENTITY_MNODE_TYPE:
         return ENTITY_MNODE_TYPE_NAME;
-      case STORAGE_GROUP_ENTITY_MNODE_TYPE:
-        return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
+      case DATABASE_ENTITY_MNODE_TYPE:
+        return DATABASE_ENTITY_MNODE_TYPE_NAME;
       case LOGICAL_VIEW_MNODE_TYPE:
         return LOGICAL_VIEW_MNODE_TYPE_NAME;
       case TABLE_MNODE_TYPE:
@@ -137,7 +137,7 @@ public class SchemaConstant {
     }
   }
 
-  public static boolean isStorageGroupType(byte type) {
-    return type == DATABASE_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
+  public static boolean isDatabaseType(byte type) {
+    return type == DATABASE_MNODE_TYPE || type == DATABASE_ENTITY_MNODE_TYPE;
   }
 }

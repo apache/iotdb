@@ -1529,10 +1529,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.SET_STORAGE_GROUP, e.getErrorCode());
+      return onIoTDBException(e, OperationType.SET_DATABASE, e.getErrorCode());
     } catch (Exception e) {
       return onQueryException(
-          e, OperationType.SET_STORAGE_GROUP.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.SET_DATABASE.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
@@ -1764,10 +1764,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       return result.status;
     } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.DELETE_STORAGE_GROUPS, e.getErrorCode());
+      return onIoTDBException(e, OperationType.DELETE_DATABASE, e.getErrorCode());
     } catch (Exception e) {
       return onQueryException(
-          e, OperationType.DELETE_STORAGE_GROUPS.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.DELETE_DATABASE.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
