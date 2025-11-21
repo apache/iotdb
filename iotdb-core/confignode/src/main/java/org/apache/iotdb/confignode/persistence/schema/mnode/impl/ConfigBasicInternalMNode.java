@@ -146,7 +146,7 @@ public class ConfigBasicInternalMNode extends ConfigBasicMNode {
 
   @Override
   public MNodeType getMNodeType() {
-    return MNodeType.SG_INTERNAL;
+    return MNodeType.DB_INTERNAL;
   }
 
   @Override

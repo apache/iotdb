@@ -142,7 +142,7 @@ public class ConfigMTree {
     }
     IConfigMNode cur = root;
     int i = 1;
-    // e.g., path = root.a.b.sg, create internal nodes for a, b
+    // e.g., path = root.a.b.db, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
       final IConfigMNode temp = store.getChild(cur, nodeNames[i]);
       if (temp == null) {

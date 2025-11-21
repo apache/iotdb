@@ -156,7 +156,7 @@ public class SchemaRegionSnapshotParserTest {
     final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
     final PartialPath databasePath = new PartialPath("root.db");
     // Tree in memtree:
-    // root->sg->s1->g1->temp
+    // root->db->s1->g1->temp
     //          |     |->status
     //          |->s2->g2->t2->temp
     //              |->g4->status
@@ -258,7 +258,7 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("sg", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("db", 0);
     final String tableName = "t";
     final PartialPath databasePath = new PartialPath("root.db");
 

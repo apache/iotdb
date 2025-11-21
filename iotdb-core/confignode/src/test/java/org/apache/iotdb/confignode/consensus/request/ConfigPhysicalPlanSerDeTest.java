@@ -258,7 +258,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
@@ -273,7 +273,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.AlterDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800)
@@ -807,7 +807,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
-        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+        new SetSchemaTemplatePlan("template_name_test", "root.in.db.dw");
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
         (SetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
@@ -1878,7 +1878,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new DatabaseSchemaPlan(
                 ConfigPhysicalPlanType.CreateDatabase,
                 new TDatabaseSchema()
-                    .setName("sg")
+                    .setName("db")
                     .setTTL(Long.MAX_VALUE)
                     .setSchemaReplicationFactor(3)
                     .setDataReplicationFactor(3)

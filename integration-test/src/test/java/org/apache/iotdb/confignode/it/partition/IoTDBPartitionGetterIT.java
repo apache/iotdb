@@ -118,7 +118,7 @@ public class IoTDBPartitionGetterIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set Databases */
       for (int i = 0; i < databaseNum; i++) {
-        TSStatus status = client.setDatabase(new TDatabaseSchema(sg + i));
+        TSStatus status = client.setDatabase(new TDatabaseSchema(db + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
@@ -144,8 +144,8 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
+        Assert.assertTrue(schemaPartitionTable.containsKey(db + i));
+        Assert.assertEquals(2, schemaPartitionTable.get(db + i).size());
       }
 
       /* Create DataPartitions */
@@ -240,8 +240,8 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
-        Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
+        Assert.assertTrue(schemaPartitionTable.containsKey(db + i));
+        Assert.assertEquals(2, schemaPartitionTable.get(db + i).size());
       }
 
       // Test getSchemaPartition, when a device path matches with a Database and end with "*",

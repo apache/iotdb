@@ -72,7 +72,7 @@ public class QueryStatementTest {
                 "When Having used with GroupByLevel: "
                     + "the suffix paths can only be measurement or one-level wildcard"),
             new Pair<>(
-                "SELECT count(s1) FROM root.db.d1 GROUP BY level=1 HAVING (count(sg.d1.s1) > 0)",
+                "SELECT count(s1) FROM root.db.d1 GROUP BY level=1 HAVING (count(db.d1.s1) > 0)",
                 "When Having used with GroupByLevel: "
                     + "the suffix paths can only be measurement or one-level wildcard"),
 
@@ -80,7 +80,7 @@ public class QueryStatementTest {
             new Pair<>(
                 "SELECT d1.s1 FROM root.db.d1 align by device", ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT count(s1) FROM root.db.d1 group by variation(sg.s1) align by device",
+                "SELECT count(s1) FROM root.db.d1 group by variation(db.s1) align by device",
                 ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
                 "SELECT s1 FROM root.db.d1 order by root.db.d1.s1 align by device",

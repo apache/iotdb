@@ -1554,7 +1554,7 @@ public class IoTDBSessionSimpleIT {
       }
 
       try {
-        session.setStorageGroup("root..sg");
+        session.setStorageGroup("root..db");
         fail("Exception expected");
       } catch (StatementExecutionException e) {
         assertTrue(

@@ -155,10 +155,10 @@ public class TsFileOverlapValidationAndRepairTool {
         continue;
       }
       for (File db : Objects.requireNonNull(sequenceDataDir.listFiles())) {
-        if (!sg.isDirectory()) {
+        if (!db.isDirectory()) {
           continue;
         }
-        for (File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
+        for (File dataRegionDir : Objects.requireNonNull(db.listFiles())) {
           if (!dataRegionDir.isDirectory()) {
             continue;
           }

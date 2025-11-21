@@ -90,7 +90,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test count all Databases
       TCountDatabaseResp countResp =
           client.countMatchedDatabases(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
@@ -106,7 +106,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test query all DatabaseSchemas
       TDatabaseSchemaResp getResp =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
@@ -176,11 +176,11 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       TDeleteDatabasesReq deleteDatabasesReq = new TDeleteDatabasesReq();
       List<String> dbs = Arrays.asList(db0, db1);
-      deleteDatabasesReq.setPrefixPathList(sgs);
+      deleteDatabasesReq.setPrefixPathList(dbs);
       TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }

@@ -128,7 +128,7 @@ public class SystemInfo {
       return true;
     } else {
       logger.info(
-          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
+          "Change system to reject status. Triggered by: logical DB ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THRESHOLD ({})",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
@@ -171,34 +171,34 @@ public class SystemInfo {
     if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
         && totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
-          "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
+          "DB ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
-            "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
+            "DB ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
             dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
             totalStorageGroupMemCost);
       }
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = false;
     } else if (totalStorageGroupMemCost >= REJECT_THRESHOLD) {
       logger.warn(
-          "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
+          "DB ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = true;
     } else {
       logger.debug(
-          "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
+          "DB ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
-      logCurrentTotalSGMemory();
+      logCurrentTotalDBMemory();
       rejected = false;
     }
   }
@@ -398,7 +398,7 @@ public class SystemInfo {
     return compactionFileNumCost;
   }
 
-  private void logCurrentTotalSGMemory() {
+  private void logCurrentTotalDBMemory() {
     logger.debug("Current Sg cost is {}", totalStorageGroupMemCost);
   }
 

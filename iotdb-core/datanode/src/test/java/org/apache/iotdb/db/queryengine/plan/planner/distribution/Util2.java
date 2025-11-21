@@ -151,8 +151,8 @@ public class Util2 {
   private static ISchemaTree genSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode db = new SchemaInternalNode("sg");
-    root.addChild("sg", db);
+    SchemaNode db = new SchemaInternalNode("db");
+    root.addChild("db", db);
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
     SchemaMeasurementNode s1 =

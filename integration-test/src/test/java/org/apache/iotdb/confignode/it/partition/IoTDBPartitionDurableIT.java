@@ -110,7 +110,7 @@ public class IoTDBPartitionDurableIT {
   private void setDatabase() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
+      TSStatus status = client.setDatabase(new TDatabaseSchema(db));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }

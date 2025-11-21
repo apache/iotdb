@@ -109,8 +109,8 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode db = new SchemaInternalNode("sg");
-    root.addChild("sg", db);
+    SchemaNode db = new SchemaInternalNode("db");
+    root.addChild("db", db);
 
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));

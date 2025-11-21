@@ -86,9 +86,9 @@ public class ClusterSchemaInfoTest {
   public void testSnapshot() throws IOException, IllegalPathException {
     Set<String> storageGroupPathList = new TreeSet<>();
     storageGroupPathList.add("root.db");
-    storageGroupPathList.add("root.a.sg");
-    storageGroupPathList.add("root.a.b.sg");
-    storageGroupPathList.add("root.a.a.a.b.sg");
+    storageGroupPathList.add("root.a.db");
+    storageGroupPathList.add("root.a.b.db");
+    storageGroupPathList.add("root.a.a.a.b.db");
 
     Map<String, TDatabaseSchema> testMap = new TreeMap<>();
     int i = 0;
