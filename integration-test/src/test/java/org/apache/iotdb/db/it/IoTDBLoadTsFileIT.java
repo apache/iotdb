@@ -264,6 +264,108 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  // Shall succeed with tablet conversion
+  public void testLoadWithAlignmentMismatch() throws Exception {
+    registerSchema();
+
+    final long writtenPoint1;
+    // device 0, sg 0
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      // Wrong, with 04-07 non-exist
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
+      generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    final long writtenPoint2;
+    // device 2, device 3, device4, sg 1
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+      // right
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
+      // right
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
+      // Wrong, with 06 non-exist
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_4,
+          Arrays.asList(SchemaConfig.MEASUREMENT_40, SchemaConfig.MEASUREMENT_06));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+      for (int i = 0; i < 1000; i++) {
+        generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, true);
+      }
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      try {
+        statement.execute(
+            String.format(
+                "load \"%s\" with ('database-level'='2', 'convert-on-type-mismatch'='false')",
+                tmpDir.getAbsolutePath() + File.separator + "1-0-0-0.tsfile"));
+        Assert.fail();
+      } catch (final Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "TimeSeries under this device is not aligned, please use createTimeSeries or change device. (Path: root.sg.test_0.d_0)."));
+      }
+
+      try {
+        statement.execute(
+            String.format(
+                "load \"%s\" with ('database-level'='2', 'convert-on-type-mismatch'='false')",
+                tmpDir.getAbsolutePath() + File.separator + "2-0-0-0.tsfile"));
+        Assert.fail();
+      } catch (final Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "TimeSeries under this device is aligned, please use createAlignedTimeSeries or change device. (Path: root.sg.test_1.a_4)."));
+      }
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, sg2Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+
+    // Try to delete after loading. Expect no deadlock
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "delete timeseries %s.%s",
+              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
+    }
+  }
+
+  @Test
   public void testLoadAcrossMultipleTimePartitions() throws Exception {
     registerSchema();
 
