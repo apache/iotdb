@@ -34,7 +34,7 @@ import java.util.Objects;
 
 public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
 
-  // Map<StorageGroupName, Pair<maxSchemaRegionGroupNum, maxDataRegionGroupNum>>
+  // Map<DatabaseName, Pair<maxSchemaRegionGroupNum, maxDataRegionGroupNum>>
   public final Map<String, Pair<Integer, Integer>> maxRegionGroupNumMap;
 
   public AdjustMaxRegionGroupNumPlan() {
@@ -42,8 +42,8 @@ public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
     this.maxRegionGroupNumMap = new HashMap<>();
   }
 
-  public void putEntry(final String storageGroup, final Pair<Integer, Integer> maxRegionGroupNum) {
-    maxRegionGroupNumMap.put(storageGroup, maxRegionGroupNum);
+  public void putEntry(final String database, final Pair<Integer, Integer> maxRegionGroupNum) {
+    maxRegionGroupNumMap.put(database, maxRegionGroupNum);
   }
 
   public Map<String, Pair<Integer, Integer>> getMaxRegionGroupNumMap() {
@@ -65,14 +65,14 @@ public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    final int storageGroupNum = buffer.getInt();
+    final int databaseNum = buffer.getInt();
 
-    for (int i = 0; i < storageGroupNum; i++) {
-      final String storageGroup = ReadWriteIOUtils.readString(buffer);
+    for (int i = 0; i < databaseNum; i++) {
+      final String database = ReadWriteIOUtils.readString(buffer);
       final int maxSchemaRegionGroupNum = buffer.getInt();
       final int maxDataRegionGroupNum = buffer.getInt();
       maxRegionGroupNumMap.put(
-          storageGroup, new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
+          database, new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
     }
   }
 

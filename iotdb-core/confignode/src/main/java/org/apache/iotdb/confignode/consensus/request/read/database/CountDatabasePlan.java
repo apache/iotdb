@@ -28,18 +28,18 @@ import java.util.List;
 
 public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
-  private final String[] storageGroupPattern;
+  private final String[] databasePattern;
   private final PathPatternTree scope;
   private final boolean isTableModel;
   private final boolean canSeeAuditDB;
 
   public CountDatabasePlan(
-      final List<String> storageGroupPattern,
+      final List<String> databasePattern,
       final PathPatternTree scope,
       final boolean isTableModel,
       final boolean canSeeAuditDB) {
     super(ConfigPhysicalPlanType.CountDatabase);
-    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+    this.databasePattern = databasePattern.toArray(new String[0]);
     this.scope = scope;
     this.isTableModel = isTableModel;
     this.canSeeAuditDB = canSeeAuditDB;
@@ -47,19 +47,19 @@ public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
   public CountDatabasePlan(
       final ConfigPhysicalPlanType type,
-      final List<String> storageGroupPattern,
+      final List<String> databasePattern,
       final PathPatternTree scope,
       final boolean isTableModel,
       final boolean canSeeAuditDB) {
     super(type);
-    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+    this.databasePattern = databasePattern.toArray(new String[0]);
     this.scope = scope;
     this.isTableModel = isTableModel;
     this.canSeeAuditDB = canSeeAuditDB;
   }
 
   public String[] getDatabasePattern() {
-    return storageGroupPattern;
+    return databasePattern;
   }
 
   public PathPatternTree getScope() {
@@ -83,11 +83,11 @@ public class CountDatabasePlan extends ConfigPhysicalReadPlan {
       return false;
     }
     final CountDatabasePlan that = (CountDatabasePlan) o;
-    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
+    return Arrays.equals(databasePattern, that.databasePattern);
   }
 
   @Override
   public int hashCode() {
-    return Arrays.hashCode(storageGroupPattern);
+    return Arrays.hashCode(databasePattern);
   }
 }

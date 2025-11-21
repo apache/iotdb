@@ -3299,7 +3299,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CountDatabaseStatement countDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(countDatabaseStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountStorageGroupHeader());
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountDatabaseHeader());
     return analysis;
   }
 

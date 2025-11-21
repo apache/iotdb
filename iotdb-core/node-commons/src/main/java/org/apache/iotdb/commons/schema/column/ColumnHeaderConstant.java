@@ -425,7 +425,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
-  public static final List<ColumnHeader> countStorageGroupColumnHeaders =
+  public static final List<ColumnHeader> countDatabaseColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =

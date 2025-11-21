@@ -984,7 +984,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
           configManager.getPartitionManager().filterUnExistDatabases(req.storageGroups);
       if (!noExistSg.isEmpty()) {
         final StringBuilder sb = new StringBuilder();
-        noExistSg.forEach(storageGroup -> sb.append(storageGroup).append(","));
+        noExistSg.forEach(database -> sb.append(database).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
             "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");

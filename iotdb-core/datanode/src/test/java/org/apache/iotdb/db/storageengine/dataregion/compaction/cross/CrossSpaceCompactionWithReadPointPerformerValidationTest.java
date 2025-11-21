@@ -78,7 +78,7 @@ import static org.apache.tsfile.utils.TsFileGeneratorUtils.alignDeviceOffset;
 public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     extends AbstractCompactionTest {
   //  TsFileManager tsFileManager =
-  //      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+  //      new TsFileManager(COMPACTION_TEST_SG, "0", DATABASE_DIR.getPath());
 
   private final String oldThreadName = Thread.currentThread().getName();
 

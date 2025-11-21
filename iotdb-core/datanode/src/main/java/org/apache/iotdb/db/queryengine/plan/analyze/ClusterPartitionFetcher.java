@@ -103,9 +103,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       final PathPatternTree patternTree, String userName, boolean needAuditDB) {
     patternTree.constructTree();
     final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+    final Map<String, List<IDeviceID>> database2DeviceMap =
         partitionCache.getDatabaseToDevice(deviceIDs, true, false, userName);
-    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(database2DeviceMap);
     if (null == schemaPartition) {
       try (final ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -147,9 +147,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       final PathPatternTree patternTree, final String userName) {
     patternTree.constructTree();
     final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+    final Map<String, List<IDeviceID>> database2DeviceMap =
         partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
-    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(database2DeviceMap);
     if (null == schemaPartition) {
       try (final ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

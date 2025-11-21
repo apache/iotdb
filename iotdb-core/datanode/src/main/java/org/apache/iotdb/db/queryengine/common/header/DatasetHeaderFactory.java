@@ -27,8 +27,8 @@ public class DatasetHeaderFactory {
     // forbidding instantiation
   }
 
-  public static DatasetHeader getCountStorageGroupHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.countStorageGroupColumnHeaders, true);
+  public static DatasetHeader getCountDatabaseHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.countDatabaseColumnHeaders, true);
   }
 
   public static DatasetHeader getCountNodesHeader() {

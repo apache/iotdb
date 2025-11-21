@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.schema;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
@@ -35,20 +34,11 @@ public class SchemaConstant {
 
   public static final String MTREE_PREFIX = "mtree";
   private static final String MTREE_VERSION = "1";
-  public static final String MTREE_TXT_SNAPSHOT_OLD_VERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot";
-  public static final String MTREE_SNAPSHOT_OLD_VERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin";
-  public static final String MTREE_SNAPSHOT_TMP_OLDVERSION =
-      MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
 
   public static final String ROOT = "root";
-  public static final String METADATA_TXT_LOG = "mlog.txt";
   public static final String METADATA_LOG = "mlog.bin";
   public static final String METADATA_LOG_DESCRIPTION = "mlog.description";
   public static final String TAG_LOG = "tlog.txt";
-  public static final String TEMPLATE_FILE = "template_log.bin";
-  public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
   public static final String PBTREE_FILE_NAME = "pbtree.pst";
   public static final String PBTREE_LOG_FILE_NAME = "pbtree_log.bin";
 
