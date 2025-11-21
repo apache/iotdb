@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
@@ -1164,6 +1165,24 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         intersectNode, analysis.getScope(node), intersectNode.getOutputSymbols(), outerContext);
   }
 
+  @Override
+  protected RelationPlan visitExcept(Except node, Void context) {
+    Preconditions.checkArgument(
+        !node.getRelations().isEmpty(), "No relations specified for except");
+    SetOperationPlan setOperationPlan = process(node);
+
+    PlanNode exceptNode =
+        new ExceptNode(
+            idAllocator.genPlanNodeId(),
+            setOperationPlan.getChildren(),
+            setOperationPlan.getSymbolMapping(),
+            ImmutableList.copyOf(setOperationPlan.getSymbolMapping().keySet()),
+            node.isDistinct());
+
+    return new RelationPlan(
+        exceptNode, analysis.getScope(node), exceptNode.getOutputSymbols(), outerContext);
+  }
+
   private SetOperationPlan process(SetOperation node) {
     RelationType outputFields = analysis.getOutputDescriptor(node);
     List<Symbol> outputs =
@@ -1208,11 +1227,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitValues(Values node, Void context) {
     throw new IllegalStateException("Values is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitExcept(Except node, Void context) {
-    throw new IllegalStateException("Except is not supported in current version.");
   }
 
   @Override
