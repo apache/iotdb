@@ -199,6 +199,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
           if (System.currentTimeMillis() - start > 60_000L) {
             fail("Cannot execute query within 60s");
           }
+          TimeUnit.SECONDS.sleep(1);
           continue;
         }
         if (resultSet.hasNext()) {

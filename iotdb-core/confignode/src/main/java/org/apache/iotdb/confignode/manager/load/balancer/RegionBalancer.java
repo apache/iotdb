@@ -74,7 +74,7 @@ public class RegionBalancer {
    * @param consensusGroupType {@link TConsensusGroupType} of the new RegionGroups
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
-   * @throws DatabaseNotExistsException When some StorageGroups don't exist
+   * @throws DatabaseNotExistsException When some Databases don't exist
    */
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)

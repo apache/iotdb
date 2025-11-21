@@ -2968,12 +2968,110 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
         continue;
       }
 
-      involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+      ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
+
+      if ((timeIndex instanceof ArrayDeviceTimeIndex)
+          && (deletion.getType() == ModEntry.ModType.TABLE_DELETION)) {
+        ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+        boolean onlyOneTable = false;
+
+        if (deletion instanceof TableDeletionEntry) {
+          TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+          String tableName = tableDeletionEntry.getTableName();
+          long matchSize =
+              devicesInFile.stream()
+                  .filter(
+                      device -> {
+                        if (logger.isDebugEnabled()) {
+                          logger.debug(
+                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                              device,
+                              device.getTableName(),
+                              tableDeletionEntry.getPredicate().matches(device));
+                        }
+                        return tableName.equals(device.getTableName())
+                            && tableDeletionEntry.getPredicate().matches(device);
+                      })
+                  .count();
+          onlyOneTable = matchSize == devicesInFile.size();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "tableName is {}, matchSize is {}, onlyOneTable is {}",
+                tableName,
+                matchSize,
+                onlyOneTable);
+          }
+        }
+
+        if (onlyOneTable) {
+          int matchSize = 0;
+          for (IDeviceID device : devicesInFile) {
+            Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+            Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+            if (!optStart.isPresent() || !optEnd.isPresent()) {
+              continue;
+            }
+
+            long fileStartTime = optStart.get();
+            long fileEndTime = optEnd.get();
+
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  device.getTableName(),
+                  device,
+                  deletion.getStartTime(),
+                  deletion.getEndTime(),
+                  fileStartTime,
+                  fileEndTime);
+            }
+            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+              ++matchSize;
+            } else {
+              deletedByMods.add(sealedTsFile);
+              break;
+            }
+          }
+          if (matchSize == devicesInFile.size()) {
+            deletedByFiles.add(sealedTsFile);
+          }
+
+          if (logger.isDebugEnabled()) {
+            logger.debug("expect is {}, actual is {}", devicesInFile.size(), matchSize);
+            for (TsFileResource tsFileResource : deletedByFiles) {
+              logger.debug(
+                  "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
+            }
+          }
+        } else {
+          involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+        }
+      } else {
+        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+      }
+    }
+
+    for (TsFileResource tsFileResource : deletedByMods) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+        involvedModificationFiles.add(tsFileResource.getModFileForWrite());
+      } // else do nothing
+    }
+
+    if (!deletedByFiles.isEmpty()) {
+      deleteTsFileCompletely(deletedByFiles);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
+      }
     }
 
     if (involvedModificationFiles.isEmpty()) {
@@ -3009,6 +3107,27 @@ public class DataRegion implements IDataRegionForQuery {
         "[Deletion] Deletion {} is written into {} mod files",
         deletion,
         involvedModificationFiles.size());
+  }
+
+  private boolean isFileFullyMatchedByTime(
+      ModEntry deletion, long fileStartTime, long fileEndTime) {
+    return fileStartTime >= deletion.getStartTime() && fileEndTime <= deletion.getEndTime();
+  }
+
+  /** Delete completely TsFile and related supporting files */
+  private void deleteTsFileCompletely(List<TsFileResource> tsfileResourceList) {
+    for (TsFileResource tsFileResource : tsfileResourceList) {
+      tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
+      tsFileResource.writeLock();
+      try {
+        FileMetrics.getInstance()
+            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        tsFileResource.remove();
+        logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } finally {
+        tsFileResource.writeUnlock();
+      }
+    }
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
@@ -3416,10 +3535,12 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
-    final File tsfileToBeInserted = newTsFileResource.getTsFile();
+    final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
 
-    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
+    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)
+        || !tsfileToBeInserted.exists()
+        || tsfileToBeInserted.getParentFile() == null) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
     }

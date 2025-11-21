@@ -17,10 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.commons.schema.table;
 
-public enum DeleteStorageGroupState {
-  PRE_DELETE_DATABASE,
-  INVALIDATE_CACHE,
-  DELETE_DATABASE_SCHEMA
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+
+/**
+ * This table is just for occupation, and notice the dataNode to fetch the newest version from
+ * configNode. Note that the table cannot be committed or rolled-back, yet it can still be
+ * pre-updated or invalidated, because the two can update the table to the newest and trustable
+ * version.
+ */
+public class NonCommittableTsTable extends TsTable {
+  public NonCommittableTsTable(final String tableName) {
+    super(tableName);
+  }
+
+  @Override
+  public void serialize(final OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(tableName, stream);
+    ReadWriteIOUtils.write(-1, stream);
+  }
 }

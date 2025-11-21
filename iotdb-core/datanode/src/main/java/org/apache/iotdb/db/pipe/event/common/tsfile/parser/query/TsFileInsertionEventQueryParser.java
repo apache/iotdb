@@ -354,8 +354,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
                 @Override
                 public boolean hasNext() {
+                  boolean hasNext = false;
                   while (tabletIterator == null || !tabletIterator.hasNext()) {
                     if (!deviceMeasurementsMapIterator.hasNext()) {
+                      // Record end time when no more data
+                      if (parseStartTimeRecorded && !parseEndTimeRecorded) {
+                        recordParseEndTime();
+                      }
                       close();
                       return false;
                     }
@@ -380,7 +385,12 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                     }
                   }
 
-                  return true;
+                  hasNext = true;
+                  // Record start time on first hasNext() that returns true
+                  if (!parseStartTimeRecorded) {
+                    recordParseStartTime();
+                  }
+                  return hasNext;
                 }
 
                 @Override
@@ -391,6 +401,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                   }
 
                   final Tablet tablet = tabletIterator.next();
+                  // Record tablet metrics
+                  recordTabletMetrics(tablet);
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(
                           IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);

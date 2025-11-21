@@ -207,21 +207,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
-        <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="EXPLAIN_ANALYZE">
         <file>${IOTDB_HOME}/logs/log_explain_analyze.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

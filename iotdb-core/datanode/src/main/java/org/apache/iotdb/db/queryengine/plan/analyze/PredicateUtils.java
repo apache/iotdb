@@ -338,6 +338,12 @@ public class PredicateUtils {
     if (conjuncts.size() == 1) {
       return conjuncts.get(0);
     }
+
+    if (conjuncts.size() > 1000) {
+      throw new SemanticException(
+          "There are too many conjuncts (more than 1000) in predicate after rewriting, this may be caused by too many devices in query, try to use ALIGN BY DEVICE");
+    }
+
     return constructRightDeepTreeWithAnd(conjuncts);
   }
 
@@ -346,14 +352,8 @@ public class PredicateUtils {
     if (conjuncts.size() == 2) {
       return new LogicAndExpression(conjuncts.get(0), conjuncts.get(1));
     } else {
-      try {
-        return new LogicAndExpression(
-            conjuncts.get(0),
-            constructRightDeepTreeWithAnd(conjuncts.subList(1, conjuncts.size())));
-      } catch (StackOverflowError e) {
-        throw new SemanticException(
-            "There are too many conjuncts in predicate after rewriting, this may be caused by too many devices, try to use ALIGN BY DEVICE");
-      }
+      return new LogicAndExpression(
+          conjuncts.get(0), constructRightDeepTreeWithAnd(conjuncts.subList(1, conjuncts.size())));
     }
   }
 
