@@ -73,7 +73,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
-  private long lastSGAddr; // last segment of database node
+  private long lastDBAddr; // last segment of database node
 
   private IPageManager pageManager;
 
@@ -99,7 +99,7 @@ public class SchemaFile implements ISchemaFile {
   private SchemaFile(
       String dbName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
-    String dirPath = getDirPath(sgName, schemaRegionId);
+    String dirPath = getDirPath(dbName, schemaRegionId);
     this.storageGroupName = dbName;
     this.filePath = dirPath + File.separator + SchemaConstant.PBTREE_FILE_NAME;
     this.logPath = dirPath + File.separator + SchemaConstant.PBTREE_LOG_FILE_NAME;
@@ -126,7 +126,7 @@ public class SchemaFile implements ISchemaFile {
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
-    this.sgNodeTemplateIdWithState = -1;
+    this.dbNodeTemplateIdWithState = -1;
     initFileHeader();
   }
 
@@ -152,7 +152,7 @@ public class SchemaFile implements ISchemaFile {
       throws IOException, MetadataException {
     File pmtFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId) + File.separator + SchemaConstant.PBTREE_FILE_NAME);
+            getDirPath(dbName, schemaRegionId) + File.separator + SchemaConstant.PBTREE_FILE_NAME);
     return new SchemaFile(
         dbName,
         schemaRegionId,
@@ -167,7 +167,7 @@ public class SchemaFile implements ISchemaFile {
 
   public static SchemaFile loadSchemaFile(String dbName, int schemaRegionId)
       throws IOException, MetadataException {
-    return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
+    return new SchemaFile(dbName, schemaRegionId, false, -1L, false);
   }
 
   public static SchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
@@ -189,14 +189,14 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              nodeFactory.createDatabaseDeviceMNode(null, dbPathNodes[sgPathNodes.length - 1]), 0L);
-      resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
-      resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
+              nodeFactory.createDatabaseDeviceMNode(null, dbPathNodes[dbPathNodes.length - 1]), 0L);
+      resNode.getAsDeviceMNode().setSchemaTemplateId(dbNodeTemplateIdWithState);
+      resNode.getAsDeviceMNode().setUseTemplate(dbNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
               nodeFactory
-                  .createDatabaseMNode(null, dbPathNodes[sgPathNodes.length - 1])
+                  .createDatabaseMNode(null, dbPathNodes[dbPathNodes.length - 1])
                   .getAsMNode(),
               0L);
     }
@@ -207,8 +207,8 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> dbNode) throws IOException {
     this.isEntity = dbNode.isDevice();
-    if (sgNode.isDevice()) {
-      this.sgNodeTemplateIdWithState = dbNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
+    if (dbNode.isDevice()) {
+      this.dbNodeTemplateIdWithState = dbNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
     }
     updateHeaderBuffer();
     return true;
@@ -230,7 +230,7 @@ public class SchemaFile implements ISchemaFile {
 
     if (node.isDatabase()) {
       isEntity = node.isDevice();
-      setNodeAddress(node, lastSGAddr);
+      setNodeAddress(node, lastDBAddr);
     } else {
       if (curSegAddr < 0L) {
         if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
@@ -311,9 +311,9 @@ public class SchemaFile implements ISchemaFile {
                 + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
                 + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
                 + "=============================\n"
-                + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
+                + "Belong to StorageGroup: [%s], segment of DB:%s, total pages:%d\n",
             storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
-            Long.toHexString(lastSGAddr),
+            Long.toHexString(lastDBAddr),
             lastPageIndex + 1);
     if (pw == null) {
       pw = new PrintWriter(System.out);
@@ -334,13 +334,13 @@ public class SchemaFile implements ISchemaFile {
    *
    * <ul>
    *   <li>1 int (4 bytes): last page index {@link #lastPageIndex}
-   *   <li>var length: root(SG) node info
+   *   <li>var length: root(DB) node info
    *       <ul>
-   *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
+   *         <li><s>a. var length string (less than 200 bytes): path to root(DB) node</s>
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
-   *         <li>c. 1 int (4 bytes): hash code of template name {@link #sgNodeTemplateIdWithState}
-   *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
+   *         <li>c. 1 int (4 bytes): hash code of template name {@link #dbNodeTemplateIdWithState}
+   *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastDBAddr}
    *         <li>e. 1 int (4 bytes): version of pbtree file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
@@ -355,9 +355,9 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
-      ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
+      ReadWriteIOUtils.write(dbNodeTemplateIdWithState, headerContent);
       ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
-      lastSGAddr = 0L;
+      lastDBAddr = 0L;
       pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
       channel.read(headerContent);
@@ -366,7 +366,7 @@ public class SchemaFile implements ISchemaFile {
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       dbNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
-      lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
+      lastDBAddr = ReadWriteIOUtils.readLong(headerContent);
 
       if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
         channel.close();
@@ -383,8 +383,8 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(pageManager.getLastPageIndex(), headerContent);
     ReadWriteIOUtils.write(dataTTL, headerContent);
     ReadWriteIOUtils.write(isEntity, headerContent);
-    ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
-    ReadWriteIOUtils.write(lastSGAddr, headerContent);
+    ReadWriteIOUtils.write(dbNodeTemplateIdWithState, headerContent);
+    ReadWriteIOUtils.write(lastDBAddr, headerContent);
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.flip();
@@ -486,7 +486,7 @@ public class SchemaFile implements ISchemaFile {
     }
     File schemaFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_FILE_NAME);
+            getDirPath(dbName, schemaRegionId), SchemaConstant.PBTREE_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
 
     if (!IoTDBDescriptor.getInstance()
@@ -496,12 +496,12 @@ public class SchemaFile implements ISchemaFile {
       // schemaFileLog disabled with RATIS consensus
       File schemaLogFile =
           SystemFileFactory.INSTANCE.getFile(
-              getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
+              getDirPath(dbName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
       Files.deleteIfExists(schemaLogFile.toPath());
     }
 
     Files.copy(snapshot.toPath(), schemaFile.toPath());
-    return new SchemaFile(sgName, schemaRegionId, false, Long.MAX_VALUE, false);
+    return new SchemaFile(dbName, schemaRegionId, false, Long.MAX_VALUE, false);
   }
 
   // endregion
