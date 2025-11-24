@@ -2256,9 +2256,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       if (res.right.left || res.right.right) {
-        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(dbNameToQueryParamsMap);
       } else {
-        return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
       }
     } finally {
       long partitionFetchCost = System.nanoTime() - startTime;
@@ -3585,7 +3585,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .add(queryParam);
         });
 
-    DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+    DataPartition dataPartition = partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);
     analysis.setFinishQueryAfterAnalyze(dataPartition.isEmpty());
 

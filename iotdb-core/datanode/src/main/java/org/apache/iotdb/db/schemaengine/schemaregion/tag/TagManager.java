@@ -82,7 +82,7 @@ public class TagManager {
 
   public TagManager(String dbSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
-    tagLogFile = new TagLogFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
+    tagLogFile = new TagLogFile(dbSchemaDirPath, SchemaConstant.TAG_LOG);
     this.regionStatistics = regionStatistics;
   }
 
@@ -131,14 +131,14 @@ public class TagManager {
       throws IOException {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
-    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(dbSchemaDirPath, SchemaConstant.TAG_LOG);
     if (tagFile.exists() && !tagFile.delete()) {
       logger.warn("Failed to delete existing {} when loading snapshot.", tagFile.getName());
     }
 
     try {
       org.apache.tsfile.external.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
-      return new TagManager(sgSchemaDirPath, regionStatistics);
+      return new TagManager(dbSchemaDirPath, regionStatistics);
     } catch (IOException e) {
       if (!tagFile.delete()) {
         logger.warn(

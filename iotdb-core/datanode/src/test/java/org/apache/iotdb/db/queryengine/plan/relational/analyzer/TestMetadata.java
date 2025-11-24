@@ -587,7 +587,7 @@ public class TestMetadata implements Metadata {
       @Override
       public DataPartition getDataPartition(
           Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
-        return !sgNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+        return !dbNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
             ? TREE_VIEW_DATA_PARTITION
             : TABLE_DATA_PARTITION;
       }
@@ -595,7 +595,7 @@ public class TestMetadata implements Metadata {
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
           Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
-        return !sgNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+        return !dbNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
             ? TREE_VIEW_DATA_PARTITION
             : TABLE_DATA_PARTITION;
       }

@@ -294,7 +294,7 @@ public class EnvironmentUtils {
     createDir(config.getSystemDir());
     // create db dir
     String dbDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
-    createDir(sgDir);
+    createDir(dbDir);
     // create sync
     createDir(commonConfig.getSyncDir());
     // create query

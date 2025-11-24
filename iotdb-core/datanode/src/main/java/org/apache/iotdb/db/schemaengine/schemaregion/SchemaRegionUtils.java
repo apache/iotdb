@@ -39,7 +39,7 @@ public class SchemaRegionUtils {
       throws MetadataException {
     File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     File[] dbFiles = schemaRegionDir.listFiles();
-    if (sgFiles == null) {
+    if (dbFiles == null) {
       throw new MetadataException(
           String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
     }

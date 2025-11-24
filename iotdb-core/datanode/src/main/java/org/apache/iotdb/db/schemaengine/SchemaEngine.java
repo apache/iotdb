@@ -137,7 +137,7 @@ public class SchemaEngine {
     final File schemaDir = new File(config.getSchemaDir());
     final File[] dbDirList = schemaDir.listFiles();
     final Map<String, List<SchemaRegionId>> localSchemaPartitionTable = new HashMap<>();
-    if (sgDirList == null) {
+    if (dbDirList == null) {
       return localSchemaPartitionTable;
     }
     for (File file : dbDirList) {
@@ -147,7 +147,7 @@ public class SchemaEngine {
 
       final File dbDir = new File(config.getSchemaDir(), file.getName());
 
-      if (!sgDir.exists()) {
+      if (!dbDir.exists()) {
         continue;
       }
 
@@ -334,8 +334,8 @@ public class SchemaEngine {
             });
     // remove the empty db dir
     if (regionDirList == null || regionDirList.length == 0) {
-      if (sgDir.exists()) {
-        FileUtils.deleteFileOrDirectory(sgDir);
+      if (dbDir.exists()) {
+        FileUtils.deleteFileOrDirectory(dbDir);
       }
     }
   }

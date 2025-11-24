@@ -196,12 +196,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
-    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+    DataPartition dataPartition = partitionCache.getDataPartition(dbNameToQueryParamsMap);
     if (null == dataPartition) {
       try (ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+            client.getDataPartitionTable(constructDataPartitionReqForQuery(dbNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
@@ -228,7 +228,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDataPartitionTableResp dataPartitionTableResp =
-          client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+          client.getDataPartitionTable(constructDataPartitionReqForQuery(dbNameToQueryParamsMap));
       if (dataPartitionTableResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionTableResp);
@@ -246,13 +246,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
-    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+    DataPartition dataPartition = partitionCache.getDataPartition(dbNameToQueryParamsMap);
     if (null == dataPartition) {
       // Do not use data partition cache
       try (final ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+            client.getOrCreateDataPartitionTable(constructDataPartitionReq(dbNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);

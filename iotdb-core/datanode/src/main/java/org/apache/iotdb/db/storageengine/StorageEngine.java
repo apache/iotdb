@@ -239,7 +239,7 @@ public class StorageEngine implements IService {
             () -> {
               DataRegion dataRegion;
               try {
-                dataRegion = buildNewDataRegion(sgName, dataRegionId);
+                dataRegion = buildNewDataRegion(dbName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
                     "Failed to recover data region {}[{}]", dbName, dataRegionId.getId(), e);
@@ -262,22 +262,22 @@ public class StorageEngine implements IService {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
     File[] dbDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
-    if (sgDirs == null) {
+    if (dbDirs == null) {
       return localDataRegionInfo;
     }
     for (File dbDir : dbDirs) {
-      if (!sgDir.isDirectory()) {
+      if (!dbDir.isDirectory()) {
         continue;
       }
       String dbName = dbDir.getName();
       List<DataRegionId> dataRegionIdList = new ArrayList<>();
-      for (File dataRegionDir : Objects.requireNonNull(sgDir.listFiles())) {
+      for (File dataRegionDir : Objects.requireNonNull(dbDir.listFiles())) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
         dataRegionIdList.add(new DataRegionId(Integer.parseInt(dataRegionDir.getName())));
       }
-      localDataRegionInfo.put(sgName, dataRegionIdList);
+      localDataRegionInfo.put(dbName, dataRegionIdList);
     }
     return localDataRegionInfo;
   }

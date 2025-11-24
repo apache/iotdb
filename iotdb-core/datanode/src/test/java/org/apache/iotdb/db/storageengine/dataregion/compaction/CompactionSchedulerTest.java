@@ -154,10 +154,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test1";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -279,10 +279,10 @@ public class CompactionSchedulerTest {
       String dbName = COMPACTION_TEST_SG + "test2";
       try {
         CompactionTaskManager.getInstance().restart();
-        TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+        TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
         Set<String> fullPath = new HashSet<>();
         for (String device : fullPaths) {
-          fullPath.add(sgName + device);
+          fullPath.add(dbName + device);
         }
         for (int i = 0; i < 100; i++) {
           List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -390,10 +390,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test3";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -488,10 +488,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test4";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -572,10 +572,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test5";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -687,10 +687,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test6";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -793,10 +793,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test7";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -895,10 +895,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test8";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -983,10 +983,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test9";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1087,10 +1087,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test10";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1195,10 +1195,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test11";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1299,10 +1299,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test12";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1408,10 +1408,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test13";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1518,10 +1518,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test14";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
 
@@ -1636,10 +1636,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test16";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 100; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -1730,10 +1730,10 @@ public class CompactionSchedulerTest {
     String dbName = COMPACTION_TEST_SG + "test17";
     try {
       CompactionTaskManager.getInstance().restart();
-      TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
+      TsFileManager tsFileManager = new TsFileManager(dbName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
-        fullPath.add(sgName + device);
+        fullPath.add(dbName + device);
       }
       for (int i = 0; i < 10; i++) {
         List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -1747,7 +1747,7 @@ public class CompactionSchedulerTest {
                         .concat(File.separator)
                         .concat("sequence")
                         .concat(File.separator)
-                        .concat(sgName)
+                        .concat(dbName)
                         .concat(File.separator)
                         .concat("0")
                         .concat(File.separator)
@@ -1778,7 +1778,7 @@ public class CompactionSchedulerTest {
                       .concat(File.separator)
                       .concat("sequence")
                       .concat(File.separator)
-                      .concat(sgName)
+                      .concat(dbName)
                       .concat(File.separator)
                       .concat("0")
                       .concat(File.separator)

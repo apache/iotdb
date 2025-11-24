@@ -89,17 +89,17 @@ public class AlignedSeriesTestUtil {
     int seqFileNum = 5;
     long ptNum = 100;
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i));
+      File file = new File(TestConstant.getTestTsFilePath(dbName, 0, 0, i));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
       seqResources.add(tsFileResource);
-      prepareFile(sgName, tsFileResource, i * ptNum, ptNum, 0, measurementSchemas);
+      prepareFile(dbName, tsFileResource, i * ptNum, ptNum, 0, measurementSchemas);
     }
     int unseqFileNum = 5;
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i + seqFileNum));
+      File file = new File(TestConstant.getTestTsFilePath(dbName, 0, 0, i + seqFileNum));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
@@ -114,13 +114,13 @@ public class AlignedSeriesTestUtil {
           measurementSchemas);
     }
 
-    File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, seqFileNum + unseqFileNum));
+    File file = new File(TestConstant.getTestTsFilePath(dbName, 0, 0, seqFileNum + unseqFileNum));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
-    prepareFile(sgName, tsFileResource, 0, ptNum * 2, 20000, measurementSchemas);
+    prepareFile(dbName, tsFileResource, 0, ptNum * 2, 20000, measurementSchemas);
   }
 
   private static void prepareFile(

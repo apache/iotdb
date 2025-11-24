@@ -411,9 +411,9 @@ public class TemplatedAnalyze {
       }
 
       if (res.right.left || res.right.right) {
-        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(dbNameToQueryParamsMap);
       } else {
-        return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
       }
     } finally {
       QueryPlanCostMetricSet.getInstance()
