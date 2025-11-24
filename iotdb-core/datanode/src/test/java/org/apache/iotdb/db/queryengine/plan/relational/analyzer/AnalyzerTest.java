@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -74,6 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -118,6 +120,8 @@ import static org.mockito.ArgumentMatchers.eq;
 public class AnalyzerTest {
 
   private static final AccessControl nopAccessControl = new AllowAllAccessControl();
+  final String database = "db";
+  final String table = "table1";
 
   QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
@@ -126,7 +130,7 @@ public class AnalyzerTest {
           "iotdb-user",
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
-          "db",
+          database,
           IClientSession.SqlDialect.TABLE);
   Metadata metadata = new TestMetadata();
   WarningCollector warningCollector = NOOP;
@@ -149,7 +153,7 @@ public class AnalyzerTest {
 
     final Map<String, ColumnHandle> map = new HashMap<>();
     final TableSchema tableSchema = Mockito.mock(TableSchema.class);
-    Mockito.when(tableSchema.getTableName()).thenReturn("table1");
+    Mockito.when(tableSchema.getTableName()).thenReturn(table);
     final ColumnSchema column1 =
         ColumnSchema.builder().setName("time").setType(INT64).setHidden(false).build();
     final ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
@@ -166,7 +170,7 @@ public class AnalyzerTest {
     Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
 
     Mockito.when(
-            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", table))))
         .thenReturn(Optional.of(tableSchema));
 
     Mockito.when(
@@ -1041,6 +1045,9 @@ public class AnalyzerTest {
   }
 
   private Metadata mockMetadataForInsertion() {
+    final TsTable tsTable = StatementTestUtils.genTsTable();
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
     return new TestMetadata() {
       @Override
       public Optional<TableSchema> validateTableHeaderSchema(
