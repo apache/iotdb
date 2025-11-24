@@ -3470,9 +3470,7 @@ public class DataRegion implements IDataRegionForQuery {
     final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
 
-    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)
-        || !tsfileToBeInserted.exists()
-        || tsfileToBeInserted.getParentFile() == null) {
+    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
     }
