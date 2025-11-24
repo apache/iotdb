@@ -283,7 +283,7 @@ public class IoTDBLoadTsFileIT {
               SchemaConfig.MEASUREMENT_05,
               SchemaConfig.MEASUREMENT_06,
               SchemaConfig.MEASUREMENT_07));
-      generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
@@ -303,9 +303,9 @@ public class IoTDBLoadTsFileIT {
           Arrays.asList(SchemaConfig.MEASUREMENT_40, SchemaConfig.MEASUREMENT_06));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, false);
       for (int i = 0; i < 1000; i++) {
-        generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, true);
+        generator.generateData(SchemaConfig.DEVICE_4, 1, PARTITION_INTERVAL - 10, false);
       }
       writtenPoint2 = generator.getTotalNumber();
     }
