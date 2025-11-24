@@ -20,7 +20,7 @@ from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.cluster_manager import ClusterManager
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
-from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.manager.model_manager import get_model_manager
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.thrift.ainode import IAINodeRPCService
@@ -47,24 +47,10 @@ from iotdb.thrift.common.ttypes import TSStatus
 logger = Logger()
 
 
-def _ensure_device_id_is_available(device_id_list: list[str]) -> TSStatus:
-    """
-    Ensure that the device IDs in the provided list are available.
-    """
-    available_devices = get_available_devices()
-    for device_id in device_id_list:
-        if device_id not in available_devices:
-            return TSStatus(
-                code=TSStatusCode.INVALID_URI_ERROR.value,
-                message=f"Device ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
-            )
-    return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
-
-
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self, ainode):
         self._ainode = ainode
-        self._model_manager = ModelManager()
+        self._model_manager = get_model_manager()
         self._inference_manager = InferenceManager()
 
     def stop(self) -> None:
@@ -78,26 +64,62 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
 
+    def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
+        return self._model_manager.delete_model(req)
+
+    def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self._model_manager.show_models(req)
+
     def loadModel(self, req: TLoadModelReq) -> TSStatus:
-        status = self._ensure_model_is_built_in_or_fine_tuned(req.existingModelId)
-        if status.code != TSStatusCode.SUCCESS_STATUS.value:
-            return status
-        status = _ensure_device_id_is_available(req.deviceIdList)
-        if status.code != TSStatusCode.SUCCESS_STATUS.value:
-            return status
+        if not self._model_manager.is_model_registered(req.existingModelId):
+            return TSStatus(
+                code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
+                message=f"Model [{req.existingModelId}] is not supported. You can use 'SHOW MODELS' to retrieve the available models.",
+            )
+
+        available_devices = get_available_devices()
+        for device_id in req.deviceIdList:
+            if device_id not in available_devices:
+                return TSStatus(
+                    code=TSStatusCode.INVALID_URI_ERROR.value,
+                    message=f"Device ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
+                )
+
         return self._inference_manager.load_model(req)
 
     def unloadModel(self, req: TUnloadModelReq) -> TSStatus:
-        status = self._ensure_model_is_built_in_or_fine_tuned(req.modelId)
-        if status.code != TSStatusCode.SUCCESS_STATUS.value:
-            return status
-        status = _ensure_device_id_is_available(req.deviceIdList)
-        if status.code != TSStatusCode.SUCCESS_STATUS.value:
-            return status
+        if not self._model_manager.is_model_registered(req.modelId):
+            return TSStatus(
+                code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
+                message=f"Model [{req.modelId}] is not supported. You can use 'SHOW MODELS' to retrieve the available models.",
+            )
+
+        available_devices = get_available_devices()
+        for device_id in req.deviceIdList:
+            if device_id not in available_devices:
+                return TSStatus(
+                    code=TSStatusCode.INVALID_URI_ERROR.value,
+                    message=f"Device ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
+                )
+
         return self._inference_manager.unload_model(req)
 
-    def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
-        return self._model_manager.delete_model(req)
+    def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
+        available_devices = get_available_devices()
+        for device_id in req.deviceIdList:
+            if device_id not in available_devices:
+                status = TSStatus(
+                    code=TSStatusCode.INVALID_URI_ERROR.value,
+                    message=f"Device ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
+                )
+                return TShowLoadedModelsResp(status=status, deviceLoadedModelsMap={})
+        return self._inference_manager.show_loaded_models(req)
+
+    def showAIDevices(self) -> TShowAIDevicesResp:
+        return TShowAIDevicesResp(
+            status=TSStatus(code=TSStatusCode.SUCCESS_STATUS.value),
+            deviceIdList=get_available_devices(),
+        )
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
         return self._inference_manager.inference(req)
@@ -108,28 +130,5 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)
 
-    def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
-        return self._model_manager.show_models(req)
-
-    def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
-        status = _ensure_device_id_is_available(req.deviceIdList)
-        if status.code != TSStatusCode.SUCCESS_STATUS.value:
-            return TShowLoadedModelsResp(status=status, deviceLoadedModelsMap={})
-        return self._inference_manager.show_loaded_models(req)
-
-    def showAIDevices(self) -> TShowAIDevicesResp:
-        return TShowAIDevicesResp(
-            status=TSStatus(code=TSStatusCode.SUCCESS_STATUS.value),
-            deviceIdList=get_available_devices(),
-        )
-
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         pass
-
-    def _ensure_model_is_built_in_or_fine_tuned(self, model_id: str) -> TSStatus:
-        if not self._model_manager.is_built_in_or_fine_tuned(model_id):
-            return TSStatus(
-                code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
-                message=f"Model [{model_id}] is not a built-in or fine-tuned model. You can use 'SHOW MODELS' to retrieve the available models.",
-            )
-        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)

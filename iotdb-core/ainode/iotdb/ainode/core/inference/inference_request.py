@@ -15,14 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import threading
 from typing import Any
 
 import torch
 
-from iotdb.ainode.core.inference.strategy.abstract_inference_pipeline import (
-    AbstractInferencePipeline,
-)
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.util.atmoic_int import AtomicInt
 
@@ -41,7 +39,6 @@ class InferenceRequest:
         req_id: str,
         model_id: str,
         inputs: torch.Tensor,
-        inference_pipeline: AbstractInferencePipeline,
         max_new_tokens: int = 96,
         **infer_kwargs,
     ):
@@ -52,7 +49,6 @@ class InferenceRequest:
         self.model_id = model_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
-        self.inference_pipeline = inference_pipeline
         self.max_new_tokens = (
             max_new_tokens  # Number of time series data points to generate
         )
