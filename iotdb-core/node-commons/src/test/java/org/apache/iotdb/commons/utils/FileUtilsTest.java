@@ -74,7 +74,7 @@ public class FileUtilsTest {
         tablet.addTimestamp(i, i);
         tablet.addValue("s1", 0, true);
       }
-      writer.write(tablet);
+      writer.writeAligned(tablet);
     }
   }
 }
