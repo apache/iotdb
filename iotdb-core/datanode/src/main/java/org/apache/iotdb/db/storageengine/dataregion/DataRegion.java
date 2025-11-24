@@ -3474,15 +3474,15 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
-    final IoTConsensusServerImpl impl =
-        ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(id);
-    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus
-        && Objects.nonNull(impl)
-        && !impl.isActive()) {
-      throw new LoadFileException(
-          String.format(
-              "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
-              id, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
+      final IoTConsensusServerImpl impl =
+          ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(id);
+      if (Objects.nonNull(impl) && !impl.isActive()) {
+        throw new LoadFileException(
+            String.format(
+                "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
+                id, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+      }
     }
 
     final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
