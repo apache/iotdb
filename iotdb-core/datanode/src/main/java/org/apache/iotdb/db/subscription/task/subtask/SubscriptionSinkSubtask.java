@@ -41,18 +41,13 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
       final String taskID,
       final long creationTime,
       final String attributeSortedString,
-      final int connectorIndex,
+      final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
-      final PipeConnector outputPipeConnector,
+      final PipeConnector outputPipeSink,
       final String topicName,
       final String consumerGroupId) {
     super(
-        taskID,
-        creationTime,
-        attributeSortedString,
-        connectorIndex,
-        inputPendingQueue,
-        outputPipeConnector);
+        taskID, creationTime, attributeSortedString, sinkIndex, inputPendingQueue, outputPipeSink);
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
   }

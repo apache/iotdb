@@ -36,7 +36,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.pipe.api.PipeSink;
+import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -72,7 +72,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final String attributeSortedString,
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
-      final PipeSink outputPipeSink) {
+      final PipeConnector outputPipeSink) {
     super(taskID, creationTime, outputPipeSink);
     this.attributeSortedString = attributeSortedString;
     this.sinkIndex = sinkIndex;

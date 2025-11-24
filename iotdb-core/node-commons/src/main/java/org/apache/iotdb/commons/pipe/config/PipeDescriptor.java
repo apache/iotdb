@@ -343,8 +343,7 @@ public class PipeDescriptor {
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_memory_control",
-                        String.valueOf(
-                            config.isPipeConnectorReadFileBufferMemoryControlEnabled())))));
+                        String.valueOf(config.isPipeSinkReadFileBufferMemoryControlEnabled())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
@@ -359,15 +358,14 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
-    config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+    config.setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_max_retry_execution_time_ms_per_call"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_max_retry_execution_time_ms_per_call",
-                        String.valueOf(
-                            config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
+                        String.valueOf(config.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall())))));
     config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(
         Integer.parseInt(
             Optional.ofNullable(
@@ -554,7 +552,7 @@ public class PipeDescriptor {
         parserPipeConfig(
             properties, "pipe_sink_timeout_ms", "pipe_connector_timeout_ms", isHotModify);
     if (value != null) {
-      config.setPipeConnectorTransferTimeoutMs(Long.parseLong(value));
+      config.setPipeSinkTransferTimeoutMs(Long.parseLong(value));
     }
 
     value =

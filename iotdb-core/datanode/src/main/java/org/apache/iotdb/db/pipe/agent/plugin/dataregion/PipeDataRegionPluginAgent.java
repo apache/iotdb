@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.PipeSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
@@ -42,7 +42,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSourceConstructor createPipeExtractorConstructor(
+  protected PipeSourceConstructor createPipeSourceConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeDataRegionSourceConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
@@ -67,9 +67,9 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> sinkAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateExtractor(sourceAttributes);
+    PipeExtractor temporaryExtractor = validateSource(sourceAttributes);
     PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeSink temporarySink = validateSink(pipeName, sinkAttributes);
+    PipeConnector temporarySink = validateSink(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region

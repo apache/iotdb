@@ -164,7 +164,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
                 "Handshake error with target server ip: %s, port: %s, because: %s.",
                 client.getIpAddress(), client.getPort(), resp.getStatus()));
       } else {
-        client.setTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
         IOT_PRINTER.println(
             String.format(
                 "Handshake success. Target server ip: %s, port: %s",
@@ -301,7 +301,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PipeConfig.getInstance().isPipeConnectorRPCThriftCompressionEnabled())
+                      PipeConfig.getInstance().isPipeSinkRPCThriftCompressionEnabled())
                   .build(),
               getEndPoint().getIp(),
               getEndPoint().getPort(),
