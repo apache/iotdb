@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -3473,8 +3474,11 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
+    final IoTConsensusServerImpl impl =
+        ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(id);
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus
-        && !((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(id).isActive()) {
+        && Objects.nonNull(impl)
+        && !impl.isActive()) {
       throw new LoadFileException(
           String.format(
               "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
