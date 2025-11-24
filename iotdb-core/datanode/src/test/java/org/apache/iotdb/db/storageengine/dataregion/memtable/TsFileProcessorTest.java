@@ -146,10 +146,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -221,10 +221,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -296,10 +296,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -375,10 +375,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     AlignedFullPath fullPath =
         new AlignedFullPath(
@@ -461,10 +461,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     AlignedFullPath fullPath =
         new AlignedFullPath(
@@ -550,10 +550,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -633,10 +633,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     NonAlignedFullPath fullPath =
         new NonAlignedFullPath(
@@ -674,10 +674,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
@@ -725,10 +725,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     // Test Tablet
     processor.insertTablet(
         genInsertTableNode(0, true),
@@ -819,10 +819,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     // Test tablet
     processor.insertTablet(
         genInsertTableNode(0, false),
@@ -870,10 +870,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(dbInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
-    this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
+    this.dbInfo.initTsFileProcessorInfo(processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
@@ -890,10 +890,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(dbInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
-    this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
+    this.dbInfo.initTsFileProcessorInfo(processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     // insert 100 rows by insertRows
     for (int i = 1; i <= 100; i++) {
@@ -963,10 +963,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(dbInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
-    this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
+    this.dbInfo.initTsFileProcessorInfo(processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor1);
     // insert 100 rows by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(deviceId, i);
@@ -985,10 +985,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(dbInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
-    this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
+    this.dbInfo.initTsFileProcessorInfo(processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows by insertRows
@@ -1067,10 +1067,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(dbInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
-    this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
+    this.dbInfo.initTsFileProcessorInfo(processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
@@ -1091,10 +1091,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(dbInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
-    this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
+    this.dbInfo.initTsFileProcessorInfo(processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
@@ -1127,10 +1127,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(dbInfo);
     processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
-    this.sgInfo.initTsFileProcessorInfo(processor1);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
+    this.dbInfo.initTsFileProcessorInfo(processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor1);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i <= 50 ? deviceId : "root.vehicle.d2", i);
@@ -1152,10 +1152,10 @@ public class TsFileProcessorTest {
             this::closeTsFileProcessor,
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
-    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(dbInfo);
     processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
-    this.sgInfo.initTsFileProcessorInfo(processor2);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
+    this.dbInfo.initTsFileProcessorInfo(processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor2);
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
@@ -1190,10 +1190,10 @@ public class TsFileProcessorTest {
             (tsFileProcessor, updateMap, systemFlushTime) -> {},
             true);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dbInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
-    this.sgInfo.initTsFileProcessorInfo(processor);
-    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    this.dbInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(dbInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     NonAlignedFullPath fullPath =
