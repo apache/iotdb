@@ -24,8 +24,7 @@ import torch
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import ModelNotExistError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP
+from iotdb.ainode.core.manager.model_manager import get_model_manager
 
 logger = Logger()
 
@@ -47,7 +46,7 @@ def measure_model_memory(device: torch.device, model_id: str) -> int:
     torch.cuda.synchronize(device)
     start = torch.cuda.memory_reserved(device)
 
-    model = ModelManager().load_model(model_id, {}).to(device)
+    model = get_model_manager().load_model(model_id, {}).to(device)
     torch.cuda.synchronize(device)
     end = torch.cuda.memory_reserved(device)
     usage = end - start
@@ -80,8 +79,8 @@ def evaluate_system_resources(device: torch.device) -> dict:
 
 
 def estimate_pool_size(device: torch.device, model_id: str) -> int:
-    model_info = BUILT_IN_LTSM_MAP.get(model_id, None)
-    if model_info is None or model_info.model_type not in MODEL_MEM_USAGE_MAP:
+    model_info = get_model_manager.get_model_info(model_id)
+    if model_info is None or model_info.model_id not in MODEL_MEM_USAGE_MAP:
         logger.error(
             f"[Inference] Cannot estimate inference pool size on device: {device}, because model: {model_id} is not supported."
         )
@@ -90,9 +89,7 @@ def estimate_pool_size(device: torch.device, model_id: str) -> int:
     system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
-    mem_usage = (
-        MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
-    )
+    mem_usage = MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
     size = int((free_mem * INFERENCE_MEMORY_USAGE_RATIO) // mem_usage)
     if size <= 0:
         logger.error(
