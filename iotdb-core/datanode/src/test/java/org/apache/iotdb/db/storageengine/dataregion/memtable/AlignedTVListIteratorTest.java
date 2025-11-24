@@ -941,6 +941,14 @@ public class AlignedTVListIteratorTest {
         encodeInfo.reset();
       }
     }
+    // Handle remaining data in the final unsealed chunk
+    if (encodeInfo.pointNumInChunk > 0 || encodeInfo.pointNumInPage > 0) {
+      if (encodeInfo.pointNumInPage > 0) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+      }
+      alignedChunkWriter.sealCurrentPage();
+      count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
+    }
     Assert.assertEquals(expectedCount, count);
   }
 }
