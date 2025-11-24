@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
+package org.apache.iotdb.commons.disk.strategy;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.rescon.disk.FolderManager.FolderState.HEALTHY;
+import static org.apache.iotdb.commons.disk.FolderManager.FolderState.HEALTHY;
 
 /**
  * The basic class of all the strategies of multiple directories. If a user wants to define his own

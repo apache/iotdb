@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.rescon.disk;
+package org.apache.iotdb.commons.disk;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
