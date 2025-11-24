@@ -250,7 +250,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     // pass
     int existingTagCount = 0;
     boolean needReorder = false;
-    final Map<String, Integer> tagOldIndexMap = new LinkedHashMap<>();
+    final Map<String, Integer> tagOldIndexMap =
+        new LinkedHashMap<>(existingTagColumnIndexMap.size());
 
     int targetPos = 0;
     for (String tagColumnName : existingTagColumnIndexMap.keySet()) {
@@ -271,12 +272,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     if (needExpansion) {
       // Case 1: Expansion needed - create new arrays and reorder in one pass
       expandAndReorderTagColumns(
-          baseStatement,
-          tagColumnIndexMap,
-          existingTagColumnIndexMap,
-          tagOldIndexMap,
-          oldLength,
-          totalTagCount);
+          baseStatement, existingTagColumnIndexMap, tagColumnIndexMap, oldLength, totalTagCount);
     } else if (needReorder) {
       // Case 2: No expansion but reordering needed - use swaps
       reorderTagColumnsWithSwap(baseStatement, tagColumnIndexMap, existingTagColumnIndexMap);
@@ -293,116 +289,39 @@ public abstract class WrappedInsertStatement extends WrappedStatement
    */
   private void expandAndReorderTagColumns(
       final InsertBaseStatement baseStatement,
-      final LinkedHashMap<String, Integer> tagColumnIndexMap,
       final LinkedHashMap<String, Integer> existingTagColumnIndexMap,
       final Map<String, Integer> tagOldIndexMap,
       final int oldLength,
       final int totalTagCount) {
-
-    // Build old-to-new index mapping array
-    final int[] oldToNewMapping = new int[oldLength];
-
     // Get old arrays
     final String[] oldMeasurements = baseStatement.getMeasurements();
-    final MeasurementSchema[] oldMeasurementSchemas = baseStatement.getMeasurementSchemas();
-    final TSDataType[] oldDataTypes = baseStatement.getDataTypes();
-    final TsTableColumnCategory[] oldColumnCategories = baseStatement.getColumnCategories();
 
     final int missingCount = totalTagCount - tagOldIndexMap.size();
     final int newLength = oldLength + missingCount;
-
-    // Build mapping for existing TAG columns
-    int tagIdx = 0;
-    for (String tagColumnName : existingTagColumnIndexMap.keySet()) {
-      final Integer oldIdx = tagOldIndexMap.get(tagColumnName);
-      if (oldIdx != null) {
-        oldToNewMapping[oldIdx] = tagIdx; // oldIdx maps to tagIdx in new array
-      }
-      tagIdx++;
-    }
-
-    // Create new arrays with final size
+    final int[] newToOldMapping = new int[newLength];
     final String[] newMeasurements = new String[newLength];
-    final MeasurementSchema[] newMeasurementSchemas =
-        oldMeasurementSchemas != null ? new MeasurementSchema[newLength] : null;
-    final TSDataType[] newDataTypes = oldDataTypes != null ? new TSDataType[newLength] : null;
-    final TsTableColumnCategory[] newColumnCategories =
-        oldColumnCategories != null ? new TsTableColumnCategory[newLength] : null;
 
     // Fill TAG area [0, totalTagCount) in schema order
-    tagIdx = 0;
+    int tagIdx = 0;
+    final Set<Integer> tagOldIndices = new HashSet<>(tagOldIndexMap.values());
     for (String tagColumnName : existingTagColumnIndexMap.keySet()) {
       final Integer oldIdx = tagOldIndexMap.get(tagColumnName);
-
+      newMeasurements[tagIdx] = tagColumnName;
       if (oldIdx == null) {
-        // Missing TAG column, fill with default value
-        fillMissingTagColumn(
-            newMeasurements,
-            newMeasurementSchemas,
-            newDataTypes,
-            newColumnCategories,
-            tagIdx,
-            tagColumnName);
+        newToOldMapping[tagIdx++] = -1;
       } else {
-        // Existing TAG column, copy from old array
-        copyColumn(
-            oldMeasurements,
-            oldMeasurementSchemas,
-            oldDataTypes,
-            oldColumnCategories,
-            newMeasurements,
-            newMeasurementSchemas,
-            newDataTypes,
-            newColumnCategories,
-            oldIdx,
-            tagIdx);
+        tagOldIndices.add(oldIdx);
+        newToOldMapping[tagIdx++] = oldIdx;
       }
-      tagIdx++;
     }
 
-    // Fill non-TAG area [totalTagCount, newLength) and complete the mapping
-    final Set<Integer> tagOldIndices = new HashSet<>(tagOldIndexMap.values());
-    int nonTagIdx = totalTagCount;
     for (int oldIdx = 0; oldIdx < oldLength; oldIdx++) {
       if (!tagOldIndices.contains(oldIdx)) {
-        // Non-TAG column, copy to back section
-        copyColumn(
-            oldMeasurements,
-            oldMeasurementSchemas,
-            oldDataTypes,
-            oldColumnCategories,
-            newMeasurements,
-            newMeasurementSchemas,
-            newDataTypes,
-            newColumnCategories,
-            oldIdx,
-            nonTagIdx);
-        oldToNewMapping[oldIdx] = nonTagIdx;
-        nonTagIdx++;
+        newMeasurements[tagIdx] = oldMeasurements[oldIdx];
+        newToOldMapping[tagIdx++] = oldIdx;
       }
     }
-
-    // Replace old arrays with new arrays
-    baseStatement.setMeasurements(newMeasurements);
-    if (newMeasurementSchemas != null) {
-      baseStatement.setMeasurementSchemas(newMeasurementSchemas);
-    }
-    if (newDataTypes != null) {
-      baseStatement.setDataTypes(newDataTypes);
-    }
-    if (newColumnCategories != null) {
-      baseStatement.setColumnCategories(newColumnCategories);
-    }
-
-    // Notify subclass to rebuild its arrays with the mapping
-    baseStatement.rebuildArraysAfterExpansion(oldToNewMapping, totalTagCount);
-
-    // Update tagColumnIndexMap with new positions
-    tagColumnIndexMap.clear();
-    int idx = 0;
-    for (String tagColumnName : existingTagColumnIndexMap.keySet()) {
-      tagColumnIndexMap.put(tagColumnName, idx++);
-    }
+    baseStatement.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
   }
 
   /**

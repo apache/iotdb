@@ -536,22 +536,44 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @TableModel
   @Override
-  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
-    final int oldLength = oldToNewMapping.length;
-    final int newLength = measurements.length;
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
 
-    // Save old values array
+    // Call parent to rebuild base arrays
+    super.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
+
+    // Save old arrays
     final Object[] oldValues = values;
+    final boolean[] oldMeasurementIsAligned = measurementIsAligned;
 
-    // Create new values array: [TAG area: 0~totalTagCount] + [non-TAG area:
-    // totalTagCount~newLength]
+    // Create new arrays
     values = new Object[newLength];
+    final boolean[] newMeasurementIsAligned =
+        oldMeasurementIsAligned != null ? new boolean[newLength] : null;
 
-    // Copy values using the mapping: newValues[oldToNewMapping[oldIdx]] = oldValues[oldIdx]
-    for (int oldIdx = 0; oldIdx < oldLength; oldIdx++) {
-      values[oldToNewMapping[oldIdx]] = oldValues[oldIdx];
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Missing TAG column, fill with default values
+        values[newIdx] = null; // TAG column values remain null by default
+        if (newMeasurementIsAligned != null) {
+          // Default to false for missing TAG columns
+          newMeasurementIsAligned[newIdx] = false;
+        }
+      } else {
+        // Copy from old array
+        values[newIdx] = oldValues[oldIdx];
+        if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
+          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+        }
+      }
     }
-    // TAG area values for missing columns remain null by default
+
+    // Replace old array with new array
+    measurementIsAligned = newMeasurementIsAligned;
   }
 
   @Override

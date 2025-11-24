@@ -662,22 +662,75 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   /**
-   * Rebuild subclass-specific arrays after TAG column expansion. The base arrays (measurements,
-   * dataTypes, etc.) have already been reorganized into [TAG area: 0~totalTagCount] + [non-TAG
-   * area: totalTagCount~newLength]. Subclasses should override this method to reorganize their
-   * specific arrays (e.g., values[] in InsertRowStatement, columns[]/bitMaps[] in
-   * InsertTabletStatement) to match the new layout.
-   *
-   * <p>The oldToNewMapping array provides the mapping from old array positions to new array
-   * positions: newArray[oldToNewMapping[oldIdx]] = oldArray[oldIdx]
+   * The oldToNewMapping array provides the mapping from old array positions to new array positions:
+   * newArray[oldToNewMapping[oldIdx]] = oldArray[oldIdx]
    *
    * @param oldToNewMapping maps each old index to its new position in the reorganized array
-   * @param totalTagCount total number of TAG columns (all at front in NEW array: 0~totalTagCount)
    */
   @TableModel
-  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
-    // Default implementation does nothing
-    // Subclasses should override this method to handle their specific arrays
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Save old arrays
+    final MeasurementSchema[] oldMeasurementSchemas = measurementSchemas;
+    final TSDataType[] oldDataTypes = dataTypes;
+    final TsTableColumnCategory[] oldColumnCategories = columnCategories;
+    final Type[] oldTypeConvertors = typeConvertors;
+    final InputLocation[] oldInputLocations = inputLocations;
+
+    // Set new measurements array
+    measurements = newMeasurements;
+
+    // Create new arrays
+    final MeasurementSchema[] newMeasurementSchemas = new MeasurementSchema[newLength];
+    final TSDataType[] newDataTypes = new TSDataType[newLength];
+    final TsTableColumnCategory[] newColumnCategories = new TsTableColumnCategory[newLength];
+    final Type[] newTypeConvertors = typeConvertors != null ? new Type[newLength] : null;
+    final InputLocation[] newInputLocations =
+        oldInputLocations != null ? new InputLocation[newLength] : null;
+
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Missing TAG column, fill with default values
+        final String columnName = newMeasurements[newIdx];
+        newMeasurementSchemas[newIdx] = new MeasurementSchema(columnName, TSDataType.STRING);
+        newDataTypes[newIdx] = TSDataType.STRING;
+        newColumnCategories[newIdx] = TsTableColumnCategory.TAG;
+        // typeConvertors and inputLocations remain null for missing columns
+      } else {
+        // Copy from old array
+        if (oldMeasurementSchemas != null) {
+          newMeasurementSchemas[newIdx] = oldMeasurementSchemas[oldIdx];
+        }
+        if (oldDataTypes != null) {
+          newDataTypes[newIdx] = oldDataTypes[oldIdx];
+        }
+        if (oldColumnCategories != null) {
+          newColumnCategories[newIdx] = oldColumnCategories[oldIdx];
+        }
+        if (oldTypeConvertors != null) {
+          newTypeConvertors[newIdx] = oldTypeConvertors[oldIdx];
+        }
+        if (oldInputLocations != null) {
+          newInputLocations[newIdx] = oldInputLocations[oldIdx];
+        }
+      }
+    }
+
+    // Replace old arrays with new arrays
+    measurementSchemas = newMeasurementSchemas;
+    dataTypes = newDataTypes;
+    columnCategories = newColumnCategories;
+    typeConvertors = newTypeConvertors;
+    inputLocations = newInputLocations;
+
+    // Clear cached indices
+    tagColumnIndices = null;
+    attrColumnIndices = null;
   }
 
   public boolean isWriteToTable() {

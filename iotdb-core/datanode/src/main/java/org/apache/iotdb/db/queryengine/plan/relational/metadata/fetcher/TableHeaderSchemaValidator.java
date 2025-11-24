@@ -421,7 +421,8 @@ public class TableHeaderSchemaValidator {
       }
 
       // Record TAG column measurement index during validation loop
-      if (tagColumnHandler != null && category == TsTableColumnCategory.TAG) {
+      if (tagColumnHandler != null
+          && existingColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
         tagColumnIndexMap.put(measurementName, i); // Store measurement index
       }
     }
@@ -464,10 +465,11 @@ public class TableHeaderSchemaValidator {
     }
 
     // Handle TAG columns after validation loop
-    if (tagColumnHandler != null && !tagColumnIndexMap.isEmpty()) {
-      // Build existing TAG column index map from TsTable
-      final LinkedHashMap<String, Integer> existingTagColumnIndexMap = new LinkedHashMap<>();
+    if (tagColumnHandler != null) {
       final List<TsTableColumnSchema> existingTagColumns = table.getTagColumnSchemaList();
+      // Build existing TAG column index map from TsTable
+      final LinkedHashMap<String, Integer> existingTagColumnIndexMap =
+          new LinkedHashMap<>(existingTagColumns.size());
       for (int i = 0; i < existingTagColumns.size(); i++) {
         existingTagColumnIndexMap.put(existingTagColumns.get(i).getColumnName(), i);
       }

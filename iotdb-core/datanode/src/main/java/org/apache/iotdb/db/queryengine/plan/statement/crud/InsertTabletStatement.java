@@ -612,37 +612,60 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
-  public void rebuildArraysAfterExpansion(final int[] oldToNewMapping, final int totalTagCount) {
-    final int oldLength = oldToNewMapping.length;
-    final int newLength = measurements.length;
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Call parent to rebuild base arrays
+    super.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
 
     // Save old arrays
-    final Object[] oldColumns = columns;
     final BitMap[] oldNullBitMaps = nullBitMaps;
+    final Object[] oldColumns = columns;
+    final boolean[] oldMeasurementIsAligned = measurementIsAligned;
 
-    // Create new arrays: [TAG area: 0~totalTagCount] + [non-TAG area: totalTagCount~newLength]
-    columns = new Object[newLength];
-    nullBitMaps = oldNullBitMaps != null ? new BitMap[newLength] : null;
+    // Create new arrays
+    final BitMap[] newNullBitMaps = new BitMap[newLength];
+    final Object[] newColumns = oldColumns != null ? new Object[newLength] : null;
+    final boolean[] newMeasurementIsAligned =
+        oldMeasurementIsAligned != null ? new boolean[newLength] : null;
 
-    // Initialize all TAG columns with default empty arrays (STRING type)
-    for (int tagIdx = 0; tagIdx < totalTagCount; tagIdx++) {
-      columns[tagIdx] =
-          CommonUtils.createValueColumnOfDataType(
-              TSDataType.STRING, TsTableColumnCategory.TAG, rowCount);
-      if (nullBitMaps != null) {
-        nullBitMaps[tagIdx] = new BitMap(rowCount);
-        nullBitMaps[tagIdx].markAll();
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Create new BitMap with all positions marked (all null)
+        newNullBitMaps[newIdx] = new BitMap(rowCount);
+        newNullBitMaps[newIdx].markAll();
+        if (newColumns != null) {
+          // Create default column based on data type (STRING for TAG)
+          newColumns[newIdx] =
+              CommonUtils.createValueColumnOfDataType(
+                  TSDataType.STRING, TsTableColumnCategory.TAG, rowCount);
+        }
+        if (newMeasurementIsAligned != null) {
+          // Default to false for missing TAG columns
+          newMeasurementIsAligned[newIdx] = false;
+        }
+      } else {
+        // Copy from old array
+        if (oldNullBitMaps != null) {
+          newNullBitMaps[newIdx] = oldNullBitMaps[oldIdx];
+        }
+        if (newColumns != null && oldColumns != null) {
+          newColumns[newIdx] = oldColumns[oldIdx];
+        }
+        if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
+          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+        }
       }
     }
 
-    // Copy columns using the mapping: newColumns[oldToNewMapping[oldIdx]] = oldColumns[oldIdx]
-    for (int oldIdx = 0; oldIdx < oldLength; oldIdx++) {
-      final int newIdx = oldToNewMapping[oldIdx];
-      columns[newIdx] = oldColumns[oldIdx];
-      if (nullBitMaps != null && oldNullBitMaps != null) {
-        nullBitMaps[newIdx] = oldNullBitMaps[oldIdx];
-      }
-    }
+    // Replace old arrays with new arrays
+    nullBitMaps = newNullBitMaps;
+    columns = newColumns;
+    measurementIsAligned = newMeasurementIsAligned;
 
     deviceIDs = null;
   }
