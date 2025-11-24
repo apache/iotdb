@@ -255,7 +255,7 @@ public class DeletionResourceTest {
   @Test
   public void testWaitForResult() throws Exception {
     // prepare pipe component
-    final PipeRealtimeDataRegionSource extractor = new PipeRealtimeDataRegionHybridSource();
+    final PipeRealtimeDataRegionSource source = new PipeRealtimeDataRegionHybridSource();
     final PipeParameters parameters =
         new PipeParameters(
             new HashMap<String, String>() {
@@ -267,11 +267,11 @@ public class DeletionResourceTest {
         new PipeTaskRuntimeConfiguration(
             new PipeTaskSourceRuntimeEnvironment(
                 "1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
-    extractor.customize(parameters, configuration);
-    Assert.assertTrue(extractor.shouldExtractDeletion());
+    source.customize(parameters, configuration);
+    Assert.assertTrue(source.shouldExtractDeletion());
 
     PipeInsertionDataNodeListener.getInstance()
-        .startListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
+        .startListenAndAssign(FAKE_DATA_REGION_IDS[4], source);
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[4]);
     final int rebootTimes = 0;
     final MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
@@ -285,6 +285,6 @@ public class DeletionResourceTest {
     Assert.assertSame(Status.SUCCESS, deletionResource.waitForResult());
     // close pipe resource
     PipeInsertionDataNodeListener.getInstance()
-        .stopListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
+        .stopListenAndAssign(FAKE_DATA_REGION_IDS[4], source);
   }
 }

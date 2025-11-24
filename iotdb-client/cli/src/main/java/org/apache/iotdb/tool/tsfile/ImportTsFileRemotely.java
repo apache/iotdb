@@ -232,7 +232,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private void transferFilePieces(final File file, final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
@@ -299,8 +299,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       this.client =
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(
-                      PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PipeConfig.getInstance().isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),

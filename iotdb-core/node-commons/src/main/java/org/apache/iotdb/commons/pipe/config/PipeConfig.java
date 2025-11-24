@@ -159,15 +159,15 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
-  public int getPipeConnectorHandshakeTimeoutMs() {
-    return COMMON_CONFIG.getPipeConnectorHandshakeTimeoutMs();
+  public int getPipeSinkHandshakeTimeoutMs() {
+    return COMMON_CONFIG.getPipeSinkHandshakeTimeoutMs();
   }
 
   public int getPipeConnectorTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorTransferTimeoutMs();
   }
 
-  public int getPipeConnectorReadFileBufferSize() {
+  public int getPipeSinkReadFileBufferSize() {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
   }
 
@@ -493,9 +493,9 @@ public class PipeConfig {
         getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes());
     LOGGER.info("PipeSourceMatcherCacheSize: {}", getPipeSourceMatcherCacheSize());
 
-    LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
+    LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeSinkHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
-    LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
+    LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeSinkReadFileBufferSize());
     LOGGER.info(
         "PipeConnectorReadFileBufferMemoryControlEnabled: {}",
         isPipeConnectorReadFileBufferMemoryControlEnabled());

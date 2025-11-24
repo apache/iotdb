@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeSink;
 
 import org.junit.Before;
 import org.mockito.Mockito;
@@ -38,11 +38,11 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     subtask =
         Mockito.spy(
             new PipeSinkSubtask(
-                "PipeConnectorSubtaskExecutorTest",
+                "PipeSinkSubtaskExecutorTest",
                 System.currentTimeMillis(),
                 "TestAttributeSortedString",
                 0,
                 mock(UnboundedBlockingPendingQueue.class),
-                mock(PipeConnector.class)));
+                mock(PipeSink.class)));
   }
 }

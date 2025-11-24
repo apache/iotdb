@@ -31,9 +31,9 @@ import java.util.HashMap;
 
 public class IoTDBDataRegionSourceTest {
   @Test
-  public void testIoTDBDataRegionExtractor() {
-    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
-      extractor.validate(
+  public void testIoTDBDataRegionSource() {
+    try (final IoTDBDataRegionSource source = new IoTDBDataRegionSource()) {
+      source.validate(
           new PipeParameterValidator(
               new PipeParameters(
                   new HashMap<String, String>() {
@@ -53,42 +53,42 @@ public class IoTDBDataRegionSourceTest {
   }
 
   @Test
-  public void testIoTDBDataRegionExtractorWithPattern() {
+  public void testIoTDBDataRegionSourceWithPattern() {
     Assert.assertEquals(
         IllegalArgumentException.class,
-        testIoTDBDataRegionExtractorWithPattern("root.a-b").getClass());
+        testIoTDBDataRegionSourceWithPattern("root.a-b").getClass());
     Assert.assertEquals(
         IllegalArgumentException.class,
-        testIoTDBDataRegionExtractorWithPattern("root.1.a").getClass());
+        testIoTDBDataRegionSourceWithPattern("root.1.a").getClass());
     Assert.assertEquals(
-        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("r").getClass());
+        IllegalArgumentException.class, testIoTDBDataRegionSourceWithPattern("r").getClass());
     Assert.assertEquals(
-        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("").getClass());
+        IllegalArgumentException.class, testIoTDBDataRegionSourceWithPattern("").getClass());
     Assert.assertEquals(
-        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("123").getClass());
-    Assert.assertEquals(
-        IllegalArgumentException.class,
-        testIoTDBDataRegionExtractorWithPattern("root.a b").getClass());
+        IllegalArgumentException.class, testIoTDBDataRegionSourceWithPattern("123").getClass());
     Assert.assertEquals(
         IllegalArgumentException.class,
-        testIoTDBDataRegionExtractorWithPattern("root.a+b").getClass());
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.ab."));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a#b"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.一二三"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.一二。三"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root."));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.ab"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a.b.c.1e2"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`a-b`"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a,root.b"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a,root.b,root.db1.`a,b`.**"));
+        testIoTDBDataRegionSourceWithPattern("root.a b").getClass());
+    Assert.assertEquals(
+        IllegalArgumentException.class,
+        testIoTDBDataRegionSourceWithPattern("root.a+b").getClass());
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.ab."));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.a#b"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.一二三"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.一二。三"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root."));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.ab"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.a.b.c.1e2"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.`a-b`"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.1"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.a,root.b"));
+    Assert.assertNull(testIoTDBDataRegionSourceWithPattern("root.a,root.b,root.db1.`a,b`.**"));
   }
 
-  public Exception testIoTDBDataRegionExtractorWithPattern(final String pattern) {
-    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
-      extractor.validate(
+  public Exception testIoTDBDataRegionSourceWithPattern(final String pattern) {
+    try (final IoTDBDataRegionSource source = new IoTDBDataRegionSource()) {
+      source.validate(
           new PipeParameterValidator(
               new PipeParameters(
                   new HashMap<String, String>() {
@@ -103,9 +103,9 @@ public class IoTDBDataRegionSourceTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testIoTDBDataRegionExtractorWithDeletionAndPattern() throws Exception {
-    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
-      extractor.validate(
+  public void testIoTDBDataRegionSourceWithDeletionAndPattern() throws Exception {
+    try (final IoTDBDataRegionSource source = new IoTDBDataRegionSource()) {
+      source.validate(
           new PipeParameterValidator(
               new PipeParameters(
                   new HashMap<String, String>() {
