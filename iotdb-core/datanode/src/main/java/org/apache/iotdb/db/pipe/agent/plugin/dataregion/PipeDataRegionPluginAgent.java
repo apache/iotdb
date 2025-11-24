@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.PipeSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
@@ -55,7 +55,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSinkConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeSinkConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeDataRegionSinkConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
@@ -69,7 +69,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
       throws Exception {
     PipeExtractor temporaryExtractor = validateExtractor(sourceAttributes);
     PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateConnector(pipeName, sinkAttributes);
+    PipeSink temporarySink = validateSink(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
@@ -79,8 +79,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
-    Visibility sinkVisibility =
-        VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
+    Visibility sinkVisibility = VisibilityUtils.calculateFromPluginClass(temporarySink.getClass());
     if (!VisibilityUtils.isCompatible(
         pipeVisibility, sourceVisibility, processorVisibility, sinkVisibility)) {
       throw new PipeParameterNotValidException(
@@ -95,7 +94,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
               temporaryProcessor.getClass().getName(),
               processorVisibility,
               sinkAttributes,
-              temporaryConnector.getClass().getName(),
+              temporarySink.getClass().getName(),
               sinkVisibility));
     }
   }

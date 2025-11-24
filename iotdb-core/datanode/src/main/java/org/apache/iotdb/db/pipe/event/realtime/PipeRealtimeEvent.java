@@ -122,7 +122,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
-    // contained in this PipeRealtimeEvent during the processor and connector stages.
+    // contained in this PipeRealtimeEvent during the processor and sink stages.
     return event.increaseReferenceCount(holderMessage);
   }
 
@@ -136,7 +136,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will decrease
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
-    // contained in this PipeRealtimeEvent during the processor and connector stages.
+    // contained in this PipeRealtimeEvent during the processor and sink stages.
     return event.decreaseReferenceCount(holderMessage, shouldReport);
   }
 
@@ -145,7 +145,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will clear
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
-    // contained in this PipeRealtimeEvent during the processor and connector stages.
+    // contained in this PipeRealtimeEvent during the processor and sink stages.
     return event.clearReferenceCount(holderMessage);
   }
 

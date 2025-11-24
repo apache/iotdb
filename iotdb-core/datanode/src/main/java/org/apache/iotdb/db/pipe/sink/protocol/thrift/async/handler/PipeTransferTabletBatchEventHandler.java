@@ -54,16 +54,16 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   private final double reqCompressionRatio;
 
   public PipeTransferTabletBatchEventHandler(
-      final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncSink connector)
+      final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncSink sink)
       throws IOException {
-    super(connector);
+    super(sink);
 
     // Deep copy to keep events' reference
     events = batch.deepCopyEvents();
     pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
 
     final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
-    req = connector.compressIfNeeded(uncompressedReq);
+    req = sink.compressIfNeeded(uncompressedReq);
     reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
   }
 

@@ -33,8 +33,8 @@ public class PipeTransferTabletInsertNodeEventHandler
   public PipeTransferTabletInsertNodeEventHandler(
       final PipeInsertNodeTabletInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncSink connector) {
-    super(event, req, connector);
+      final IoTDBDataRegionAsyncSink sink) {
+    super(event, req, sink);
   }
 
   @Override

@@ -67,7 +67,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
       executor.register(subtask);
       runningTaskCount = 0;
 
-      PipeDataNodeResourceManager.compaction().registerPipeConnectorSubtaskLifeCycle(this);
+      PipeDataNodeResourceManager.compaction().registerPipeSinkSubtaskLifeCycle(this);
     }
 
     registeredTaskCount++;
@@ -84,7 +84,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
    *
    * <p>Note that this method should be called after the {@link PipeSinkSubtask} is stopped.
    * Otherwise, the {@link PipeSinkSubtaskLifeCycle#runningTaskCount} might be inconsistent with the
-   * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel connector scheduling.
+   * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel sink scheduling.
    *
    * @param pipeNameToDeregister pipe name
    * @param regionId region id
@@ -160,6 +160,6 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
   public synchronized void close() {
     executor.deregister(subtask.getTaskID());
 
-    PipeDataNodeResourceManager.compaction().deregisterPipeConnectorSubtaskLifeCycle(this);
+    PipeDataNodeResourceManager.compaction().deregisterPipeSinkSubtaskLifeCycle(this);
   }
 }

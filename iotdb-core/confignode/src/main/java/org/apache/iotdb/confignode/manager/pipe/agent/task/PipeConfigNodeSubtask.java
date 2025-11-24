@@ -133,14 +133,14 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   private void initSink(final Map<String, String> sinkAttributes) throws Exception {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
 
-    // 1. Construct connector
+    // 1. Construct sink
     outputPipeSink = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);
 
     try {
-      // 2. Validate connector parameters
+      // 2. Validate sink parameters
       outputPipeSink.validate(new PipeParameterValidator(sinkParameters));
 
-      // 3. Customize connector
+      // 3. Customize sink
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
@@ -240,7 +240,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
-      // Should be after connector.close()
+      // Should be after sink.close()
       super.close();
     }
   }

@@ -81,8 +81,8 @@ public abstract class PipeTransferTrackableHandler
    *
    * @param client the client used for data transfer
    * @param req the request containing transfer details
-   * @return {@code true} if the transfer was initiated successfully, {@code false} if the connector
-   *     is closed
+   * @return {@code true} if the transfer was initiated successfully, {@code false} if the sink is
+   *     closed
    * @throws TException if an error occurs during the transfer
    */
   protected boolean tryTransfer(
@@ -91,7 +91,7 @@ public abstract class PipeTransferTrackableHandler
     if (Objects.isNull(this.client)) {
       this.client = client;
     }
-    // track handler before checking if connector is closed
+    // track handler before checking if sink is closed
     sink.trackHandler(this);
     if (sink.isClosed()) {
       clearEventsReferenceCount();
@@ -133,7 +133,7 @@ public abstract class PipeTransferTrackableHandler
       client.invalidateAll();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+          "Failed to close or invalidate client when sink is closed. Client: {}, Exception: {}",
           client,
           e.getMessage(),
           e);

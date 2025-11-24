@@ -115,7 +115,7 @@ public class PipeDataNodeTaskBuilder {
               sinkParameters,
               regionId,
               pipeType.equals(PipeType.USER)
-                  ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
+                  ? PipeSubtaskExecutorManager.getInstance().getSinkExecutorSupplier()
                   : PipeSubtaskExecutorManager.getInstance()::getConsensusExecutor);
     }
 
@@ -127,7 +127,7 @@ public class PipeDataNodeTaskBuilder {
             blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters()),
             regionId,
             sourceStage.getEventSupplier(),
-            sinkStage.getPipeConnectorPendingQueue(),
+            sinkStage.getPipeSinkPendingQueue(),
             PROCESSOR_EXECUTOR,
             pipeTaskMeta,
             pipeStaticMeta

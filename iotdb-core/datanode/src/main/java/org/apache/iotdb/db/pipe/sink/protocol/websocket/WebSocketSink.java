@@ -46,7 +46,7 @@ public class WebSocketSink implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketSink.class);
 
   private Integer port;
-  private WebSocketConnectorServer server;
+  private WebSocketSinkServer server;
   private String pipeName;
 
   @Override
@@ -60,7 +60,7 @@ public class WebSocketSink implements PipeConnector {
                 PipeSinkConstant.SINK_WEBSOCKET_PORT_KEY),
             PipeSinkConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
 
-    server = WebSocketConnectorServer.getOrCreateInstance(port);
+    server = WebSocketSinkServer.getOrCreateInstance(port);
     if (server.getPort() != port) {
       throw new PipeException(
           String.format(
@@ -78,11 +78,11 @@ public class WebSocketSink implements PipeConnector {
 
   @Override
   public void handshake() {
-    server = WebSocketConnectorServer.getOrCreateInstance(port);
+    server = WebSocketSinkServer.getOrCreateInstance(port);
     server.register(this);
 
     if (!server.isStarted()) {
-      synchronized (WebSocketConnectorServer.class) {
+      synchronized (WebSocketSinkServer.class) {
         if (!server.isStarted()) {
           server.start();
         }
@@ -100,7 +100,7 @@ public class WebSocketSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "WebsocketSink only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -123,7 +123,7 @@ public class WebSocketSink implements PipeConnector {
     if (!((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketSink.class.getName())) {
       LOGGER.warn(
-          "WebsocketConnector failed to increase the reference count of the event. Ignore it. Current event: {}.",
+          "WebsocketSink failed to increase the reference count of the event. Ignore it. Current event: {}.",
           tabletInsertionEvent);
       return;
     }
@@ -135,7 +135,7 @@ public class WebSocketSink implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "WebsocketSink only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -148,7 +148,7 @@ public class WebSocketSink implements PipeConnector {
                 ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
                 transfer(event);
               },
-              "WebSocketConnector::transfer");
+              "WebSocketSink::transfer");
     } finally {
       tsFileInsertionEvent.close();
     }

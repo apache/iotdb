@@ -56,9 +56,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private int sourceQueueTsFileSize;
   private int sourceQueueSize;
 
-  private int connectorQueueTabletSize;
-  private int connectorQueueTsFileSize;
-  private int connectorQueueSize;
+  private int sinkQueueTabletSize;
+  private int sinkQueueTsFileSize;
+  private int sinkQueueSize;
 
   private final boolean shouldPrintMessage;
 
@@ -214,11 +214,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void recordConnectorQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
+  public void recordSinkQueueSize(final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
-      connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
-      connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
-      connectorQueueSize = pendingQueue.size();
+      sinkQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
+      sinkQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
+      sinkQueueSize = pendingQueue.size();
     }
   }
 
@@ -266,12 +266,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     final String sourceQueueSizeMessage =
         timeAssigned != 0 ? Integer.toString(sourceQueueSize) : unknownMessage;
 
-    final String connectorQueueTabletSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
-    final String connectorQueueTsFileSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueTsFileSize) : unknownMessage;
-    final String connectorQueueSizeMessage =
-        timeProcessed != 0 ? Integer.toString(connectorQueueSize) : unknownMessage;
+    final String sinkQueueTabletSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueTabletSize) : unknownMessage;
+    final String sinkQueueTsFileSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueTsFileSize) : unknownMessage;
+    final String sinkQueueSizeMessage =
+        timeProcessed != 0 ? Integer.toString(sinkQueueSize) : unknownMessage;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
@@ -296,12 +296,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + sourceQueueTsFileSizeMessage
         + ", sourceQueueSize="
         + sourceQueueSizeMessage
-        + ", connectorQueueTabletSize="
-        + connectorQueueTabletSizeMessage
-        + ", connectorQueueTsFileSize="
-        + connectorQueueTsFileSizeMessage
-        + ", connectorQueueSize="
-        + connectorQueueSizeMessage
+        + ", sinkQueueTabletSize="
+        + sinkQueueTabletSizeMessage
+        + ", sinkQueueTsFileSize="
+        + sinkQueueTsFileSizeMessage
+        + ", sinkQueueSize="
+        + sinkQueueSizeMessage
         + "}";
   }
 }

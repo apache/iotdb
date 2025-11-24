@@ -44,8 +44,8 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   protected PipeTransferTabletInsertionEventHandler(
       final PipeInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncSink connector) {
-    super(connector);
+      final IoTDBDataRegionAsyncSink sink) {
+    super(sink);
 
     this.event = event;
     this.req = req;

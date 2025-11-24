@@ -34,7 +34,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
 
   protected final String pipeName;
   protected final long creationTime;
-  protected final PipeParameters pipeConnectorParameters;
+  protected final PipeParameters pipeSinkParameters;
   protected final int regionId;
   protected final Supplier<? extends PipeSinkSubtaskExecutor> executor;
 
@@ -43,12 +43,12 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   public PipeTaskSinkStage(
       String pipeName,
       long creationTime,
-      PipeParameters pipeConnectorParameters,
+      PipeParameters pipeSinkParameters,
       int regionId,
       Supplier<? extends PipeSinkSubtaskExecutor> executor) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    this.pipeConnectorParameters = pipeConnectorParameters;
+    this.pipeSinkParameters = pipeSinkParameters;
     this.regionId = regionId;
     this.executor = executor;
 
@@ -60,7 +60,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
         PipeSinkSubtaskManager.instance()
             .register(
                 executor,
-                pipeConnectorParameters,
+                pipeSinkParameters,
                 new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
   }
 
@@ -84,7 +84,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
     PipeSinkSubtaskManager.instance().deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
-  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
-    return PipeSinkSubtaskManager.instance().getPipeConnectorPendingQueue(sinkSubtaskId);
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
+    return PipeSinkSubtaskManager.instance().getPipeSinkPendingQueue(sinkSubtaskId);
   }
 }

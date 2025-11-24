@@ -43,7 +43,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final ConcurrentMap<String, PipeSinkSubtask> connectorMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, PipeSinkSubtask> sinkMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Rate> schemaRateMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -51,7 +51,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::createMetrics);
+    ImmutableSet.copyOf(sinkMap.keySet()).forEach(this::createMetrics);
   }
 
   private void createMetrics(final String taskID) {
@@ -59,7 +59,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   }
 
   private void createRate(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Transfer event rate
     schemaRateMap.put(
         taskID,
@@ -67,17 +67,16 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
             Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
+            sink.getAttributeSortedString(),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            String.valueOf(sink.getCreationTime())));
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::deregister);
-    if (!connectorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region connector metrics, connector map not empty");
+    ImmutableSet.copyOf(sinkMap.keySet()).forEach(this::deregister);
+    if (!sinkMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipe schema region sink metrics, sink map not empty");
     }
   }
 
@@ -86,15 +85,15 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
   }
 
   private void removeRate(final String taskID) {
-    final PipeSinkSubtask connector = connectorMap.get(taskID);
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
     // Transfer event rate
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
         Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
+        sink.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
+        String.valueOf(sink.getCreationTime()));
     schemaRateMap.remove(taskID);
   }
 
@@ -102,23 +101,23 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
   public void register(final PipeSinkSubtask pipeSinkSubtask) {
     final String taskID = pipeSinkSubtask.getTaskID();
-    connectorMap.putIfAbsent(taskID, pipeSinkSubtask);
+    sinkMap.putIfAbsent(taskID, pipeSinkSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
   public void deregister(final String taskID) {
-    if (!connectorMap.containsKey(taskID)) {
+    if (!sinkMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe schema region sink metrics, PipeSinkSubtask({}) does not exist",
           taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(taskID);
     }
-    connectorMap.remove(taskID);
+    sinkMap.remove(taskID);
   }
 
   public void markSchemaEvent(final String taskID) {
@@ -128,7 +127,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe schema region write plan event, PipeSinkSubtask({}) does not exist",
           taskID);
       return;
     }

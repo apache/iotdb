@@ -1310,8 +1310,8 @@ public class PipeConsensusReceiver {
   }
 
   /**
-   * An executor component to ensure all events sent from connector can be loaded in sequence,
-   * although events can arrive receiver in a random sequence.
+   * An executor component to ensure all events sent from sink can be loaded in sequence, although
+   * events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
     private static final String MSG_NODE_RESTART_INDEX_STALE =
@@ -1331,7 +1331,7 @@ public class PipeConsensusReceiver {
     private final AtomicInteger WALEventCount = new AtomicInteger(0);
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
     private volatile long onSyncedReplicateIndex = 0;
-    private volatile int connectorRebootTimes = 0;
+    private volatile int sinkRebootTimes = 0;
     private volatile int pipeTaskRestartTimes = 0;
 
     public RequestExecutor(
@@ -1357,16 +1357,16 @@ public class PipeConsensusReceiver {
       // receives
       // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
       // be discarded.
-      if (tCommitId.getDataNodeRebootTimes() < connectorRebootTimes) {
+      if (tCommitId.getDataNodeRebootTimes() < sinkRebootTimes) {
         return deprecatedResp(MSG_NODE_RESTART_INDEX_STALE, tCommitId);
       }
       // Similarly, check pipeTask restartTimes
-      if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+      if (tCommitId.getDataNodeRebootTimes() == sinkRebootTimes
           && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
         return deprecatedResp(MSG_PIPE_RESTART_INDEX_STALE, tCommitId);
       }
       // Similarly, check replicationIndex
-      if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
+      if (tCommitId.getDataNodeRebootTimes() == sinkRebootTimes
           && tCommitId.getPipeTaskRestartTimes() == pipeTaskRestartTimes
           && tCommitId.getReplicateIndex() < onSyncedReplicateIndex + 1) {
         return deprecatedResp(MSG_STALE_REPLICATE_INDEX, tCommitId);
@@ -1400,9 +1400,9 @@ public class PipeConsensusReceiver {
             "PipeConsensus-PipeName-{}: start to receive no.{} event",
             consensusPipeName,
             tCommitId);
-        // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
-        // connectorRebootTimes, need to reset receiver because connector has been restarted.
-        if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
+        // Judge whether sink has rebooted or not, if the rebootTimes increases compared to
+        // sinkRebootTimes, need to reset receiver because sink has been restarted.
+        if (tCommitId.getDataNodeRebootTimes() > sinkRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes());
         }
         // Similarly, check pipeTask restartTimes
@@ -1481,7 +1481,7 @@ public class PipeConsensusReceiver {
           } else {
             // if the req is not supposed to be processed and reqBuffer is not full, current thread
             // should wait until reqBuffer is full, which indicates the receiver has received all
-            // the requests from the connector without duplication or leakage.
+            // the requests from the sink without duplication or leakage.
             try {
               boolean timeout =
                   !condition.await(
@@ -1566,18 +1566,18 @@ public class PipeConsensusReceiver {
     }
 
     /**
-     * Reset all data to initial status and set connectorRebootTimes properly. This method is called
-     * when receiver identifies connector has rebooted.
+     * Reset all data to initial status and set sinkRebootTimes properly. This method is called when
+     * receiver identifies sink has rebooted.
      */
-    private void resetWithNewestRebootTime(int connectorRebootTimes) {
+    private void resetWithNewestRebootTime(int sinkRebootTimes) {
       LOGGER.info(
           "PipeConsensus-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
       clear(true, false);
-      // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
-      this.connectorRebootTimes = connectorRebootTimes;
+      // sync the follower's sinkRebootTimes with sink's actual rebootTimes.
+      this.sinkRebootTimes = sinkRebootTimes;
       this.pipeTaskRestartTimes = 0;
     }
 

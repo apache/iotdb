@@ -57,13 +57,13 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionConnector can't transfer TabletInsertionEvent.");
+        "IoTDBSchemaRegionSink can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBSchemaRegionSink can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -73,8 +73,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
     } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
       doTransferWrapper((PipeSchemaRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
+      LOGGER.warn("IoTDBSchemaRegionSink does not support transferring generic event: {}.", event);
     }
   }
 

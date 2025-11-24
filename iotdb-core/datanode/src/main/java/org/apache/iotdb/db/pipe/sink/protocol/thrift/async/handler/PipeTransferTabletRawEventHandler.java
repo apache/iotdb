@@ -32,8 +32,8 @@ public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInserti
   public PipeTransferTabletRawEventHandler(
       final PipeRawTabletInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncSink connector) {
-    super(event, req, connector);
+      final IoTDBDataRegionAsyncSink sink) {
+    super(event, req, sink);
   }
 
   @Override

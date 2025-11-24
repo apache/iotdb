@@ -102,7 +102,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       sink.removeEventFromBuffer((EnrichedEvent) event);
 
       long duration = System.nanoTime() - createTime;
-      metric.recordConnectorWalTransferTimer(duration);
+      metric.recordSinkWalTransferTimer(duration);
     } catch (Exception e) {
       onError(e);
     }

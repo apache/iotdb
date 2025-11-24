@@ -104,7 +104,7 @@ public class PipeConsensusTsFileInsertionEventHandler
     transferMod = event.isWithMod();
     currentFile = transferMod ? modFile : tsFile;
 
-    readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
@@ -243,7 +243,7 @@ public class PipeConsensusTsFileInsertionEventHandler
         }
 
         long duration = System.nanoTime() - createTime;
-        metric.recordConnectorTsFileTransferTimer(duration);
+        metric.recordSinkTsFileTransferTimer(duration);
       }
       return;
     }
@@ -254,7 +254,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       final PipeConsensusTransferFilePieceResp resp =
           PipeConsensusTransferFilePieceResp.fromTPipeConsensusTransferResp(response);
 
-      // This case only happens when the connection is broken, and the connector is reconnected
+      // This case only happens when the connection is broken, and the sink is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
       final long code = resp.getStatus().getCode();
 
@@ -272,7 +272,7 @@ public class PipeConsensusTsFileInsertionEventHandler
         }
       }
       long duration = System.nanoTime() - startTransferPieceTime;
-      metric.recordConnectorTsFilePieceTransferTimer(duration);
+      metric.recordSinkTsFilePieceTransferTimer(duration);
 
       transfer(client);
     } catch (final Exception e) {

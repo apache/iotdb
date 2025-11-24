@@ -44,7 +44,7 @@ public class PipeSchemaRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSinkConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeSinkConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeSchemaRegionSinkConstructor();
   }

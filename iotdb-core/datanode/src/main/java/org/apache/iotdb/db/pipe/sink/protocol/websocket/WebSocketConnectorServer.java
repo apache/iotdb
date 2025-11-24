@@ -43,9 +43,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class WebSocketConnectorServer extends WebSocketServer {
+public class WebSocketSinkServer extends WebSocketServer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketSinkServer.class);
 
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
   // Map<pipeName, Queue<Tuple<eventId, sink, event>>>
@@ -58,17 +58,17 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
 
-  private static final AtomicReference<WebSocketConnectorServer> instance = new AtomicReference<>();
+  private static final AtomicReference<WebSocketSinkServer> instance = new AtomicReference<>();
   private static final AtomicBoolean isStarted = new AtomicBoolean(false);
 
-  private WebSocketConnectorServer(int port) {
+  private WebSocketSinkServer(int port) {
     super(new InetSocketAddress(port));
     new TransferThread(this).start();
   }
 
-  public static synchronized WebSocketConnectorServer getOrCreateInstance(int port) {
+  public static synchronized WebSocketSinkServer getOrCreateInstance(int port) {
     if (null == instance.get()) {
-      instance.set(new WebSocketConnectorServer(port));
+      instance.set(new WebSocketSinkServer(port));
     }
     return instance.get();
   }
@@ -93,7 +93,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             (eventWrapper) -> {
               if (eventWrapper.event instanceof EnrichedEvent) {
                 ((EnrichedEvent) eventWrapper.event)
-                    .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                    .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
               }
             });
         eventTransferQueue.clear();
@@ -110,7 +110,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
               (eventId, eventWrapper) -> {
                 if (eventWrapper.event instanceof EnrichedEvent) {
                   ((EnrichedEvent) eventWrapper.event)
-                      .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                      .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
                 }
               });
     }
@@ -297,8 +297,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     if (queue == null) {
       LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", sink, event);
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+        ((EnrichedEvent) event).decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
       }
       return;
     }
@@ -324,9 +323,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private class TransferThread extends Thread {
 
-    private final WebSocketConnectorServer server;
+    private final WebSocketSinkServer server;
 
-    public TransferThread(WebSocketConnectorServer server) {
+    public TransferThread(WebSocketSinkServer server) {
       this.server = server;
     }
 
@@ -369,7 +368,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
           throw new NotImplementedException(
-              "IoTDBCDCConnector only support "
+              "IoTDBCDCSink only support "
                   + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
         }
 
@@ -402,7 +401,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
                 "The pipe {} was dropped so the event {} will be dropped.", pipeName, eventId);
             if (event instanceof EnrichedEvent) {
               ((EnrichedEvent) event)
-                  .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                  .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
             }
             return;
           }

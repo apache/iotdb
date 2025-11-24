@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothi
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBSchemaRegionAirGapSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBSchemaRegionSink;
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeSink;
 
 class PipeSchemaRegionSinkConstructor extends PipeSinkConstructor {
 
@@ -62,8 +62,8 @@ class PipeSchemaRegionSinkConstructor extends PipeSinkConstructor {
   }
 
   @Override
-  public PipeConnector reflectPluginByKey(String pluginKey) {
+  public PipeSink reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
-    return (PipeConnector) pluginConstructors.getOrDefault(pluginKey, DoNothingSink::new).get();
+    return (PipeSink) pluginConstructors.getOrDefault(pluginKey, DoNothingSink::new).get();
   }
 }
