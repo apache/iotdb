@@ -947,7 +947,7 @@ public class AlignedTVListIteratorTest {
         alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
       }
       alignedChunkWriter.sealCurrentPage();
-      count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
+      count += alignedChunkWriter.getTimeChunkWriter().getPointNum();
     }
     Assert.assertEquals(expectedCount, count);
   }
