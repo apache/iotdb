@@ -189,6 +189,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         && !innerTreeStatement.isForceTypeConversion()) {
       processTypeConflictColumn(
           measurement, dataType, columnCategory, existingColumn, index, innerTreeStatement);
+      return;
     }
 
     // check column category
