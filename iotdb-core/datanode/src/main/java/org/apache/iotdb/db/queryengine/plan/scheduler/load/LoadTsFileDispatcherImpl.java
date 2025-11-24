@@ -31,7 +31,9 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -182,6 +184,17 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           cloneTsFileResource = tsFileResource.shallowClone();
         }
 
+        if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus
+            && !((IoTConsensus) DataRegionConsensusImpl.getInstance())
+                .getImpl(groupId)
+                .isActive()) {
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.WRITE_PROCESS_REJECT,
+                  String.format(
+                      "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
+                      groupId, IoTDBDescriptor.getInstance().getConfig().getDataNodeId())));
+        }
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
