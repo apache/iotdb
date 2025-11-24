@@ -78,7 +78,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource {
+public class TsFileResource implements Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
@@ -1261,12 +1261,6 @@ public class TsFileResource {
     cloned.timeIndex = this.timeIndex;
     cloned.maxPlanIndex = this.maxPlanIndex;
     cloned.minPlanIndex = this.minPlanIndex;
-    cloned.exclusiveModFileFuture = this.exclusiveModFileFuture;
-    cloned.sharedModFilePathFuture = this.sharedModFilePathFuture;
-    cloned.modFileManagement = this.modFileManagement;
-    cloned.exclusiveModFile = this.exclusiveModFile;
-    cloned.sharedModFile = this.sharedModFile;
-    cloned.sharedModFileOffset = this.sharedModFileOffset;
     cloned.compactionModFile = this.compactionModFile;
     cloned.isSeq = this.isSeq;
     cloned.tsFileRepairStatus = this.tsFileRepairStatus;
