@@ -108,7 +108,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
         dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(dbSlotsMap));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             dataPartitionTableResp.getStatus().getCode());
@@ -158,7 +158,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
         dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(dbSlotsMap));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             dataPartitionTableResp.getStatus().getCode());
@@ -274,7 +274,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
         dbSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(dbSlotsMap));
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             dataPartitionTableResp.getStatus().getCode());

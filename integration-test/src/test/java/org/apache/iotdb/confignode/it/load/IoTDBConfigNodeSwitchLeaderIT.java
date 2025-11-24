@@ -128,7 +128,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       dbSlotsMap.put(db0, seriesSlotMap);
       dbSlotsMap.put(db1, seriesSlotMap);
       dataPartitionTableResp0 =
-          client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+          client.getOrCreateDataPartitionTable(new TDataPartitionReq(dbSlotsMap));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
@@ -156,7 +156,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
       dbSlotsMap.put(db0, seriesSlotMap);
       dbSlotsMap.put(db1, seriesSlotMap);
       Assert.assertEquals(
-          dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
+          dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(dbSlotsMap)));
     }
   }
 }
