@@ -46,7 +46,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
   protected final TPipeConsensusTransferReq req;
 
-  protected final PipeConsensusAsyncSink connector;
+  protected final PipeConsensusAsyncSink sink;
 
   protected final PipeConsensusSinkMetrics metric;
 
@@ -55,11 +55,11 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
   protected PipeConsensusTabletInsertionEventHandler(
       TabletInsertionEvent event,
       TPipeConsensusTransferReq req,
-      PipeConsensusAsyncSink connector,
+      PipeConsensusAsyncSink sink,
       PipeConsensusSinkMetrics metric) {
     this.event = event;
     this.req = req;
-    this.connector = connector;
+    this.sink = sink;
     this.metric = metric;
     this.createTime = System.nanoTime();
   }
@@ -84,7 +84,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector.statusHandler().handle(status, status.getMessage(), event.toString());
+        sink.statusHandler().handle(status, status.getMessage(), event.toString());
       }
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
@@ -99,7 +99,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
       // if code flow reach here, meaning the file will not be resent and will be ignored.
       // events that don't need to be retried will be removed from the buffer
-      connector.removeEventFromBuffer((EnrichedEvent) event);
+      sink.removeEventFromBuffer((EnrichedEvent) event);
 
       long duration = System.nanoTime() - createTime;
       metric.recordConnectorWalTransferTimer(duration);
@@ -127,7 +127,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       }
     }
     // IoTV2 ensures that only use PipeInsertionEvent, which is definitely EnrichedEvent.
-    connector.addFailureEventToRetryQueue((EnrichedEvent) event);
+    sink.addFailureEventToRetryQueue((EnrichedEvent) event);
     metric.recordRetryCounter();
   }
 }

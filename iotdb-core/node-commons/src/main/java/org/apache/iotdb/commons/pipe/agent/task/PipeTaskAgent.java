@@ -543,9 +543,9 @@ public abstract class PipeTaskAgent {
 
   protected void calculateMemoryUsage(
       final PipeStaticMeta staticMeta,
-      final PipeParameters extractorParameters,
+      final PipeParameters sourceParameters,
       final PipeParameters processorParameters,
-      final PipeParameters connectorParameters) {
+      final PipeParameters sinkParameters) {
     // do nothing
   }
 

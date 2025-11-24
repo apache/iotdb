@@ -36,18 +36,18 @@ public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
-  protected final IoTDBDataRegionAsyncSink connector;
+  protected final IoTDBDataRegionAsyncSink sink;
   protected volatile AsyncPipeDataTransferServiceClient client;
 
-  public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink connector) {
-    this.connector = connector;
+  public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
+    this.sink = sink;
   }
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       return;
     }
 
@@ -56,7 +56,7 @@ public abstract class PipeTransferTrackableHandler
       // completed
       // NOTE: We should not clear the reference count of events, as this would cause the
       // `org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic.IoTDBPipeDataSinkIT#testSinkTsFileFormat3` test to fail.
-      connector.eliminateHandler(this, false);
+      sink.eliminateHandler(this, false);
     }
   }
 
@@ -66,14 +66,14 @@ public abstract class PipeTransferTrackableHandler
       ThriftClient.resolveException(exception, client);
     }
 
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       return;
     }
 
     onErrorInternal(exception);
-    connector.eliminateHandler(this, false);
+    sink.eliminateHandler(this, false);
   }
 
   /**
@@ -92,10 +92,10 @@ public abstract class PipeTransferTrackableHandler
       this.client = client;
     }
     // track handler before checking if connector is closed
-    connector.trackHandler(this);
-    if (connector.isClosed()) {
+    sink.trackHandler(this);
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       client.setShouldReturnSelf(true);
       try {
         client.returnSelf();

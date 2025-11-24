@@ -56,7 +56,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       LoggerFactory.getLogger(PipeConsensusTsFileInsertionEventHandler.class);
 
   private final PipeTsFileInsertionEvent event;
-  private final PipeConsensusAsyncSink connector;
+  private final PipeConsensusAsyncSink sink;
   private final TCommitId commitId;
   private final TConsensusGroupId consensusGroupId;
   private final String consensusPipeName;
@@ -85,7 +85,7 @@ public class PipeConsensusTsFileInsertionEventHandler
 
   public PipeConsensusTsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
-      final PipeConsensusAsyncSink connector,
+      final PipeConsensusAsyncSink sink,
       final TCommitId commitId,
       final TConsensusGroupId consensusGroupId,
       final String consensusPipeName,
@@ -93,7 +93,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       final PipeConsensusSinkMetrics metric)
       throws FileNotFoundException {
     this.event = event;
-    this.connector = connector;
+    this.sink = sink;
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
     this.consensusPipeName = consensusPipeName;
@@ -201,8 +201,7 @@ public class PipeConsensusTsFileInsertionEventHandler
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          connector
-              .statusHandler()
+          sink.statusHandler()
               .handle(
                   status,
                   String.format(
@@ -212,7 +211,7 @@ public class PipeConsensusTsFileInsertionEventHandler
 
         // if code flow reach here, meaning the file will not be resent and will be ignored.
         // events that don't need to be retried will be removed from the buffer
-        connector.removeEventFromBuffer(event);
+        sink.removeEventFromBuffer(event);
       } catch (final Exception e) {
         onError(e);
         return;
@@ -269,9 +268,7 @@ public class PipeConsensusTsFileInsertionEventHandler
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           // common error code will throw an exception here to enter onError()
-          connector
-              .statusHandler()
-              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+          sink.statusHandler().handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
       long duration = System.nanoTime() - startTransferPieceTime;
@@ -312,7 +309,7 @@ public class PipeConsensusTsFileInsertionEventHandler
           consensusPipeName,
           e);
     } finally {
-      connector.addFailureEventToRetryQueue(event);
+      sink.addFailureEventToRetryQueue(event);
       metric.recordRetryCounter();
 
       if (client != null) {

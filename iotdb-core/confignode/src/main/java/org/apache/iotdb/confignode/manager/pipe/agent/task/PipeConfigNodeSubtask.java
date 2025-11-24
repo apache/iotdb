@@ -87,14 +87,14 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   private void initSource(final Map<String, String> sourceAttributes) throws Exception {
     final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
-    // 1. Construct extractor
+    // 1. Construct source
     source = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
 
     try {
-      // 2. Validate extractor parameters
+      // 2. Validate source parameters
       source.validate(new PipeParameterValidator(sourceParameters));
 
-      // 3. Customize extractor
+      // 3. Customize source
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
@@ -105,8 +105,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
         source.close();
       } catch (Exception closeException) {
         LOGGER.warn(
-            "Failed to close extractor after failed to initialize extractor. "
-                + "Ignore this exception.",
+            "Failed to close source after failed to initialize source. " + "Ignore this exception.",
             closeException);
       }
       throw e;
