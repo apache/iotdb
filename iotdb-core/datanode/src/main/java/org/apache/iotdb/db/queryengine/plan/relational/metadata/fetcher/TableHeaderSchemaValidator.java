@@ -420,9 +420,14 @@ public class TableHeaderSchemaValidator {
         }
       }
 
+      boolean isTagColumn =
+          category == TsTableColumnCategory.TAG
+              || (category == null
+                  && existingColumn != null
+                  && existingColumn.getColumnCategory() == TsTableColumnCategory.TAG);
+
       // Record TAG column measurement index during validation loop
-      if (tagColumnHandler != null
-          && existingColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
+      if (tagColumnHandler != null && isTagColumn) {
         tagColumnIndexMap.put(measurementName, i); // Store measurement index
       }
     }
