@@ -264,7 +264,8 @@ public class MTreeBelowSGCachedImpl {
       String alias)
       throws MetadataException {
     IMeasurementMNode<ICachedMNode> measurementMNode =
-        createTimeSeriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias, false);
+        createTimeSeriesWithPinnedReturn(
+            path, dataType, encoding, compressor, props, alias, false, null);
     unPinMNode(measurementMNode.getAsMNode());
     return measurementMNode;
   }
@@ -287,7 +288,8 @@ public class MTreeBelowSGCachedImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -302,6 +304,12 @@ public class MTreeBelowSGCachedImpl {
       // only write on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
@@ -385,7 +393,8 @@ public class MTreeBelowSGCachedImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -396,6 +405,12 @@ public class MTreeBelowSGCachedImpl {
       // only write operations on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           for (int i = 0; i < measurements.size(); i++) {
