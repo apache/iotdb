@@ -62,7 +62,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
               .setNeedManuallyStart(needManuallyStart)
               .setExtractorAttributes(sourceAttributes)
               .setProcessorAttributes(processorAttributes)
-              .setSinkAttributes(sinkAttributes);
+              .setConnectorAttributes(sinkAttributes);
       TSStatus status = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);
