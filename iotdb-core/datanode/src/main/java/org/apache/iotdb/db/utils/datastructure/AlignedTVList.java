@@ -2149,10 +2149,9 @@ public abstract class AlignedTVList extends TVList {
       int maxRowCountOfCurrentBatch =
           Math.min(
               rows - index,
-              (int) // NOSONAR
-                  Math.min(
-                      encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk,
-                      encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
+              Math.min(
+                  (int) encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk, // NOSONAR
+                  encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
       // duplicated time or deleted time are all invalid, true if we don't need this row
