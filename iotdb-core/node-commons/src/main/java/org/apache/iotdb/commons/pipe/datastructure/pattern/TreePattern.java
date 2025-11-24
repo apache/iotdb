@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -140,60 +140,72 @@ public abstract class TreePattern {
     final boolean isTreeModelDataAllowedToBeCaptured =
         isTreeModelDataAllowToBeCaptured(sourceParameters);
 
-    // 1. Define the default inclusion pattern (matches all, "root.**")
-    // This is used if no inclusion patterns are specified.
-    final TreePattern defaultInclusionPattern =
-        buildUnionPattern(
-            isTreeModelDataAllowedToBeCaptured,
-            Collections.singletonList(
-                new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
-
-    // 2. Parse INCLUSION patterns using the helper
-    final TreePattern inclusionPattern =
-        parsePatternUnion(
+    // 1. Parse INCLUSION patterns into a list
+    List<TreePattern> inclusionPatterns =
+        parsePatternList(
             sourceParameters,
             isTreeModelDataAllowedToBeCaptured,
-            // 'path' keys (IoTDB wildcard)
             EXTRACTOR_PATH_KEY,
             SOURCE_PATH_KEY,
-            // 'pattern' keys (Prefix or IoTDB via format)
             EXTRACTOR_PATTERN_KEY,
-            SOURCE_PATTERN_KEY,
-            // Default pattern if no keys are found
-            defaultInclusionPattern);
+            SOURCE_PATTERN_KEY);
 
-    // 3. Parse EXCLUSION patterns using the helper
-    final TreePattern exclusionPattern =
-        parsePatternUnion(
+    // If no inclusion patterns are specified, use default "root.**"
+    if (inclusionPatterns.isEmpty()) {
+      inclusionPatterns =
+          new ArrayList<>(
+              Collections.singletonList(
+                  new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, null)));
+    }
+
+    // 2. Parse EXCLUSION patterns into a list
+    List<TreePattern> exclusionPatterns =
+        parsePatternList(
             sourceParameters,
             isTreeModelDataAllowedToBeCaptured,
-            // 'path.exclusion' keys (IoTDB wildcard)
             EXTRACTOR_PATH_EXCLUSION_KEY,
             SOURCE_PATH_EXCLUSION_KEY,
-            // 'pattern.exclusion' keys (Prefix)
             EXTRACTOR_PATTERN_EXCLUSION_KEY,
-            SOURCE_PATTERN_EXCLUSION_KEY,
-            // Default for exclusion is "match nothing" (null)
-            null);
+            SOURCE_PATTERN_EXCLUSION_KEY);
 
-    // 4. Combine inclusion and exclusion
-    if (exclusionPattern == null) {
-      // No exclusion defined, return the inclusion pattern directly
-      return inclusionPattern;
-    } else {
-      // If both inclusion and exclusion patterns support IoTDB operations,
-      // use the specialized ExclusionIoTDBTreePattern
-      if (inclusionPattern instanceof IoTDBTreePatternOperations
-          && exclusionPattern instanceof IoTDBTreePatternOperations) {
-        return new WithExclusionIoTDBTreePattern(
-            isTreeModelDataAllowedToBeCaptured,
-            (IoTDBTreePatternOperations) inclusionPattern,
-            (IoTDBTreePatternOperations) exclusionPattern);
-      }
-      // Both are defined, wrap them in an ExclusionTreePattern
-      return new WithExclusionTreePattern(
-          isTreeModelDataAllowedToBeCaptured, inclusionPattern, exclusionPattern);
+    // 3. Optimize the lists: remove redundant patterns (e.g., if "root.**" exists, "root.db" is
+    // redundant)
+    inclusionPatterns = optimizePatterns(inclusionPatterns);
+    exclusionPatterns = optimizePatterns(exclusionPatterns);
+
+    // 4. Prune inclusion patterns: if an inclusion pattern is fully covered by an exclusion
+    // pattern, remove it
+    inclusionPatterns = pruneInclusionPatterns(inclusionPatterns, exclusionPatterns);
+
+    // 5. Check if the resulting inclusion pattern is empty
+    if (inclusionPatterns.isEmpty()) {
+      throw new PipeException(
+          "Pipe: The inclusion pattern is empty after pruning by the exclusion pattern. "
+              + "This pipe pattern will match nothing.");
     }
+
+    // 6. Build final patterns
+    final TreePattern finalInclusionPattern =
+        buildUnionPattern(isTreeModelDataAllowedToBeCaptured, inclusionPatterns);
+
+    if (exclusionPatterns.isEmpty()) {
+      return finalInclusionPattern;
+    }
+
+    final TreePattern finalExclusionPattern =
+        buildUnionPattern(isTreeModelDataAllowedToBeCaptured, exclusionPatterns);
+
+    // 7. Combine inclusion and exclusion
+    if (finalInclusionPattern instanceof IoTDBTreePatternOperations
+        && finalExclusionPattern instanceof IoTDBTreePatternOperations) {
+      return new WithExclusionIoTDBTreePattern(
+          isTreeModelDataAllowedToBeCaptured,
+          (IoTDBTreePatternOperations) finalInclusionPattern,
+          (IoTDBTreePatternOperations) finalExclusionPattern);
+    }
+
+    return new WithExclusionTreePattern(
+        isTreeModelDataAllowedToBeCaptured, finalInclusionPattern, finalExclusionPattern);
   }
 
   /**
@@ -274,65 +286,145 @@ public abstract class TreePattern {
   }
 
   /**
-   * A private helper method to parse a set of 'path' and 'pattern' keys into a single union
-   * TreePattern. This contains the original logic of parsePipePatternFromSourceParameters.
-   *
-   * @param sourceParameters The source parameters.
-   * @param isTreeModelDataAllowedToBeCaptured Flag for TreePattern constructor.
-   * @param extractorPathKey Key for extractor path (e.g., "extractor.path").
-   * @param sourcePathKey Key for source path (e.g., "source.path").
-   * @param extractorPatternKey Key for extractor pattern (e.g., "extractor.pattern").
-   * @param sourcePatternKey Key for source pattern (e.g., "source.pattern").
-   * @param defaultPattern The pattern to return if both path and pattern are null. If this
-   *     parameter is null, this method returns null.
-   * @return The parsed TreePattern, or defaultPattern, or null if defaultPattern is null and no
-   *     patterns are specified.
+   * Helper method to parse pattern parameters into a list of patterns without creating the Union
+   * object immediately.
    */
-  private static TreePattern parsePatternUnion(
+  private static List<TreePattern> parsePatternList(
       final PipeParameters sourceParameters,
       final boolean isTreeModelDataAllowedToBeCaptured,
       final String extractorPathKey,
       final String sourcePathKey,
       final String extractorPatternKey,
-      final String sourcePatternKey,
-      final TreePattern defaultPattern) {
+      final String sourcePatternKey) {
 
     final String path = sourceParameters.getStringByKeys(extractorPathKey, sourcePathKey);
     final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
 
-    // 1. If both "source.path" and "source.pattern" are specified, their union will be used.
-    if (path != null && pattern != null) {
-      final List<TreePattern> result = new ArrayList<>();
-      // Parse "source.path" as IoTDB-style path.
-      result.addAll(
-          parseMultiplePatterns(
-              path, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p)));
-      // Parse "source.pattern" using the helper method.
-      result.addAll(
-          parsePatternsFromPatternParameter(
-              pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
-      return buildUnionPattern(isTreeModelDataAllowedToBeCaptured, result);
-    }
+    final List<TreePattern> result = new ArrayList<>();
 
-    // 2. If only "source.path" is specified, it will be interpreted as an IoTDB-style path.
     if (path != null) {
-      return buildUnionPattern(
-          isTreeModelDataAllowedToBeCaptured,
+      result.addAll(
           parseMultiplePatterns(
               path, p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p)));
     }
 
-    // 3. If only "source.pattern" is specified, parse it using the helper method.
     if (pattern != null) {
-      return buildUnionPattern(
-          isTreeModelDataAllowedToBeCaptured,
+      result.addAll(
           parsePatternsFromPatternParameter(
               pattern, sourceParameters, isTreeModelDataAllowedToBeCaptured));
     }
 
-    // 4. If neither "source.path" nor "source.pattern" is specified,
-    // return the provided default pattern (which may be null).
-    return defaultPattern;
+    return result;
+  }
+
+  /**
+   * Removes patterns from the list that are covered by other patterns in the same list. For
+   * example, if "root.**" and "root.db.**" are present, "root.db.**" is removed.
+   */
+  private static List<TreePattern> optimizePatterns(final List<TreePattern> patterns) {
+    if (patterns == null || patterns.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (patterns.size() == 1) {
+      return patterns;
+    }
+
+    final List<TreePattern> optimized = new ArrayList<>();
+    // Determine coverage using base paths
+    for (int i = 0; i < patterns.size(); i++) {
+      final TreePattern current = patterns.get(i);
+      boolean isCoveredByOther = false;
+
+      for (int j = 0; j < patterns.size(); j++) {
+        if (i == j) {
+          continue;
+        }
+        final TreePattern other = patterns.get(j);
+
+        // If 'other' covers 'current', 'current' is redundant.
+        // Note: if they mutually cover each other (duplicates), we must ensure we keep one.
+        // We use index comparison to break ties for exact duplicates.
+        if (covers(other, current)) {
+          if (covers(current, other)) {
+            // Both cover each other (likely identical). Keep the one with smaller index.
+            if (j < i) {
+              isCoveredByOther = true;
+              break;
+            }
+          } else {
+            // Strict coverage
+            isCoveredByOther = true;
+            break;
+          }
+        }
+      }
+
+      if (!isCoveredByOther) {
+        optimized.add(current);
+      }
+    }
+    return optimized;
+  }
+
+  /**
+   * Prunes patterns from the inclusion list that are fully covered by ANY pattern in the exclusion
+   * list.
+   */
+  private static List<TreePattern> pruneInclusionPatterns(
+      final List<TreePattern> inclusion, final List<TreePattern> exclusion) {
+    if (inclusion == null || inclusion.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (exclusion == null || exclusion.isEmpty()) {
+      return inclusion;
+    }
+
+    final List<TreePattern> prunedInclusion = new ArrayList<>();
+    for (final TreePattern inc : inclusion) {
+      boolean isFullyExcluded = false;
+      for (final TreePattern exc : exclusion) {
+        if (covers(exc, inc)) {
+          isFullyExcluded = true;
+          break;
+        }
+      }
+      if (!isFullyExcluded) {
+        prunedInclusion.add(inc);
+      }
+    }
+    return prunedInclusion;
+  }
+
+  /** Checks if 'coverer' pattern fully covers 'coveree' pattern. */
+  private static boolean covers(final TreePattern coverer, final TreePattern coveree) {
+    try {
+      final List<PartialPath> covererPaths = coverer.getBaseInclusionPaths();
+      final List<PartialPath> covereePaths = coveree.getBaseInclusionPaths();
+
+      if (covererPaths.isEmpty() || covereePaths.isEmpty()) {
+        return false;
+      }
+
+      // Logic: For 'coverer' to cover 'coveree', ALL paths in 'coveree' must be included
+      // by at least one path in 'coverer'.
+      for (final PartialPath sub : covereePaths) {
+        boolean isSubCovered = false;
+        for (final PartialPath sup : covererPaths) {
+          if (sup.include(sub)) {
+            isSubCovered = true;
+            break;
+          }
+        }
+        if (!isSubCovered) {
+          return false;
+        }
+      }
+      return true;
+    } catch (final Exception e) {
+      // In case of path parsing errors or unsupported operations, assume no coverage
+      // to be safe and avoid aggressive pruning.
+      return false;
+    }
   }
 
   /**
@@ -412,6 +504,10 @@ public abstract class TreePattern {
    */
   private static TreePattern buildUnionPattern(
       final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
+    if (patterns.size() == 1) {
+      return patterns.get(0);
+    }
+
     // Check if all instances in the list are of type IoTDBTreePattern
     boolean allIoTDB = true;
     for (final TreePattern p : patterns) {
