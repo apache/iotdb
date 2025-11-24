@@ -46,8 +46,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -295,6 +297,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** data region id. */
   private final String dataRegionId;
 
+  private final DataRegionId id;
+
   /** database name. */
   private final String databaseName;
 
@@ -371,6 +375,7 @@ public class DataRegion implements IDataRegionForQuery {
       String systemDir, String dataRegionId, TsFileFlushPolicy fileFlushPolicy, String databaseName)
       throws DataRegionException {
     this.dataRegionId = dataRegionId;
+    this.id = new DataRegionId(Integer.parseInt(dataRegionId));
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
     acquireDirectBufferMemory();
@@ -429,10 +434,11 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @TestOnly
-  public DataRegion(String databaseName, String id) {
+  public DataRegion(String databaseName, String dataRegionId) {
     this.databaseName = databaseName;
-    this.dataRegionId = id;
-    this.tsFileManager = new TsFileManager(databaseName, id, "");
+    this.dataRegionId = dataRegionId;
+    this.id = new DataRegionId(Integer.parseInt(this.dataRegionId));
+    this.tsFileManager = new TsFileManager(databaseName, dataRegionId, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
@@ -3467,6 +3473,14 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
+    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus
+        && !((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(id).isActive()) {
+      throw new LoadFileException(
+          String.format(
+              "Peer is inactive and not ready to write request, %s, DataNode Id: %s",
+              id, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+    }
+
     final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
 
