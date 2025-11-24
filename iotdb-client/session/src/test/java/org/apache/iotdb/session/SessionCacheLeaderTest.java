@@ -830,7 +830,7 @@ public class SessionCacheLeaderTest {
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
     // been changed to TEndPoint(ip:127.0.0.1, port:55561)
     Assert.assertEquals(
-        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55561)}",
+        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     try {
