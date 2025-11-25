@@ -192,7 +192,7 @@ public class PipeReceiverStatusHandler {
 
       case 803: // NO_PERMISSION
         if (skipIfNoPrivileges) {
-          if (log4NoPrivileges) {
+          if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
             LOGGER.warn(
                 "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
                 getNoPermission(true),
@@ -207,7 +207,7 @@ public class PipeReceiverStatusHandler {
         // Some auth error may be wrapped in other codes
         if (exceptionMessage.contains(NO_PERMISSION_STR)) {
           if (skipIfNoPrivileges) {
-            if (log4NoPrivileges) {
+            if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
               LOGGER.warn(
                   "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
                   getNoPermission(true),
