@@ -31,9 +31,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -81,18 +81,20 @@ public class DataNodeInternalRPCServiceImplTest {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
+  private static IConsensus instance;
   private static final int dataNodeId = 0;
   private static final File storageDir = new File("target" + java.io.File.separator + "impl");
   private static DataRegion dataRegion;
 
   @BeforeClass
-  public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
+  public static void setUpBeforeClass() throws IOException, MetadataException {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
     SchemaEngine.getInstance().init();
     SchemaEngine.getInstance().createSchemaRegion("root.ln", new SchemaRegionId(0));
     dataRegion = new DataRegion("root.ln", "1");
+    instance = DataRegionConsensusImpl.getInstance();
     DataRegionConsensusImpl.setInstance(
         ConsensusFactory.getConsensusImpl(
                 ConsensusFactory.IOT_CONSENSUS,
@@ -137,6 +139,7 @@ public class DataNodeInternalRPCServiceImplTest {
   public static void tearDownAfterClass() throws IOException, StorageEngineException {
     DataNodeRegionManager.getInstance().clear();
     DataRegionConsensusImpl.getInstance().stop();
+    DataRegionConsensusImpl.setInstance(instance);
     SchemaRegionConsensusImpl.getInstance().stop();
     SchemaEngine.getInstance().clear();
     EnvironmentUtils.cleanEnv();
