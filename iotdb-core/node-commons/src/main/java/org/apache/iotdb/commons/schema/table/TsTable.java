@@ -175,9 +175,10 @@ public class TsTable {
       List<TsTableColumnSchema> tagColumnSchemaList = new ArrayList<>(tagColumnIndexMap.size());
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
         if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
-          VersionAndTagColumnSchemas = new Pair<>(instanceVersion.get(), tagColumnSchemaList);
+         tagColumnSchemaList.add(columnSchema);
         }
       }
+      VersionAndTagColumnSchemas = new Pair<>(instanceVersion.get(), tagColumnSchemaList);
       return tagColumnSchemaList;
     } finally {
       tagColumnSchemas.set(VersionAndTagColumnSchemas);
