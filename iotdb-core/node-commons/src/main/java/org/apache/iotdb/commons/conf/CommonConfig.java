@@ -254,8 +254,8 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
 
-  private long pipeSinkSubtaskSleepIntervalMs = 250L;
-  private long pipeSinkSubtaskSleepMaxMs = 1000L;
+  private long pipeSinkSubtaskSleepIntervalInitMs = 250L;
+  private long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
 
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
@@ -1418,28 +1418,30 @@ public class CommonConfig {
         "pipeRetryLocallyForParallelOrUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
   }
 
-  public long getPipeSinkSubtaskSleepIntervalMs() {
-    return pipeSinkSubtaskSleepIntervalMs;
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return pipeSinkSubtaskSleepIntervalInitMs;
   }
 
-  public void setPipeSinkSubtaskSleepIntervalMs(long pipeSinkSubtaskSleepIntervalMs) {
-    if (this.pipeSinkSubtaskSleepIntervalMs == pipeSinkSubtaskSleepIntervalMs) {
+  public void setPipeSinkSubtaskSleepIntervalInitMs(long pipeSinkSubtaskSleepIntervalInitMs) {
+    if (this.pipeSinkSubtaskSleepIntervalInitMs == pipeSinkSubtaskSleepIntervalInitMs) {
       return;
     }
-    this.pipeSinkSubtaskSleepIntervalMs = pipeSinkSubtaskSleepIntervalMs;
-    logger.info("pipeSinkSubtaskSleepIntervalMs is set to {}.", pipeSinkSubtaskSleepIntervalMs);
+    this.pipeSinkSubtaskSleepIntervalInitMs = pipeSinkSubtaskSleepIntervalInitMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalInitMs is set to {}.", pipeSinkSubtaskSleepIntervalInitMs);
   }
 
-  public long getPipeSinkSubtaskSleepMaxMs() {
-    return pipeSinkSubtaskSleepMaxMs;
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return pipeSinkSubtaskSleepIntervalMaxMs;
   }
 
-  public void setPipeSinkSubtaskSleepMaxMs(long pipeSinkSubtaskSleepMaxMs) {
-    if (this.pipeSinkSubtaskSleepMaxMs == pipeSinkSubtaskSleepMaxMs) {
+  public void setPipeSinkSubtaskSleepIntervalMaxMs(long pipeSinkSubtaskSleepIntervalMaxMs) {
+    if (this.pipeSinkSubtaskSleepIntervalMaxMs == pipeSinkSubtaskSleepIntervalMaxMs) {
       return;
     }
-    this.pipeSinkSubtaskSleepMaxMs = pipeSinkSubtaskSleepMaxMs;
-    logger.info("pipeSinkSubtaskSleepMaxMs is set to {}.", pipeSinkSubtaskSleepMaxMs);
+    this.pipeSinkSubtaskSleepIntervalMaxMs = pipeSinkSubtaskSleepIntervalMaxMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalMaxMs is set to {}.", pipeSinkSubtaskSleepIntervalMaxMs);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {

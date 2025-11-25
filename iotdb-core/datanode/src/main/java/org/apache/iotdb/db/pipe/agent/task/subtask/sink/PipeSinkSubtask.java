@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -51,8 +52,6 @@ import java.util.Objects;
 public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSinkSubtask.class);
-  private static final int SLEEP_MAX_INTERVAL_MS = 1000;
-  private static final int SLEEP_INIT_INTERVAL_MS = 250;
 
   // For input
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
@@ -60,7 +59,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
   private final int connectorIndex;
-  private int sleepInterval = SLEEP_INIT_INTERVAL_MS;
+  private long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
@@ -135,7 +134,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       }
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
-      sleepInterval = SLEEP_INIT_INTERVAL_MS;
+      sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
     } catch (final PipeNonReportException e) {
       sleep4NonReportException();
     } catch (final PipeException e) {
@@ -228,7 +227,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   private void sleep4NonReportException() {
-    if (sleepInterval < SLEEP_MAX_INTERVAL_MS) {
+    if (sleepInterval < PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs()) {
       sleepInterval <<= 1;
     }
     try {
