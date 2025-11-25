@@ -254,8 +254,8 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
 
-  private long pipeSinkSubtaskSleepIntervalInitMs = 250L;
-  private long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
+  private volatile long pipeSinkSubtaskSleepIntervalInitMs = 250L;
+  private volatile long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
 
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
