@@ -296,6 +296,17 @@ public class PipeDescriptor {
                 "pipe_retry_locally_for_user_conflict",
                 String.valueOf(config.isPipeRetryLocallyForParallelOrUserConflict()))));
 
+    config.setPipeSinkSubtaskSleepIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_subtask_sleep_interval_ms",
+                String.valueOf(config.getPipeSinkSubtaskSleepIntervalMs()))));
+    config.setPipeSinkSubtaskSleepMaxMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_sink_subtask_sleep_max_ms",
+                String.valueOf(config.getPipeSinkSubtaskSleepMaxMs()))));
+
     config.setPipeSourceAssignerDisruptorRingBufferSize(
         Integer.parseInt(
             Optional.ofNullable(
