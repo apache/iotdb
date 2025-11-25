@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -76,6 +77,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DataNodeInternalRPCServiceImplTest {
 
@@ -87,12 +89,14 @@ public class DataNodeInternalRPCServiceImplTest {
   private static DataRegion dataRegion;
 
   @BeforeClass
-  public static void setUpBeforeClass() throws IOException, MetadataException {
+  public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(storageDir);
     SchemaEngine.getInstance().init();
     SchemaEngine.getInstance().createSchemaRegion("root.ln", new SchemaRegionId(0));
+    final DataRegionId id = new DataRegionId(1);
     dataRegion = new DataRegion("root.ln", "1");
     instance = DataRegionConsensusImpl.getInstance();
     DataRegionConsensusImpl.setInstance(
@@ -111,6 +115,12 @@ public class DataNodeInternalRPCServiceImplTest {
                         String.format(
                             ConsensusFactory.CONSTRUCT_FAILED_MSG,
                             ConsensusFactory.IOT_CONSENSUS))));
+    if (Objects.isNull(
+        ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(new DataRegionId(1)))) {
+      DataRegionConsensusImpl.getInstance()
+          .createLocalPeer(
+              id, Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", 6667))));
+    }
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
     DataNodeRegionManager.getInstance().init();
@@ -143,6 +153,7 @@ public class DataNodeInternalRPCServiceImplTest {
     SchemaRegionConsensusImpl.getInstance().stop();
     SchemaEngine.getInstance().clear();
     EnvironmentUtils.cleanEnv();
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(storageDir);
   }
 
   @Test
