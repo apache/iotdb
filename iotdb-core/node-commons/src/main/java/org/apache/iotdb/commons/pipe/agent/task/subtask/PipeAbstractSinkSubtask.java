@@ -251,7 +251,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     }
   }
 
-  protected void sleep4NonReportException() {
+  public void sleep4NonReportException() {
     if (sleepInterval < PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs()) {
       sleepInterval <<= 1;
     }
