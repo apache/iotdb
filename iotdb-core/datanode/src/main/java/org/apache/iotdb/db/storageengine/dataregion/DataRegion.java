@@ -1436,10 +1436,11 @@ public class DataRegion implements IDataRegionForQuery {
     if (cached.getLeft().equals(currentVersion.getLeft())
         && cached.getMiddle().equals(currentVersion.getRight())) {
       return cached.getRight();
+    } else {
+      // remove stale entry to avoid unbounded growth (only on version mismatch)
+      TABLE_SCHEMA_CACHE.invalidate(key);
+      return null;
     }
-    // remove stale entry to avoid unbounded growth
-    TABLE_SCHEMA_CACHE.invalidate(key);
-    return null;
   }
 
   private void cacheTableSchema(

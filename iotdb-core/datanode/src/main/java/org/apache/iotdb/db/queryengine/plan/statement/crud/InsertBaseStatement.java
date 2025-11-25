@@ -256,9 +256,15 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     Set<String> deduplicatedMeasurements = new HashSet<>(measurements.length);
     int index = 0;
+    int failedMeasurements = 0;
     for (String measurement : measurements) {
-      if ((failedMeasurementIndex2Info == null || !failedMeasurementIndex2Info.containsKey(index))
-          && (measurement == null || measurement.isEmpty())) {
+      if ((failedMeasurementIndex2Info == null
+          || !failedMeasurementIndex2Info.containsKey(index + failedMeasurements))) {
+        failedMeasurements++;
+        continue;
+      }
+
+      if (measurement == null || measurement.isEmpty()) {
         throw new SemanticException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }

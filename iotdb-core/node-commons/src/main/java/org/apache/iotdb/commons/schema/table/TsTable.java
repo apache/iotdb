@@ -86,9 +86,7 @@ public class TsTable {
   private final transient AtomicLong instanceVersion = new AtomicLong(0L);
 
   private final transient AtomicBoolean isNotWrite = new AtomicBoolean(true);
-
-  private final transient AtomicLong lastReadVersion = new AtomicLong(-1);
-  private final AtomicReference<List<TsTableColumnSchema>> tagColumnSchemas =
+  private final AtomicReference<Pair<Long, List<TsTableColumnSchema>>> tagColumnSchemas =
       new AtomicReference<>();
 
   private Map<String, String> props = null;
@@ -165,25 +163,24 @@ public class TsTable {
   }
 
   public List<TsTableColumnSchema> getTagColumnSchemaList() {
-    List<TsTableColumnSchema> tagColumnSchemaList = tagColumnSchemas.get();
-    if (tagColumnSchemaList != null
+    Pair<Long, List<TsTableColumnSchema>> VersionAndTagColumnSchemas = tagColumnSchemas.get();
+    if (VersionAndTagColumnSchemas != null
         && isNotWrite.get()
-        && lastReadVersion.get() == instanceVersion.get()) {
-      return tagColumnSchemaList;
+        && VersionAndTagColumnSchemas.getLeft() == instanceVersion.get()) {
+      return VersionAndTagColumnSchemas.getRight();
     }
 
     readWriteLock.readLock().lock();
     try {
-      tagColumnSchemaList = new ArrayList<>(tagColumnIndexMap.size());
+      List<TsTableColumnSchema> tagColumnSchemaList = new ArrayList<>(tagColumnIndexMap.size());
       for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
         if (TsTableColumnCategory.TAG.equals(columnSchema.getColumnCategory())) {
-          tagColumnSchemaList.add(columnSchema);
+          VersionAndTagColumnSchemas = new Pair<>(instanceVersion.get(), tagColumnSchemaList);
         }
       }
       return tagColumnSchemaList;
     } finally {
-      tagColumnSchemas.set(tagColumnSchemaList);
-      lastReadVersion.set(instanceVersion.get());
+      tagColumnSchemas.set(VersionAndTagColumnSchemas);
       readWriteLock.readLock().unlock();
     }
   }

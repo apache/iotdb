@@ -294,6 +294,7 @@ public class IoTDBInsertTableIT {
         }
         Assert.assertEquals(200, cnt);
       }
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -520,6 +521,8 @@ public class IoTDBInsertTableIT {
         st2.execute("CREATE TABLE wf15 (wt string tag, s1 double field, s2 double field)");
         st2.execute(
             "INSERT INTO wf15(wt, time, s1) VALUES ('1', 6, 10),('1', 7,12),('1', 8,14),('1', 9,160),('1', 10,null),('1', 11,58)");
+
+        st2.execute("SET CONFIGURATION enable_auto_create_schema='true'");
       } catch (SQLException e) {
         fail(e.getMessage());
       }

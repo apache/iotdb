@@ -461,12 +461,14 @@ public class TableHeaderSchemaValidator {
     }
 
     for (int i : missingMeasurementIndices) {
-      measurementValidator.validate(
-          i,
-          measurementInfo.getMeasurementName(i),
-          measurementInfo.getType(i),
-          columnCategories[i],
-          table.getColumnSchema(measurementInfo.getMeasurementName(i)));
+      if (measurementValidator != null) {
+        measurementValidator.validate(
+            i,
+            measurementInfo.getMeasurementName(i),
+            measurementInfo.getType(i),
+            columnCategories[i],
+            table.getColumnSchema(measurementInfo.getMeasurementName(i)));
+      }
     }
 
     // Handle TAG columns after validation loop

@@ -1398,6 +1398,7 @@ public class TableMetadataImpl implements Metadata {
             database, tableSchema, context, allowCreateTable, isStrictTagColumn);
   }
 
+  @Override
   public void validateInsertNodeMeasurements(
       final String database,
       final InsertNodeMeasurementInfo measurementInfo,

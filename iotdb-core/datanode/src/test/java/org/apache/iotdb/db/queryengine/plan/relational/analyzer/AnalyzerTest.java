@@ -1061,6 +1061,7 @@ public class AnalyzerTest {
         return Optional.of(tableSchema);
       }
 
+      @Override
       public void validateInsertNodeMeasurements(
           final String database,
           final InsertNodeMeasurementInfo measurementInfo,
