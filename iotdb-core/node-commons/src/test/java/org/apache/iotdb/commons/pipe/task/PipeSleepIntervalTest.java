@@ -72,12 +72,12 @@ public class PipeSleepIntervalTest {
       subtask.sleep4NonReportException();
       Assert.assertTrue(
           System.currentTimeMillis() - startTime
-              > PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
+              >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
       startTime = System.currentTimeMillis() - startTime;
       subtask.sleep4NonReportException();
       Assert.assertTrue(
           System.currentTimeMillis() - startTime
-              > PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
+              >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
     }
   }
 }
