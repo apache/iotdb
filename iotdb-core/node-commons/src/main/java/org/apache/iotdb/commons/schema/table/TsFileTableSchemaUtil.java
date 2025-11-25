@@ -94,22 +94,13 @@ public class TsFileTableSchemaUtil {
         ReadWriteIOUtils.readCompressionType(tsTableBuffer);
       }
       // Skip Map
-      int length = ReadWriteIOUtils.readInt(tsTableBuffer);
-      for (int j = 0; j < length; ++j) {
-        // Skip String
-        int size = ReadWriteIOUtils.readInt(tsTableBuffer);
-        tsTableBuffer.position(tsTableBuffer.position() + size);
-
-        // Skip String
-        size = ReadWriteIOUtils.readInt(tsTableBuffer);
-        tsTableBuffer.position(tsTableBuffer.position() + size);
-      }
+      skipMap(tsTableBuffer);
 
       measurementSchemas.add(new MeasurementSchema(columnName, dataType));
       columnTypes.add(category.toTsFileColumnType());
     }
 
-    ReadWriteIOUtils.readMap(tsTableBuffer); // Table props (skip)
+    skipMap(tsTableBuffer); // Table props (skip)
 
     return new TableSchema(tableName, measurementSchemas, columnTypes);
   }
@@ -123,7 +114,7 @@ public class TsFileTableSchemaUtil {
   private static void skipColumnData(
       final ByteBuffer buffer, final TsTableColumnCategory category) {
     // Skip column name
-    ReadWriteIOUtils.readString(buffer);
+    skipString(buffer);
     // Skip data type
     ReadWriteIOUtils.readDataType(buffer);
     // Skip encoding and compression for FIELD columns
@@ -132,7 +123,7 @@ public class TsFileTableSchemaUtil {
       ReadWriteIOUtils.readCompressionType(buffer);
     }
     // Skip column props
-    ReadWriteIOUtils.readMap(buffer);
+    skipMap(buffer);
   }
 
   /**
@@ -183,5 +174,34 @@ public class TsFileTableSchemaUtil {
     }
 
     return new TableSchema(tableName, measurementSchemas, columnTypes, columnPosIndex);
+  }
+
+  /**
+   * Skip a string in ByteBuffer without reading it. This is more efficient than reading and
+   * discarding the string.
+   *
+   * @param buffer ByteBuffer to skip string from
+   */
+  private static void skipString(final ByteBuffer buffer) {
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    if (size > 0) {
+      buffer.position(buffer.position() + size);
+    }
+  }
+
+  /**
+   * Skip a Map<String, String> in ByteBuffer without reading it. This is more efficient than
+   * reading and discarding the map.
+   *
+   * @param buffer ByteBuffer to skip map from
+   */
+  private static void skipMap(final ByteBuffer buffer) {
+    final int length = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < length; i++) {
+      // Skip key (String)
+      skipString(buffer);
+      // Skip value (String)
+      skipString(buffer);
+    }
   }
 }
