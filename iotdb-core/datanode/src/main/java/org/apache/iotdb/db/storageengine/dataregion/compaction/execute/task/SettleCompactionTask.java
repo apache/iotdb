@@ -139,10 +139,10 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
 
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
+      calculateSourceFilesAndTargetFiles();
       CompactionUtils.prepareCompactionModFiles(
           filesView.targetFilesInPerformer, filesView.sourceFilesInCompactionPerformer);
 
-      calculateSourceFilesAndTargetFiles();
       isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
       Arrays.fill(isHoldingWriteLock, false);
       compactionLogger.logSourceFiles(fullyDirtyFiles);
