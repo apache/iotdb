@@ -275,7 +275,9 @@ public class PipeReceiverStatusHandlerTest {
           public void error(Marker marker, String msg, Throwable t) {}
         });
     handler.handle(
-        new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()), "", "");
+        new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()),
+        "",
+        "");
     handler.handle(new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()), "", "");
     try {
       handler.handle(new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()), "", "", true);
