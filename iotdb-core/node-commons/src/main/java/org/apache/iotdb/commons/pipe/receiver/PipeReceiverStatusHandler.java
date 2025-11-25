@@ -86,6 +86,11 @@ public class PipeReceiverStatusHandler {
     this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
+  public void handle(
+      final TSStatus status, final String exceptionMessage, final String recordMessage) {
+    handle(status, exceptionMessage, recordMessage, false);
+  }
+
   /**
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
    * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
@@ -99,7 +104,10 @@ public class PipeReceiverStatusHandler {
    *     put any time-related info here
    */
   public void handle(
-      final TSStatus status, final String exceptionMessage, final String recordMessage) {
+      final TSStatus status,
+      final String exceptionMessage,
+      final String recordMessage,
+      final boolean log4NoPrivileges) {
 
     if (RetryUtils.needRetryForWrite(status.getCode())) {
       LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
@@ -184,17 +192,28 @@ public class PipeReceiverStatusHandler {
 
       case 803: // NO_PERMISSION
         if (skipIfNoPrivileges) {
+          if (log4NoPrivileges) {
+            LOGGER.warn(
+                "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                getNoPermission(true),
+                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                status);
+          }
           return;
         }
         handleOtherExceptions(status, exceptionMessage, recordMessage, true);
-        break;
-      case 305:
-        handleOtherExceptions(status, exceptionMessage, recordMessage, false);
         break;
       default:
         // Some auth error may be wrapped in other codes
         if (exceptionMessage.contains(NO_PERMISSION_STR)) {
           if (skipIfNoPrivileges) {
+            if (log4NoPrivileges) {
+              LOGGER.warn(
+                  "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                  getNoPermission(true),
+                  shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                  status);
+            }
             return;
           }
           handleOtherExceptions(status, exceptionMessage, recordMessage, true);

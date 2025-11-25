@@ -253,7 +253,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Transfer deletion %s error, result status %s.",
               pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), status),
-          pipeDeleteDataNodeEvent.getDeletionResource().toString());
+          pipeDeleteDataNodeEvent.getDeletionResource().toString(),
+          true);
     }
 
     if (LOGGER.isDebugEnabled()) {
