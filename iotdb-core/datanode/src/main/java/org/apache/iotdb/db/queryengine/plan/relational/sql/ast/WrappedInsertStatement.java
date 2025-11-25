@@ -311,7 +311,6 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       if (oldIdx == null) {
         newToOldMapping[tagIdx++] = -1;
       } else {
-        tagOldIndices.add(oldIdx);
         newToOldMapping[tagIdx++] = oldIdx;
       }
     }

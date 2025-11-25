@@ -120,8 +120,8 @@ public class TsTable {
    * @return the column schema, or null if not found
    */
   public TsTableColumnSchema getColumnSchema(final String columnName) {
-    long versionBefore = instanceVersion.get();
-    TsTableColumnSchema result = columnSchemaMap.get(columnName);
+    final long versionBefore = instanceVersion.get();
+    final TsTableColumnSchema result = columnSchemaMap.get(columnName);
     if (isNotWrite.get() && instanceVersion.get() == versionBefore) {
       return result;
     }
