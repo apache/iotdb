@@ -3467,7 +3467,7 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
-    final File tsfileToBeInserted = newTsFileResource.getTsFile();
+    final File tsfileToBeInserted = newTsFileResource.getTsFile().getAbsoluteFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
 
     if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
