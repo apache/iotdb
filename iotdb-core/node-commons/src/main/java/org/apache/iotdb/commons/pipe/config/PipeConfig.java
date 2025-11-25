@@ -143,6 +143,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxWaitFinishTime();
   }
 
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return COMMON_CONFIG.getPipeSinkSubtaskSleepIntervalInitMs();
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return COMMON_CONFIG.getPipeSinkSubtaskSleepIntervalMaxMs();
+  }
+
   /////////////////////////////// Source ///////////////////////////////
 
   public int getPipeSourceAssignerDisruptorRingBufferSize() {
@@ -484,6 +492,8 @@ public class PipeConfig {
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
     LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
+    LOGGER.info("PipeSinkSubtaskSleepIntervalInitMs: {}", getPipeSinkSubtaskSleepIntervalInitMs());
+    LOGGER.info("PipeSinkSubtaskSleepIntervalMaxMs: {}", getPipeSinkSubtaskSleepIntervalMaxMs());
 
     LOGGER.info(
         "PipeSourceAssignerDisruptorRingBufferSize: {}",

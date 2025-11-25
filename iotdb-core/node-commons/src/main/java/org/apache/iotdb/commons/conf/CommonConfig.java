@@ -251,6 +251,9 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
 
+  private volatile long pipeSinkSubtaskSleepIntervalInitMs = 250L;
+  private volatile long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
+
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
   private long pipeMaxWaitFinishTime = 10 * 1000;
@@ -1357,6 +1360,32 @@ public class CommonConfig {
     this.pipeRetryLocallyForParallelOrUserConflict = pipeRetryLocallyForParallelOrUserConflict;
     logger.info(
         "pipeRetryLocallyForParallelOrUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return pipeSinkSubtaskSleepIntervalInitMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalInitMs(long pipeSinkSubtaskSleepIntervalInitMs) {
+    if (this.pipeSinkSubtaskSleepIntervalInitMs == pipeSinkSubtaskSleepIntervalInitMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalInitMs = pipeSinkSubtaskSleepIntervalInitMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalInitMs is set to {}.", pipeSinkSubtaskSleepIntervalInitMs);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return pipeSinkSubtaskSleepIntervalMaxMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalMaxMs(long pipeSinkSubtaskSleepIntervalMaxMs) {
+    if (this.pipeSinkSubtaskSleepIntervalMaxMs == pipeSinkSubtaskSleepIntervalMaxMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalMaxMs = pipeSinkSubtaskSleepIntervalMaxMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalMaxMs is set to {}.", pipeSinkSubtaskSleepIntervalMaxMs);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
