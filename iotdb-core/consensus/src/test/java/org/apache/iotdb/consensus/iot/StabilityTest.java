@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
@@ -58,8 +61,11 @@ public class StabilityTest {
 
   private final ConsensusGroupId dataRegionId = new DataRegionId(1);
 
-  private final File storageDir = new File("target" + java.io.File.separator + "stability");
-
+  private final String[] folders = {
+    "target" + File.separator + "stability1",
+    "target" + File.separator + "stability2",
+    "target" + File.separator + "stability3"
+  };
   private IoTConsensus consensusImpl;
 
   private final int basePort = 6667;
@@ -72,7 +78,7 @@ public class StabilityTest {
                     ConsensusConfig.newBuilder()
                         .setThisNodeId(1)
                         .setThisNode(new TEndPoint("0.0.0.0", basePort))
-                        .setStorageDir(storageDir.getAbsolutePath())
+                        .setStorageDirs(folders)
                         .setConsensusGroupType(TConsensusGroupType.DataRegion)
                         .build(),
                     gid -> new TestStateMachine())
@@ -87,14 +93,24 @@ public class StabilityTest {
 
   @Before
   public void setUp() throws Exception {
-    FileUtils.deleteFully(storageDir);
+    for (String folder : folders) {
+      File dir = new File(folder);
+      if (dir.exists()) {
+        FileUtils.deleteFully(dir);
+      }
+    }
     constructConsensus();
   }
 
   @After
   public void tearDown() throws IOException {
     consensusImpl.stop();
-    FileUtils.deleteFully(storageDir);
+    for (String folder : folders) {
+      File dir = new File(folder);
+      if (dir.exists()) {
+        FileUtils.deleteFully(dir);
+      }
+    }
   }
 
   @Test
@@ -104,6 +120,7 @@ public class StabilityTest {
     peerTest();
     transferLeader();
     snapshotTest();
+    multiRegionSnapshotTest();
   }
 
   public void addConsensusGroup() {
@@ -202,10 +219,19 @@ public class StabilityTest {
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.triggerSnapshot(dataRegionId, false);
 
-    File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
+    File dataDir = null;
+    File[] versionFiles1 = null;
+    for (String folder : folders) {
+      dataDir = new File(IoTConsensus.buildPeerDir(folder, dataRegionId));
+      if ((versionFiles1 =
+                  dataDir.listFiles(
+                      (dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME)))
+              != null
+          && versionFiles1.length > 0) {
+        break;
+      }
+    }
 
-    File[] versionFiles1 =
-        dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
     Assert.assertNotNull(versionFiles1);
     Assert.assertEquals(1, versionFiles1.length);
 
@@ -219,6 +245,35 @@ public class StabilityTest {
     Assert.assertEquals(1, versionFiles2.length);
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
     consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
+  public void multiRegionSnapshotTest() throws ConsensusException, DiskSpaceInsufficientException {
+    consensusImpl.folderManager =
+        new FolderManager(
+            consensusImpl.folderManager.getFolders(), DirectoryStrategyType.SEQUENCE_STRATEGY);
+    ConsensusGroupId[] dataRegionIds = new ConsensusGroupId[folders.length];
+    for (int i = 0; i < folders.length; i++) {
+      dataRegionIds[i] = new DataRegionId(i + 100);
+      consensusImpl.createLocalPeer(
+          dataRegionIds[i],
+          Collections.singletonList(
+              new Peer(dataRegionIds[i], 1, new TEndPoint("0.0.0.0", basePort))));
+      consensusImpl.triggerSnapshot(dataRegionIds[i], true);
+    }
+
+    for (int i = 0; i < folders.length; i++) {
+      File dataDir = new File(IoTConsensus.buildPeerDir(folders[i], dataRegionIds[i]));
+      System.out.println(dataDir.getAbsolutePath());
+      File[] versionFiles1 =
+          dataDir.listFiles(
+              (dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+      Assert.assertNotNull(versionFiles1);
+      Assert.assertEquals(1, versionFiles1.length);
+    }
+
+    for (int i = 0; i < folders.length; i++) {
+      consensusImpl.deleteLocalPeer(dataRegionIds[i]);
+    }
   }
 
   @Test

@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -71,6 +74,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +95,7 @@ public class IoTConsensus implements IConsensus {
 
   private final TEndPoint thisNode;
   private final int thisNodeId;
-  private final File storageDir;
+  FolderManager folderManager = null;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
@@ -104,10 +108,13 @@ public class IoTConsensus implements IConsensus {
   private Future<?> updateReaderFuture;
   private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
-  public IoTConsensus(ConsensusConfig config, Registry registry) {
+  public IoTConsensus(ConsensusConfig config, Registry registry)
+      throws DiskSpaceInsufficientException {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
-    this.storageDir = new File(config.getStorageDir());
+    this.folderManager =
+        new FolderManager(
+            Arrays.asList(config.getStorageDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
     this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
@@ -160,31 +167,35 @@ public class IoTConsensus implements IConsensus {
   }
 
   private void initAndRecover() throws IOException {
-    if (!storageDir.exists()) {
-      if (!storageDir.mkdirs()) {
-        throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
-      }
-    } else {
-      try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-        for (Path path : stream) {
-          String[] items = path.getFileName().toString().split("_");
-          ConsensusGroupId consensusGroupId =
-              ConsensusGroupId.Factory.create(
-                  Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          IoTConsensusServerImpl consensus =
-              new IoTConsensusServerImpl(
-                  path.toString(),
-                  new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
-                  registry.apply(consensusGroupId),
-                  backgroundTaskService,
-                  clientManager,
-                  syncClientManager,
-                  config);
-          stateMachineMap.put(consensusGroupId, consensus);
+    for (String folder : folderManager.getFolders()) {
+      File storageDir = new File(folder);
+      if (!storageDir.exists()) {
+        if (!storageDir.mkdirs()) {
+          throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
+        }
+      } else {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+          for (Path path : stream) {
+            String[] items = path.getFileName().toString().split("_");
+            ConsensusGroupId consensusGroupId =
+                ConsensusGroupId.Factory.create(
+                    Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+            IoTConsensusServerImpl consensus =
+                new IoTConsensusServerImpl(
+                    path.toString(),
+                    new Peer(consensusGroupId, thisNodeId, thisNode),
+                    new TreeSet<>(),
+                    registry.apply(consensusGroupId),
+                    backgroundTaskService,
+                    clientManager,
+                    syncClientManager,
+                    config);
+            stateMachineMap.put(consensusGroupId, consensus);
+          }
         }
       }
     }
+
     if (correctPeerListBeforeStart != null) {
       BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
           (consensusGroupId, peers) -> {
@@ -271,8 +282,18 @@ public class IoTConsensus implements IConsensus {
                 k -> {
                   exist.set(false);
 
-                  String path = buildPeerDir(storageDir, groupId);
+                  String path = null;
+                  try {
+                    path = buildPeerDir(folderManager.getNextFolder(), groupId);
+                  } catch (DiskSpaceInsufficientException e) {
+                    logger.warn(
+                        "Failed to create consensus directory for group {} due to disk space insufficiency: {}",
+                        groupId,
+                        e.getMessage());
+                    return null;
+                  }
                   File file = new File(path);
+                  System.out.println(file.getAbsolutePath());
                   if (!file.mkdirs()) {
                     logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
                     return null;
@@ -315,7 +336,9 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    for (String folder : folderManager.getFolders()) {
+      FileUtils.deleteFileOrDirectory(new File(buildPeerDir(folder, groupId)));
+    }
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 
@@ -465,7 +488,7 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
-    return buildPeerDir(storageDir, groupId);
+    return null;
   }
 
   @Override
@@ -552,7 +575,7 @@ public class IoTConsensus implements IConsensus {
     return stateMachineMap.get(groupId);
   }
 
-  public static String buildPeerDir(File storageDir, ConsensusGroupId groupId) {
+  public static String buildPeerDir(String storageDir, ConsensusGroupId groupId) {
     return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
   }
 }
