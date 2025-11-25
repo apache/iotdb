@@ -959,7 +959,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
-  public TSStatus visitCountStorageGroup(
+  public TSStatus visitCountDatabase(
       CountDatabaseStatement countDatabaseStatement, TreeAccessCheckContext context) {
     context
         .setAuditLogOperation(AuditLogOperation.QUERY)
@@ -1730,7 +1730,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowVersion(ShowVersionStatement statement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return SUCCEED;
   }
 
   @Override

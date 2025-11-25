@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.db.protocol.client.ainode;
 
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;

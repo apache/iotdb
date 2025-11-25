@@ -122,7 +122,7 @@ public class DeleteTimeSeriesProcedure
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, true);
           setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
@@ -202,13 +202,14 @@ public class DeleteTimeSeriesProcedure
       final ConfigNodeProcedureEnv env,
       final ByteBuffer patternTreeBytes,
       final String requestMessage,
-      final Consumer<ProcedureException> setFailure) {
+      final Consumer<ProcedureException> setFailure,
+      final boolean needLock) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes).setNeedLock(needLock),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();

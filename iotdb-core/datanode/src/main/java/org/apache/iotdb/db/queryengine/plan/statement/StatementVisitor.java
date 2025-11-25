@@ -402,7 +402,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDevicesStatement, context);
   }
 
-  public R visitCountStorageGroup(CountDatabaseStatement countDatabaseStatement, C context) {
+  public R visitCountDatabase(CountDatabaseStatement countDatabaseStatement, C context) {
     return visitStatement(countDatabaseStatement, context);
   }
 

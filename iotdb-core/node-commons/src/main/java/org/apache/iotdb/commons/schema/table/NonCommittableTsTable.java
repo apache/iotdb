@@ -17,24 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.commons.schema.table;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-public class AINodeClientManager {
-  private AINodeClientManager() {
-    // Empty constructor
+import java.io.IOException;
+import java.io.OutputStream;
+
+/**
+ * This table is just for occupation, and notice the dataNode to fetch the newest version from
+ * configNode. Note that the table cannot be committed or rolled-back, yet it can still be
+ * pre-updated or invalidated, because the two can update the table to the newest and trustable
+ * version.
+ */
+public class NonCommittableTsTable extends TsTable {
+  public NonCommittableTsTable(final String tableName) {
+    super(tableName);
   }
 
-  private static final class AINodeClientManagerHolder {
-    private static final IClientManager<TEndPoint, AINodeClient> INSTANCE =
-        new IClientManager.Factory<TEndPoint, AINodeClient>()
-            .createClientManager(new ClientPoolFactory.AINodeClientPoolFactory());
-  }
-
-  public static IClientManager<TEndPoint, AINodeClient> getInstance() {
-    return AINodeClientManagerHolder.INSTANCE;
+  @Override
+  public void serialize(final OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(tableName, stream);
+    ReadWriteIOUtils.write(-1, stream);
   }
 }

@@ -106,6 +106,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
 
     def __init__(self, request_pool_map: Dict[str, Dict[str, PoolGroup]]):
         super().__init__(request_pool_map)
+        self._model_manager = ModelManager()
 
     def schedule(self, model_id: str) -> List[ScaleAction]:
         """
@@ -123,7 +124,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         self, model_info: ModelInfo, device_id: str
     ) -> List[ScaleAction]:
         existing_model_infos = [
-            MODEL_MANAGER.get_model_info(existing_model_id)
+            self._model_manager.get_model_info(existing_model_id)
             for existing_model_id, pool_group_map in self._request_pool_map.items()
             if existing_model_id != model_info.model_id and device_id in pool_group_map
         ]
@@ -140,7 +141,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         self, model_info: ModelInfo, device_id: str
     ) -> List[ScaleAction]:
         existing_model_infos = [
-            MODEL_MANAGER.get_model_info(existing_model_id)
+            self._model_manager.get_model_info(existing_model_id)
             for existing_model_id, pool_group_map in self._request_pool_map.items()
             if existing_model_id != model_info.model_id and device_id in pool_group_map
         ]

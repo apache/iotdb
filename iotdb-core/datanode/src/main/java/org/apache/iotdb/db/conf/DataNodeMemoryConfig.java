@@ -32,6 +32,10 @@ import org.slf4j.LoggerFactory;
 public class DataNodeMemoryConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeMemoryConfig.class);
 
+  public static final String SCHEMA_CACHE = "SchemaCache";
+  public static final String SCHEMA_REGION = "SchemaRegion";
+  public static final String PARTITION_CACHE = "PartitionCache";
+
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
@@ -266,13 +270,13 @@ public class DataNodeMemoryConfig {
 
     schemaRegionMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "SchemaRegion", schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
+            SCHEMA_REGION, schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
     schemaCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "SchemaCache", schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
+            SCHEMA_CACHE, schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
     partitionCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "PartitionCache", schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
+            PARTITION_CACHE, schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
 
     LOGGER.info(
         "allocateMemoryForSchemaRegion = {}",

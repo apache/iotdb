@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -32,12 +33,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -48,9 +51,6 @@ import java.util.stream.Stream;
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
-
-  private static final String RESOURCE = ".resource";
-  private static final String MODS = ".mods";
 
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
@@ -108,23 +108,31 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           fileStream
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
-              .map(
-                  file ->
-                      (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                          ? getTsFilePath(file.getAbsolutePath())
-                          : file.getAbsolutePath())
+              .map(file -> LoadUtil.getTsFilePath(file.getAbsolutePath()))
               .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
-                  file -> {
-                    final File parentFile = new File(file).getParentFile();
+                  filePath -> {
+                    final File tsFile = new File(filePath);
+                    final Map<String, String> attributes =
+                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
+
+                    final File parentFile = tsFile.getParentFile();
+                    final boolean isTableModel =
+                        ActiveLoadPathHelper.containsDatabaseName(attributes)
+                            || (parentFile != null
+                                && !Objects.equals(
+                                    parentFile.getAbsoluteFile(),
+                                    listeningDirFile.getAbsoluteFile()));
+
                     activeLoadTsFileLoader.tryTriggerTsFileLoad(
-                        file,
-                        parentFile != null
-                            && !Objects.equals(
-                                parentFile.getAbsoluteFile(), listeningDirFile.getAbsoluteFile()),
+                        tsFile.getAbsolutePath(),
+                        listeningDirFile.getAbsolutePath(),
+                        isTableModel,
                         isGeneratedByPipe);
                   });
+        } catch (UncheckedIOException e) {
+          LOGGER.debug("The file has been deleted. Ignore this exception.");
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
         }
@@ -188,7 +196,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
-              ActiveLoadUtil.updateLoadDiskSelector();
+              LoadUtil.updateLoadDiskSelector();
             }
           }
         }
@@ -219,14 +227,6 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     } catch (final IOException e) {
       LOGGER.warn("Error occurred during creating directory {} for active load.", dirPath, e);
     }
-  }
-
-  private static String getTsFilePath(final String filePathWithResourceOrModsTail) {
-    return filePathWithResourceOrModsTail.endsWith(RESOURCE)
-        ? filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - RESOURCE.length())
-        : filePathWithResourceOrModsTail.substring(
-            0, filePathWithResourceOrModsTail.length() - MODS.length());
   }
 
   // Metrics

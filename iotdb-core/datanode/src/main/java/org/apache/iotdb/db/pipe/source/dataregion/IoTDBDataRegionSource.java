@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -300,8 +300,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
 
     if (shouldExtractDeletion
-        && !(treePattern instanceof UnionIoTDBTreePattern
-            && (((UnionIoTDBTreePattern) treePattern).isPrefixOrFullPath()))) {
+        && !(treePattern instanceof IoTDBTreePatternOperations
+            && (((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",

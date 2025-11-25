@@ -146,7 +146,10 @@ public interface ISchemaRegion {
    * @param aliasList a list of alias that you want to check
    * @return returns a map contains index of the measurements or alias that threw the exception, and
    *     exception details. The exceptions describe whether the measurement or alias exists. For
-   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   *     example, a MeasurementAlreadyExistException means this measurement exists. If there are
+   *     exceptions during check, this may return an empty map, then all the measurements will be
+   *     re-checked under consensus layer, which guarantees safety(Yet may cause unnecessary replay
+   *     of raft log)
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
       final PartialPath devicePath,

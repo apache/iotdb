@@ -63,7 +63,8 @@ import static org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeries
 
 public class AlterEncodingCompressorProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterEncodingCompressorState> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlterEncodingCompressorState.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AlterEncodingCompressorProcedure.class);
   private String queryId;
   private PathPatternTree patternTree;
   private boolean ifExists;
@@ -125,11 +126,13 @@ public class AlterEncodingCompressorProcedure
                 SerializeUtils.deserializeCompressorNullable(compressor),
                 requestMessage);
           }
-          alterEncodingCompressorInSchemaRegion(env);
+          if (!alterEncodingCompressorInSchemaRegion(env)) {
+            return Flow.NO_MORE_STATE;
+          }
           break;
         case CLEAR_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, false);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
@@ -145,7 +148,7 @@ public class AlterEncodingCompressorProcedure
     }
   }
 
-  private void alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
+  private boolean alterEncodingCompressorInSchemaRegion(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, mayAlterAudit);
 
@@ -159,7 +162,7 @@ public class AlterEncodingCompressorProcedure
                         .collect(Collectors.toList()),
                     false)));
       }
-      return;
+      return false;
     }
 
     final DataNodeTSStatusTaskExecutor<TAlterEncodingCompressorReq> alterEncodingCompressorTask =
@@ -222,6 +225,7 @@ public class AlterEncodingCompressorProcedure
         };
     alterEncodingCompressorTask.execute();
     setNextState(AlterEncodingCompressorState.CLEAR_CACHE);
+    return true;
   }
 
   private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
@@ -298,7 +302,9 @@ public class AlterEncodingCompressorProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
+    if (this == o) {
+      return true;
+    }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }

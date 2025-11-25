@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import inspect
 import logging
 import os
 from enum import Enum
@@ -60,6 +59,7 @@ AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
     1.2  # the overhead ratio for inference, used to estimate the pool size
 )
 
+# AINode folder structure
 AINODE_MODELS_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/models")
 AINODE_BUILTIN_MODELS_DIR = os.path.join(
     IOTDB_AINODE_HOME, "data/ainode/models/builtin"
@@ -70,9 +70,9 @@ AINODE_FINETUNE_MODELS_DIR = os.path.join(
 AINODE_USER_DEFINED_MODELS_DIR = os.path.join(
     IOTDB_AINODE_HOME, "data/ainode/models/user_defined"
 )
-AINODE_SYSTEM_DIR = "data/ainode/system"
-AINODE_LOG_DIR = "logs"
 AINODE_CACHE_DIR = os.path.expanduser("~/.cache/ainode")
+AINODE_SYSTEM_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/system")
+AINODE_LOG_DIR = os.path.join(IOTDB_AINODE_HOME, "logs")
 
 # AINode log
 LOG_FILE_TYPE = ["all", "info", "warn", "error"]
