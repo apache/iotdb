@@ -25,16 +25,23 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -42,6 +49,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -73,14 +82,33 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static final int dataNodeId = 0;
+  private static final File storageDir = new File("target" + java.io.File.separator + "impl");
+  private static DataRegion dataRegion;
 
   @BeforeClass
-  public static void setUpBeforeClass() throws IOException, MetadataException {
+  public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
     SchemaEngine.getInstance().init();
     SchemaEngine.getInstance().createSchemaRegion("root.ln", new SchemaRegionId(0));
+    dataRegion = new DataRegion("root.ln", "1");
+    DataRegionConsensusImpl.setInstance(
+        ConsensusFactory.getConsensusImpl(
+                ConsensusFactory.IOT_CONSENSUS,
+                ConsensusConfig.newBuilder()
+                    .setThisNodeId(1)
+                    .setThisNode(new TEndPoint("0.0.0.0", 6667))
+                    .setStorageDir(storageDir.getAbsolutePath())
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                    .build(),
+                gid -> new IoTConsensusDataRegionStateMachine(dataRegion))
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            ConsensusFactory.IOT_CONSENSUS))));
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
     DataNodeRegionManager.getInstance().init();
@@ -115,7 +143,7 @@ public class DataNodeInternalRPCServiceImplTest {
   }
 
   @Test
-  public void testCreateTimeseries() throws MetadataException {
+  public void testCreateTimeSeries() throws MetadataException {
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
@@ -162,8 +190,19 @@ public class DataNodeInternalRPCServiceImplTest {
     Assert.assertTrue(response.getResponses().get(0).accepted);
   }
 
+  @Test(expected = LoadFileException.class)
+  public void testRejectLoad4NonActiveImpl() throws LoadFileException {
+    ((IoTConsensus) DataRegionConsensusImpl.getInstance())
+        .getImpl(new DataRegionId(1))
+        .setActive(false);
+    dataRegion.loadNewTsFile(new TsFileResource(), false, false, false);
+    ((IoTConsensus) DataRegionConsensusImpl.getInstance())
+        .getImpl(new DataRegionId(1))
+        .setActive(true);
+  }
+
   @Test
-  public void testCreateAlignedTimeseries() throws MetadataException {
+  public void testCreateAlignedTimeSeries() throws MetadataException {
     CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode =
         new CreateAlignedTimeSeriesNode(
             new PlanNodeId("0"),
