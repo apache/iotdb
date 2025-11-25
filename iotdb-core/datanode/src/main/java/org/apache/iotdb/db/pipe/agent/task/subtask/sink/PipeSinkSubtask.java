@@ -59,7 +59,6 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
   private final int connectorIndex;
-  private long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
@@ -223,17 +222,6 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
       // Should be called after outputPipeConnector.close()
       super.close();
-    }
-  }
-
-  private void sleep4NonReportException() {
-    if (sleepInterval < PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs()) {
-      sleepInterval <<= 1;
-    }
-    try {
-      Thread.sleep(sleepInterval);
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
     }
   }
 
