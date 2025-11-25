@@ -93,20 +93,16 @@ public class CteMaterializerTest {
 
   private void mockException() {
     CteMaterializer cteMaterializer = Mockito.spy(new CteMaterializer());
-    Mockito.when(cteMaterializer.fetchCteQueryResult(Mockito.any(), Mockito.any(), Mockito.any()))
-        .thenReturn(null);
+    Mockito.doReturn(null)
+        .when(cteMaterializer)
+        .fetchCteQueryResult(Mockito.any(), Mockito.any(), Mockito.any());
     CteMaterializer.setInstance(cteMaterializer);
   }
 
   private void mockSubquery() {
     CteMaterializer cteMaterializer = Mockito.spy(new CteMaterializer());
 
-    Mockito.when(
-            cteMaterializer.fetchCteQueryResult(
-                Mockito.any(Table.class),
-                Mockito.any(Query.class),
-                Mockito.any(MPPQueryContext.class)))
-        .thenAnswer(
+    Mockito.doAnswer(
             (InvocationOnMock invocation) -> {
               Table table = invocation.getArgument(0);
               Query query = invocation.getArgument(1);
@@ -131,7 +127,10 @@ public class CteMaterializerTest {
 
               TableSchema tableSchema = new TableSchema(table.getName().toString(), columnsSchemas);
               return new CteDataStore(query, tableSchema, ImmutableList.of(0, 1));
-            });
+            })
+        .when(cteMaterializer)
+        .fetchCteQueryResult(
+            Mockito.any(Table.class), Mockito.any(Query.class), Mockito.any(MPPQueryContext.class));
     CteMaterializer.setInstance(cteMaterializer);
   }
 
