@@ -413,6 +413,8 @@ public class TableHeaderSchemaValidator {
           noField = false;
         }
 
+        hasAttribute = hasAttribute || category == TsTableColumnCategory.ATTRIBUTE;
+
         // Custom validation handler - get MeasurementSchema on demand
         if (measurementValidator != null) {
           measurementValidator.validate(
