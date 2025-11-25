@@ -15,19 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Callable, Dict
 
-from torch import nn
-from yaml import YAMLError
+import os
+from typing import Any, List, Optional
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
-from iotdb.ainode.core.exception import BadConfigValueError, InvalidUriError
+from iotdb.ainode.core.exception import BuiltInModelDeletionError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_enums import BuiltInModelType, ModelStates
-from iotdb.ainode.core.model.model_info import ModelInfo
-from iotdb.ainode.core.model.model_storage import ModelStorage
+from iotdb.ainode.core.model.model_loader import ModelLoader
+from iotdb.ainode.core.model.model_storage import ModelCategory, ModelInfo, ModelStorage
 from iotdb.ainode.core.rpc.status import get_status
-from iotdb.ainode.core.util.decorator import singleton
 from iotdb.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
@@ -40,130 +38,84 @@ from iotdb.thrift.common.ttypes import TSStatus
 logger = Logger()
 
 
-@singleton
 class ModelManager:
     def __init__(self):
-        self.model_storage = ModelStorage()
+        self.models_dir = os.path.join(
+            os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+        )
+        self.storage = ModelStorage(models_dir=self.models_dir)
+        self.loader = ModelLoader(storage=self.storage)
 
-    def register_model(self, req: TRegisterModelReq) -> TRegisterModelResp:
-        logger.info(f"register model {req.modelId} from {req.uri}")
+        # Automatically discover all models
+        self._models = self.storage.discover_all()
+
+    def register_model(
+        self,
+        req: TRegisterModelReq,
+    ) -> TRegisterModelResp:
         try:
-            configs, attributes = self.model_storage.register_model(
-                req.modelId, req.uri
-            )
-            return TRegisterModelResp(
-                get_status(TSStatusCode.SUCCESS_STATUS), configs, attributes
-            )
-        except InvalidUriError as e:
-            logger.warning(e)
-            return TRegisterModelResp(
-                get_status(TSStatusCode.INVALID_URI_ERROR, e.message)
-            )
-        except BadConfigValueError as e:
-            logger.warning(e)
-            return TRegisterModelResp(
-                get_status(TSStatusCode.INVALID_INFERENCE_CONFIG, e.message)
-            )
-        except YAMLError as e:
-            logger.warning(e)
-            if hasattr(e, "problem_mark"):
-                mark = e.problem_mark
+            success = self.storage.register_model(model_id=req.modelId, uri=req.uri)
+            if success:
+                return TRegisterModelResp(get_status(TSStatusCode.SUCCESS_STATUS))
+            else:
                 return TRegisterModelResp(
-                    get_status(
-                        TSStatusCode.INVALID_INFERENCE_CONFIG,
-                        f"An error occurred while parsing the yaml file, "
-                        f"at line {mark.line + 1} column {mark.column + 1}.",
-                    )
+                    get_status(TSStatusCode.AINODE_INTERNAL_ERROR)
                 )
+        except ValueError as e:
             return TRegisterModelResp(
-                get_status(
-                    TSStatusCode.INVALID_INFERENCE_CONFIG,
-                    f"An error occurred while parsing the yaml file",
-                )
+                get_status(TSStatusCode.INVALID_URI_ERROR, str(e))
             )
         except Exception as e:
-            logger.warning(e)
             return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
 
+    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self.storage.show_models(req)
+
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:
-        logger.info(f"delete model {req.modelId}")
         try:
-            self.model_storage.delete_model(req.modelId)
+            self.storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
+        except BuiltInModelDeletionError as e:
+            logger.warning(e)
+            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
         except Exception as e:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
-    def load_model(
-        self, model_id: str, inference_attrs: Dict[str, str], acceleration: bool = False
-    ) -> Callable:
-        """
-        Load the model with the given model_id.
-        """
-        logger.info(f"Load model {model_id}")
-        try:
-            model = self.model_storage.load_model(
-                model_id, inference_attrs, acceleration
-            )
-            logger.info(f"Model {model_id} loaded")
-            return model
-        except Exception as e:
-            logger.error(f"Failed to load model {model_id}: {e}")
-            raise
+    def load_model(self, model_id: str, **kwargs) -> Any:
+        return self.loader.load_model(model_id=model_id, **kwargs)
 
-    def save_model(self, model_id: str, model: nn.Module) -> TSStatus:
-        """
-        Save the model using save_pretrained
-        """
-        logger.info(f"Saving model {model_id}")
-        try:
-            self.model_storage.save_model(model_id, model)
-            logger.info(f"Saving model {model_id} successfully")
-            return get_status(
-                TSStatusCode.SUCCESS_STATUS, f"Model {model_id} saved successfully"
-            )
-        except Exception as e:
-            logger.error(f"Save model failed: {e}")
-            return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+    def get_model_info(
+        self,
+        model_id: str,
+        category: Optional[ModelCategory] = None,
+    ) -> Optional[ModelInfo]:
+        return self.storage.get_model_info(model_id, category)
 
-    def get_ckpt_path(self, model_id: str) -> str:
-        """
-        Get the checkpoint path for a given model ID.
+    def get_model_infos(
+        self,
+        category: Optional[ModelCategory] = None,
+        model_type: Optional[str] = None,
+    ) -> List[ModelInfo]:
+        return self.storage.get_model_infos(category, model_type)
 
-        Args:
-            model_id (str): The ID of the model.
+    def refresh(self):
+        """Refresh the model list (re-scan the file system)"""
+        self._models = self.storage.discover_all()
 
-        Returns:
-            str: The path to the checkpoint file for the model.
-        """
-        return self.model_storage.get_ckpt_path(model_id)
+    def get_registered_models(self) -> List[str]:
+        return self.storage.get_registered_models()
 
-    def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
-        return self.model_storage.show_models(req)
+    def is_model_registered(self, model_id: str) -> bool:
+        return self.storage.is_model_registered(model_id)
 
-    def register_built_in_model(self, model_info: ModelInfo):
-        self.model_storage.register_built_in_model(model_info)
 
-    def get_model_info(self, model_id: str) -> ModelInfo:
-        return self.model_storage.get_model_info(model_id)
+# Create a global model manager instance
+_default_manager: Optional[ModelManager] = None
 
-    def update_model_state(self, model_id: str, state: ModelStates):
-        self.model_storage.update_model_state(model_id, state)
 
-    def get_built_in_model_type(self, model_id: str) -> BuiltInModelType:
-        """
-        Get the type of the model with the given model_id.
-        """
-        return self.model_storage.get_built_in_model_type(model_id)
-
-    def is_built_in_or_fine_tuned(self, model_id: str) -> bool:
-        """
-        Check if the model_id corresponds to a built-in or fine-tuned model.
-
-        Args:
-            model_id (str): The ID of the model.
-
-        Returns:
-            bool: True if the model is built-in or fine_tuned, False otherwise.
-        """
-        return self.model_storage.is_built_in_or_fine_tuned(model_id)
+def get_model_manager() -> ModelManager:
+    global _default_manager
+    if _default_manager is None:
+        _default_manager = ModelManager()
+    return _default_manager

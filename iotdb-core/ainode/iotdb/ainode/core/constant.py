@@ -20,7 +20,6 @@ import os
 from enum import Enum
 from typing import List
 
-from iotdb.ainode.core.model.model_enums import BuiltInModelType
 from iotdb.thrift.common.ttypes import TEndPoint
 
 IOTDB_AINODE_HOME = os.getenv("IOTDB_AINODE_HOME", "")
@@ -52,8 +51,8 @@ DEFAULT_RECONNECT_TIMES = 3
 AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
 AINODE_INFERENCE_MAX_PREDICT_LENGTH = 2880
 AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
-    BuiltInModelType.SUNDIAL.value: 1036 * 1024**2,  # 1036 MiB
-    BuiltInModelType.TIMER_XL.value: 856 * 1024**2,  # 856 MiB
+    "sundial": 1036 * 1024**2,  # 1036 MiB
+    "timerxl": 856 * 1024**2,  # 856 MiB
 }  # the memory usage of each model in bytes
 AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.4  # the device space allocated for inference
 AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
@@ -63,8 +62,15 @@ AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
 # AINode folder structure
 AINODE_MODELS_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/models")
 AINODE_BUILTIN_MODELS_DIR = os.path.join(
-    IOTDB_AINODE_HOME, "data/ainode/models/weights"
+    IOTDB_AINODE_HOME, "data/ainode/models/builtin"
 )  # For built-in models, we only need to store their weights and config.
+AINODE_FINETUNE_MODELS_DIR = os.path.join(
+    IOTDB_AINODE_HOME, "data/ainode/models/finetune"
+)
+AINODE_USER_DEFINED_MODELS_DIR = os.path.join(
+    IOTDB_AINODE_HOME, "data/ainode/models/user_defined"
+)
+AINODE_CACHE_DIR = os.path.expanduser("~/.cache/ainode")
 AINODE_SYSTEM_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/system")
 AINODE_LOG_DIR = os.path.join(IOTDB_AINODE_HOME, "logs")
 
@@ -141,132 +147,8 @@ class HyperparameterName(Enum):
         return self.value
 
 
-class ForecastModelType(Enum):
-    DLINEAR = "dlinear"
-    DLINEAR_INDIVIDUAL = "dlinear_individual"
-    NBEATS = "nbeats"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        values = []
-        for item in list(cls):
-            values.append(item.value)
-        return values
-
-
 class ModelInputName(Enum):
     DATA_X = "data_x"
     TIME_STAMP_X = "time_stamp_x"
     TIME_STAMP_Y = "time_stamp_y"
     DEC_INP = "dec_inp"
-
-
-class AttributeName(Enum):
-    # forecast Attribute
-    PREDICT_LENGTH = "predict_length"
-
-    # NaiveForecaster
-    STRATEGY = "strategy"
-    SP = "sp"
-
-    # STLForecaster
-    # SP = 'sp'
-    SEASONAL = "seasonal"
-    SEASONAL_DEG = "seasonal_deg"
-    TREND_DEG = "trend_deg"
-    LOW_PASS_DEG = "low_pass_deg"
-    SEASONAL_JUMP = "seasonal_jump"
-    TREND_JUMP = "trend_jump"
-    LOSS_PASS_JUMP = "low_pass_jump"
-
-    # ExponentialSmoothing
-    DAMPED_TREND = "damped_trend"
-    INITIALIZATION_METHOD = "initialization_method"
-    OPTIMIZED = "optimized"
-    REMOVE_BIAS = "remove_bias"
-    USE_BRUTE = "use_brute"
-
-    # Arima
-    ORDER = "order"
-    SEASONAL_ORDER = "seasonal_order"
-    METHOD = "method"
-    MAXITER = "maxiter"
-    SUPPRESS_WARNINGS = "suppress_warnings"
-    OUT_OF_SAMPLE_SIZE = "out_of_sample_size"
-    SCORING = "scoring"
-    WITH_INTERCEPT = "with_intercept"
-    TIME_VARYING_REGRESSION = "time_varying_regression"
-    ENFORCE_STATIONARITY = "enforce_stationarity"
-    ENFORCE_INVERTIBILITY = "enforce_invertibility"
-    SIMPLE_DIFFERENCING = "simple_differencing"
-    MEASUREMENT_ERROR = "measurement_error"
-    MLE_REGRESSION = "mle_regression"
-    HAMILTON_REPRESENTATION = "hamilton_representation"
-    CONCENTRATE_SCALE = "concentrate_scale"
-
-    # GAUSSIAN_HMM
-    N_COMPONENTS = "n_components"
-    COVARIANCE_TYPE = "covariance_type"
-    MIN_COVAR = "min_covar"
-    STARTPROB_PRIOR = "startprob_prior"
-    TRANSMAT_PRIOR = "transmat_prior"
-    MEANS_PRIOR = "means_prior"
-    MEANS_WEIGHT = "means_weight"
-    COVARS_PRIOR = "covars_prior"
-    COVARS_WEIGHT = "covars_weight"
-    ALGORITHM = "algorithm"
-    N_ITER = "n_iter"
-    TOL = "tol"
-    PARAMS = "params"
-    INIT_PARAMS = "init_params"
-    IMPLEMENTATION = "implementation"
-
-    # GMMHMM
-    # N_COMPONENTS = "n_components"
-    N_MIX = "n_mix"
-    # MIN_COVAR = "min_covar"
-    # STARTPROB_PRIOR = "startprob_prior"
-    # TRANSMAT_PRIOR = "transmat_prior"
-    WEIGHTS_PRIOR = "weights_prior"
-
-    # MEANS_PRIOR = "means_prior"
-    # MEANS_WEIGHT = "means_weight"
-    # ALGORITHM = "algorithm"
-    # COVARIANCE_TYPE = "covariance_type"
-    # N_ITER = "n_iter"
-    # TOL = "tol"
-    # INIT_PARAMS = "init_params"
-    # PARAMS = "params"
-    # IMPLEMENTATION = "implementation"
-
-    # STRAY
-    ALPHA = "alpha"
-    K = "k"
-    KNN_ALGORITHM = "knn_algorithm"
-    P = "p"
-    SIZE_THRESHOLD = "size_threshold"
-    OUTLIER_TAIL = "outlier_tail"
-
-    # timerxl
-    INPUT_TOKEN_LEN = "input_token_len"
-    HIDDEN_SIZE = "hidden_size"
-    INTERMEDIATE_SIZE = "intermediate_size"
-    OUTPUT_TOKEN_LENS = "output_token_lens"
-    NUM_HIDDEN_LAYERS = "num_hidden_layers"
-    NUM_ATTENTION_HEADS = "num_attention_heads"
-    HIDDEN_ACT = "hidden_act"
-    USE_CACHE = "use_cache"
-    ROPE_THETA = "rope_theta"
-    ATTENTION_DROPOUT = "attention_dropout"
-    INITIALIZER_RANGE = "initializer_range"
-    MAX_POSITION_EMBEDDINGS = "max_position_embeddings"
-    CKPT_PATH = "ckpt_path"
-
-    # sundial
-    DROPOUT_RATE = "dropout_rate"
-    FLOW_LOSS_DEPTH = "flow_loss_depth"
-    NUM_SAMPLING_STEPS = "num_sampling_steps"
-    DIFFUSION_BATCH_MUL = "diffusion_batch_mul"
-
-    def name(self) -> str:
-        return self.value

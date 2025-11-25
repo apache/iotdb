@@ -28,7 +28,7 @@ from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     ScaleActionType,
 )
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.manager.model_manager import get_model_manager
 from iotdb.ainode.core.manager.utils import (
     INFERENCE_EXTRA_MEMORY_RATIO,
     INFERENCE_MEMORY_USAGE_RATIO,
@@ -36,10 +36,12 @@ from iotdb.ainode.core.manager.utils import (
     estimate_pool_size,
     evaluate_system_resources,
 )
-from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP, ModelInfo
+from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 logger = Logger()
+
+MODEL_MANAGER = get_model_manager()
 
 
 def _estimate_shared_pool_size_by_total_mem(
@@ -63,7 +65,7 @@ def _estimate_shared_pool_size_by_total_mem(
     mem_usages: Dict[str, float] = {}
     for model_info in all_models:
         mem_usages[model_info.model_id] = (
-            MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+            MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
         )
 
     # Evaluate system resources and get TOTAL memory

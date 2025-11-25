@@ -16,37 +16,23 @@
 # under the License.
 #
 from enum import Enum
-from typing import List
 
 
-class BuiltInModelType(Enum):
-    # forecast models
-    ARIMA = "Arima"
-    HOLTWINTERS = "HoltWinters"
-    EXPONENTIAL_SMOOTHING = "ExponentialSmoothing"
-    NAIVE_FORECASTER = "NaiveForecaster"
-    STL_FORECASTER = "StlForecaster"
+class ModelCategory(Enum):
+    BUILTIN = "builtin"
+    USER_DEFINED = "user_defined"
+    FINETUNE = "finetune"
 
-    # anomaly detection models
-    GAUSSIAN_HMM = "GaussianHmm"
-    GMM_HMM = "GmmHmm"
-    STRAY = "Stray"
 
-    # large time series models (LTSM)
-    TIMER_XL = "Timer-XL"
-    # sundial
-    SUNDIAL = "Timer-Sundial"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        return [item.value for item in cls]
-
-    @staticmethod
-    def is_built_in_model(model_type: str) -> bool:
-        """
-        Check if the given model type corresponds to a built-in model.
-        """
-        return model_type in BuiltInModelType.values()
+class ModelStates(Enum):
+    INACTIVE = "inactive"
+    ACTIVATING = "activating"
+    ACTIVE = "active"
+    LOADING = "loading"
+    LOADED = "loaded"
+    DROPPING = "dropping"
+    TRAINING = "training"
+    FAILED = "failed"
 
 
 class ModelFileType(Enum):
@@ -55,16 +41,18 @@ class ModelFileType(Enum):
     UNKNOWN = "unknown"
 
 
-class ModelCategory(Enum):
-    BUILT_IN = "BUILT-IN"
-    FINE_TUNED = "FINE-TUNED"
-    USER_DEFINED = "USER-DEFINED"
+class UriType(Enum):
+    REPO = "repo"
+    FILE = "file"
 
 
-class ModelStates(Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    LOADING = "LOADING"
-    DROPPING = "DROPPING"
-    TRAINING = "TRAINING"
-    FAILED = "FAILED"
+# Map for inferring which HuggingFace repository to download from based on model ID
+REPO_ID_MAP = {
+    "timerxl": "thuml/timer-base-84m",
+    "sundial": "thuml/sundial-base-128m",
+    # More mappings can be added as needed
+}
+
+# Model file constants
+MODEL_CONFIG_FILE = "config.json"
+MODEL_WEIGHTS_FILE = "model.safetensors"
