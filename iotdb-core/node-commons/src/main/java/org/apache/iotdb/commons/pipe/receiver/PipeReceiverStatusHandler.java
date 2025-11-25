@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeReceiverStatusHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
   private static final String NO_PERMISSION = "No permission";
   private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
@@ -332,5 +333,10 @@ public class PipeReceiverStatusHandler {
     }
     resultStatus.setSubStatus(givenStatusList);
     return resultStatus;
+  }
+
+  @TestOnly
+  public static void setLogger(final Logger logger) {
+    LOGGER = logger;
   }
 }
