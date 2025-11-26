@@ -270,7 +270,8 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
         && context.isSetMessage()
         && context.getMessage().contains("has not been set any template")) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitStatement(activateTemplateStatement, context);
