@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTConsensusMemoryManager {
@@ -40,7 +39,6 @@ public class IoTConsensusMemoryManager {
   private IoTConsensusMemoryManager() {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
   }
-
 
   public boolean reserve(IndexedConsensusRequest request) {
     long prevRef = request.incRef();
@@ -94,8 +92,7 @@ public class IoTConsensusMemoryManager {
   }
 
   private boolean reserve(long size, boolean fromQueue) {
-    boolean result =
-        memorySizeInByte.addAndGet(size) < maxMemorySizeInByte;
+    boolean result = memorySizeInByte.addAndGet(size) < maxMemorySizeInByte;
     if (result) {
       if (fromQueue) {
         result = queueMemorySizeInByte.addAndGet(size) < maxMemorySizeForQueueInByte;
@@ -161,12 +158,6 @@ public class IoTConsensusMemoryManager {
     this.memorySizeInByte.set(0);
     this.queueMemorySizeInByte.set(0);
     this.syncMemorySizeInByte.set(0);
-  }
-
-
-  @TestOnly
-  public Double getMaxMemoryRatioForQueue() {
-    return 0.06;
   }
 
   long getMemorySizeInByte() {
