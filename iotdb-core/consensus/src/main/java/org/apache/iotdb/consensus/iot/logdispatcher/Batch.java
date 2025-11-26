@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,15 +110,111 @@ public class Batch {
 
   @Override
   public String toString() {
-    return "Batch{"
-        + "startIndex="
-        + startIndex
-        + ", endIndex="
-        + endIndex
-        + ", size="
-        + logEntries.size()
-        + ", memorySize="
-        + memorySize
-        + '}';
+    StringBuilder sb = new StringBuilder();
+    sb.append("Batch{")
+        .append("startIndex=")
+        .append(startIndex)
+        .append(", endIndex=")
+        .append(endIndex)
+        .append(", size=")
+        .append(logEntries.size())
+        .append(", memorySize=")
+        .append(memorySize)
+        .append(", logEntriesNumFromWAL=")
+        .append(logEntriesNumFromWAL)
+        .append(", synced=")
+        .append(synced)
+        .append(", config=")
+        .append(config != null ? config.toString() : "null");
+
+    // 添加 logEntries 的详细信息
+    if (!logEntries.isEmpty()) {
+      sb.append(", logEntries=[");
+      for (int i = 0; i < Math.min(logEntries.size(), 10); i++) {
+        TLogEntry entry = logEntries.get(i);
+        sb.append("{index=")
+            .append(entry.getSearchIndex())
+            .append(", fromWAL=")
+            .append(entry.fromWAL)
+            .append(", memorySize=")
+            .append(entry.getMemorySize());
+
+        // 添加 data (byte) 信息
+        if (entry.getData() != null && !entry.getData().isEmpty()) {
+          sb.append(", data=[");
+          for (int j = 0; j < entry.getData().size(); j++) {
+            ByteBuffer buffer = entry.getData().get(j);
+            if (buffer != null) {
+              // 使用 duplicate() 创建副本，避免修改原始 buffer
+              ByteBuffer bufferCopy = buffer.duplicate();
+              bufferCopy.rewind();
+              int dataSize = bufferCopy.remaining();
+              // 只打印前256字节，避免输出过长
+              int printSize = Math.min(dataSize, 256);
+              sb.append("{size=").append(dataSize);
+              if (printSize > 0) {
+                sb.append(", bytes=[");
+                for (int k = 0; k < printSize; k++) {
+                  if (k > 0) {
+                    sb.append(", ");
+                  }
+                  sb.append(String.format("0x%02X", bufferCopy.get() & 0xFF));
+                }
+                if (dataSize > printSize) {
+                  sb.append(", ... (").append(dataSize - printSize).append(" more bytes)");
+                }
+                sb.append("]");
+              }
+              sb.append("}");
+            } else {
+              sb.append("{null}");
+            }
+            if (j < entry.getData().size() - 1) {
+              sb.append(", ");
+            }
+          }
+          sb.append("]");
+        } else {
+          sb.append(", data=[]");
+        }
+
+        sb.append("}");
+        if (i < Math.min(logEntries.size(), 10) - 1) {
+          sb.append(", ");
+        }
+      }
+      if (logEntries.size() > 10) {
+        sb.append(", ... (total ").append(logEntries.size()).append(" entries)");
+      }
+      sb.append("]");
+    } else {
+      sb.append(", logEntries=[]");
+    }
+
+    // 添加堆栈跟踪信息
+    sb.append(", stackTrace=[");
+    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+    // 跳过前几个元素（getStackTrace, toString, 调用者）
+    int stackStartIndex = 2;
+    int maxDepth = Math.min(stackTrace.length, stackStartIndex + 20); // 最多显示20层堆栈
+    for (int i = stackStartIndex; i < maxDepth; i++) {
+      StackTraceElement element = stackTrace[i];
+      sb.append("\n  at ")
+          .append(element.getClassName())
+          .append(".")
+          .append(element.getMethodName())
+          .append("(")
+          .append(element.getFileName())
+          .append(":")
+          .append(element.getLineNumber())
+          .append(")");
+    }
+    if (stackTrace.length > maxDepth) {
+      sb.append("\n  ... (").append(stackTrace.length - maxDepth).append(" more frames)");
+    }
+    sb.append("\n]");
+
+    sb.append('}');
+    return sb.toString();
   }
 }

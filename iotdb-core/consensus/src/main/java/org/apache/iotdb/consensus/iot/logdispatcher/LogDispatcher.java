@@ -25,7 +25,10 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
@@ -39,6 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -564,6 +569,146 @@ public class LogDispatcher {
         }
         targetIndex = data.getSearchIndex() + 1;
         data.buildSerializedRequests();
+
+        // 复制序列化的请求数组
+        List<ByteBuffer> originalSerializedRequests = data.getSerializedRequests();
+        List<ByteBuffer> copiedSerializedRequests =
+            new ArrayList<>(originalSerializedRequests.size());
+        for (ByteBuffer buffer : originalSerializedRequests) {
+          if (buffer != null) {
+            // 创建 ByteBuffer 的深拷贝
+            ByteBuffer copy = ByteBuffer.allocate(buffer.remaining());
+            int originalPosition = buffer.position();
+            int originalLimit = buffer.limit();
+            buffer.mark();
+            copy.put(buffer);
+            buffer.reset();
+            copy.flip();
+            // 恢复原始 buffer 的位置
+            buffer.position(originalPosition);
+            buffer.limit(originalLimit);
+            copiedSerializedRequests.add(copy);
+          } else {
+            copiedSerializedRequests.add(null);
+          }
+        }
+
+        // 打印复制的数组信息
+        logger.info(
+            "Region[{}] Index[{}]: Copied {} ByteBuffer(s) before adding to Batch",
+            peer.getGroupId(),
+            data.getSearchIndex(),
+            copiedSerializedRequests.size());
+        for (int i = 0; i < copiedSerializedRequests.size(); i++) {
+          ByteBuffer buffer = copiedSerializedRequests.get(i);
+          if (buffer != null) {
+            int size = buffer.remaining();
+            logger.info(
+                "Region[{}] Index[{}] Buffer[{}]: size={}, position={}, limit={}, capacity={}",
+                peer.getGroupId(),
+                data.getSearchIndex(),
+                i,
+                size,
+                buffer.position(),
+                buffer.limit(),
+                buffer.capacity());
+            // 打印前64字节的十六进制内容
+            int printSize = Math.min(size, 64);
+            if (printSize > 0) {
+              StringBuilder hexStr = new StringBuilder();
+              int savedPosition = buffer.position();
+              for (int j = 0; j < printSize; j++) {
+                if (j > 0) {
+                  hexStr.append(" ");
+                }
+                hexStr.append(String.format("%02X", buffer.get() & 0xFF));
+              }
+              buffer.position(savedPosition);
+              logger.info(
+                  "Region[{}] Index[{}] Buffer[{}]: first {} bytes (hex)={}",
+                  peer.getGroupId(),
+                  data.getSearchIndex(),
+                  i,
+                  printSize,
+                  hexStr.toString());
+            }
+          } else {
+            logger.info(
+                "Region[{}] Index[{}] Buffer[{}]: null",
+                peer.getGroupId(),
+                data.getSearchIndex(),
+                i);
+          }
+        }
+
+        // 尝试反序列化复制的数组
+        try {
+          List<IoTConsensusRequest> iotConsensusRequests = new ArrayList<>();
+          for (ByteBuffer buffer : copiedSerializedRequests) {
+            if (buffer != null) {
+              // 创建新的 ByteBuffer 视图用于反序列化（不修改原始 buffer）
+              ByteBuffer bufferForDeserialize = buffer.duplicate();
+              iotConsensusRequests.add(new IoTConsensusRequest(bufferForDeserialize));
+            }
+          }
+          IndexedConsensusRequest testIndexedRequest =
+              impl.buildIndexedConsensusRequestForRemoteRequest(
+                  data.getSearchIndex(), new ArrayList<>(iotConsensusRequests));
+          IConsensusRequest deserializedRequest =
+              impl.getStateMachine().deserializeRequest(testIndexedRequest);
+          logger.info(
+              "Region[{}] Index[{}]: Deserialization successful, deserialized type={}",
+              peer.getGroupId(),
+              data.getSearchIndex(),
+              deserializedRequest != null
+                  ? deserializedRequest.getClass().getSimpleName()
+                  : "null");
+        } catch (Exception e) {
+          // 反序列化失败，打印详细的数组信息
+          logger.error(
+              "Region[{}] Index[{}]: Deserialization failed! Exception: {}",
+              peer.getGroupId(),
+              data.getSearchIndex(),
+              e.getMessage(),
+              e);
+          for (int i = 0; i < copiedSerializedRequests.size(); i++) {
+            ByteBuffer buffer = copiedSerializedRequests.get(i);
+            if (buffer != null) {
+              int size = buffer.remaining();
+              int position = buffer.position();
+              int limit = buffer.limit();
+              int capacity = buffer.capacity();
+              logger.error(
+                  "Region[{}] Index[{}] Failed Buffer[{}]: size={}, position={}, limit={}, capacity={}",
+                  peer.getGroupId(),
+                  data.getSearchIndex(),
+                  i,
+                  size,
+                  position,
+                  limit,
+                  capacity);
+              // 打印完整的字节内容（十六进制）
+              if (size > 0) {
+                StringBuilder hexStr = new StringBuilder();
+                int savedPosition = buffer.position();
+                for (int j = 0; j < size; j++) {
+                  if (j > 0 && j % 16 == 0) {
+                    hexStr.append("\n");
+                  }
+                  hexStr.append(String.format("%02X ", buffer.get() & 0xFF));
+                }
+                buffer.position(savedPosition);
+                logger.error(
+                    "Region[{}] Index[{}] Failed Buffer[{}]: full content (hex)=\n{}",
+                    peer.getGroupId(),
+                    data.getSearchIndex(),
+                    i,
+                    hexStr.toString());
+              }
+            }
+          }
+        }
+
         // construct request from wal
         logBatches.addTLogEntry(
             new TLogEntry(
@@ -576,6 +721,181 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
+      // 复制序列化的请求数组
+      List<ByteBuffer> originalSerializedRequests = request.getSerializedRequests();
+      List<ByteBuffer> copiedSerializedRequests =
+          new ArrayList<>(originalSerializedRequests.size());
+      for (ByteBuffer buffer : originalSerializedRequests) {
+        if (buffer != null) {
+          // 创建 ByteBuffer 的深拷贝
+          ByteBuffer copy = ByteBuffer.allocate(buffer.remaining());
+          int originalPosition = buffer.position();
+          int originalLimit = buffer.limit();
+          buffer.mark();
+          copy.put(buffer);
+          buffer.reset();
+          copy.flip();
+          // 恢复原始 buffer 的位置
+          buffer.position(originalPosition);
+          buffer.limit(originalLimit);
+          copiedSerializedRequests.add(copy);
+        } else {
+          copiedSerializedRequests.add(null);
+        }
+      }
+
+      // 打印复制的数组信息
+      logger.info(
+          "Region[{}] Index[{}]: Copied {} ByteBuffer(s) from ConsensusRequest before adding to Batch",
+          peer.getGroupId(),
+          request.getSearchIndex(),
+          copiedSerializedRequests.size());
+      for (int i = 0; i < copiedSerializedRequests.size(); i++) {
+        ByteBuffer buffer = copiedSerializedRequests.get(i);
+        if (buffer != null) {
+          int size = buffer.remaining();
+          logger.info(
+              "Region[{}] Index[{}] ConsensusRequest Buffer[{}]: size={}, position={}, limit={}, capacity={}",
+              peer.getGroupId(),
+              request.getSearchIndex(),
+              i,
+              size,
+              buffer.position(),
+              buffer.limit(),
+              buffer.capacity());
+          // 打印前64字节的十六进制内容
+          int printSize = Math.min(size, 64);
+          if (printSize > 0) {
+            StringBuilder hexStr = new StringBuilder();
+            int savedPosition = buffer.position();
+            for (int j = 0; j < printSize; j++) {
+              if (j > 0) {
+                hexStr.append(" ");
+              }
+              hexStr.append(String.format("%02X", buffer.get() & 0xFF));
+            }
+            buffer.position(savedPosition);
+            logger.info(
+                "Region[{}] Index[{}] ConsensusRequest Buffer[{}]: first {} bytes (hex)={}",
+                peer.getGroupId(),
+                request.getSearchIndex(),
+                i,
+                printSize,
+                hexStr.toString());
+          }
+        } else {
+          logger.info(
+              "Region[{}] Index[{}] ConsensusRequest Buffer[{}]: null",
+              peer.getGroupId(),
+              request.getSearchIndex(),
+              i);
+        }
+      }
+
+      // 打印原始 Requests 信息
+      if (request.getRequests() != null && !request.getRequests().isEmpty()) {
+        logger.info(
+            "Region[{}] Index[{}]: Original Requests count={}, types={}",
+            peer.getGroupId(),
+            request.getSearchIndex(),
+            request.getRequests().size(),
+            request.getRequests().stream()
+                .map(r -> r != null ? r.getClass().getSimpleName() : "null")
+                .collect(Collectors.joining(", ")));
+      }
+
+      // 尝试反序列化复制的数组
+      try {
+        List<ByteBufferConsensusRequest> byteBufferConsensusRequests = new ArrayList<>();
+        for (ByteBuffer buffer : copiedSerializedRequests) {
+          if (buffer != null) {
+            // 创建新的 ByteBuffer 视图用于反序列化（不修改原始 buffer）
+            ByteBuffer bufferForDeserialize = buffer.duplicate();
+            byteBufferConsensusRequests.add(new ByteBufferConsensusRequest(bufferForDeserialize));
+          }
+        }
+        IndexedConsensusRequest testIndexedRequest =
+            impl.buildIndexedConsensusRequestForRemoteRequest(
+                request.getSearchIndex(), new ArrayList<>(byteBufferConsensusRequests));
+        IConsensusRequest deserializedRequest =
+            impl.getStateMachine().deserializeRequest(testIndexedRequest);
+        logger.info(
+            "Region[{}] Index[{}]: ConsensusRequest deserialization successful, deserialized type={}",
+            peer.getGroupId(),
+            request.getSearchIndex(),
+            deserializedRequest != null ? deserializedRequest.getClass().getSimpleName() : "null");
+      } catch (Exception e) {
+        // 反序列化失败，打印详细的数组信息和原始 Requests
+        logger.error(
+            "Region[{}] Index[{}]: ConsensusRequest deserialization failed! Exception: {}",
+            peer.getGroupId(),
+            request.getSearchIndex(),
+            e.getMessage(),
+            e);
+        for (int i = 0; i < copiedSerializedRequests.size(); i++) {
+          ByteBuffer buffer = copiedSerializedRequests.get(i);
+          if (buffer != null) {
+            int size = buffer.remaining();
+            int position = buffer.position();
+            int limit = buffer.limit();
+            int capacity = buffer.capacity();
+            logger.error(
+                "Region[{}] Index[{}] Failed ConsensusRequest Buffer[{}]: size={}, position={}, limit={}, capacity={}",
+                peer.getGroupId(),
+                request.getSearchIndex(),
+                i,
+                size,
+                position,
+                limit,
+                capacity);
+            // 打印完整的字节内容（十六进制）
+            if (size > 0) {
+              StringBuilder hexStr = new StringBuilder();
+              int savedPosition = buffer.position();
+              for (int j = 0; j < size; j++) {
+                if (j > 0 && j % 16 == 0) {
+                  hexStr.append("\n");
+                }
+                hexStr.append(String.format("%02X ", buffer.get() & 0xFF));
+              }
+              buffer.position(savedPosition);
+              logger.error(
+                  "Region[{}] Index[{}] Failed ConsensusRequest Buffer[{}]: full content (hex)=\n{}",
+                  peer.getGroupId(),
+                  request.getSearchIndex(),
+                  i,
+                  hexStr.toString());
+            }
+          }
+        }
+        // 打印原始 Requests 的详细信息
+        if (request.getRequests() != null && !request.getRequests().isEmpty()) {
+          logger.error(
+              "Region[{}] Index[{}]: Original Requests details:",
+              peer.getGroupId(),
+              request.getSearchIndex());
+          for (int i = 0; i < request.getRequests().size(); i++) {
+            IConsensusRequest originalRequest = request.getRequests().get(i);
+            if (originalRequest != null) {
+              logger.error(
+                  "Region[{}] Index[{}] Original Request[{}]: type={}, memorySize={}, toString={}",
+                  peer.getGroupId(),
+                  request.getSearchIndex(),
+                  i,
+                  originalRequest.getClass().getName(),
+                  originalRequest.getMemorySize(),
+                  originalRequest.toString());
+            } else {
+              logger.error(
+                  "Region[{}] Index[{}] Original Request[{}]: null",
+                  peer.getGroupId(),
+                  request.getSearchIndex(),
+                  i);
+            }
+          }
+        }
+      }
+
       logBatches.addTLogEntry(
           new TLogEntry(
               request.getSerializedRequests(),

@@ -106,15 +106,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
     logger.warn(
-        "Can not send {} to peer for {} times {} because {}",
+        "Can not send {} to peer {} for {} times because {}, region={}",
         batch,
         thread.getPeer(),
         retryCount,
-        rootCause.toString());
+        rootCause.toString(),
+        thread.getPeer().getGroupId());
     // skip TApplicationException caused by follower
     if (rootCause instanceof TApplicationException) {
       completeBatch(batch);
-      logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+      logger.warn(
+          "Skip retrying this Batch {} because of TApplicationException, region={}",
+          batch,
+          thread.getPeer().getGroupId());
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
       return;
     }
