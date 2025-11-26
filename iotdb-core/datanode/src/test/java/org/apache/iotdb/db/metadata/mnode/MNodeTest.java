@@ -37,24 +37,24 @@ public class MNodeTest {
 
     IMemMNode speedNode =
         rootNode
-            .addChild(nodeFactory.createInternalMNode(null, "sg1"))
+            .addChild(nodeFactory.createInternalMNode(null, "db1"))
             .addChild(nodeFactory.createInternalMNode(null, "a"))
             .addChild(nodeFactory.createInternalMNode(null, "b"))
             .addChild(nodeFactory.createInternalMNode(null, "c"))
             .addChild(nodeFactory.createInternalMNode(null, "d"))
             .addChild(nodeFactory.createInternalMNode(null, "device"))
             .addChild(nodeFactory.createInternalMNode(null, "speed"));
-    assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
+    assertEquals("root.db1.a.b.c.d.device.speed", speedNode.getFullPath());
 
     IMemMNode temperatureNode =
         rootNode
-            .getChild("sg1")
+            .getChild("db1")
             .addChild(nodeFactory.createInternalMNode(null, "aa"))
             .addChild(nodeFactory.createInternalMNode(null, "bb"))
             .addChild(nodeFactory.createInternalMNode(null, "cc"))
             .addChild(nodeFactory.createInternalMNode(null, "dd"))
             .addChild(nodeFactory.createInternalMNode(null, "device11"))
             .addChild(nodeFactory.createInternalMNode(null, "temperature"));
-    assertEquals("root.sg1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
+    assertEquals("root.db1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
   }
 }

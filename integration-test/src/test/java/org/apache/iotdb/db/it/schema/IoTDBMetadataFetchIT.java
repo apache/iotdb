@@ -268,31 +268,31 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesWithTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE DATABASE root.db2");
       statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
       statement.execute("CREATE DEVICE TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
-      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg1.d2");
-      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2.d1");
-      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg2.d2");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg1.d2");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d1");
-      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d2");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.db1.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.db1.d2");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.db2.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.db2.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.db1.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.db2.d1");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.db2.d2");
 
       String[] sqls =
           new String[] {
             "show devices root.** where template is not null",
-            "show devices root.sg2.** with database where template = 't2'",
+            "show devices root.db2.** with database where template = 't2'",
           };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.sg1.d2,true,t2,INF,",
-                    "root.sg2.d1,false,t1,INF,",
-                    "root.sg2.d2,true,t2,INF,")),
-            new HashSet<>(Arrays.asList("root.sg2.d2,root.sg2,true,t2,INF,")),
+                    "root.db1.d2,true,t2,INF,",
+                    "root.db2.d1,false,t1,INF,",
+                    "root.db2.d2,true,t2,INF,")),
+            new HashSet<>(Arrays.asList("root.db2.d2,root.db2,true,t2,INF,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -418,7 +418,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"show child paths root.ln"};
-      String[] standards = new String[] {"root.ln.wf01,SG INTERNAL,\n"};
+      String[] standards = new String[] {"root.ln.wf01,DB INTERNAL,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -774,15 +774,15 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
+          "create aligned timeseries root.db.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
       String[] expected =
           new String[] {
-            "root.sg.d.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
-            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,"
+            "root.db.d.s1,alias1,root.db,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+            "root.db.d.s2,null,root.db,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,"
           };
 
       int num = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d.*")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db.d.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -835,9 +835,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
 
       String[] sqls =
           new String[] {
-            "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32",
-            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2",
-            "CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15"
+            "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32",
+            "CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2",
+            "CREATE TIMESERIES root.db1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15"
           };
       for (String sql : sqls) {
         statement.execute(sql);
@@ -845,10 +845,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       Set<String> standard =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d0.s0,null,root.sg1,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,\n",
-                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,\n",
-                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,\n"));
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d0.*")) {
+                  "root.db1.d0.s0,null,root.db1,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,\n",
+                  "root.db1.d0.s1,null,root.db1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,\n",
+                  "root.db1.d0.s2,null,root.db1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,\n"));
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.d0.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -861,7 +861,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       } catch (SQLException e) {
         fail(e.getMessage());
       } finally {
-        statement.execute("delete timeseries root.sg1.d0.*");
+        statement.execute("delete timeseries root.db1.d0.*");
       }
     }
   }

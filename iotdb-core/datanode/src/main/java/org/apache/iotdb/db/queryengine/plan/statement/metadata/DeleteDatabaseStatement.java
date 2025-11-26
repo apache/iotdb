@@ -41,7 +41,7 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
 
   public DeleteDatabaseStatement() {
     super();
-    statementType = StatementType.DELETE_STORAGE_GROUP;
+    statementType = StatementType.DELETE_DATABASE;
   }
 
   @Override

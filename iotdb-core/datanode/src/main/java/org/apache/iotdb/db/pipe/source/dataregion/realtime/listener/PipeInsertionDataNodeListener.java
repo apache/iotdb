@@ -86,7 +86,7 @@ public class PipeInsertionDataNodeListener {
       listenToInsertNodeExtractorCount.decrementAndGet();
     }
 
-    if (assigner.notMoreExtractorNeededToBeAssigned()) {
+    if (assigner.notMoreSourceNeededToBeAssigned()) {
       // The removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
       // This will help to release the memory occupied by the assigner

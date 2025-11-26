@@ -827,8 +827,8 @@ public class SessionPoolTest {
   @Test
   public void testDeleteStorageGroups()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> sgs = Arrays.asList("root.device2", "root.device3");
-    sessionPool.deleteStorageGroups(sgs);
+    List<String> dbs = Arrays.asList("root.device2", "root.device3");
+    sessionPool.deleteStorageGroups(dbs);
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());

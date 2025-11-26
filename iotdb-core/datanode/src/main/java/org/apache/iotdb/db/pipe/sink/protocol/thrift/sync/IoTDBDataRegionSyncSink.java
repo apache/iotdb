@@ -133,7 +133,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support "
+          "IoTDBThriftSyncSink only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -165,7 +165,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          "IoTDBThriftSyncSink only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -200,8 +200,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     }
 
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
-      LOGGER.warn(
-          "IoTDBThriftSyncConnector does not support transferring generic event: {}.", event);
+      LOGGER.warn("IoTDBThriftSyncSink does not support transferring generic event: {}.", event);
     }
   }
 

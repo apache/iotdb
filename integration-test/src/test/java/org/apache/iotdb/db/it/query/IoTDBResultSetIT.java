@@ -59,8 +59,8 @@ public class IoTDBResultSetIT {
         "CREATE TIMESERIES root.t1.wf01.wt02.temperature WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt02.type WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.t1.wf01.wt02.grade WITH DATATYPE=INT64, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.dev.status WITH DATATYPE=text,ENCODING=PLAIN",
-        "insert into root.sg.dev(time,status) values(1,3.14)"
+        "CREATE TIMESERIES root.db.dev.status WITH DATATYPE=text,ENCODING=PLAIN",
+        "insert into root.db.dev(time,status) values(1,3.14)"
       };
 
   private static final String[] emptyResultSet = new String[] {};
@@ -119,14 +119,14 @@ public class IoTDBResultSetIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select status from root.sg.dev")) {
+      try (ResultSet resultSet = statement.executeQuery("select status from root.db.dev")) {
         Assert.assertTrue(resultSet.next());
         ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(2, metaData.getColumnCount());
         assertEquals("Time", metaData.getColumnName(1));
         assertEquals(Types.TIMESTAMP, metaData.getColumnType(1));
         assertEquals("TIMESTAMP", metaData.getColumnTypeName(1));
-        assertEquals("root.sg.dev.status", metaData.getColumnName(2));
+        assertEquals("root.db.dev.status", metaData.getColumnName(2));
         assertEquals(Types.VARCHAR, metaData.getColumnType(2));
         assertEquals("TEXT", metaData.getColumnTypeName(2));
       }
@@ -140,7 +140,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyQueryTest1() {
     String expectedHeader = ColumnHeaderConstant.TIME + ",";
-    resultSetEqualTest("select * from root.sg1.d1", expectedHeader, emptyResultSet);
+    resultSetEqualTest("select * from root.db1.d1", expectedHeader, emptyResultSet);
   }
 
   @Test
@@ -180,7 +180,7 @@ public class IoTDBResultSetIT {
             + ","
             + ColumnHeaderConstant.VIEW_TYPE
             + ",";
-    resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
+    resultSetEqualTest("show timeseries root.db1.**", expectedHeader, emptyResultSet);
   }
 
   @Test
@@ -194,7 +194,7 @@ public class IoTDBResultSetIT {
             + ","
             + ColumnHeaderConstant.COLUMN_TTL
             + ",";
-    resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
+    resultSetEqualTest("show devices root.db1.**", expectedHeader, emptyResultSet);
   }
 
   @Test
@@ -204,20 +204,20 @@ public class IoTDBResultSetIT {
 
       // create timeseries
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
 
       for (int i = 0; i < 10; i++) {
         statement.addBatch(
-            "insert into root.sg1.d1(timestamp, s1, s2) values(" + i + "," + 1 + "," + 1 + ")");
+            "insert into root.db1.d1(timestamp, s1, s2) values(" + i + "," + 1 + "," + 1 + ")");
       }
 
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(103, 1)");
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(104, 1)");
-      statement.execute("insert into root.sg1.d1(timestamp, s3) values(105, 1)");
+      statement.execute("insert into root.db1.d1(timestamp, s3) values(103, 1)");
+      statement.execute("insert into root.db1.d1(timestamp, s3) values(104, 1)");
+      statement.execute("insert into root.db1.d1(timestamp, s3) values(105, 1)");
       statement.executeBatch();
       try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -247,6 +247,6 @@ public class IoTDBResultSetIT {
             + ","
             + ColumnHeaderConstant.DATATYPE
             + ",";
-    resultSetEqualTest("select last s1 from root.sg.d1", expectedHeader, emptyResultSet);
+    resultSetEqualTest("select last s1 from root.db.d1", expectedHeader, emptyResultSet);
   }
 }

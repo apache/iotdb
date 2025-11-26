@@ -126,8 +126,8 @@ public class IoTDBLoadLastCacheIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_0);
-      statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_1);
+      statement.execute("CREATE DATABASE " + SchemaConfig.DATABASE_0);
+      statement.execute("CREATE DATABASE " + SchemaConfig.DATABASE_1);
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00));
       statement.execute(convert2SQL(SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_01));
@@ -182,8 +182,8 @@ public class IoTDBLoadLastCacheIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
+      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_1));
     } catch (final IoTDBSQLException ignored) {
     }
   }
@@ -223,7 +223,7 @@ public class IoTDBLoadLastCacheIT {
 
     final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
@@ -251,7 +251,7 @@ public class IoTDBLoadLastCacheIT {
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
     }
 
-    // device 2, device 3, device4, sg 1
+    // device 2, device 3, device4, db 1
     try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
@@ -267,7 +267,7 @@ public class IoTDBLoadLastCacheIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load \"%s\" dblevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
@@ -283,7 +283,7 @@ public class IoTDBLoadLastCacheIT {
 
   @Test
   public void testTableModelLoadWithLastCache() throws Exception {
-    final String database = SchemaConfig.DATABASE_0;
+    final String database = SchemaConfig.TABLE_DATABASE;
     final String table = SchemaConfig.TABLE_0;
     final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
 
@@ -581,13 +581,13 @@ public class IoTDBLoadLastCacheIT {
 
   private static class SchemaConfig {
 
-    private static final String DATABASE_0 = "db";
+    private static final String TABLE_DATABASE = "db";
     private static final String TABLE_0 = "test";
-    private static final String STORAGE_GROUP_0 = "root.sg.test_0";
-    private static final String STORAGE_GROUP_1 = "root.sg.test_1";
+    private static final String DATABASE_0 = "root.db.test_0";
+    private static final String DATABASE_1 = "root.db.test_1";
 
-    // device 0, nonaligned, sg 0
-    private static final String DEVICE_0 = "root.sg.test_0.d_0";
+    // device 0, nonaligned, db 0
+    private static final String DEVICE_0 = "root.db.test_0.d_0";
     private static final MeasurementSchema MEASUREMENT_00 =
         new MeasurementSchema("sensor_00", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_01 =
@@ -605,8 +605,8 @@ public class IoTDBLoadLastCacheIT {
     private static final MeasurementSchema MEASUREMENT_07 =
         new MeasurementSchema("sensor_07", TSDataType.STRING, TSEncoding.PLAIN);
 
-    // device 1, aligned, sg 0
-    private static final String DEVICE_1 = "root.sg.test_0.a_1";
+    // device 1, aligned, db 0
+    private static final String DEVICE_1 = "root.db.test_0.a_1";
     private static final MeasurementSchema MEASUREMENT_10 =
         new MeasurementSchema("sensor_10", TSDataType.INT32, TSEncoding.RLE);
     private static final MeasurementSchema MEASUREMENT_11 =
@@ -624,18 +624,18 @@ public class IoTDBLoadLastCacheIT {
     private static final MeasurementSchema MEASUREMENT_17 =
         new MeasurementSchema("sensor_17", TSDataType.STRING, TSEncoding.PLAIN);
 
-    // device 2, non aligned, sg 1
-    private static final String DEVICE_2 = "root.sg.test_1.d_2";
+    // device 2, non aligned, db 1
+    private static final String DEVICE_2 = "root.db.test_1.d_2";
     private static final MeasurementSchema MEASUREMENT_20 =
         new MeasurementSchema("sensor_20", TSDataType.INT32, TSEncoding.RLE);
 
-    // device 3, non aligned, sg 1
-    private static final String DEVICE_3 = "root.sg.test_1.d_3";
+    // device 3, non aligned, db 1
+    private static final String DEVICE_3 = "root.db.test_1.d_3";
     private static final MeasurementSchema MEASUREMENT_30 =
         new MeasurementSchema("sensor_30", TSDataType.INT32, TSEncoding.RLE);
 
-    // device 4, aligned, sg 1
-    private static final String DEVICE_4 = "root.sg.test_1.a_4";
+    // device 4, aligned, db 1
+    private static final String DEVICE_4 = "root.db.test_1.a_4";
     private static final MeasurementSchema MEASUREMENT_40 =
         new MeasurementSchema("sensor_40", TSDataType.INT32, TSEncoding.RLE);
   }

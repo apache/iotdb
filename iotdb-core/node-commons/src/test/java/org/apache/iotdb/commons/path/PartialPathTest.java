@@ -54,119 +54,119 @@ public class PartialPathTest {
     Assert.assertEquals("s1", b.getNodes()[0]);
 
     // normal node
-    PartialPath c = new PartialPath("root.sg.a");
-    Assert.assertEquals("root.sg.a", c.getFullPath());
-    nodes = new String[] {"root", "sg", "a"};
+    PartialPath c = new PartialPath("root.db.a");
+    Assert.assertEquals("root.db.a", c.getFullPath());
+    nodes = new String[] {"root", "db", "a"};
     checkNodes(nodes, c.getNodes());
 
     // quoted node
-    PartialPath d = new PartialPath("root.sg.`a.b`");
-    Assert.assertEquals("root.sg.`a.b`", d.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b`"};
+    PartialPath d = new PartialPath("root.db.`a.b`");
+    Assert.assertEquals("root.db.`a.b`", d.getFullPath());
+    nodes = new String[] {"root", "db", "`a.b`"};
     checkNodes(nodes, d.getNodes());
 
-    PartialPath e = new PartialPath("root.sg.`a.``b`");
-    Assert.assertEquals("root.sg.`a.``b`", e.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.``b`"};
+    PartialPath e = new PartialPath("root.db.`a.``b`");
+    Assert.assertEquals("root.db.`a.``b`", e.getFullPath());
+    nodes = new String[] {"root", "db", "`a.``b`"};
     checkNodes(nodes, e.getNodes());
 
-    PartialPath f = new PartialPath("root.`sg\"`.`a.``b`");
-    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
-    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    PartialPath f = new PartialPath("root.`db\"`.`a.``b`");
+    Assert.assertEquals("root.`db\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`db\"`", "`a.``b`"};
     checkNodes(nodes, f.getNodes());
 
-    PartialPath g = new PartialPath("root.sg.`a.b\\\\`");
-    Assert.assertEquals("root.sg.`a.b\\\\`", g.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    PartialPath g = new PartialPath("root.db.`a.b\\\\`");
+    Assert.assertEquals("root.db.`a.b\\\\`", g.getFullPath());
+    nodes = new String[] {"root", "db", "`a.b\\\\`"};
     checkNodes(nodes, g.getNodes());
 
     // quoted node of digits
-    PartialPath h = new PartialPath("root.sg.`111`");
-    Assert.assertEquals("root.sg.`111`", h.getFullPath());
-    nodes = new String[] {"root", "sg", "`111`"};
+    PartialPath h = new PartialPath("root.db.`111`");
+    Assert.assertEquals("root.db.`111`", h.getFullPath());
+    nodes = new String[] {"root", "db", "`111`"};
     checkNodes(nodes, h.getNodes());
 
     // quoted node of key word
-    PartialPath i = new PartialPath("root.sg.`select`");
-    Assert.assertEquals("root.sg.select", i.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    PartialPath i = new PartialPath("root.db.`select`");
+    Assert.assertEquals("root.db.select", i.getFullPath());
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
-    PartialPath j = new PartialPath("root.sg.`a*b`");
-    Assert.assertEquals("root.sg.`a*b`", j.getFullPath());
-    nodes = new String[] {"root", "sg", "`a*b`"};
+    PartialPath j = new PartialPath("root.db.`a*b`");
+    Assert.assertEquals("root.db.`a*b`", j.getFullPath());
+    nodes = new String[] {"root", "db", "`a*b`"};
     checkNodes(nodes, j.getNodes());
 
-    PartialPath k = new PartialPath("root.sg.*");
-    Assert.assertEquals("root.sg.*", k.getFullPath());
-    nodes = new String[] {"root", "sg", "*"};
+    PartialPath k = new PartialPath("root.db.*");
+    Assert.assertEquals("root.db.*", k.getFullPath());
+    nodes = new String[] {"root", "db", "*"};
     checkNodes(nodes, k.getNodes());
 
-    PartialPath l = new PartialPath("root.sg.**");
-    Assert.assertEquals("root.sg.**", l.getFullPath());
-    nodes = new String[] {"root", "sg", "**"};
+    PartialPath l = new PartialPath("root.db.**");
+    Assert.assertEquals("root.db.**", l.getFullPath());
+    nodes = new String[] {"root", "db", "**"};
     checkNodes(nodes, l.getNodes());
 
     // raw key word
-    PartialPath m = new PartialPath("root.sg.select");
-    Assert.assertEquals("root.sg.select", m.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    PartialPath m = new PartialPath("root.db.select");
+    Assert.assertEquals("root.db.select", m.getFullPath());
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, m.getNodes());
 
-    PartialPath n = new PartialPath("root.sg.device");
-    Assert.assertEquals("root.sg.device", n.getFullPath());
-    nodes = new String[] {"root", "sg", "device"};
+    PartialPath n = new PartialPath("root.db.device");
+    Assert.assertEquals("root.db.device", n.getFullPath());
+    nodes = new String[] {"root", "db", "device"};
     checkNodes(nodes, n.getNodes());
 
-    PartialPath o = new PartialPath("root.sg.datatype");
-    Assert.assertEquals("root.sg.datatype", o.getFullPath());
-    nodes = new String[] {"root", "sg", "datatype"};
+    PartialPath o = new PartialPath("root.db.datatype");
+    Assert.assertEquals("root.db.datatype", o.getFullPath());
+    nodes = new String[] {"root", "db", "datatype"};
     checkNodes(nodes, o.getNodes());
 
-    PartialPath r = new PartialPath("root.sg.boolean");
-    Assert.assertEquals("root.sg.boolean", r.getFullPath());
-    nodes = new String[] {"root", "sg", "boolean"};
+    PartialPath r = new PartialPath("root.db.boolean");
+    Assert.assertEquals("root.db.boolean", r.getFullPath());
+    nodes = new String[] {"root", "db", "boolean"};
     checkNodes(nodes, r.getNodes());
 
-    PartialPath s = new PartialPath("root.sg.DROP_TRIGGER");
-    Assert.assertEquals("root.sg.DROP_TRIGGER", s.getFullPath());
-    nodes = new String[] {"root", "sg", "DROP_TRIGGER"};
+    PartialPath s = new PartialPath("root.db.DROP_TRIGGER");
+    Assert.assertEquals("root.db.DROP_TRIGGER", s.getFullPath());
+    nodes = new String[] {"root", "db", "DROP_TRIGGER"};
     checkNodes(nodes, s.getNodes());
 
-    PartialPath t = new PartialPath("root.sg.`abc`");
-    Assert.assertEquals("root.sg.abc", t.getFullPath());
-    nodes = new String[] {"root", "sg", "abc"};
+    PartialPath t = new PartialPath("root.db.`abc`");
+    Assert.assertEquals("root.db.abc", t.getFullPath());
+    nodes = new String[] {"root", "db", "abc"};
     checkNodes(nodes, t.getNodes());
 
-    PartialPath u = new PartialPath("root.sg.set_storage_group");
-    Assert.assertEquals("root.sg.set_storage_group", u.getFullPath());
-    nodes = new String[] {"root", "sg", "set_storage_group"};
+    PartialPath u = new PartialPath("root.db.set_database");
+    Assert.assertEquals("root.db.set_database", u.getFullPath());
+    nodes = new String[] {"root", "db", "set_database"};
     checkNodes(nodes, u.getNodes());
   }
 
   @Test
   public void testIllegalPath() {
     try {
-      new PartialPath("root.sg.d1.```");
+      new PartialPath("root.db.d1.```");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1\na");
+      new PartialPath("root.db.d1\na");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.`d1`..`aa``b`");
+      new PartialPath("root.db.`d1`..`aa``b`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1.`s+`-1\"`");
+      new PartialPath("root.db.d1.`s+`-1\"`");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -178,31 +178,31 @@ public class PartialPathTest {
     }
 
     try {
-      new PartialPath("root.sg.d1.");
+      new PartialPath("root.db.d1.");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.111");
+      new PartialPath("root.db.111");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.time");
+      new PartialPath("root.db.time");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.root");
+      new PartialPath("root.db.root");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.timestamp");
+      new PartialPath("root.db.timestamp");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -212,158 +212,158 @@ public class PartialPathTest {
   public void testLegalDeviceAndMeasurement() throws IllegalPathException {
     String[] nodes;
     // normal node
-    PartialPath a = new MeasurementPath("root.sg", "s1");
-    Assert.assertEquals("root.sg.s1", a.getFullPath());
-    nodes = new String[] {"root", "sg", "s1"};
+    PartialPath a = new MeasurementPath("root.db", "s1");
+    Assert.assertEquals("root.db.s1", a.getFullPath());
+    nodes = new String[] {"root", "db", "s1"};
     checkNodes(nodes, a.getNodes());
 
-    PartialPath b = new MeasurementPath("root.sg", "s2");
-    Assert.assertEquals("root.sg.s2", b.getFullPath());
-    nodes = new String[] {"root", "sg", "s2"};
+    PartialPath b = new MeasurementPath("root.db", "s2");
+    Assert.assertEquals("root.db.s2", b.getFullPath());
+    nodes = new String[] {"root", "db", "s2"};
     checkNodes(nodes, b.getNodes());
 
-    PartialPath c = new MeasurementPath("root.sg", "a");
-    Assert.assertEquals("root.sg.a", c.getFullPath());
-    nodes = new String[] {"root", "sg", "a"};
+    PartialPath c = new MeasurementPath("root.db", "a");
+    Assert.assertEquals("root.db.a", c.getFullPath());
+    nodes = new String[] {"root", "db", "a"};
     checkNodes(nodes, c.getNodes());
 
     // quoted node
-    PartialPath d = new MeasurementPath("root.sg", "`a.b`");
-    Assert.assertEquals("root.sg.`a.b`", d.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b`"};
+    PartialPath d = new MeasurementPath("root.db", "`a.b`");
+    Assert.assertEquals("root.db.`a.b`", d.getFullPath());
+    nodes = new String[] {"root", "db", "`a.b`"};
     checkNodes(nodes, d.getNodes());
 
-    PartialPath e = new MeasurementPath("root.sg", "`a.``b`");
-    Assert.assertEquals("root.sg.`a.``b`", e.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.``b`"};
+    PartialPath e = new MeasurementPath("root.db", "`a.``b`");
+    Assert.assertEquals("root.db.`a.``b`", e.getFullPath());
+    nodes = new String[] {"root", "db", "`a.``b`"};
     checkNodes(nodes, e.getNodes());
 
-    PartialPath f = new MeasurementPath("root.`sg\"`", "`a.``b`");
-    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
-    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    PartialPath f = new MeasurementPath("root.`db\"`", "`a.``b`");
+    Assert.assertEquals("root.`db\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`db\"`", "`a.``b`"};
     checkNodes(nodes, f.getNodes());
 
-    PartialPath g = new MeasurementPath("root.sg", "`a.b\\\\`");
-    Assert.assertEquals("root.sg.`a.b\\\\`", g.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    PartialPath g = new MeasurementPath("root.db", "`a.b\\\\`");
+    Assert.assertEquals("root.db.`a.b\\\\`", g.getFullPath());
+    nodes = new String[] {"root", "db", "`a.b\\\\`"};
     checkNodes(nodes, g.getNodes());
 
     // quoted node of digits
-    PartialPath h = new MeasurementPath("root.sg", "`111`");
-    Assert.assertEquals("root.sg.`111`", h.getFullPath());
-    nodes = new String[] {"root", "sg", "`111`"};
+    PartialPath h = new MeasurementPath("root.db", "`111`");
+    Assert.assertEquals("root.db.`111`", h.getFullPath());
+    nodes = new String[] {"root", "db", "`111`"};
     checkNodes(nodes, h.getNodes());
 
     // quoted node of key word
-    PartialPath i = new MeasurementPath("root.sg", "`select`");
-    Assert.assertEquals("root.sg.select", i.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    PartialPath i = new MeasurementPath("root.db", "`select`");
+    Assert.assertEquals("root.db.select", i.getFullPath());
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
-    PartialPath j = new MeasurementPath("root.sg", "`a*b`");
-    Assert.assertEquals("root.sg.`a*b`", j.getFullPath());
-    nodes = new String[] {"root", "sg", "`a*b`"};
+    PartialPath j = new MeasurementPath("root.db", "`a*b`");
+    Assert.assertEquals("root.db.`a*b`", j.getFullPath());
+    nodes = new String[] {"root", "db", "`a*b`"};
     checkNodes(nodes, j.getNodes());
 
-    PartialPath k = new MeasurementPath("root.sg", "*");
-    Assert.assertEquals("root.sg.*", k.getFullPath());
-    nodes = new String[] {"root", "sg", "*"};
+    PartialPath k = new MeasurementPath("root.db", "*");
+    Assert.assertEquals("root.db.*", k.getFullPath());
+    nodes = new String[] {"root", "db", "*"};
     checkNodes(nodes, k.getNodes());
 
-    PartialPath l = new MeasurementPath("root.sg", "**");
-    Assert.assertEquals("root.sg.**", l.getFullPath());
-    nodes = new String[] {"root", "sg", "**"};
+    PartialPath l = new MeasurementPath("root.db", "**");
+    Assert.assertEquals("root.db.**", l.getFullPath());
+    nodes = new String[] {"root", "db", "**"};
     checkNodes(nodes, l.getNodes());
 
     // other
-    PartialPath m = new MeasurementPath("root.sg", "`to`.be.prefix.s");
-    Assert.assertEquals("root.sg.to.be.prefix.s", m.getFullPath());
-    nodes = new String[] {"root", "sg", "to", "be", "prefix", "s"};
+    PartialPath m = new MeasurementPath("root.db", "`to`.be.prefix.s");
+    Assert.assertEquals("root.db.to.be.prefix.s", m.getFullPath());
+    nodes = new String[] {"root", "db", "to", "be", "prefix", "s"};
     checkNodes(nodes, m.getNodes());
 
-    PartialPath n = new MeasurementPath("root.sg", "`abc`");
-    Assert.assertEquals("root.sg.abc", n.getFullPath());
-    nodes = new String[] {"root", "sg", "abc"};
+    PartialPath n = new MeasurementPath("root.db", "`abc`");
+    Assert.assertEquals("root.db.abc", n.getFullPath());
+    nodes = new String[] {"root", "db", "abc"};
     checkNodes(nodes, n.getNodes());
   }
 
   @Test
   public void testIllegalDeviceAndMeasurement() {
     try {
-      new MeasurementPath("root.sg.d1", "```");
+      new MeasurementPath("root.db.d1", "```");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1.```", "s1");
+      new MeasurementPath("root.db.d1.```", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.`d1`..a", "`aa``b`");
+      new MeasurementPath("root.db.`d1`..a", "`aa``b`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.`d1`.a", "s..`aa``b`");
+      new MeasurementPath("root.db.`d1`.a", "s..`aa``b`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1", "`s+`-1\"`");
+      new MeasurementPath("root.db.d1", "`s+`-1\"`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1.`s+`-1\"`", "s1");
+      new MeasurementPath("root.db.d1.`s+`-1\"`", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg", "111");
+      new MeasurementPath("root.db", "111");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.111", "s1");
+      new MeasurementPath("root.db.111", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.select`", "a");
+      new MeasurementPath("root.db.select`", "a");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1", "device`");
+      new MeasurementPath("root.db.d1", "device`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1", "root");
+      new MeasurementPath("root.db.d1", "root");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1", "time");
+      new MeasurementPath("root.db.d1", "time");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new MeasurementPath("root.sg.d1", "timestamp");
+      new MeasurementPath("root.db.d1", "timestamp");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -373,37 +373,37 @@ public class PartialPathTest {
   public void testConcatPath() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
     PartialPath b = new PartialPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
     Assert.assertEquals("s1", b.getTailNode());
-    Assert.assertEquals("root.sg1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
-    Assert.assertEquals("root.sg1", a.toString());
+    Assert.assertEquals("root.db1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
+    Assert.assertEquals("root.db1", a.toString());
   }
 
   @Test
   public void testConcatArray() throws IllegalPathException {
-    PartialPath a = new PartialPath("root", "sg1");
+    PartialPath a = new PartialPath("root", "db1");
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
     a.concatPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.getNodes()));
   }
 
   @Test
   public void testConcatNode() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     PartialPath b = a.concatNode("d1");
-    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(b.getNodes()));
-    Assert.assertEquals("root.sg1.d1", b.getFullPath());
+    Assert.assertEquals("[root, db1, d1]", Arrays.toString(b.getNodes()));
+    Assert.assertEquals("root.db1.d1", b.getFullPath());
     Assert.assertTrue(b.startsWithOrPrefixOf(arr1));
     Assert.assertEquals("root", b.getFirstNode());
   }
@@ -456,17 +456,17 @@ public class PartialPathTest {
 
   @Test
   public void testMatchFullPath() throws IllegalPathException {
-    PartialPath p1 = new PartialPath("root.sg1.d1.*");
+    PartialPath p1 = new PartialPath("root.db1.d1.*");
 
-    Assert.assertTrue(p1.matchFullPath(new PartialPath("root.sg1.d1.s2")));
-    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg1.d1")));
-    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
+    Assert.assertTrue(p1.matchFullPath(new PartialPath("root.db1.d1.s2")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.db1.d1")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.db2.d1.*")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("", false)));
 
-    PartialPath path = new PartialPath("root.sg1.d1.s1");
+    PartialPath path = new PartialPath("root.db1.d1.s1");
     String[] patterns1 = {
-      "root.sg1.d1.s1",
-      "root.sg1.*.s1",
+      "root.db1.d1.s1",
+      "root.db1.*.s1",
       "root.*.d1.*",
       "root.*.*.*",
       "root.s*.d1.s1",
@@ -475,15 +475,15 @@ public class PartialPathTest {
       "root.s*.d*.s*",
       "root.**",
       "root.**.s1",
-      "root.sg1.**",
+      "root.db1.**",
     };
     for (String pattern : patterns1) {
       Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
     }
 
     String[] patterns2 = {
-      "root2.sg1.d1.s1",
-      "root.sg1.*.s2",
+      "root2.db1.d1.s1",
+      "root.db1.*.s2",
       "root.*.d2.s1",
       "root.*.d*.s2",
       "root.*.a*.s1",
@@ -493,7 +493,7 @@ public class PartialPathTest {
       "root2.**",
       "root.**.s2",
       "root.**.d1",
-      "root.sg2.**",
+      "root.db2.**",
     };
     for (String pattern : patterns2) {
       Assert.assertFalse(new PartialPath(pattern).matchFullPath(path));
@@ -503,22 +503,22 @@ public class PartialPathTest {
   @Test
   public void testMatchPrefixPath() throws IllegalPathException {
     // ===
-    PartialPath pattern1 = new PartialPath("root.sg1.d1.*");
+    PartialPath pattern1 = new PartialPath("root.db1.d1.*");
     Assert.assertTrue(pattern1.matchPrefixPath(new PartialPath("", false)));
 
-    String[] prefixPathList11 = {"root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root"};
+    String[] prefixPathList11 = {"root.db1.d1.s1", "root.db1.d1", "root.db1", "root"};
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern1.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList12 = {
-      "root2.sg1.d1.s1",
-      "root.sg2.d1.s1",
-      "root.sg1.d2.s1",
-      "root.sg1.d2",
-      "root.sg2.d1",
-      "root.sg2",
+      "root2.db1.d1.s1",
+      "root.db2.d1.s1",
+      "root.db1.d2.s1",
+      "root.db1.d2",
+      "root.db2.d1",
+      "root.db2",
       "root2",
-      "root.sg1.d1.s1.o1"
+      "root.db1.d1.s1.o1"
     };
     for (String prefixPath : prefixPathList12) {
       Assert.assertFalse(pattern1.matchPrefixPath(new PartialPath(prefixPath)));
@@ -530,19 +530,19 @@ public class PartialPathTest {
       Assert.assertTrue(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList22 = {
-      "root2.sg1.d1.s1", "root.sg1.d2.s1", "root.sg1.d2", "root2.sg2", "root2"
+      "root2.db1.d1.s1", "root.db1.d2.s1", "root.db1.d2", "root2.db2", "root2"
     };
     for (String prefixPath : prefixPathList22) {
       Assert.assertFalse(pattern2.matchPrefixPath(new PartialPath(prefixPath)));
     }
 
     // ==
-    PartialPath pattern3 = new PartialPath("root.sg1.*.*");
+    PartialPath pattern3 = new PartialPath("root.db1.*.*");
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
     }
     String[] prefixPathList32 = {
-      "root2.sg1.d1.s1", "root.sg2.d2.s1", "root.sg1.d1.s1.o1", "root.sg2", "root2"
+      "root2.db1.d1.s1", "root.db2.d2.s1", "root.db1.d1.s1.o1", "root.db2", "root2"
     };
     for (String prefixPath : prefixPathList32) {
       Assert.assertFalse(pattern3.matchPrefixPath(new PartialPath(prefixPath)));
@@ -553,7 +553,7 @@ public class PartialPathTest {
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList42 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList42 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList42) {
       Assert.assertFalse(pattern4.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -561,22 +561,22 @@ public class PartialPathTest {
     // ==
     PartialPath pattern5 = new PartialPath("root.**.d1");
     String[] prefixPathList51 = {
-      "root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root", "root.sg1.d1.s1"
+      "root.db1.d1.s1", "root.db1.d1", "root.db1", "root", "root.db1.d1.s1"
     };
     for (String prefixPath : prefixPathList51) {
       Assert.assertTrue(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList52 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList52 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList52) {
       Assert.assertFalse(pattern5.matchPrefixPath(new PartialPath(prefixPath)));
     }
 
     // ==
-    PartialPath pattern6 = new PartialPath("root.sg1.**");
+    PartialPath pattern6 = new PartialPath("root.db1.**");
     for (String prefixPath : prefixPathList11) {
       Assert.assertTrue(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList62 = {"root2.sg1.d1.s1", "root.sg2.d1.s1"};
+    String[] prefixPathList62 = {"root2.db1.d1.s1", "root.db2.d1.s1"};
     for (String prefixPath : prefixPathList62) {
       Assert.assertFalse(pattern6.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -584,12 +584,12 @@ public class PartialPathTest {
     // ==
     PartialPath pattern7 = new PartialPath("root.**.d1.**");
     String[] prefixPathList71 = {
-      "root.sg1.d1.s1", "root.sg1.d1", "root.sg1", "root", "root.sg1.d2.s1"
+      "root.db1.d1.s1", "root.db1.d1", "root.db1", "root", "root.db1.d2.s1"
     };
     for (String prefixPath : prefixPathList71) {
       Assert.assertTrue(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
     }
-    String[] prefixPathList72 = {"root2.sg1.d1.s1"};
+    String[] prefixPathList72 = {"root2.db1.d1.s1"};
     for (String prefixPath : prefixPathList72) {
       Assert.assertFalse(pattern7.matchPrefixPath(new PartialPath(prefixPath)));
     }
@@ -607,27 +607,27 @@ public class PartialPathTest {
   @Test
   public void testPartialPathAndStringList() {
     List<PartialPath> paths =
-        PartialPath.fromStringList(Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2"));
-    Assert.assertEquals("root.sg1.d1.s1", paths.get(0).getFullPath());
-    Assert.assertEquals("root.sg1.d1.s2", paths.get(1).getFullPath());
+        PartialPath.fromStringList(Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2"));
+    Assert.assertEquals("root.db1.d1.s1", paths.get(0).getFullPath());
+    Assert.assertEquals("root.db1.d1.s2", paths.get(1).getFullPath());
 
     List<String> stringPaths = PartialPath.toStringList(paths);
-    Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
-    Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
+    Assert.assertEquals("root.db1.d1.s1", stringPaths.get(0));
+    Assert.assertEquals("root.db1.d1.s2", stringPaths.get(1));
   }
 
   @Test
   public void testOverlapWith() throws IllegalPathException {
     PartialPath[][] pathPairs =
         new PartialPath[][] {
-          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.db.**")},
           new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.**.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.*.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.sg.d.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.db.*.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.db.d2.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.db.d.s")},
           new PartialPath[] {new PartialPath("root.**.d.s"), new PartialPath("root.**.d2.s")},
           new PartialPath[] {new PartialPath("root.**.*.s"), new PartialPath("root.**.d2.s")},
           new PartialPath[] {new PartialPath("root.**.d1.*"), new PartialPath("root.*")},
@@ -658,17 +658,17 @@ public class PartialPathTest {
   public void testInclude() throws IllegalPathException {
     PartialPath[][] pathPairs =
         new PartialPath[][] {
-          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.db.**")},
           new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.**")},
-          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg1.d.s")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.db.**")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.db1.d.s")},
           new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.*.d.s")},
           new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.**.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.*.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.sg.d.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.db.*.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.db.d2.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.db.d.s")},
           new PartialPath[] {new PartialPath("root.**.d.s"), new PartialPath("root.**.d2.s")},
           new PartialPath[] {new PartialPath("root.**.*.s"), new PartialPath("root.**.d2.s")},
           new PartialPath[] {new PartialPath("root.**.d1.*"), new PartialPath("root.*")},
@@ -718,36 +718,36 @@ public class PartialPathTest {
         });
     checkIntersect(
         new PartialPath("root.**.d1.**"),
-        new PartialPath("root.sg1.d1.**"),
+        new PartialPath("root.db1.d1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.**"));
+            add(new PartialPath("root.db1.d1.**"));
           }
         });
     checkIntersect(
         new PartialPath("root.**.d1.s1"),
-        new PartialPath("root.sg1.d1.**"),
+        new PartialPath("root.db1.d1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.s1"));
-            add(new PartialPath("root.sg1.d1.d1.s1"));
-            add(new PartialPath("root.sg1.d1.**.d1.s1"));
+            add(new PartialPath("root.db1.d1.s1"));
+            add(new PartialPath("root.db1.d1.d1.s1"));
+            add(new PartialPath("root.db1.d1.**.d1.s1"));
           }
         });
     checkIntersect(
         new PartialPath("root.**.d*"),
-        new PartialPath("root.sg1.d1.**"),
+        new PartialPath("root.db1.d1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1.d*"));
-            add(new PartialPath("root.sg1.d1.**.d*"));
+            add(new PartialPath("root.db1.d1.d*"));
+            add(new PartialPath("root.db1.d1.**.d*"));
           }
         });
     checkIntersect(
-        new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d1.**"), Collections.emptySet());
+        new PartialPath("root.db1.d1"), new PartialPath("root.db1.d1.**"), Collections.emptySet());
     checkIntersect(
-        new PartialPath("root.sg1.d2.s1"),
-        new PartialPath("root.sg1.d1.**"),
+        new PartialPath("root.db1.d2.s1"),
+        new PartialPath("root.db1.d1.**"),
         Collections.emptySet());
     checkIntersect(
         new PartialPath("root.*.d.s1"),

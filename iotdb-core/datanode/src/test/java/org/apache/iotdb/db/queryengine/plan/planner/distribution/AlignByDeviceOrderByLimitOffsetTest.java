@@ -72,27 +72,27 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       └──MergeSort-21
    *           ├──DeviceView-12
    *           │   └──FullOuterTimeJoinNode-11
-   *           │       ├──SeriesScanNode-9:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │       └──SeriesScanNode-10:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       ├──SeriesScanNode-9:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       └──SeriesScanNode-10:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           ├──ExchangeNode-23: [SourceAddress:192.0.3.1/test.2.0/25]
    *           └──ExchangeNode-24: [SourceAddress:192.0.2.1/test.3.0/26]
    *
    * IdentitySinkNode-25
    *   └──DeviceView-16
    *       └──FullOuterTimeJoinNode-15
-   *           ├──SeriesScanNode-13:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *           └──SeriesScanNode-14:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           ├──SeriesScanNode-13:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           └──SeriesScanNode-14:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-26
    *   └──DeviceView-20
    *       └──FullOuterTimeJoinNode-19
-   *           ├──SeriesScanNode-17:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *           └──SeriesScanNode-18:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *           ├──SeriesScanNode-17:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *           └──SeriesScanNode-18:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByDeviceTest1() {
     // no order by
-    sql = "select * from root.sg.d1, root.sg.d22 LIMIT 10 align by device";
+    sql = "select * from root.db.d1, root.db.d22 LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -109,7 +109,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
 
     // order by device, time
     sql =
-        "select * from root.sg.d1, root.sg.d22 order by device asc, time desc LIMIT 10 align by device";
+        "select * from root.db.d1, root.db.d22 order by device asc, time desc LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -138,8 +138,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           ├──DeviceView-15
    *           │   └──SortNode-14
    *           │       └──FullOuterTimeJoinNode-13
-   *           │           ├──SeriesScanNode-11:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │           └──SeriesScanNode-12:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           ├──SeriesScanNode-11:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           └──SeriesScanNode-12:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           ├──ExchangeNode-28: [SourceAddress:192.0.3.1/test.2.0/30]
    *           └──ExchangeNode-29: [SourceAddress:192.0.2.1/test.3.0/31]
    *
@@ -147,21 +147,21 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──DeviceView-20
    *       └──SortNode-19
    *           └──FullOuterTimeJoinNode-18
-   *               ├──SeriesScanNode-16:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-17:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-16:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-17:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-31
    *   └──DeviceView-25
    *       └──SortNode-24
    *           └──FullOuterTimeJoinNode-23
-   *               ├──SeriesScanNode-21:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-22:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-21:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-22:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByDeviceTest2() {
     // order by device, expression
     sql =
-        "select * from root.sg.d1, root.sg.d22 order by device asc, s1 desc LIMIT 10 align by device";
+        "select * from root.db.d1, root.db.d22 order by device asc, s1 desc LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -190,8 +190,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *               ├──DeviceView-20
    *               │   └──SortNode-19
    *               │       └──LeftOuterTimeJoinNode-18
-   *               │           ├──SeriesScanNode-16:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │           └──SeriesScanNode-17:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │           ├──SeriesScanNode-16:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │           └──SeriesScanNode-17:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               ├──ExchangeNode-33: [SourceAddress:192.0.3.1/test.2.0/35]
    *               └──ExchangeNode-34: [SourceAddress:192.0.2.1/test.3.0/36]
    *
@@ -199,21 +199,21 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──DeviceView-25
    *       └──SortNode-24
    *           └──LeftOuterTimeJoinNode-23
-   *               ├──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-22:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-21:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-22:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-37
    *   └──DeviceView-30
    *       └──SortNode-29
    *           └──LeftOuterTimeJoinNode-28
-   *               ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-26:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-27:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByDeviceTest3() {
     // order by device, expression; with value filter
     sql =
-        "select s1 from root.sg.d1, root.sg.d22 WHERE s2=1 order by device asc, s2 desc LIMIT 5 align by device";
+        "select s1 from root.db.d1, root.db.d22 WHERE s2=1 order by device asc, s2 desc LIMIT 5 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -240,29 +240,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *               │   └──ProjectNode-15
    *               │       └──LeftOuterTimeJoinNode-14
    *               │           ├──FullOuterTimeJoinNode-19
-   *               │           │   ├──SeriesScanNode-20:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │           │   ├──SeriesScanNode-20:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               │           │   └──ExchangeNode-28: [SourceAddress:192.0.2.1/test.2.0/31]
    *               │           └──FullOuterTimeJoinNode-22
-   *               │               ├──SeriesScanNode-23:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │               ├──SeriesScanNode-23:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               │               └──ExchangeNode-29: [SourceAddress:192.0.2.1/test.2.0/31]
    *               └──ExchangeNode-30: [SourceAddress:192.0.3.1/test.3.0/32]
    *
    *  IdentitySinkNode-31
-   *   ├──SeriesScanNode-21:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *   └──SeriesScanNode-24:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   ├──SeriesScanNode-21:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesScanNode-24:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    *  IdentitySinkNode-32
    *   └──AggregationNode-10
    *       └──ProjectNode-17
    *           └──LeftOuterTimeJoinNode-16
-   *               ├──SeriesScanNode-7:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-6:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-7:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-6:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    */
   @Test
   public void orderByDeviceTest4() {
     // aggregation + order by device, expression; with value filter
     sql =
-        "select count(s1) from root.sg.d1, root.sg.d22 WHERE s2=1 having(count(s1)>1) LIMIT 5 align by device";
+        "select count(s1) from root.db.d1, root.db.d22 WHERE s2=1 having(count(s1)>1) LIMIT 5 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -291,12 +291,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──TopK-34
    *       │   ├──SingleDeviceView-17
    *       │   │   └──FullOuterTimeJoinNode-16
-   *       │   │       ├──SeriesScanNode-14:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   │       └──SeriesScanNode-15:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       ├──SeriesScanNode-14:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       └──SeriesScanNode-15:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │   └──SingleDeviceView-29
    *       │       └──FullOuterTimeJoinNode-28
-   *       │           ├──SeriesScanNode-26:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │           └──SeriesScanNode-27:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           ├──SeriesScanNode-26:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-27:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-38: [SourceAddress:192.0.3.1/test.2.0/41]
    *       ├──ExchangeNode-39: [SourceAddress:192.0.2.1/test.3.0/42]
    *       └──ExchangeNode-40: [SourceAddress:192.0.4.1/test.4.0/43]
@@ -305,29 +305,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──TopK-36
    *       └──SingleDeviceView-25
    *           └──FullOuterTimeJoinNode-24
-   *               ├──SeriesScanNode-22:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-23:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-22:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-23:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-42
    *   └──TopK-35
    *       └──SingleDeviceView-21
    *           └──FullOuterTimeJoinNode-20
-   *               ├──SeriesScanNode-18:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-19:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-18:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-19:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    *  IdentitySinkNode-43
    *   └──TopK-37
    *       └──SingleDeviceView-33
    *           └──FullOuterTimeJoinNode-32
-   *               ├──SeriesScanNode-30:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesScanNode-31:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               ├──SeriesScanNode-30:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-31:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest1() {
     // only order by time, no filter
     sql =
         String.format(
-            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC LIMIT %s align by device",
+            "select * from root.db.d1,root.db.d22,root.db.d333 ORDER BY TIME DESC LIMIT %s align by device",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -363,14 +363,14 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       │   │   └──LimitNode-30
    *       │   │       └──ProjectNode-29
    *       │   │           └──LeftOuterTimeJoinNode-28
-   *       │   │               ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   │               └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │               ├──SeriesScanNode-26:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │               └──SeriesScanNode-27:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │   └──SingleDeviceView-49
    *       │       └──LimitNode-48
    *       │           └──ProjectNode-47
    *       │               └──LeftOuterTimeJoinNode-46
-   *       │                   ├──SeriesScanNode-44:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │                   └──SeriesScanNode-45:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │                   ├──SeriesScanNode-44:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │                   └──SeriesScanNode-45:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-60: [SourceAddress:192.0.3.1/test.2.0/63]
    *       ├──ExchangeNode-61: [SourceAddress:192.0.2.1/test.3.0/64]
    *       └──ExchangeNode-62: [SourceAddress:192.0.4.1/test.4.0/65]
@@ -381,8 +381,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           └──LimitNode-42
    *               └──ProjectNode-41
    *                   └──LeftOuterTimeJoinNode-40
-   *                       ├──SeriesScanNode-38:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *                       └──SeriesScanNode-39:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *                       ├──SeriesScanNode-38:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *                       └──SeriesScanNode-39:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-64
    *   └──TopK-57
@@ -390,8 +390,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           └──LimitNode-36
    *               └──ProjectNode-35
    *                   └──LeftOuterTimeJoinNode-34
-   *                       ├──SeriesScanNode-32:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *                       └──SeriesScanNode-33:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *                       ├──SeriesScanNode-32:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *                       └──SeriesScanNode-33:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    *  IdentitySinkNode-65
    *   └──TopK-59
@@ -399,8 +399,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           └──LimitNode-54
    *               └──ProjectNode-53
    *                   └──LeftOuterTimeJoinNode-52
-   *                       ├──SeriesScanNode-50:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                       └──SeriesScanNode-51:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                       ├──SeriesScanNode-50:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                       └──SeriesScanNode-51:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest2() {
@@ -408,7 +408,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // put LIMIT-NODE below of SingleDeviceViewNode
     sql =
         String.format(
-            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 where s2>1 ORDER BY TIME DESC LIMIT %s align by device",
+            "select s1 from root.db.d1,root.db.d22,root.db.d333 where s2>1 ORDER BY TIME DESC LIMIT %s align by device",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -438,11 +438,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──TopK-31
    *       │   └──DeviceView-18
    *       │       ├──FullOuterTimeJoinNode-14
-   *       │       │   ├──SeriesScanNode-12:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       │   └──SeriesScanNode-13:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   ├──SeriesScanNode-12:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   └──SeriesScanNode-13:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │       └──FullOuterTimeJoinNode-17
-   *       │           ├──SeriesScanNode-15:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │           └──SeriesScanNode-16:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           ├──SeriesScanNode-15:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-16:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-35: [SourceAddress:192.0.3.1/test.6.0/38]
    *       ├──ExchangeNode-36: [SourceAddress:192.0.2.1/test.7.0/39]
    *       └──ExchangeNode-37: [SourceAddress:192.0.4.1/test.8.0/40]
@@ -451,22 +451,22 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──TopK-32
    *       └──DeviceView-22
    *           └──FullOuterTimeJoinNode-21
-   *               ├──SeriesScanNode-19:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-20:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-19:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-20:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-39
    *   └──TopK-33
    *       └──DeviceView-26
    *           └──FullOuterTimeJoinNode-25
-   *               ├──SeriesScanNode-23:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-24:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-23:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-24:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    *  IdentitySinkNode-40
    *   └──TopK-34
    *       └──DeviceView-30
    *           └──FullOuterTimeJoinNode-29
-   *               ├──SeriesScanNode-27:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesScanNode-28:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               ├──SeriesScanNode-27:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-28:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest3() {
@@ -476,7 +476,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // can push down LIMIT value to ScanNode
     sql =
         String.format(
-            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
+            "select s1 from root.db.d1,root.db.d22,root.db.d333 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -507,7 +507,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // can not push down LIMIT value to ScanNode
     sql =
         String.format(
-            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 where s2>1 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
+            "select s1 from root.db.d1,root.db.d22,root.db.d333 where s2>1 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -539,30 +539,30 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──MergeSort-8
    *       ├──SingleDeviceView-5
    *       │   └──AggregationNode-9
-   *       │       ├──SeriesAggregationScanNode-10:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       ├──SeriesAggregationScanNode-10:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │       └──ExchangeNode-15: [SourceAddress:192.0.2.1/test.2.0/18]
    *       ├──ExchangeNode-17: [SourceAddress:192.0.3.1/test.3.0/19]
    *       └──SingleDeviceView-7
    *           └──AggregationNode-12
-   *               ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesAggregationScanNode-13:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               └──ExchangeNode-16: [SourceAddress:192.0.4.1/test.4.0/20]
    *
    * ShuffleSinkNode-18
-   *   └──SeriesAggregationScanNode-11:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesAggregationScanNode-11:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * ShuffleSinkNode-19
    *   └──SingleDeviceView-6
-   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * ShuffleSinkNode-20
-   *   └──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *   └──SeriesAggregationScanNode-14:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest4() {
     // aggregation + order by time, no LIMIT
     // SingleDeviceViewNode + MergeSortNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 ORDER BY TIME DESC align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -579,7 +579,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // aggregation + order by time + group by time, no LIMIT
     // SingleDeviceViewNode + MergeSortNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 group by ((1,10], 1ms) ORDER BY TIME DESC align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 group by ((1,10], 1ms) ORDER BY TIME DESC align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -600,31 +600,31 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──TopK-16
    *       │   ├──SingleDeviceView-5
    *       │   │   └──AggregationNode-8
-   *       │   │       ├──SeriesAggregationScanNode-9:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       ├──SeriesAggregationScanNode-9:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │   │       └──ExchangeNode-14: [SourceAddress:192.0.2.1/test.2.0/19]
    *       │   └──SingleDeviceView-7
    *       │       └──AggregationNode-11
-   *       │           ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           ├──SeriesAggregationScanNode-12:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │           └──ExchangeNode-15: [SourceAddress:192.0.4.1/test.3.0/20]
    *       └──ExchangeNode-18: [SourceAddress:192.0.3.1/test.4.0/21]
    *
    * IdentitySinkNode-19
-   *   └──SeriesAggregationScanNode-10:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesAggregationScanNode-10:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-20
-   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    *
    * IdentitySinkNode-21
    *   └──TopK-17
    *       └──SingleDeviceView-6
-   *           └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           └──SeriesAggregationScanNode-2:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    */
   @Test
   public void orderByTimeTest5() {
     // aggregation + order by time, has LIMIT
     // SingleDeviceViewNode + TopKNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC LIMIT 10 align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 ORDER BY TIME DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -649,7 +649,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // aggregation + order by time + group by time, has LIMIT
     // SingleDeviceViewNode + TopKNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 group by ((1,10], 1ms) ORDER BY TIME DESC LIMIT 10 align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 group by ((1,10], 1ms) ORDER BY TIME DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -678,30 +678,30 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           └──MergeSort-10
    *               ├──SingleDeviceView-5
    *               │   └──AggregationNode-11
-   *               │       ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │       ├──SeriesAggregationScanNode-12:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               │       └──ExchangeNode-18: [SourceAddress:192.0.2.1/test.2.0/21]
    *               ├──ExchangeNode-20: [SourceAddress:192.0.3.1/test.3.0/22]
    *               └──SingleDeviceView-7
    *                   └──AggregationNode-14
-   *                       ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                       ├──SeriesAggregationScanNode-15:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *                       └──ExchangeNode-19: [SourceAddress:192.0.4.1/test.4.0/23]
    *
    * IdentitySinkNode-21
-   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-22
    *   └──SingleDeviceView-6
-   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-23
-   *   └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *   └──SeriesAggregationScanNode-16:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest6() {
     // aggregation + order by time + having, has LIMIT
     // SingleDeviceViewNode + MergeSortNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 having(count(s1)>1) ORDER BY TIME DESC  LIMIT 10 align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 having(count(s1)>1) ORDER BY TIME DESC  LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -739,7 +739,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     // on top of TOP-K NODE, LIMIT-NODE is necessary
     sql =
         String.format(
-            "select * from root.sg.** ORDER BY time DESC OFFSET %s LIMIT %s align by device",
+            "select * from root.db.** ORDER BY time DESC OFFSET %s LIMIT %s align by device",
             LIMIT_VALUE, LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -773,11 +773,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           ├──SortNode-33
    *           │   └──DeviceView-19
    *           │       ├──FullOuterTimeJoinNode-15
-   *           │       │   ├──SeriesScanNode-13:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │       │   └──SeriesScanNode-14:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       │   ├──SeriesScanNode-13:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       │   └──SeriesScanNode-14:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           │       └──FullOuterTimeJoinNode-18
-   *           │           ├──SeriesScanNode-16:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │           └──SeriesScanNode-17:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           ├──SeriesScanNode-16:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           └──SeriesScanNode-17:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           ├──ExchangeNode-37: [SourceAddress:192.0.3.1/test.2.0/40]
    *           ├──ExchangeNode-38: [SourceAddress:192.0.2.1/test.3.0/41]
    *           └──ExchangeNode-39: [SourceAddress:192.0.4.1/test.4.0/42]
@@ -786,28 +786,28 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──SortNode-34
    *       └──DeviceView-23
    *           └──FullOuterTimeJoinNode-22
-   *               ├──SeriesScanNode-20:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-20:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-21:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-41
    *   └──SortNode-35
    *       └──DeviceView-27
    *           └──FullOuterTimeJoinNode-26
-   *               ├──SeriesScanNode-24:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-25:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-24:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-25:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-42
    *   └──SortNode-36
    *       └──DeviceView-31
    *           └──FullOuterTimeJoinNode-30
-   *               ├──SeriesScanNode-28:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesScanNode-29:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               ├──SeriesScanNode-28:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-29:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest1() {
     // only order by expression, no LIMIT
     // use MergeSortNode + SortNode + TransformNode
-    sql = "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY s2 DESC align by device";
+    sql = "select s1 from root.db.d1,root.db.d22,root.db.d333 ORDER BY s2 DESC align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -850,11 +850,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──TopK-31
    *       │   └──DeviceView-18
    *       │       ├──FullOuterTimeJoinNode-14
-   *       │       │   ├──SeriesScanNode-12:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       │   └──SeriesScanNode-13:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   ├──SeriesScanNode-12:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   └──SeriesScanNode-13:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │       └──FullOuterTimeJoinNode-17
-   *       │           ├──SeriesScanNode-15:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │           └──SeriesScanNode-16:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           ├──SeriesScanNode-15:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-16:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-35: [SourceAddress:192.0.3.1/test.2.0/38]
    *       ├──ExchangeNode-36: [SourceAddress:192.0.2.1/test.3.0/39]
    *       └──ExchangeNode-37: [SourceAddress:192.0.4.1/test.4.0/40]
@@ -863,29 +863,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──TopK-32
    *       └──DeviceView-22
    *           └──FullOuterTimeJoinNode-21
-   *               ├──SeriesScanNode-19:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-20:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesScanNode-19:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-20:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-39
    *   └──TopK-33
    *       └──DeviceView-26
    *           └──FullOuterTimeJoinNode-25
-   *               ├──SeriesScanNode-23:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesScanNode-24:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesScanNode-23:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-24:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-40
    *   └──TopK-34
    *       └──DeviceView-30
    *           └──FullOuterTimeJoinNode-29
-   *               ├──SeriesScanNode-27:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesScanNode-28:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               ├──SeriesScanNode-27:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-28:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest2() {
     // only order by expression, has LIMIT
     // use TopKNode
     sql =
-        "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY s2 DESC LIMIT 10 align by device";
+        "select s1 from root.db.d1,root.db.d22,root.db.d333 ORDER BY s2 DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -912,29 +912,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       └──SortNode-11
    *           └──DeviceView-13
    *               ├──AggregationNode-18
-   *               │   ├──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │   ├──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │   ├──SeriesAggregationScanNode-14:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │   ├──SeriesAggregationScanNode-16:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               │   └──ExchangeNode-29: [SourceAddress:192.0.2.1/test.2.0/32]
    *               ├──ExchangeNode-31: [SourceAddress:192.0.3.1/test.3.0/33]
    *               └──AggregationNode-27
-   *                   ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   ├──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesAggregationScanNode-23:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesAggregationScanNode-25:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *                   └──ExchangeNode-30: [SourceAddress:192.0.4.1/test.4.0/34]
    *
    * IdentitySinkNode-32
    *   └──HorizontallyConcatNode-19
-   *       ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesAggregationScanNode-17:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       ├──SeriesAggregationScanNode-15:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       └──SeriesAggregationScanNode-17:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-33
    *   └──HorizontallyConcatNode-22
-   *       ├──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       └──SeriesAggregationScanNode-21:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       ├──SeriesAggregationScanNode-20:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesAggregationScanNode-21:[SeriesPath: root.db.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-34
    *   └──HorizontallyConcatNode-28
-   *       ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       └──SeriesAggregationScanNode-26:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       ├──SeriesAggregationScanNode-24:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       └──SeriesAggregationScanNode-26:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    *
    * AFTER:
    * IdentitySinkNode-43
@@ -943,11 +943,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *           ├──SortNode-33
    *           │   └──DeviceView-19
    *           │       ├──FullOuterTimeJoinNode-15
-   *           │       │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │       │   └──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       │   └──SeriesAggregationScanNode-14:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           │       └──FullOuterTimeJoinNode-18
-   *           │           ├──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │           └──SeriesAggregationScanNode-17:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           ├──SeriesAggregationScanNode-16:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           └──SeriesAggregationScanNode-17:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           ├──ExchangeNode-37: [SourceAddress:192.0.3.1/test.2.0/40]
    *           ├──ExchangeNode-38: [SourceAddress:192.0.2.1/test.3.0/41]
    *           └──ExchangeNode-39: [SourceAddress:192.0.4.1/test.4.0/42]
@@ -956,22 +956,22 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──SortNode-34
    *       └──DeviceView-23
    *           └──FullOuterTimeJoinNode-22
-   *               ├──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesAggregationScanNode-21:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesAggregationScanNode-20:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesAggregationScanNode-21:[SeriesPath: root.db.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-41
    *   └──SortNode-35
    *       └──DeviceView-27
    *           └──FullOuterTimeJoinNode-26
-   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesAggregationScanNode-25:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByExpressionTest3() {
     // aggregation, order by expression, no LIMIT
     // use MergeSortNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY count(s2) DESC align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 ORDER BY count(s2) DESC align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -1002,29 +1002,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──TopK-10
    *       └──DeviceView-12
    *           ├──AggregationNode-17
-   *           │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *           │   ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │   ├──SeriesAggregationScanNode-15:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *           │   └──ExchangeNode-28: [SourceAddress:192.0.2.1/test.2.0/31]
    *           ├──ExchangeNode-30: [SourceAddress:192.0.3.1/test.3.0/32]
    *           └──AggregationNode-26
-   *               ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesAggregationScanNode-22:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               └──ExchangeNode-29: [SourceAddress:192.0.4.1/test.4.0/33]
    *
    * IdentitySinkNode-31
    *   └──HorizontallyConcatNode-18
-   *       ├──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       ├──SeriesAggregationScanNode-14:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       └──SeriesAggregationScanNode-16:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-32
    *   └──HorizontallyConcatNode-21
-   *       ├──SeriesAggregationScanNode-19:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       └──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       ├──SeriesAggregationScanNode-19:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesAggregationScanNode-20:[SeriesPath: root.db.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-33
    *   └──HorizontallyConcatNode-27
-   *       ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       └──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       ├──SeriesAggregationScanNode-23:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       └──SeriesAggregationScanNode-25:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
 
   /* AFTER:
@@ -1033,11 +1033,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──TopK-31
    *       │   └──DeviceView-18
    *       │       ├──FullOuterTimeJoinNode-14
-   *       │       │   ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       │   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   ├──SeriesAggregationScanNode-12:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   └──SeriesAggregationScanNode-13:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       │       └──FullOuterTimeJoinNode-17
-   *       │           ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │           └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           ├──SeriesAggregationScanNode-15:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesAggregationScanNode-16:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *       ├──ExchangeNode-35: [SourceAddress:192.0.3.1/test.2.0/38]
    *       ├──ExchangeNode-36: [SourceAddress:192.0.2.1/test.3.0/39]
    *       └──ExchangeNode-37: [SourceAddress:192.0.4.1/test.4.0/40]
@@ -1046,29 +1046,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──TopK-32
    *       └──DeviceView-22
    *           └──FullOuterTimeJoinNode-21
-   *               ├──SeriesAggregationScanNode-19:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               ├──SeriesAggregationScanNode-19:[SeriesPath: root.db.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesAggregationScanNode-20:[SeriesPath: root.db.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-39
    *   └──TopK-33
    *       └──DeviceView-26
    *           └──FullOuterTimeJoinNode-25
-   *               ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *               └──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               ├──SeriesAggregationScanNode-23:[SeriesPath: root.db.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesAggregationScanNode-24:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    *  IdentitySinkNode-40
    *   └──TopK-34
    *       └──DeviceView-30
    *           └──FullOuterTimeJoinNode-29
-   *               ├──SeriesAggregationScanNode-27:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesAggregationScanNode-28:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               ├──SeriesAggregationScanNode-27:[SeriesPath: root.db.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesAggregationScanNode-28:[SeriesPath: root.db.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest4() {
     // aggregation, order by expression, has LIMIT
     // use TopKNode, not need MergeSortNode and LimitNode
     sql =
-        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY count(s2) DESC LIMIT 10 align by device";
+        "select count(s1) from root.db.d1,root.db.d22,root.db.d333 ORDER BY count(s2) DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));

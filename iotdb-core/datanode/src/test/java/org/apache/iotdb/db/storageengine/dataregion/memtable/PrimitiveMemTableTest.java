@@ -416,7 +416,7 @@ public class PrimitiveMemTableTest {
       throws IOException, QueryProcessException, MetadataException, WriteProcessException {
     memTable.insertAlignedTablet(genInsertTableNode(), 0, 100, null);
 
-    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.device5");
+    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.device5");
 
     AlignedFullPath tmpAlignedFullPath =
         new AlignedFullPath(
@@ -546,7 +546,7 @@ public class PrimitiveMemTableTest {
     String[] measurements = new String[2];
     measurements[0] = "sensor0";
     measurements[1] = "sensor1";
-    String deviceId = "root.sg.device5";
+    String deviceId = "root.db.device5";
     TSDataType[] dataTypes = new TSDataType[2];
     dataTypes[0] = TSDataType.BOOLEAN;
     dataTypes[1] = TSDataType.INT64;

@@ -110,7 +110,7 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
       String json =
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s4\",\"s5\"],\"dataTypes\":[\"INT32\",\"INT32\"],\"values\":[[11,2],[15,13]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s4\",\"s5\"],\"dataTypes\":[\"INT32\",\"INT32\"],\"values\":[[11,2],[15,13]],\"isAligned\":false,\"deviceId\":\"root.db25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -137,7 +137,7 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s),level=1\"}";
+          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.db25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -150,7 +150,7 @@ public class GrafanaApiServiceTest {
       Assert.assertTrue(map.size() > 0);
       Assert.assertTrue(timestampsResult.size() == 10);
       Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertTrue("count(root.db25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -171,14 +171,14 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
+          "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.db25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
       Map<String, List> map = mapper.readValue(message, Map.class);
-      String[] expressionsResult = {"root.sg25.s4", "root.sg25.s5"};
+      String[] expressionsResult = {"root.db25.s4", "root.db25.s5"};
       Long[] timestamps = {1635232143960L, 1635232153960L};
       Object[] values1 = {11, 2};
       Object[] values2 = {15, 13};
@@ -209,14 +209,14 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.db25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
       Map<String, List> map = mapper.readValue(message, Map.class);
-      String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
+      String[] expressionsResult = {"sum(root.db25.s4)", "avg(root.db25.s5)"};
       Long[] timestamps = {1635232133960L, 1635232153960L};
       Object[] values1 = {11.0, 2.0};
       Object[] values2 = {15.0, 13.0};
@@ -247,14 +247,14 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.db25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
       Map<String, List> map = mapper.readValue(message, Map.class);
-      String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
+      String[] expressionsResult = {"sum(root.db25.s4)", "avg(root.db25.s5)"};
       Long[] timestamps = {1635232133960L, 1635232153960L};
       Object[] values1 = {11.0, null};
       Object[] values2 = {15.0, null};
@@ -283,7 +283,7 @@ public class GrafanaApiServiceTest {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/variable");
-      String sql = "{\"sql\":\"show child paths root.sg25\"}";
+      String sql = "{\"sql\":\"show child paths root.db25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -369,7 +369,7 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s)\"}";
+          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.db25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -382,7 +382,7 @@ public class GrafanaApiServiceTest {
       Assert.assertTrue(map.size() > 0);
       Assert.assertTrue(timestampsResult.size() == 10);
       Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertTrue("count(root.db25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -413,7 +413,7 @@ public class GrafanaApiServiceTest {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by level = 1\"}";
+          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.db25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by level = 1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -426,7 +426,7 @@ public class GrafanaApiServiceTest {
       Assert.assertTrue(map.size() > 0);
       Assert.assertTrue(timestampsResult == null);
       Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertTrue("count(root.db25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

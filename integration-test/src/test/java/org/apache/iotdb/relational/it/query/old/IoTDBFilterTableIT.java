@@ -78,7 +78,7 @@ public class IoTDBFilterTableIT {
       statement.execute(
           "CREATE TABLE testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD)");
       statement.execute("CREATE TABLE testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD)");
-      statement.execute("CREATE TABLE sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
+      statement.execute("CREATE TABLE db1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -112,8 +112,8 @@ public class IoTDBFilterTableIT {
             break;
         }
       }
-      statement.execute(" insert into sg1(time, device, s1, s2) values (1,'d1',1,'1')");
-      statement.execute(" insert into sg1(time, device, s1, s2) values (2,'d1',2,'2')");
+      statement.execute(" insert into db1(time, device, s1, s2) values (1,'d1',1,'1')");
+      statement.execute(" insert into db1(time, device, s1, s2) values (2,'d1',2,'2')");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (1,'d1','ss',0)");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (2,'d1','d',3)");
     } catch (SQLException throwable) {
@@ -182,7 +182,7 @@ public class IoTDBFilterTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       ResultSet resultSet =
-          statement.executeQuery("select s2 from sg1 where s1 = 1 and s2 >= '1' and s2 <= '2'");
+          statement.executeQuery("select s2 from db1 where s1 = 1 and s2 >= '1' and s2 <= '2'");
       int count = 0;
       while (resultSet.next()) {
         ++count;
@@ -196,15 +196,15 @@ public class IoTDBFilterTableIT {
   @Test
   public void testMismatchedDataTypes() {
     tableAssertTestFail(
-        "select s1 from sg1 where s1",
+        "select s1 from db1 where s1",
         "701: WHERE clause must evaluate to a boolean: actual type DOUBLE",
         DATABASE_NAME);
     // TODO After Aggregation supported
     /*assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");*/
   }
 
@@ -239,22 +239,22 @@ public class IoTDBFilterTableIT {
   @Test
   public void testCompareWithNull() {
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
   }
 
   @Test
   public void testCalculateWithNull() {
     tableResultSetEqualTest(
-        "select s1 + null from sg1",
+        "select s1 + null from db1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 - null from sg1",
+        "select s1 - null from db1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);

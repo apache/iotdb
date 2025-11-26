@@ -57,15 +57,15 @@ public class AggregationNodeSerdeTest {
     SeriesAggregationScanNode seriesAggregationScanNode =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
+            new MeasurementPath("root.db.d1.s1", TSDataType.BOOLEAN),
             Collections.singletonList(
                 new AggregationDescriptor(
                     TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.INTERMEDIATE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))))),
             Ordering.ASC,
-            in(timeSeries("root.sg.d1.s1"), Sets.newLinkedHashSet(Arrays.asList("s1", "s2"))),
+            in(timeSeries("root.db.d1.s1"), Sets.newLinkedHashSet(Arrays.asList("s1", "s2"))),
             groupByTimeParameter,
             null);
     AggregationNode aggregationNode =
@@ -77,7 +77,7 @@ public class AggregationNodeSerdeTest {
                     TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))))),
             groupByTimeParameter,
             Ordering.ASC);
 
@@ -90,7 +90,7 @@ public class AggregationNodeSerdeTest {
   /** Test AVG with COUNT and SUM (former or later). */
   @Test
   public void getDeduplicatedDescriptorsTest1() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
     List<TAggregationType> aggregationTypeList = new ArrayList<>();
     aggregationTypeList.add(TAggregationType.COUNT);
     aggregationTypeList.add(TAggregationType.AVG);
@@ -159,7 +159,7 @@ public class AggregationNodeSerdeTest {
   /** Test FIRST_VALUE with MIN_TIME (former or later). */
   @Test
   public void getDeduplicatedDescriptorsTest2() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
     List<TAggregationType> aggregationTypeList = new ArrayList<>();
     aggregationTypeList.add(TAggregationType.FIRST_VALUE);
     aggregationTypeList.add(TAggregationType.MIN_TIME);
@@ -209,7 +209,7 @@ public class AggregationNodeSerdeTest {
   /** Test LAST_VALUE with MAX_TIME (former or later). */
   @Test
   public void getDeduplicatedDescriptorsTest3() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
     List<TAggregationType> aggregationTypeList = new ArrayList<>();
     aggregationTypeList.add(TAggregationType.LAST_VALUE);
     aggregationTypeList.add(TAggregationType.MAX_TIME);
@@ -259,8 +259,8 @@ public class AggregationNodeSerdeTest {
   /** Test AVG with COUNT but work on different time series. */
   @Test
   public void getDeduplicatedDescriptorsTest4() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
-    PartialPath seriesPath2 = new PartialPath(new String[] {"root", "sg", "d1", "s2"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
+    PartialPath seriesPath2 = new PartialPath(new String[] {"root", "db", "d1", "s2"});
     List<AggregationDescriptor> descriptorList = new ArrayList<>();
     descriptorList.add(
         new AggregationDescriptor(

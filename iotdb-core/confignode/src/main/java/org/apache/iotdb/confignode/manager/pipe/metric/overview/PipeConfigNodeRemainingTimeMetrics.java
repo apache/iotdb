@@ -99,16 +99,16 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBConfigRegionSource extractor) {
+  public void register(final IoTDBConfigRegionSource source) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     remainingTimeOperatorMap
         .computeIfAbsent(
             pipeID,
             k ->
                 new PipeConfigNodeRemainingTimeOperator(
-                    extractor.getPipeName(), extractor.getCreationTime()))
-        .register(extractor);
+                    source.getPipeName(), source.getCreationTime()))
+        .register(source);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }

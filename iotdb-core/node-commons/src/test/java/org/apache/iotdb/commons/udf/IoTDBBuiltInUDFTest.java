@@ -78,21 +78,21 @@ public class IoTDBBuiltInUDFTest {
     udfParametersList =
         ImmutableList.of(
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s1"), ImmutableList.of(Type.INT32), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s1"), ImmutableList.of(Type.INT32), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s2"), ImmutableList.of(Type.INT64), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s2"), ImmutableList.of(Type.INT64), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s3"), ImmutableList.of(Type.FLOAT), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s3"), ImmutableList.of(Type.FLOAT), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s4"), ImmutableList.of(Type.DOUBLE), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s4"), ImmutableList.of(Type.DOUBLE), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s5"), ImmutableList.of(Type.BOOLEAN), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s5"), ImmutableList.of(Type.BOOLEAN), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s6"), ImmutableList.of(Type.TEXT), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s6"), ImmutableList.of(Type.TEXT), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s7"), ImmutableList.of(Type.FLOAT), new HashMap<>()),
+                ImmutableList.of("root.db.d1.s7"), ImmutableList.of(Type.FLOAT), new HashMap<>()),
             new UDFParameters(
-                ImmutableList.of("root.sg.d1.s8"), ImmutableList.of(Type.FLOAT), new HashMap<>()));
+                ImmutableList.of("root.db.d1.s8"), ImmutableList.of(Type.FLOAT), new HashMap<>()));
     udtfConfigurations = new UDTFConfigurations(ZoneId.of("UTC+8"));
     validators =
         udfParametersList.stream().map(UDFParameterValidator::new).collect(Collectors.toList());

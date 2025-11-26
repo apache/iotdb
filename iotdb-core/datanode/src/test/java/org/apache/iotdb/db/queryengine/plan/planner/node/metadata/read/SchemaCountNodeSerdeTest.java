@@ -49,7 +49,7 @@ public class SchemaCountNodeSerdeTest {
     DevicesCountNode devicesCountNode =
         new DevicesCountNode(
             new PlanNodeId("devicesCount"),
-            new PartialPath("root.sg.device0"),
+            new PartialPath("root.db.device0"),
             true,
             SchemaConstant.ALL_MATCH_SCOPE);
     IdentitySinkNode sinkNode =
@@ -82,7 +82,7 @@ public class SchemaCountNodeSerdeTest {
     LevelTimeSeriesCountNode levelTimeSeriesCountNode =
         new LevelTimeSeriesCountNode(
             new PlanNodeId("timeseriesCount"),
-            new PartialPath("root.sg.device0"),
+            new PartialPath("root.db.device0"),
             true,
             10,
             null,
@@ -118,7 +118,7 @@ public class SchemaCountNodeSerdeTest {
     TimeSeriesCountNode timeseriesCount =
         new TimeSeriesCountNode(
             new PlanNodeId("timeseriesCount"),
-            new PartialPath("root.sg.device0"),
+            new PartialPath("root.db.device0"),
             true,
             null,
             Collections.emptyMap(),

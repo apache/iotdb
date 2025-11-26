@@ -93,7 +93,7 @@ public class MemUtilsTest {
 
   @Test
   public void getRecordSizeWithInsertTableNodeTest() throws IllegalPathException {
-    PartialPath device = new PartialPath("root.sg.d1");
+    PartialPath device = new PartialPath("root.db.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
       new int[] {1},
@@ -130,7 +130,7 @@ public class MemUtilsTest {
 
   @Test
   public void getRecordSizeWithInsertAlignedTableNodeTest() throws IllegalPathException {
-    PartialPath device = new PartialPath("root.sg.d1");
+    PartialPath device = new PartialPath("root.db.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
       new int[] {1},
@@ -179,7 +179,7 @@ public class MemUtilsTest {
   @Test
   public void getMemSizeTest() {
     long totalSize = 0;
-    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1");
     TSRecord record = new TSRecord(device, 0);
 
     DataPoint point1 = new IntDataPoint("s1", 1);

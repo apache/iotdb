@@ -43,45 +43,44 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class WebSocketConnectorServer extends WebSocketServer {
+public class WebSocketSinkServer extends WebSocketServer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketSinkServer.class);
 
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
-  // Map<pipeName, Queue<Tuple<eventId, connector, event>>>
+  // Map<pipeName, Queue<Tuple<eventId, sink, event>>>
   private final ConcurrentHashMap<String, PriorityBlockingQueue<EventWaitingForTransfer>>
       eventsWaitingForTransfer = new ConcurrentHashMap<>();
-  // Map<pipeName, Map<eventId, Tuple<connector, event>>>
+  // Map<pipeName, Map<eventId, Tuple<sink, event>>>
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
 
-  private static final AtomicReference<WebSocketConnectorServer> instance = new AtomicReference<>();
+  private static final AtomicReference<WebSocketSinkServer> instance = new AtomicReference<>();
   private static final AtomicBoolean isStarted = new AtomicBoolean(false);
 
-  private WebSocketConnectorServer(int port) {
+  private WebSocketSinkServer(int port) {
     super(new InetSocketAddress(port));
     new TransferThread(this).start();
   }
 
-  public static synchronized WebSocketConnectorServer getOrCreateInstance(int port) {
+  public static synchronized WebSocketSinkServer getOrCreateInstance(int port) {
     if (null == instance.get()) {
-      instance.set(new WebSocketConnectorServer(port));
+      instance.set(new WebSocketSinkServer(port));
     }
     return instance.get();
   }
 
-  public synchronized void register(WebSocketSink connector) {
+  public synchronized void register(WebSocketSink sink) {
     eventsWaitingForTransfer.putIfAbsent(
-        connector.getPipeName(),
-        new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.eventId)));
-    eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
+        sink.getPipeName(), new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.eventId)));
+    eventsWaitingForAck.putIfAbsent(sink.getPipeName(), new ConcurrentHashMap<>());
   }
 
-  public synchronized void unregister(WebSocketSink connector) {
-    final String pipeName = connector.getPipeName();
+  public synchronized void unregister(WebSocketSink sink) {
+    final String pipeName = sink.getPipeName();
     // close invoked in validation stage
     if (pipeName == null) {
       return;
@@ -94,7 +93,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             (eventWrapper) -> {
               if (eventWrapper.event instanceof EnrichedEvent) {
                 ((EnrichedEvent) eventWrapper.event)
-                    .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                    .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
               }
             });
         eventTransferQueue.clear();
@@ -111,7 +110,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
               (eventId, eventWrapper) -> {
                 if (eventWrapper.event instanceof EnrichedEvent) {
                   ((EnrichedEvent) eventWrapper.event)
-                      .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                      .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
                 }
               });
     }
@@ -235,7 +234,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       return;
     }
 
-    eventWrapper.connector.commit(
+    eventWrapper.sink.commit(
         eventWrapper.event instanceof EnrichedEvent ? (EnrichedEvent) eventWrapper.event : null);
   }
 
@@ -271,7 +270,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     LOGGER.warn(
         "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
     eventTransferQueue.put(
-        new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
+        new EventWaitingForTransfer(eventId, eventWrapper.sink, eventWrapper.event));
   }
 
   @Override
@@ -291,15 +290,14 @@ public class WebSocketConnectorServer extends WebSocketServer {
     }
   }
 
-  public void addEvent(Event event, WebSocketSink connector) {
+  public void addEvent(Event event, WebSocketSink sink) {
     final PriorityBlockingQueue<EventWaitingForTransfer> queue =
-        eventsWaitingForTransfer.get(connector.getPipeName());
+        eventsWaitingForTransfer.get(sink.getPipeName());
 
     if (queue == null) {
-      LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", connector, event);
+      LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", sink, event);
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+        ((EnrichedEvent) event).decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
       }
       return;
     }
@@ -315,20 +313,19 @@ public class WebSocketConnectorServer extends WebSocketServer {
           }
         }
 
-        queue.put(
-            new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+        queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), sink, event));
         return;
       }
     }
 
-    queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+    queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), sink, event));
   }
 
   private class TransferThread extends Thread {
 
-    private final WebSocketConnectorServer server;
+    private final WebSocketSinkServer server;
 
-    public TransferThread(WebSocketConnectorServer server) {
+    public TransferThread(WebSocketSinkServer server) {
       this.server = server;
     }
 
@@ -363,7 +360,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     private void transfer(String pipeName, EventWaitingForTransfer element) {
       final Long eventId = element.eventId;
       final Event event = element.event;
-      final WebSocketSink connector = element.connector;
+      final WebSocketSink sink = element.sink;
 
       try {
         ByteBuffer tabletBuffer;
@@ -371,12 +368,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
           throw new NotImplementedException(
-              "IoTDBCDCConnector only support "
+              "IoTDBCDCSink only support "
                   + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
         }
 
         if (tabletBuffer == null) {
-          connector.commit((EnrichedEvent) event);
+          sink.commit((EnrichedEvent) event);
           return;
         }
 
@@ -394,7 +391,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
               "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
           return;
         }
-        eventId2EventMap.put(eventId, new EventWaitingForAck(connector, event));
+        eventId2EventMap.put(eventId, new EventWaitingForAck(sink, event));
       } catch (Exception e) {
         synchronized (server) {
           final PriorityBlockingQueue<EventWaitingForTransfer> queue =
@@ -404,14 +401,14 @@ public class WebSocketConnectorServer extends WebSocketServer {
                 "The pipe {} was dropped so the event {} will be dropped.", pipeName, eventId);
             if (event instanceof EnrichedEvent) {
               ((EnrichedEvent) event)
-                  .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                  .decreaseReferenceCount(WebSocketSinkServer.class.getName(), false);
             }
             return;
           }
 
           LOGGER.warn(
               "The event {} can't be transferred to client, it will be retried later.", eventId, e);
-          queue.put(new EventWaitingForTransfer(eventId, connector, event));
+          queue.put(new EventWaitingForTransfer(eventId, sink, event));
         }
       }
     }
@@ -434,23 +431,23 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static class EventWaitingForTransfer {
 
     private final Long eventId;
-    private final WebSocketSink connector;
+    private final WebSocketSink sink;
     private final Event event;
 
-    public EventWaitingForTransfer(Long eventId, WebSocketSink connector, Event event) {
+    public EventWaitingForTransfer(Long eventId, WebSocketSink sink, Event event) {
       this.eventId = eventId;
-      this.connector = connector;
+      this.sink = sink;
       this.event = event;
     }
   }
 
   private static class EventWaitingForAck {
 
-    private final WebSocketSink connector;
+    private final WebSocketSink sink;
     private final Event event;
 
-    public EventWaitingForAck(WebSocketSink connector, Event event) {
-      this.connector = connector;
+    public EventWaitingForAck(WebSocketSink sink, Event event) {
+      this.sink = sink;
       this.event = event;
     }
   }

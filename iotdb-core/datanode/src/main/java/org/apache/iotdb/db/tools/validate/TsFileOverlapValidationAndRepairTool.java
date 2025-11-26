@@ -154,11 +154,11 @@ public class TsFileOverlapValidationAndRepairTool {
         System.out.println(sequenceDataDir.getAbsolutePath() + " is not a correct path");
         continue;
       }
-      for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
-        if (!sg.isDirectory()) {
+      for (File db : Objects.requireNonNull(sequenceDataDir.listFiles())) {
+        if (!db.isDirectory()) {
           continue;
         }
-        for (File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
+        for (File dataRegionDir : Objects.requireNonNull(db.listFiles())) {
           if (!dataRegionDir.isDirectory()) {
             continue;
           }
@@ -168,7 +168,7 @@ public class TsFileOverlapValidationAndRepairTool {
             }
             String partitionKey =
                 calculateTimePartitionKey(
-                    sg.getName(), dataRegionDir.getName(), timePartitionDir.getName());
+                    db.getName(), dataRegionDir.getName(), timePartitionDir.getName());
             List<File> partitionDirs =
                 partitionMap.computeIfAbsent(partitionKey, v -> new ArrayList<>());
             partitionDirs.add(timePartitionDir);

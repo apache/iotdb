@@ -60,9 +60,9 @@ public class TsFileAndModSettleToolTest {
   private final long newPartitionInterval = 3600_000;
   protected final long maxTimestamp = 50000L; // 100000000L;
   protected final String folder = "target" + File.separator + "settle";
-  protected final String STORAGE_GROUP = "root.sg_0";
-  protected final String DEVICE1 = STORAGE_GROUP + ".device_1";
-  protected final String DEVICE2 = STORAGE_GROUP + ".device_2";
+  protected final String DATABASE = "root.db";
+  protected final String DEVICE1 = DATABASE + ".device_1";
+  protected final String DEVICE2 = DATABASE + ".device_2";
   protected final String SENSOR1 = "sensor_1";
   protected final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
@@ -129,14 +129,14 @@ public class TsFileAndModSettleToolTest {
     // first File
     sensors.add(SENSOR1);
     deviceSensorsMap.put(DEVICE1, sensors);
-    String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
+    String timeseriesPath = DATABASE + DEVICE1 + SENSOR1;
     createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
     // second file
     path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
     sensors.add(SENSOR2);
     deviceSensorsMap.put(DEVICE1, sensors);
-    timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR2;
+    timeseriesPath = DATABASE + DEVICE1 + SENSOR2;
     createFile(resourcesToBeSettled, deviceSensorsMap, timeseriesPath);
 
     Thread.sleep(100);

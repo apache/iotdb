@@ -89,7 +89,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSink {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncSink.class);
   private static final String ENQUEUE_EXCEPTION_MSG =
-      "Timeout: PipeConsensusConnector offers an event into transferBuffer failed, because transferBuffer is full.";
+      "Timeout: PipeConsensusSink offers an event into transferBuffer failed, because transferBuffer is full.";
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
       "Failed to borrow client from client pool or exception occurred "
           + "when sending to receiver.";
@@ -112,7 +112,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
   private PipeConsensusSinkMetrics pipeConsensusSinkMetrics;
   private String consensusPipeName;
   private int consensusGroupId;
-  private PipeConsensusSyncSink retryConnector;
+  private PipeConsensusSyncSink retrySink;
   private IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncTransferClientManager;
   private PipeConsensusAsyncBatchReqBuilder tabletBatchBuilder;
   private volatile long currentReplicateProgress = 0;
@@ -144,16 +144,16 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     // initialize metric components
     pipeConsensusSinkMetrics = new PipeConsensusSinkMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
+        .addConsensusPipeSink(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusSinkMetrics);
 
-    // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
+    // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusSink. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
-    retryConnector =
+    retrySink =
         new PipeConsensusSyncSink(
             nodeUrls, consensusGroupId, thisDataNodeId, pipeConsensusSinkMetrics);
-    retryConnector.customize(parameters, configuration);
+    retrySink.customize(parameters, configuration);
     asyncTransferClientManager =
         IoTV2GlobalComponentContainer.getInstance().getGlobalAsyncClientManager();
 
@@ -178,7 +178,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     try {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
+            "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to sink buffer",
             consensusGroupId,
             event.getReplicateIndexForIoTV2(),
             event);
@@ -193,19 +193,19 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
           transferBuffer.offer(
               event, PIPE_CONSENSUS_EVENT_ENQUEUE_TIMEOUT_IN_MS, TimeUnit.MILLISECONDS);
       long duration = System.nanoTime() - currentTime;
-      pipeConsensusSinkMetrics.recordConnectorEnqueueTimer(duration);
+      pipeConsensusSinkMetrics.recordSinkEnqueueTimer(duration);
       // add reference
       if (result) {
         event.increaseReferenceCount(PipeConsensusAsyncSink.class.getName());
       }
-      // if connector is closed when executing this method, need to clear this event's reference
+      // if sink is closed when executing this method, need to clear this event's reference
       // count to avoid unnecessarily pinning some resource such as WAL.
       if (isClosed.get()) {
         event.clearReferenceCount(PipeConsensusAsyncSink.class.getName());
       }
       return result;
     } catch (InterruptedException e) {
-      LOGGER.info("PipeConsensusConnector transferBuffer queue offer is interrupted.", e);
+      LOGGER.info("PipeConsensusSink transferBuffer queue offer is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
     }
@@ -226,7 +226,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     }
     if (transferBuffer.isEmpty()) {
       LOGGER.info(
-          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
+          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncSink being closed. Ignore it.",
           consensusGroupId,
           event);
       return;
@@ -355,7 +355,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "PipeConsensusAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "PipeConsensusAsyncSink only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -446,8 +446,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     }
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "PipeConsensusAsyncConnector does not support transferring generic event: {}.", event);
+      LOGGER.warn("PipeConsensusAsyncSink does not support transferring generic event: {}.", event);
     }
   }
 
@@ -550,7 +549,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
               } else {
                 if (LOGGER.isWarnEnabled()) {
                   LOGGER.warn(
-                      "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
+                      "PipeConsensusAsyncSink does not support transfer generic event: {}.",
                       peekedEvent);
                 }
               }
@@ -681,18 +680,18 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
   }
 
   private TEndPoint getFollowerUrl() {
-    // In current pipeConsensus design, one connector corresponds to one follower, so the peers is
+    // In current pipeConsensus design, one sink corresponds to one follower, so the peers is
     // actually a singleton list
     return nodeUrls.get(0);
   }
 
-  // synchronized to avoid close connector when transfer event
+  // synchronized to avoid close sink when transfer event
   @Override
   public synchronized void close() {
     super.close();
     isClosed.set(true);
 
-    retryConnector.close();
+    retrySink.close();
     clearRetryEventsReferenceCount();
     clearTransferBufferReferenceCount();
 
@@ -701,7 +700,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
+        .removeConsensusPipeSink(new ConsensusPipeName(consensusPipeName));
     MetricService.getInstance().removeMetricSet(this.pipeConsensusSinkMetrics);
   }
 

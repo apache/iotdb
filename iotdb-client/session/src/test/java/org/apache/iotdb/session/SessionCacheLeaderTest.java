@@ -69,13 +69,13 @@ public class SessionCacheLeaderTest {
 
   // just for simulation
   public static TEndPoint getDeviceIdBelongedEndpoint(String deviceId) {
-    if (deviceId.startsWith("root.sg1")) {
+    if (deviceId.startsWith("root.db1")) {
       return endpoints.get(0);
-    } else if (deviceId.startsWith("root.sg2")) {
+    } else if (deviceId.startsWith("root.db2")) {
       return endpoints.get(1);
-    } else if (deviceId.startsWith("root.sg3")) {
+    } else if (deviceId.startsWith("root.db3")) {
       return endpoints.get(2);
-    } else if (deviceId.startsWith("root.sg4")) {
+    } else if (deviceId.startsWith("root.db4")) {
       return endpoints.get(3);
     }
 
@@ -104,7 +104,7 @@ public class SessionCacheLeaderTest {
     assertNull(session.deviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
 
-    String deviceId = "root.sg2.d1";
+    String deviceId = "root.db2.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -154,7 +154,7 @@ public class SessionCacheLeaderTest {
     assertNull(session.deviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
 
-    String deviceId = "root.sg2.d1";
+    String deviceId = "root.db2.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -202,10 +202,10 @@ public class SessionCacheLeaderTest {
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
-            add("root.sg1.d1");
-            add("root.sg2.d1");
-            add("root.sg3.d1");
-            add("root.sg4.d1");
+            add("root.db1.d1");
+            add("root.db2.d1");
+            add("root.db3.d1");
+            add("root.db4.d1");
           }
         };
     List<String> measurements = new ArrayList<>();
@@ -303,10 +303,10 @@ public class SessionCacheLeaderTest {
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
-            add("root.sg1.d1");
-            add("root.sg2.d1");
-            add("root.sg3.d1");
-            add("root.sg4.d1");
+            add("root.db1.d1");
+            add("root.db2.d1");
+            add("root.db3.d1");
+            add("root.db4.d1");
           }
         };
     List<String> measurements = new ArrayList<>();
@@ -386,7 +386,7 @@ public class SessionCacheLeaderTest {
     assertNull(session.deviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
 
-    String deviceId = "root.sg2.d2";
+    String deviceId = "root.db2.d2";
     List<Long> times = new ArrayList<>();
     List<List<String>> measurements = new ArrayList<>();
     List<List<TSDataType>> datatypes = new ArrayList<>();
@@ -454,7 +454,7 @@ public class SessionCacheLeaderTest {
     assertNull(session.deviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
 
-    String deviceId = "root.sg2.d2";
+    String deviceId = "root.db2.d2";
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -527,10 +527,10 @@ public class SessionCacheLeaderTest {
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
-            add("root.sg1.d1");
-            add("root.sg2.d1");
-            add("root.sg3.d1");
-            add("root.sg4.d1");
+            add("root.db1.d1");
+            add("root.db2.d1");
+            add("root.db3.d1");
+            add("root.db4.d1");
           }
         };
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -721,10 +721,10 @@ public class SessionCacheLeaderTest {
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
-            add("root.sg1.d1");
-            add("root.sg2.d1");
-            add("root.sg3.d1");
-            add("root.sg4.d1");
+            add("root.db1.d1");
+            add("root.db2.d1");
+            add("root.db3.d1");
+            add("root.db4.d1");
           }
         };
     List<String> measurements = new ArrayList<>();
@@ -830,7 +830,7 @@ public class SessionCacheLeaderTest {
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
     // been changed to TEndPoint(ip:127.0.0.1, port:55561)
     Assert.assertEquals(
-        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55561)}",
+        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     try {
@@ -867,10 +867,10 @@ public class SessionCacheLeaderTest {
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
-            add("root.sg1.d1");
-            add("root.sg2.d1");
-            add("root.sg3.d1");
-            add("root.sg4.d1");
+            add("root.db1.d1");
+            add("root.db2.d1");
+            add("root.db3.d1");
+            add("root.db4.d1");
           }
         };
     List<IMeasurementSchema> schemaList = new ArrayList<>();

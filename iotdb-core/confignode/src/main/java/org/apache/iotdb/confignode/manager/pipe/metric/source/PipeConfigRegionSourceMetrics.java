@@ -41,14 +41,14 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, IoTDBConfigRegionSource> extractorMap = new ConcurrentHashMap<>();
+  private final Map<String, IoTDBConfigRegionSource> sourceMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::createMetrics);
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::createMetrics);
   }
 
   private void createMetrics(final String taskID) {
@@ -56,24 +56,23 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String taskID) {
-    final IoTDBConfigRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBConfigRegionSource source = sourceMap.get(taskID);
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_CONFIG_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        sourceMap.get(taskID),
         IoTDBConfigRegionSource::getUnTransferredEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
-    if (!extractorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe config region extractor metrics, extractor map not empty");
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
+    if (!sourceMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipe config region source metrics, source map not empty");
     }
   }
 
@@ -82,50 +81,50 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String taskID) {
-    final IoTDBConfigRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBConfigRegionSource source = sourceMap.get(taskID);
     // Pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_CONFIG_COUNT.toString(),
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
   }
 
   //////////////////////////// pipe integration ////////////////////////////
 
-  public void register(final IoTDBConfigRegionSource extractor) {
-    final String taskID = extractor.getTaskID();
-    extractorMap.putIfAbsent(taskID, extractor);
+  public void register(final IoTDBConfigRegionSource source) {
+    final String taskID = source.getTaskID();
+    sourceMap.putIfAbsent(taskID, source);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
   public void deregister(final String taskID) {
-    if (!extractorMap.containsKey(taskID)) {
+    if (!sourceMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe config region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist",
+          "Failed to deregister pipe config region source metrics, IoTDBConfigRegionExtractor({}) does not exist",
           taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(taskID);
     }
-    extractorMap.remove(taskID);
+    sourceMap.remove(taskID);
   }
 
   //////////////////////////// Show pipes ////////////////////////////
 
   public long getRemainingEventCount(final String pipeName, final long creationTime) {
     final String taskID = pipeName + "_" + creationTime;
-    final IoTDBConfigRegionSource extractor = extractorMap.get(taskID);
-    // Do not print log to allow collection when config region extractor does not exists
-    if (Objects.isNull(extractor)) {
+    final IoTDBConfigRegionSource source = sourceMap.get(taskID);
+    // Do not print log to allow collection when config region source does not exists
+    if (Objects.isNull(source)) {
       return 0;
     }
-    return extractor.getUnTransferredEventCount();
+    return source.getUnTransferredEventCount();
   }
 
   //////////////////////////// singleton ////////////////////////////

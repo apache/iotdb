@@ -70,7 +70,7 @@ public class DataQueryLogicalPlannerTest {
 
   @Test
   public void testLastQuery() {
-    String sql = "SELECT last * FROM root.sg.** WHERE time > 100 ORDER BY timeseries ASC";
+    String sql = "SELECT last * FROM root.db.** WHERE time > 100 ORDER BY timeseries ASC";
 
     QueryId queryId = new QueryId("test");
     // fake initResultNodeContext()
@@ -78,10 +78,10 @@ public class DataQueryLogicalPlannerTest {
 
     List<IMeasurementSchema> measurementSchemas =
         Arrays.asList(
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s1")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s2")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s3")).getMeasurementSchema());
-    MeasurementPath d1s1Path = (MeasurementPath) schemaMap.get("root.sg.d1.s1");
+            ((MeasurementPath) schemaMap.get("root.db.d1.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d1.s2")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d1.s3")).getMeasurementSchema());
+    MeasurementPath d1s1Path = (MeasurementPath) schemaMap.get("root.db.d1.s1");
     LastQueryNode lastQueryNode = new LastQueryNode(queryId.genPlanNodeId(), Ordering.ASC, false);
 
     lastQueryNode.addDeviceLastQueryScanNode(
@@ -94,10 +94,10 @@ public class DataQueryLogicalPlannerTest {
 
     measurementSchemas =
         Arrays.asList(
-            ((MeasurementPath) schemaMap.get("root.sg.d2.s1")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d2.s2")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d2.s4")).getMeasurementSchema());
-    MeasurementPath d2s1Path = (MeasurementPath) schemaMap.get("root.sg.d2.s1");
+            ((MeasurementPath) schemaMap.get("root.db.d2.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d2.s2")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d2.s4")).getMeasurementSchema());
+    MeasurementPath d2s1Path = (MeasurementPath) schemaMap.get("root.db.d2.s1");
     lastQueryNode.addDeviceLastQueryScanNode(
         queryId.genPlanNodeId(),
         d2s1Path.getDevicePath(),
@@ -106,7 +106,7 @@ public class DataQueryLogicalPlannerTest {
         null,
         null);
 
-    AlignedPath aPath = (AlignedPath) schemaMap.get("root.sg.d2.a");
+    AlignedPath aPath = (AlignedPath) schemaMap.get("root.db.d2.a");
     lastQueryNode.addDeviceLastQueryScanNode(
         queryId.genPlanNodeId(), aPath.getDevicePath(), true, aPath.getSchemaList(), null, null);
 
@@ -116,7 +116,7 @@ public class DataQueryLogicalPlannerTest {
 
   @Test
   public void testLastQuerySortWithLimit() {
-    String sql = "SELECT last * FROM root.sg.d1 ORDER BY time DESC LIMIT 1";
+    String sql = "SELECT last * FROM root.db.d1 ORDER BY time DESC LIMIT 1";
 
     QueryId queryId = new QueryId("test");
     // fake initResultNodeContext()
@@ -125,10 +125,10 @@ public class DataQueryLogicalPlannerTest {
     LastQueryNode lastQueryNode = new LastQueryNode(queryId.genPlanNodeId(), null, false);
     List<IMeasurementSchema> measurementSchemas =
         Arrays.asList(
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s3")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s1")).getMeasurementSchema(),
-            ((MeasurementPath) schemaMap.get("root.sg.d1.s2")).getMeasurementSchema());
-    MeasurementPath s3Path = (MeasurementPath) schemaMap.get("root.sg.d1.s3");
+            ((MeasurementPath) schemaMap.get("root.db.d1.s3")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d1.s1")).getMeasurementSchema(),
+            ((MeasurementPath) schemaMap.get("root.db.d1.s2")).getMeasurementSchema());
+    MeasurementPath s3Path = (MeasurementPath) schemaMap.get("root.db.d1.s3");
     lastQueryNode.addDeviceLastQueryScanNode(
         queryId.genPlanNodeId(),
         s3Path.getDevicePath(),
@@ -150,7 +150,7 @@ public class DataQueryLogicalPlannerTest {
 
   @Test
   public void testSimpleRawDataQuery() {
-    String sql = "SELECT ** FROM root.sg.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
+    String sql = "SELECT ** FROM root.db.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
     // fake initResultNodeContext()
@@ -160,22 +160,22 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s4"),
             Ordering.ASC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            (AlignedPath) schemaMap.get("root.db.d2.a"),
             Ordering.ASC,
             true));
 
@@ -191,7 +191,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testRawDataQuery() {
     String sql =
-        "SELECT s1 FROM root.sg.* WHERE time > 100 and s2 > 10 "
+        "SELECT s1 FROM root.db.* WHERE time > 100 and s2 > 10 "
             + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 SLIMIT 1 SOFFSET 1";
 
     QueryId queryId = new QueryId("test");
@@ -202,17 +202,17 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
@@ -220,11 +220,11 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
     GreaterThanExpression valueFilter2 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
 
     // Duplicate timeFilter has been removed, here only valueFilters are kept
@@ -234,7 +234,7 @@ public class DataQueryLogicalPlannerTest {
         new FilterNode(
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode,
-            new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
+            new Expression[] {new TimeSeriesOperand(schemaMap.get("root.db.d2.s1"))},
             predicate,
             false,
             Ordering.DESC,
@@ -250,7 +250,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testRawDataQueryAlignByDevice() {
     String sql =
-        "SELECT * FROM root.sg.* WHERE time > 100 and s1 > 10 "
+        "SELECT * FROM root.db.* WHERE time > 100 and s1 > 10 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
@@ -261,17 +261,17 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s3"),
             Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
@@ -279,7 +279,7 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression predicate1 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")),
             new ConstantOperand(TSDataType.INT64, "10"));
 
     FilterNode filterNode1 =
@@ -287,9 +287,9 @@ public class DataQueryLogicalPlannerTest {
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode1,
             new Expression[] {
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s3")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s2"))
             },
             predicate1,
             false,
@@ -300,17 +300,17 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s4"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
@@ -318,7 +318,7 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression predicate2 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
             new ConstantOperand(TSDataType.INT32, "10"));
 
     FilterNode filterNode2 =
@@ -326,9 +326,9 @@ public class DataQueryLogicalPlannerTest {
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode2,
             new Expression[] {
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s4"))
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s4"))
             },
             predicate2,
             false,
@@ -337,9 +337,9 @@ public class DataQueryLogicalPlannerTest {
 
     Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), Arrays.asList(1, 2, 3));
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(2, 3, 4));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), Arrays.asList(2, 3, 4));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -350,9 +350,9 @@ public class DataQueryLogicalPlannerTest {
             Arrays.asList(ColumnHeaderConstant.DEVICE, "s3", "s1", "s2", "s4"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), filterNode1);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), filterNode1);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), filterNode2);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), filterNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -364,7 +364,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testSimpleAggregationQuery() {
     String sql =
-        "SELECT last_value(s1), first_value(s1), sum(s2) FROM root.sg.** WHERE time > 100 LIMIT 10 OFFSET 10";
+        "SELECT last_value(s1), first_value(s1), sum(s2) FROM root.db.** WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
     // fake initResultNodeContext()
@@ -374,27 +374,27 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.ASC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(),
-            ((AlignedPath) schemaMap.get("root.sg.d2.a")),
+            ((AlignedPath) schemaMap.get("root.db.d2.a")),
             Ordering.ASC,
             false));
 
@@ -410,47 +410,47 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.FIRST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.SUM.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.FIRST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.FIRST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.SUM.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.SUM.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))))),
             null,
             Ordering.ASC);
 
@@ -464,7 +464,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testAggregationQueryWithoutValueFilter() {
     String sql =
-        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.** WHERE time > 100 "
+        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.db.** WHERE time > 100 "
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
@@ -475,27 +475,27 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            (AlignedPath) schemaMap.get("root.db.d2.a"),
             Ordering.DESC,
             false));
 
@@ -511,47 +511,47 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))))),
             null,
             Ordering.DESC);
 
@@ -564,59 +564,59 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1"))),
                     1,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s2"))),
                     1,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.a.s1"))),
                     1,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.*.s1"))))),
             null,
             Ordering.DESC);
 
@@ -630,7 +630,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testAggregationQueryWithoutValueFilterAlignByDevice() {
     String sql =
-        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
+        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.db.* WHERE time > 100 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
@@ -641,12 +641,12 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
@@ -661,17 +661,17 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))))),
             null,
             Ordering.DESC);
 
@@ -679,12 +679,12 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
@@ -699,25 +699,25 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1"))))),
             null,
             Ordering.DESC);
 
     Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), Arrays.asList(1, 2, 3));
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(1, 2, 3));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -729,9 +729,9 @@ public class DataQueryLogicalPlannerTest {
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), rawDataAggregationNode1);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), rawDataAggregationNode1);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), rawDataAggregationNode2);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), rawDataAggregationNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -743,7 +743,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testAggregationQueryWithValueFilter() {
     String sql =
-        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
+        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.db.* WHERE time > 100 and s2 > 10 "
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
@@ -754,22 +754,22 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
@@ -777,11 +777,11 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
     GreaterThanExpression valueFilter2 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
     LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
     FilterNode filterNode =
@@ -789,10 +789,10 @@ public class DataQueryLogicalPlannerTest {
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode,
             new Expression[] {
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
             },
             predicate,
             false,
@@ -808,32 +808,32 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))))),
             null,
             Ordering.DESC);
 
@@ -846,32 +846,32 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.*.s1"))))),
             null,
             Ordering.DESC);
 
@@ -885,7 +885,7 @@ public class DataQueryLogicalPlannerTest {
   @Test
   public void testAggregationQueryWithValueFilterAlignByDevice() {
     String sql =
-        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
+        "SELECT count(s1), max_value(s2), last_value(s1) FROM root.db.* WHERE time > 100 and s2 > 10 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
@@ -896,12 +896,12 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s1"),
             Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d1.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
@@ -909,7 +909,7 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression predicate1 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
             new ConstantOperand(TSDataType.INT64, "10"));
 
     FilterNode filterNode1 =
@@ -917,8 +917,8 @@ public class DataQueryLogicalPlannerTest {
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode1,
             new Expression[] {
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")),
             },
             predicate1,
             false,
@@ -934,17 +934,17 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d1.s1"))))),
             null,
             Ordering.DESC);
 
@@ -952,12 +952,12 @@ public class DataQueryLogicalPlannerTest {
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s1"),
             Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.db.d2.s2"),
             Ordering.DESC));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
@@ -965,7 +965,7 @@ public class DataQueryLogicalPlannerTest {
 
     GreaterThanExpression predicate2 =
         new GreaterThanExpression(
-            new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
 
     FilterNode filterNode2 =
@@ -973,8 +973,8 @@ public class DataQueryLogicalPlannerTest {
             queryId.genPlanNodeId(),
             fullOuterTimeJoinNode2,
             new Expression[] {
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")),
             },
             predicate2,
             false,
@@ -990,25 +990,25 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1")))),
                 new AggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s2")))),
                 new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
+                        new TimeSeriesOperand(schemaMap.get("root.db.d2.s1"))))),
             null,
             Ordering.DESC);
 
     Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), Arrays.asList(1, 2, 3));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), Arrays.asList(1, 2, 3));
     deviceToMeasurementIndexesMap.put(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), Arrays.asList(1, 2, 3));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -1020,9 +1020,9 @@ public class DataQueryLogicalPlannerTest {
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"), aggregationNode1);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), aggregationNode1);
     deviceViewNode.addChildDeviceNode(
-        IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2"), aggregationNode2);
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), aggregationNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);

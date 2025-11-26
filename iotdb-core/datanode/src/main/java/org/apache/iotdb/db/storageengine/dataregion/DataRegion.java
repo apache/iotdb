@@ -338,7 +338,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * Record the insertWriteLock in SG is being hold by which method, it will be empty string if no
+   * Record the insertWriteLock in DB is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
@@ -365,7 +365,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.db1
    */
   public DataRegion(
       String systemDir, String dataRegionId, TsFileFlushPolicy fileFlushPolicy, String databaseName)
@@ -688,7 +688,7 @@ public class DataRegion implements IDataRegionForQuery {
               recoverListener.getFilePath(),
               recoverListener.getCause());
         }
-        // update VSGRecoveryContext
+        // update VDBRecoveryContext
         dataRegionRecoveryContext.incrementRecoveredFilesNum();
       }
       // recover unsealed TsFiles, sort make sure last flush time not be replaced by early files
@@ -1862,7 +1862,7 @@ public class DataRegion implements IDataRegionForQuery {
               logger.warn("Cannot remove mod file {}", x, e);
             }
           });
-      deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllDBFolders(TierManager.getInstance().getAllFilesFolders());
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
@@ -1881,7 +1881,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void deleteAllSGFolders(List<String> folder) {
+  private void deleteAllDBFolders(List<String> folder) {
     for (String tsfilePath : folder) {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, databaseName + File.separator + dataRegionId);
@@ -2437,7 +2437,7 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public boolean tryReadLock(long waitMillis) {
     try {
-      // apply read lock for SG insert lock to prevent inconsistent with concurrently writing
+      // apply read lock for DB insert lock to prevent inconsistent with concurrently writing
       // memtable
       long startTime = System.nanoTime();
       if (insertLock.readLock().tryLock(waitMillis, TimeUnit.MILLISECONDS)) {
@@ -3964,7 +3964,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Get the storageGroupPath with dataRegionId.
    *
-   * @return data region path, like root.sg1/0
+   * @return data region path, like root.db1/0
    */
   public String getStorageGroupPath() {
     return databaseName + File.separator + dataRegionId;

@@ -117,7 +117,7 @@ public class IoTDBFilterTableViewIT {
         }
       }
       statement.execute(
-          " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
+          " insert into root.db1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
       statement.execute(
           " insert into root.vehicle.testUDTF.d1(time, s1, s2) values (1,\"ss\",0), (2,\"d\",3)");
     } catch (SQLException throwable) {
@@ -137,7 +137,7 @@ public class IoTDBFilterTableViewIT {
       statement.execute(
           "CREATE VIEW testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD) as root.vehicle.testUDTF.**");
       statement.execute(
-          "CREATE VIEW sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.sg1.**");
+          "CREATE VIEW db1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.db1.**");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -205,7 +205,7 @@ public class IoTDBFilterTableViewIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       ResultSet resultSet =
-          statement.executeQuery("select s2 from sg1 where s1 = 1 and s2 >= '1' and s2 <= '2'");
+          statement.executeQuery("select s2 from db1 where s1 = 1 and s2 >= '1' and s2 <= '2'");
       int count = 0;
       while (resultSet.next()) {
         ++count;
@@ -219,22 +219,22 @@ public class IoTDBFilterTableViewIT {
   @Test
   public void testCompareWithNull() {
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 != null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 <> null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 from sg1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
+        "select s1 from db1 where s1 = null", new String[] {"s1"}, new String[] {}, DATABASE_NAME);
   }
 
   @Test
   public void testCalculateWithNull() {
     tableResultSetEqualTest(
-        "select s1 + null from sg1",
+        "select s1 + null from db1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);
     tableResultSetEqualTest(
-        "select s1 - null from sg1",
+        "select s1 - null from db1",
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);

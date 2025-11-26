@@ -378,7 +378,7 @@ public class ConfigNodeTestUtils {
     for (int i = 0; i < 1024; i++) {
       statement.addBatch(
           String.format(
-              "INSERT INTO root.sg.d%d(timestamp,speed,temperature) values(%d, %d, %d)",
+              "INSERT INTO root.db.d%d(timestamp,speed,temperature) values(%d, %d, %d)",
               i, i, i, i));
     }
     statement.executeBatch();

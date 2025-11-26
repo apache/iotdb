@@ -62,8 +62,8 @@ public class IoTDBAggregationWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s1 where time <= 21");
+      statement.execute("delete timeseries root.db1.d1.s2");
+      statement.execute("delete from root.db1.d1.s1 where time <= 21");
     } catch (Exception e) {
       fail(e.getMessage());
       e.printStackTrace();
@@ -79,15 +79,15 @@ public class IoTDBAggregationWithDeletionIT {
   public void countAllAlignedWithoutTimeFilterTest() {
     String[] retArray = new String[] {"1", "28", "19", "20"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "count(root.sg1.d1.s4)",
-      "count(root.sg1.d1.s5)"
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "count(root.db1.d1.s4)",
+      "count(root.db1.d1.s5)"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.db1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -118,20 +118,20 @@ public class IoTDBAggregationWithDeletionIT {
   public void countAllAlignedAndNonAlignedWithoutTimeFilterTest() {
     String[] retArray = new String[] {"1", "28", "19", "20", "19", "29", "28", "18", "19"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "count(root.sg1.d1.s4)",
-      "count(root.sg1.d1.s5)",
-      "count(root.sg1.d2.s1)",
-      "count(root.sg1.d2.s2)",
-      "count(root.sg1.d2.s3)",
-      "count(root.sg1.d2.s4)",
-      "count(root.sg1.d2.s5)"
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "count(root.db1.d1.s4)",
+      "count(root.db1.d1.s5)",
+      "count(root.db1.d2.s1)",
+      "count(root.db1.d2.s2)",
+      "count(root.db1.d2.s3)",
+      "count(root.db1.d2.s4)",
+      "count(root.db1.d2.s5)"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.sg1.*")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(*) from root.db1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -162,17 +162,17 @@ public class IoTDBAggregationWithDeletionIT {
   public void countAllAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"1", "22", "13", "6"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "count(root.sg1.d1.s4)",
-      "count(root.sg1.d1.s5)"
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "count(root.db1.d1.s4)",
+      "count(root.db1.d1.s5)"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*) from root.sg1.d1 where time >= 9 and time <= 33")) {
+              "select count(*) from root.db1.d1 where time >= 9 and time <= 33")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -204,19 +204,19 @@ public class IoTDBAggregationWithDeletionIT {
   public void aggregateSomeAlignedWithoutTimeFilterTest() {
     double[] retArray = new double[] {1, 28, 230000, 390417, 230000, 13943.464285714286};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "sum(root.sg1.d1.s1)",
-      "sum(root.sg1.d1.s3)",
-      "avg(root.sg1.d1.s1)",
-      "avg(root.sg1.d1.s3)",
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "sum(root.db1.d1.s1)",
+      "sum(root.db1.d1.s3)",
+      "avg(root.db1.d1.s1)",
+      "avg(root.db1.d1.s3)",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1")) {
+              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.db1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -248,19 +248,19 @@ public class IoTDBAggregationWithDeletionIT {
   public void aggregateSomeAlignedWithTimeFilterTest() {
     double[] retArray = new double[] {1, 15, 230000, 230322, 230000, 15354.8};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "sum(root.sg1.d1.s1)",
-      "sum(root.sg1.d1.s3)",
-      "avg(root.sg1.d1.s1)",
-      "avg(root.sg1.d1.s3)",
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "sum(root.db1.d1.s1)",
+      "sum(root.db1.d1.s3)",
+      "avg(root.db1.d1.s1)",
+      "avg(root.db1.d1.s3)",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.sg1.d1 where time>=16 and time<=34")) {
+              "select count(s1),count (s3),sum(s1),sum(s3),avg(s1),avg(s3) from root.db1.d1 where time>=16 and time<=34")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -290,12 +290,12 @@ public class IoTDBAggregationWithDeletionIT {
   @Test
   public void countSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"0"};
-    String[] columnNames = {"count(root.sg1.d1.s1)"};
+    String[] columnNames = {"count(root.db1.d1.s1)"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s1) from root.sg1.d1 where time>=16 and time<=20")) {
+          statement.executeQuery("select count(s1) from root.db1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -327,12 +327,12 @@ public class IoTDBAggregationWithDeletionIT {
   @Test
   public void sumSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"null"};
-    String[] columnNames = {"sum(root.sg1.d1.s1)"};
+    String[] columnNames = {"sum(root.db1.d1.s1)"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select sum(s1) from root.sg1.d1 where time>=16 and time<=20")) {
+          statement.executeQuery("select sum(s1) from root.db1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -364,12 +364,12 @@ public class IoTDBAggregationWithDeletionIT {
   @Test
   public void avgSingleAlignedWithTimeFilterTest() {
     String[] retArray = new String[] {"null"};
-    String[] columnNames = {"avg(root.sg1.d1.s1)"};
+    String[] columnNames = {"avg(root.db1.d1.s1)"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select avg(s1) from root.sg1.d1 where time>=16 and time<=20")) {
+          statement.executeQuery("select avg(s1) from root.db1.d1 where time>=16 and time<=20")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -402,12 +402,12 @@ public class IoTDBAggregationWithDeletionIT {
   @Test
   public void countAlignedWithValueFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"11"};
-    String[] columnNames = {"count(root.sg1.d1.s4)"};
+    String[] columnNames = {"count(root.db1.d1.s4)"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s4) from root.sg1.d1 where s4 = true")) {
+          statement.executeQuery("select count(s4) from root.db1.d1 where s4 = true")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -438,16 +438,16 @@ public class IoTDBAggregationWithDeletionIT {
   public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0", "9", "11", "6"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s3)",
-      "count(root.sg1.d1.s4)",
-      "count(root.sg1.d1.s5)"
+      "count(root.db1.d1.s1)",
+      "count(root.db1.d1.s3)",
+      "count(root.db1.d1.s4)",
+      "count(root.db1.d1.s5)"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg1.d1 where s4 = true")) {
+          statement.executeQuery("select count(*) from root.db1.d1 where s4 = true")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -478,14 +478,14 @@ public class IoTDBAggregationWithDeletionIT {
   public void aggregationAllAlignedWithValueFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0", "25", "1"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)", "max_time(root.sg1.d1.s4)", "min_value(root.sg1.d1.s3)",
+      "count(root.db1.d1.s1)", "max_time(root.db1.d1.s4)", "min_value(root.db1.d1.s3)",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), max_time(s4), min_value(s3) from root.sg1.d1 where s4 = true")) {
+              "select count(s1), max_time(s4), min_value(s3) from root.db1.d1 where s4 = true")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {

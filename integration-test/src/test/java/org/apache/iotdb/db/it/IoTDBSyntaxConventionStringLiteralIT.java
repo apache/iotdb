@@ -89,24 +89,24 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s1 TEXT");
       for (int i = 0; i < insertData.length; i++) {
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
+            String.format("INSERT INTO root.db1.d1(time, s1) values (%d, %s)", i, insertData[i]);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.db1.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
-          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+          Assert.assertEquals(resultData[cnt], resultSet.getString("root.db1.d1.s1"));
           cnt++;
         }
         Assert.assertEquals(insertData.length, cnt);
       }
 
       for (String insertDatum : insertData) {
-        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
+        String querySql = String.format("SELECT s1 FROM root.db1.d1 WHERE s1 = %s", insertDatum);
         try (ResultSet resultSet = statement.executeQuery(querySql)) {
           Assert.assertTrue(resultSet.next());
         }
@@ -147,24 +147,24 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s1 TEXT");
       for (int i = 0; i < insertData.length; i++) {
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, s1) values (%d, %s)", i, insertData[i]);
+            String.format("INSERT INTO root.db1.d1(time, s1) values (%d, %s)", i, insertData[i]);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.db1.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
-          Assert.assertEquals(resultData[cnt], resultSet.getString("root.sg1.d1.s1"));
+          Assert.assertEquals(resultData[cnt], resultSet.getString("root.db1.d1.s1"));
           cnt++;
         }
         Assert.assertEquals(insertData.length, cnt);
       }
 
       for (String insertDatum : insertData) {
-        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertDatum);
+        String querySql = String.format("SELECT s1 FROM root.db1.d1 WHERE s1 = %s", insertDatum);
         try (ResultSet resultSet = statement.executeQuery(querySql)) {
           Assert.assertTrue(resultSet.next());
         }
@@ -184,43 +184,43 @@ public class IoTDBSyntaxConventionStringLiteralIT {
             + "line 1:45 mismatched input 'string' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s1 TEXT");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
     // without ' or "
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, string)");
+      statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, string)");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // wrap STRING_LITERAL with ``
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, `string`)");
+      statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, `string`)");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
 
-    String errorMsg2 =
+    String errorMdb2 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:47 extraneous input 'string' expecting {',', ')'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // single ' in ''
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, ''string')");
+      statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, ''string')");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg2, e.getMessage());
+      Assert.assertEquals(errorMdb2, e.getMessage());
     }
 
     String errorMsg3 =
@@ -230,7 +230,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // single " in ""
-      statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, \"\"string\")");
+      statement.execute("INSERT INTO root.db1.d1(time, s1) values (1, \"\"string\")");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg3, e.getMessage());
@@ -255,7 +255,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: line 1:7 no viable alternative at input 'REMOVE path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -263,10 +263,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("REMOVE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
 
-    String errorMsg2 =
+    String errorMdb2 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:7 mismatched input 'path' expecting {ROOT, STRING_LITERAL}";
@@ -275,7 +275,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("SETTLE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg2, e.getMessage());
+      Assert.assertEquals(errorMdb2, e.getMessage());
     }
   }
 
@@ -295,7 +295,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
 
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:17 mismatched input '`test123456789`' expecting STRING_LITERAL";
@@ -306,7 +306,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("CREATE USER test `test123456789`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
   }
 
@@ -352,7 +352,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
 
     // Illegal name with back quote
-    String errorMsg1 =
+    String errorMdb1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
             + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
@@ -363,7 +363,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("create function udf as `org.apache.iotdb.db.query.udf.example.Adder`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg1, e.getMessage());
+      Assert.assertEquals(errorMdb1, e.getMessage());
     }
   }
 
@@ -532,11 +532,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.sg.a "
+          "create timeseries root.db.a "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
-      statement.execute("insert into root.sg(time, a) values (1,1)");
+      statement.execute("insert into root.db(time, a) values (1,1)");
 
-      String selectSql = "select a as %s from root.sg";
+      String selectSql = "select a as %s from root.db";
       for (int i = 0; i < alias.length; i++) {
         try (ResultSet resultSet = statement.executeQuery(String.format(selectSql, alias[i]))) {
           Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
@@ -544,7 +544,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       }
 
       try {
-        statement.execute("select a as test.b from root.sg");
+        statement.execute("select a as test.b from root.db");
         fail();
       } catch (Exception ignored) {
       }
@@ -567,10 +567,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.sg.a "
+          "create timeseries root.db.a "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
 
-      String alterSql = "ALTER timeseries root.sg.a UPSERT alias = %s";
+      String alterSql = "ALTER timeseries root.db.a UPSERT alias = %s";
       for (int i = 0; i < alias.length; i++) {
         statement.execute(String.format(alterSql, alias[i]));
         try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
@@ -580,7 +580,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       }
 
       try {
-        statement.execute("ALTER timeseries root.sg.a UPSERT alias = test.a");
+        statement.execute("ALTER timeseries root.db.a UPSERT alias = test.a");
         fail();
       } catch (Exception ignored) {
       }

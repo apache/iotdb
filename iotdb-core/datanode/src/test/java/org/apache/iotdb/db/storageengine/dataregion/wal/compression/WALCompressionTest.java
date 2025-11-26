@@ -68,7 +68,7 @@ public class WALCompressionTest {
   private final String compressionDir =
       TestConstant.OUTPUT_DATA_DIR.concat(File.separator + "wal-compression");
 
-  private final String devicePath = "root.sg.d1";
+  private final String devicePath = "root.db.d1";
   long originalMinCompressionSize;
   CompressionType originCompressionType =
       IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();

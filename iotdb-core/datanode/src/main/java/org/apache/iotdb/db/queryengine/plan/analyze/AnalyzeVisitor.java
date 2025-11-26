@@ -2246,19 +2246,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             CONFIG.getSeriesPartitionExecutorClass(),
             CONFIG.getSeriesPartitionSlotNum());
       }
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap = new HashMap<>();
       for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
             new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
+        dbNameToQueryParamsMap
             .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 
       if (res.right.left || res.right.right) {
-        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(dbNameToQueryParamsMap);
       } else {
-        return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
       }
     } finally {
       long partitionFetchCost = System.nanoTime() - startTime;
@@ -2517,8 +2517,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * Check datatype consistency in ALIGN BY DEVICE.
    *
-   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
-   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+   * <p>an inconsistent example: select s0 from root.db1.d1, root.db1.d2 align by device, return
+   * false while root.db1.d1.s0 is INT32 and root.db1.d2.s0 is FLOAT.
    */
   private void checkDataTypeConsistencyInAlignByDevice(
       Analysis analysis, List<Expression> expressions) {
@@ -3275,7 +3275,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
     analysis.setRespDatasetHeader(
-        showDevicesStatement.hasSgCol()
+        showDevicesStatement.hasDbCol()
             ? DatasetHeaderFactory.getShowDevicesWithSgHeader()
             : DatasetHeaderFactory.getShowDevicesHeader());
     return analysis;
@@ -3299,7 +3299,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CountDatabaseStatement countDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setRealStatement(countDatabaseStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountStorageGroupHeader());
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountDatabaseHeader());
     return analysis;
   }
 
@@ -3574,18 +3574,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSchemaTree(schemaTree);
     context.setReleaseSchemaTreeAfterAnalyzing(false);
 
-    Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+    Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap = new HashMap<>();
 
     deduplicatedDeviceIDs.forEach(
         deviceID -> {
           DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
           queryParam.setDeviceID(deviceID);
-          sgNameToQueryParamsMap
+          dbNameToQueryParamsMap
               .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
               .add(queryParam);
         });
 
-    DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+    DataPartition dataPartition = partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);
     analysis.setFinishQueryAfterAnalyze(dataPartition.isEmpty());
 

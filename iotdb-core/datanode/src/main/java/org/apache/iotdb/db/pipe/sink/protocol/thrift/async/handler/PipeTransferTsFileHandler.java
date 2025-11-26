@@ -92,7 +92,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private IoTDBDataNodeAsyncClientManager clientManager;
 
   public PipeTransferTsFileHandler(
-      final IoTDBDataRegionAsyncSink connector,
+      final IoTDBDataRegionAsyncSink sink,
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
       final AtomicInteger eventsReferenceCount,
@@ -102,7 +102,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
-    super(connector);
+    super(sink);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
 
@@ -126,7 +126,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
+                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
                 transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
     position = 0;
 
@@ -146,7 +146,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       memoryBlock =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
                       ? readFileBufferSize
                       : 0);
       readBuffer = new byte[readFileBufferSize];
@@ -165,7 +165,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (client == null) {
       LOGGER.warn(
           "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
-          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
     }
@@ -174,7 +174,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (connector.isEnableSendTsFileLimit()) {
+    if (sink.isEnableSendTsFileLimit()) {
       TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
     }
     final int readLength = reader.read(readBuffer);
@@ -203,11 +203,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                     dataBaseName)
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     tsFile.getName(), tsFile.length(), dataBaseName);
-        final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
+        final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
-                connector.rateLimitIfNeeded(
+                sink.rateLimitIfNeeded(
                     pipePair.getLeft(),
                     pipePair.getRight(),
                     client.getEndPoint(),
@@ -230,11 +230,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-    final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
+    final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
-            connector.rateLimitIfNeeded(
+            sink.rateLimitIfNeeded(
                 pipePair.getLeft(),
                 pipePair.getRight(),
                 client.getEndPoint(),
@@ -252,7 +252,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     try {
       super.onComplete(response);
     } finally {
-      if (connector.isClosed()) {
+      if (sink.isClosed()) {
         returnClientIfNecessary();
       }
     }
@@ -266,8 +266,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          connector
-              .statusHandler()
+          sink.statusHandler()
               .handle(
                   status,
                   String.format(
@@ -328,7 +327,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final PipeTransferFilePieceResp resp =
           PipeTransferFilePieceResp.fromTPipeTransferResp(response);
 
-      // This case only happens when the connection is broken, and the connector is reconnected
+      // This case only happens when the connection is broken, and the sink is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
       final long code = resp.getStatus().getCode();
 
@@ -341,9 +340,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          connector
-              .statusHandler()
-              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+          sink.statusHandler().handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
 
@@ -415,7 +412,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          connector.addFailureEventsToRetryQueue(events);
+          sink.addFailureEventsToRetryQueue(events);
         }
       }
     }
@@ -426,7 +423,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       return;
     }
 
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       closeClient();
     }
 
@@ -447,7 +444,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (client == null) {
       LOGGER.warn(
           "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
-          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
     }
@@ -474,7 +471,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
    * @param timeoutMs CAN NOT BE UNLIMITED, otherwise it may cause deadlock.
    */
   private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
-    if (!PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()) {
+    if (!PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()) {
       return;
     }
 

@@ -221,19 +221,19 @@ public class GroupByTagNode extends MultiChildProcessNode {
    * <p>e.g. we have following timeseries:
    *
    * <ul>
-   *   <li>root.sg.d1.s1(k1=v1)
-   *   <li>root.sg.d1.s2(k1=v1)
-   *   <li>root.sg.d2.s1(k1=v2)
-   *   <li>root.sg.d3.s1(k1=v2)
+   *   <li>root.db.d1.s1(k1=v1)
+   *   <li>root.db.d1.s2(k1=v1)
+   *   <li>root.db.d2.s1(k1=v2)
+   *   <li>root.db.d3.s1(k1=v2)
    * </ul>
    *
    * Then the query <code>
-   * SELECT avg(s1), avg(s2) FROM root.sg.** GROUP BY TAGS(k1)
+   * SELECT avg(s1), avg(s2) FROM root.db.** GROUP BY TAGS(k1)
    * </code>will generate a {@link GroupByTagNode} with the <code>TagValuesToAggregationDescriptors
    * </code> as below: <code>
    *   {
-   *     ["v1"]: [["avg(root.sg.d1.s1)"], ["avg(root.sg.d1.s2)"]],
-   *     ["v2"]: [["avg(root.sg.d2.s1)","avg(root.sg.d3.s1)"], null],
+   *     ["v1"]: [["avg(root.db.d1.s1)"], ["avg(root.db.d1.s2)"]],
+   *     ["v2"]: [["avg(root.db.d2.s1)","avg(root.db.d3.s1)"], null],
    *   }
    * </code>
    *

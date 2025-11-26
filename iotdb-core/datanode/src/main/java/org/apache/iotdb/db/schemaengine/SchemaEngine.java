@@ -135,23 +135,23 @@ public class SchemaEngine {
 
   public static Map<String, List<SchemaRegionId>> getLocalSchemaRegionInfo() {
     final File schemaDir = new File(config.getSchemaDir());
-    final File[] sgDirList = schemaDir.listFiles();
+    final File[] dbDirList = schemaDir.listFiles();
     final Map<String, List<SchemaRegionId>> localSchemaPartitionTable = new HashMap<>();
-    if (sgDirList == null) {
+    if (dbDirList == null) {
       return localSchemaPartitionTable;
     }
-    for (File file : sgDirList) {
+    for (File file : dbDirList) {
       if (!file.isDirectory()) {
         continue;
       }
 
-      final File sgDir = new File(config.getSchemaDir(), file.getName());
+      final File dbDir = new File(config.getSchemaDir(), file.getName());
 
-      if (!sgDir.exists()) {
+      if (!dbDir.exists()) {
         continue;
       }
 
-      final File[] schemaRegionDirs = sgDir.listFiles();
+      final File[] schemaRegionDirs = dbDir.listFiles();
       if (schemaRegionDirs == null) {
         continue;
       }
@@ -320,10 +320,10 @@ public class SchemaEngine {
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
     schemaRegionMap.remove(schemaRegionId);
 
-    // check whether the sg dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
+    // check whether the db dir is empty
+    File dbDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
     File[] regionDirList =
-        sgDir.listFiles(
+        dbDir.listFiles(
             (dir, name) -> {
               try {
                 Integer.parseInt(name);
@@ -332,10 +332,10 @@ public class SchemaEngine {
                 return false;
               }
             });
-    // remove the empty sg dir
+    // remove the empty db dir
     if (regionDirList == null || regionDirList.length == 0) {
-      if (sgDir.exists()) {
-        FileUtils.deleteFileOrDirectory(sgDir);
+      if (dbDir.exists()) {
+        FileUtils.deleteFileOrDirectory(dbDir);
       }
     }
   }

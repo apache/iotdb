@@ -72,16 +72,16 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_ALL_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_PATH_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
 
@@ -178,10 +178,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         parameters
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
-                EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
+                SOURCE_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
             .trim();
-    if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
-        extractorRealtimeLooseRangeValue)) {
+    if (SOURCE_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(extractorRealtimeLooseRangeValue)) {
       sloppyTimeRange = true;
       sloppyPattern = true;
     } else {
@@ -191,8 +190,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               .filter(s -> !s.isEmpty())
               .map(String::toLowerCase)
               .collect(Collectors.toSet());
-      sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
-      sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
+      sloppyTimeRange = sloppyOptionSet.remove(SOURCE_REALTIME_LOOSE_RANGE_TIME_VALUE);
+      sloppyPattern = sloppyOptionSet.remove(SOURCE_REALTIME_LOOSE_RANGE_PATH_VALUE);
       if (!sloppyOptionSet.isEmpty()) {
         throw new PipeParameterNotValidException(
             String.format(
@@ -255,7 +254,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {

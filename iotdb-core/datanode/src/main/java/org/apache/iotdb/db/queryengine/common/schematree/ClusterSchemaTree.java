@@ -649,7 +649,7 @@ public class ClusterSchemaTree implements ISchemaTree {
   /**
    * Get database name by device path
    *
-   * <p>e.g., root.sg1 is a database and device path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.db1 is a database and device path = root.db1.d1, return root.db1
    *
    * @param deviceID only full device path, cannot be path pattern
    * @return database in the given path

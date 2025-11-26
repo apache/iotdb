@@ -221,7 +221,7 @@ public class PipeEventCollector implements EventCollector {
     }
 
     if (event instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
+      ((PipeHeartbeatEvent) event).recordSinkQueueSize(pendingQueue);
     }
 
     pendingQueue.directOffer(event);

@@ -57,7 +57,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class ChunkCacheTest {
   File tempSGDir;
-  static final String TEST_SG = "root.sg1";
+  static final String TEST_SG = "root.db1";
 
   int seqFileNum = 2;
   int unseqFileNum = 2;
@@ -148,7 +148,7 @@ public class ChunkCacheTest {
 
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
+      File file = new File(TestConstant.getTestTsFilePath("root.db1", 0, 0, i));
       if (!file.getParentFile().exists()) {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }
@@ -159,7 +159,7 @@ public class ChunkCacheTest {
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
     for (int i = 0; i < unseqFileNum; i++) {
-      File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
+      File file = new File(TestConstant.getTestTsFilePath("root.db1", 0, 0, i + seqFileNum));
       if (!file.getParentFile().exists()) {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }

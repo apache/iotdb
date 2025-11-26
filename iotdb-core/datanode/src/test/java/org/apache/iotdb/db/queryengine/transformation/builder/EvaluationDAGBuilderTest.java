@@ -69,7 +69,7 @@ public class EvaluationDAGBuilderTest {
   @Test
   public void testBuildWithNonMappable() {
     String sql =
-        "select s1 + 1, s1 * 2, s1 - 2, s1 / 3, sin(s1), m4(s1,'windowSize'='10') from root.sg.d1;";
+        "select s1 + 1, s1 * 2, s1 - 2, s1 / 3, sin(s1), m4(s1,'windowSize'='10') from root.db.d1;";
     try {
       IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
       Operator operator = generateOperatorTree(sql);

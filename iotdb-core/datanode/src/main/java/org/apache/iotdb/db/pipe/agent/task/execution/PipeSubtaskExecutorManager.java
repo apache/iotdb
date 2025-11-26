@@ -32,15 +32,15 @@ import java.util.function.Supplier;
  */
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
-  private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
+  private final Supplier<PipeSinkSubtaskExecutor> sinkExecutorSupplier;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
   }
 
-  public Supplier<PipeSinkSubtaskExecutor> getConnectorExecutorSupplier() {
-    return connectorExecutorSupplier;
+  public Supplier<PipeSinkSubtaskExecutor> getSinkExecutorSupplier() {
+    return sinkExecutorSupplier;
   }
 
   public PipeConsensusSubtaskExecutor getConsensusExecutor() {
@@ -56,7 +56,7 @@ public class PipeSubtaskExecutorManager {
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
-    connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
+    sinkExecutorSupplier = PipeSinkSubtaskExecutor::new;
     subscriptionExecutor =
         SubscriptionConfig.getInstance().getSubscriptionEnabled()
             ? new SubscriptionSubtaskExecutor()

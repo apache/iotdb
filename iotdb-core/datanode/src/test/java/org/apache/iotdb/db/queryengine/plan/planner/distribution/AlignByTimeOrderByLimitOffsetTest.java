@@ -61,28 +61,28 @@ public class AlignByTimeOrderByLimitOffsetTest {
    *       └──OffsetNode-40
    *           └──TopK-62
    *               └──FullOuterTimeJoinNode-38
-   *                   ├──SeriesScanNode-42:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   ├──SeriesScanNode-46:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   ├──SeriesScanNode-48:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   ├──SeriesScanNode-50:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesScanNode-42:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesScanNode-46:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesScanNode-48:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                   ├──SeriesScanNode-50:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *                   ├──ExchangeNode-56: [SourceAddress:192.0.3.1/test.6.0/59]
    *                   ├──ExchangeNode-57: [SourceAddress:192.0.2.1/test.7.0/60]
    *                   └──ExchangeNode-58: [SourceAddress:192.0.4.1/test.8.0/61]
    *
    * IdentitySinkNode-59
    *   └──FullOuterTimeJoinNode-52
-   *       ├──SeriesScanNode-44:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       └──SeriesScanNode-45:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       ├──SeriesScanNode-44:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesScanNode-45:[SeriesPath: root.db.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-60
    *   └──FullOuterTimeJoinNode-53
-   *       ├──SeriesScanNode-47:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesScanNode-49:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       ├──SeriesScanNode-47:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       └──SeriesScanNode-49:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-61
    *   └──FullOuterTimeJoinNode-54
-   *       ├──SeriesScanNode-43:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       └──SeriesScanNode-51:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       ├──SeriesScanNode-43:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       └──SeriesScanNode-51:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest1() {
@@ -90,7 +90,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // use TopKNode to replace SortNode + LimitNode
     sql =
         String.format(
-            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC LIMIT %s",
+            "select * from root.db.d1,root.db.d22,root.db.d333 ORDER BY root.db.d1.s1 DESC LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -111,7 +111,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // use TopKNode to replace SortNode
     sql =
         String.format(
-            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC OFFSET 5 LIMIT %s",
+            "select * from root.db.d1,root.db.d22,root.db.d333 ORDER BY root.db.d1.s1 DESC OFFSET 5 LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -140,15 +140,15 @@ public class AlignByTimeOrderByLimitOffsetTest {
    *           └──TransformNode-21
    *               └──TopK-32
    *                   └──FullOuterTimeJoinNode-19
-   *                       ├──SeriesScanNode-25:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                       ├──SeriesScanNode-25:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *                       ├──ExchangeNode-28: [SourceAddress:192.0.3.1/test.5.0/30]
    *                       └──ExchangeNode-29: [SourceAddress:192.0.2.1/test.6.0/31]
    *
    * IdentitySinkNode-30
-   *   └──SeriesScanNode-24:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *   └──SeriesScanNode-24:[SeriesPath: root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-31
-   *   └──SeriesScanNode-26:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesScanNode-26:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByExpressionTest2() {
@@ -156,7 +156,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // use TopKNode to replace SortNode + LimitNode
     sql =
         String.format(
-            "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC LIMIT %s", LIMIT_VALUE);
+            "select s1 from root.db.d1 ORDER BY root.db.d22.s2 DESC LIMIT %s", LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -173,7 +173,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // use TopKNode to replace SortNode
     sql =
         String.format(
-            "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC OFFSET 5 LIMIT %s",
+            "select s1 from root.db.d1 ORDER BY root.db.d22.s2 DESC OFFSET 5 LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -195,22 +195,22 @@ public class AlignByTimeOrderByLimitOffsetTest {
    *   └──TransformNode-5
    *       └──TopK-16
    *           └──AggregationNode-10
-   *               ├──SeriesAggregationScanNode-7:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesAggregationScanNode-7:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               ├──ExchangeNode-12: [SourceAddress:192.0.3.1/test.2.0/14]
    *               └──ExchangeNode-13: [SourceAddress:192.0.2.1/test.3.0/15]
    *
    * IdentitySinkNode-14
-   *   └──SeriesAggregationScanNode-9:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *   └──SeriesAggregationScanNode-9:[SeriesPath: root.db.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    * IdentitySinkNode-15
-   *   └──SeriesAggregationScanNode-8:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesAggregationScanNode-8:[SeriesPath: root.db.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByExpressionTest3() {
-    // aggregation, select count(root.sg.d1.s1) order by count(root.sg.d22.s2), LIMIT N
+    // aggregation, select count(root.db.d1.s1) order by count(root.db.d22.s2), LIMIT N
     sql =
         String.format(
-            "select count(s1) from root.sg.d1 ORDER BY count(root.sg.d22.s2) DESC LIMIT %s",
+            "select count(s1) from root.db.d1 ORDER BY count(root.db.d22.s2) DESC LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -223,10 +223,10 @@ public class AlignByTimeOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
 
-    // aggregation, select count(root.sg.d1.s1) order by count(root.sg.d22.s2), OFFSET M LIMIT N
+    // aggregation, select count(root.db.d1.s1) order by count(root.db.d22.s2), OFFSET M LIMIT N
     sql =
         String.format(
-            "select count(s1) from root.sg.d1 ORDER BY count(root.sg.d22.s2) DESC OFFSET 5 LIMIT %s",
+            "select count(s1) from root.db.d1 ORDER BY count(root.db.d22.s2) DESC OFFSET 5 LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -248,10 +248,10 @@ public class AlignByTimeOrderByLimitOffsetTest {
    *   └──FillNode-9
    *       └──TopK-31
    *           └──FullOuterTimeJoinNode-7
-   *               ├──SeriesScanNode-11:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               ├──SeriesScanNode-15:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               ├──SeriesScanNode-17:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               ├──SeriesScanNode-19:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-11:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-15:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-17:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-19:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
    *               ├──ExchangeNode-25: [SourceAddress:192.0.3.1/test.2.0/28]
    *               ├──ExchangeNode-26: [SourceAddress:192.0.2.1/test.3.0/29]
    *               └──ExchangeNode-27: [SourceAddress:192.0.4.1/test.4.0/30]
@@ -261,7 +261,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // previous and constant fill can use TopKNode
     sql =
         String.format(
-            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(previous) LIMIT %s",
+            "select * from root.db.d1,root.db.d22,root.db.d333 ORDER BY root.db.d1.s1 DESC fill(previous) LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -284,10 +284,10 @@ public class AlignByTimeOrderByLimitOffsetTest {
      *       └──FillNode-41
      *           └──SortNode-40
      *               └──FullOuterTimeJoinNode-39
-     *                   ├──SeriesScanNode-43:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-     *                   ├──SeriesScanNode-47:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-     *                   ├──SeriesScanNode-49:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-     *                   ├──SeriesScanNode-51:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-43:[SeriesPath: root.db.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-47:[SeriesPath: root.db.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-49:[SeriesPath: root.db.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-51:[SeriesPath: root.db.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
      *                   ├──ExchangeNode-57: [SourceAddress:192.0.3.1/test.6.0/60]
      *                   ├──ExchangeNode-58: [SourceAddress:192.0.2.1/test.7.0/61]
      *                   └──ExchangeNode-59: [SourceAddress:192.0.4.1/test.8.0/62]
@@ -295,7 +295,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
     // linear fill can not use TopKNode
     sql =
         String.format(
-            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(linear) LIMIT %s",
+            "select * from root.db.d1,root.db.d22,root.db.d333 ORDER BY root.db.d1.s1 DESC fill(linear) LIMIT %s",
             LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);

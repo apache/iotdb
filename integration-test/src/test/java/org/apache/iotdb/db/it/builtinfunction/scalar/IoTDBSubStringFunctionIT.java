@@ -45,22 +45,22 @@ import static org.junit.Assert.fail;
 public class IoTDBSubStringFunctionIT {
   private static final String[] SQLs =
       new String[] {
-        "CREATE DATABASE root.sg",
-        "CREATE TIMESERIES root.sg.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s6 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s7 WITH DATATYPE=DATE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s8 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s9 WITH DATATYPE=STRING, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s10 WITH DATATYPE=BLOB, ENCODING=PLAIN",
-        "INSERT INTO root.sg(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', 'abcd')",
-        "INSERT INTO root.sg(timestamp,s1) values(2, 'test')",
-        "INSERT INTO root.sg(timestamp,s1) values(3, 'abcdefg')",
-        "INSERT INTO root.sg(timestamp,s9) values(2, 'test')",
-        "INSERT INTO root.sg(timestamp,s9) values(3, 'abcdefg')",
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s6 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s7 WITH DATATYPE=DATE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s8 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s9 WITH DATATYPE=STRING, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.s10 WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "INSERT INTO root.db(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', 'abcd')",
+        "INSERT INTO root.db(timestamp,s1) values(2, 'test')",
+        "INSERT INTO root.db(timestamp,s1) values(3, 'abcdefg')",
+        "INSERT INTO root.db(timestamp,s9) values(2, 'test')",
+        "INSERT INTO root.db(timestamp,s9) values(3, 'abcdefg')",
         "flush"
       };
 
@@ -91,7 +91,7 @@ public class IoTDBSubStringFunctionIT {
     // Normal
     String[] expectedHeader =
         new String[] {
-          "Time,root.sg.s1,SUBSTRING(root.sg.s1,1),SUBSTRING(root.sg.s1,1,3),SUBSTRING(root.sg.s1 FROM 1),SUBSTRING(root.sg.s1 FROM 1 FOR 3)"
+          "Time,root.db.s1,SUBSTRING(root.db.s1,1),SUBSTRING(root.db.s1,1,3),SUBSTRING(root.db.s1 FROM 1),SUBSTRING(root.db.s1 FROM 1 FOR 3)"
         };
     String[] retArray =
         new String[] {
@@ -100,28 +100,28 @@ public class IoTDBSubStringFunctionIT {
           "3,abcdefg,abcdefg,abc,abcdefg,abc,",
         };
     resultSetEqualTest(
-        "select s1,SUBSTRING(s1,1),SUBSTRING(s1,1,3),SUBSTRING(s1 from 1),SUBSTRING(s1 from 1 for 3) from root.sg",
+        "select s1,SUBSTRING(s1,1),SUBSTRING(s1,1,3),SUBSTRING(s1 from 1),SUBSTRING(s1 from 1 for 3) from root.db",
         expectedHeader,
         retArray);
 
     // Param 1 greater than input series length
     expectedHeader =
         new String[] {
-          "Time,root.sg.s1,SUBSTRING(root.sg.s1,11),SUBSTRING(root.sg.s1,11,13),SUBSTRING(root.sg.s1 FROM 11),SUBSTRING(root.sg.s1 FROM 11 FOR 13)"
+          "Time,root.db.s1,SUBSTRING(root.db.s1,11),SUBSTRING(root.db.s1,11,13),SUBSTRING(root.db.s1 FROM 11),SUBSTRING(root.db.s1 FROM 11 FOR 13)"
         };
     retArray =
         new String[] {
           "1,abcd,,,,,", "2,test,,,,,", "3,abcdefg,,,,,",
         };
     resultSetEqualTest(
-        "select s1,SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.sg",
+        "select s1,SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.db",
         expectedHeader,
         retArray);
 
     // Normal
     String[] expectedHeader2 =
         new String[] {
-          "Time,root.sg.s9,SUBSTRING(root.sg.s9,1),SUBSTRING(root.sg.s9,1,3),SUBSTRING(root.sg.s9 FROM 1),SUBSTRING(root.sg.s9 FROM 1 FOR 3)"
+          "Time,root.db.s9,SUBSTRING(root.db.s9,1),SUBSTRING(root.db.s9,1,3),SUBSTRING(root.db.s9 FROM 1),SUBSTRING(root.db.s9 FROM 1 FOR 3)"
         };
     String[] retArray2 =
         new String[] {
@@ -130,7 +130,7 @@ public class IoTDBSubStringFunctionIT {
           "3,abcdefg,abcdefg,abc,abcdefg,abc,",
         };
     resultSetEqualTest(
-        "select s9,SUBSTRING(s9,1),SUBSTRING(s9,1,3),SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from root.sg",
+        "select s9,SUBSTRING(s9,1),SUBSTRING(s9,1,3),SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from root.db",
         expectedHeader2,
         retArray2);
   }
@@ -140,7 +140,7 @@ public class IoTDBSubStringFunctionIT {
     // Normal
     String[] expectedHeader =
         new String[] {
-          "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,1),SUBSTRING(root.sg.s1,1,3),SUBSTRING(root.sg.s1 FROM 1),SUBSTRING(root.sg.s1 FROM 1 FOR 3)"
+          "Time,root.db.s1,change_points(root.db.s1),SUBSTRING(root.db.s1,1),SUBSTRING(root.db.s1,1,3),SUBSTRING(root.db.s1 FROM 1),SUBSTRING(root.db.s1 FROM 1 FOR 3)"
         };
     String[] retArray =
         new String[] {
@@ -149,28 +149,28 @@ public class IoTDBSubStringFunctionIT {
           "3,abcdefg,abcdefg,abcdefg,abc,abcdefg,abc,",
         };
     resultSetEqualTest(
-        "select s1,change_points(s1),SUBSTRING(s1,1),SUBSTRING(s1,1,3),SUBSTRING(s1 from 1),SUBSTRING(s1 from 1 for 3) from root.sg",
+        "select s1,change_points(s1),SUBSTRING(s1,1),SUBSTRING(s1,1,3),SUBSTRING(s1 from 1),SUBSTRING(s1 from 1 for 3) from root.db",
         expectedHeader,
         retArray);
 
     // Param 1 greater than input series length
     expectedHeader =
         new String[] {
-          "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,11),SUBSTRING(root.sg.s1,11,13),SUBSTRING(root.sg.s1 FROM 11),SUBSTRING(root.sg.s1 FROM 11 FOR 13)"
+          "Time,root.db.s1,change_points(root.db.s1),SUBSTRING(root.db.s1,11),SUBSTRING(root.db.s1,11,13),SUBSTRING(root.db.s1 FROM 11),SUBSTRING(root.db.s1 FROM 11 FOR 13)"
         };
     retArray =
         new String[] {
           "1,abcd,abcd,,,,,", "2,test,test,,,,,", "3,abcdefg,abcdefg,,,,,",
         };
     resultSetEqualTest(
-        "select s1,change_points(s1),SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.sg",
+        "select s1,change_points(s1),SUBSTRING(s1,11),SUBSTRING(s1,11,13),SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from root.db",
         expectedHeader,
         retArray);
 
     // Normal
     String[] expectedHeader2 =
         new String[] {
-          "Time,root.sg.s9,change_points(root.sg.s1),SUBSTRING(root.sg.s9,1),SUBSTRING(root.sg.s9,1,3),SUBSTRING(root.sg.s9 FROM 1),SUBSTRING(root.sg.s9 FROM 1 FOR 3)"
+          "Time,root.db.s9,change_points(root.db.s1),SUBSTRING(root.db.s9,1),SUBSTRING(root.db.s9,1,3),SUBSTRING(root.db.s9 FROM 1),SUBSTRING(root.db.s9 FROM 1 FOR 3)"
         };
     String[] retArray2 =
         new String[] {
@@ -179,7 +179,7 @@ public class IoTDBSubStringFunctionIT {
           "3,abcdefg,abcdefg,abcdefg,abc,abcdefg,abc,",
         };
     resultSetEqualTest(
-        "select s9,change_points(s1),SUBSTRING(s9,1),SUBSTRING(s9,1,3),SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from root.sg",
+        "select s9,change_points(s1),SUBSTRING(s9,1),SUBSTRING(s9,1,3),SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from root.db",
         expectedHeader2,
         retArray2);
   }
@@ -188,7 +188,7 @@ public class IoTDBSubStringFunctionIT {
   public void testRoundBooleanAndText() {
     // Using substring without start and end position.
     assertTestFail(
-        "select s1,SUBSTRING(s1) from root.sg",
+        "select s1,SUBSTRING(s1) from root.db",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
 

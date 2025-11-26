@@ -54,22 +54,22 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   private final double reqCompressionRatio;
 
   public PipeTransferTabletBatchEventHandler(
-      final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncSink connector)
+      final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncSink sink)
       throws IOException {
-    super(connector);
+    super(sink);
 
     // Deep copy to keep events' reference
     events = batch.deepCopyEvents();
     pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
 
     final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
-    req = connector.compressIfNeeded(uncompressedReq);
+    req = sink.compressIfNeeded(uncompressedReq);
     reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     for (final Map.Entry<Pair<String, Long>, Long> entry : pipeName2BytesAccumulated.entrySet()) {
-      connector.rateLimitIfNeeded(
+      sink.rateLimitIfNeeded(
           entry.getKey().getLeft(),
           entry.getKey().getRight(),
           client.getEndPoint(),
@@ -92,13 +92,11 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector
-            .statusHandler()
-            .handle(status, response.getStatus().getMessage(), events.toString());
+        sink.statusHandler().handle(status, response.getStatus().getMessage(), events.toString());
       }
       for (final Pair<String, TEndPoint> redirectPair :
           LeaderCacheUtils.parseRecommendedRedirections(status)) {
-        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+        sink.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
 
       events.forEach(
@@ -123,7 +121,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
           events.size(),
           events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {
-      connector.addFailureEventsToRetryQueue(events);
+      sink.addFailureEventsToRetryQueue(events);
     }
   }
 

@@ -71,14 +71,14 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
-          "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED", "root.sg1.d1.vector1.s2,INT64,RLE,LZ4"
+          "root.db1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED", "root.db1.d1.vector1.s2,INT64,RLE,LZ4"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       try {
         statement.execute(
-            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+            "CREATE ALIGNED TIMESERIES root.db1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
       } catch (SQLException ignored) {
       }
 
@@ -97,17 +97,17 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
-          "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,LZ4"
+          "root.db1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.db1.d1.vector1.s2,INT64,RLE,LZ4"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       try {
         statement.execute(
-            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-        statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
+            "CREATE ALIGNED TIMESERIES root.db1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+        statement.execute("DELETE TIMESERIES root.db1.d1.vector1.s1");
         statement.execute(
-            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
+            "CREATE ALIGNED TIMESERIES root.db1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
       } catch (SQLException e) {
         e.printStackTrace();
       }
@@ -129,7 +129,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
     int count = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**")) {
       while (resultSet.next()) {
         String ActualResult =
             resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -151,13 +151,13 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // Should ignore the alignment difference
-      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+      statement.execute("create aligned timeseries root.db2.d (s2 int64, s3 int64)");
       // Should use the existing alignment
-      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
-      statement.execute("insert into root.sg2.d (time, s4) values (-1, 1)");
+      statement.execute("create timeseries root.db2.d.s1 with datatype=INT64");
+      statement.execute("insert into root.db2.d (time, s4) values (-1, 1)");
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from root.sg2.d"),
-          "Time,root.sg2.d.s3,root.sg2.d.s4,root.sg2.d.s1,root.sg2.d.s2,",
+          statement.executeQuery("select * from root.db2.d"),
+          "Time,root.db2.d.s3,root.db2.d.s4,root.db2.d.s1,root.db2.d.s2,",
           Collections.singleton("-1,null,1.0,null,null,"));
     } catch (SQLException ignored) {
       fail();

@@ -38,8 +38,8 @@ public class PipeEnrichedNonWritePlanNodeSerdeTest {
   public void testSerializeAndDeserialize() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("DeleteTimeSeriesNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     DeleteTimeSeriesNode deleteTimeSeriesNode = new DeleteTimeSeriesNode(planNodeId, patternTree);
     PipeEnrichedNonWritePlanNode pipeEnrichedNonWritePlanNode =

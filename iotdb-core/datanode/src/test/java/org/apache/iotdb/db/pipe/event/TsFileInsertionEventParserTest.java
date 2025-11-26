@@ -533,7 +533,7 @@ public class TsFileInsertionEventParserTest {
     schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
     schemaList.add(new MeasurementSchema("s3", TSDataType.DATE));
 
-    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    final Tablet t = new Tablet("root.db.d", schemaList, 1024);
     t.addTimestamp(0, 1000);
     t.addTimestamp(1, 2000);
     t.addValue("s1", 0, 2L);
@@ -544,7 +544,7 @@ public class TsFileInsertionEventParserTest {
     t.addValue("s3", 1, LocalDate.of(2024, 8, 1));
 
     try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-      writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+      writer.registerAlignedTimeseries(new PartialPath("root.db.d"), schemaList);
       writer.writeAligned(t);
     }
     testTsFilePointNum(

@@ -185,20 +185,20 @@ public interface Metadata {
    * Get data partition, used in query scenarios.
    *
    * @param database a user-provided db name, the database shall start with "root.".
-   * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   * @param dbNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(
-      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+      final String database, final List<DataPartitionQueryParam> dbNameToQueryParamsMap);
 
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
    *
    * @param database a user-provided db name, the database shall start with "root.".
-   * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
+   * @return dbNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
-      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+      final String database, final List<DataPartitionQueryParam> dbNameToQueryParamsMap);
 
   TableFunction getTableFunction(final String functionName);
 

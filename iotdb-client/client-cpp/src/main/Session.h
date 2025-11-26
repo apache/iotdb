@@ -113,7 +113,7 @@ void safe_cast(const T& value, Target& target) {
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
  *
- * for example:  device root.sg1.d1
+ * for example:  device root.db1.d1
  *
  * time, m1, m2, m3
  *    1,  1,  2,  3

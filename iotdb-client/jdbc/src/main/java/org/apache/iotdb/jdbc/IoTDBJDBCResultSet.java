@@ -79,7 +79,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private String operationType = "";
   private List<String> columns = null;
-  private List<String> sgColumns = null;
+  private List<String> dbColumns = null;
   private Charset charset = TSFileConfig.STRING_CHARSET;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
 
@@ -552,14 +552,14 @@ public class IoTDBJDBCResultSet implements ResultSet {
     try {
       if (statement.getResultSet() != null) {
         operationTypeColumn = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
-        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+        this.dbColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getDbColumns();
       }
     } catch (SQLException throwables) {
       LOGGER.error("get meta data error: {}", throwables.getMessage());
     }
     return new IoTDBResultMetadata(
         nonAlign,
-        sgColumns,
+        dbColumns,
         operationTypeColumn,
         ioTDBRpcDataSet.getColumnNameList(),
         ioTDBRpcDataSet.getColumnTypeList(),
@@ -1320,8 +1320,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
     return this.columns;
   }
 
-  public List<String> getSgColumns() {
-    return sgColumns;
+  public List<String> getDbColumns() {
+    return dbColumns;
   }
 
   public TSDataType getColumnTypeByIndex(int columnIndex) {

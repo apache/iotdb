@@ -81,7 +81,7 @@ public class SessionPoolIT {
           () -> {
             try {
               pool.insertRecord(
-                  "root.sg1.d1",
+                  "root.db1.d1",
                   1,
                   Collections.singletonList("s" + no),
                   Collections.singletonList(TSDataType.INT64),
@@ -110,7 +110,7 @@ public class SessionPoolIT {
     assertEquals(0, pool.currentAvailableSize());
     try {
       pool.insertRecord(
-          ".root.sg1.d1",
+          ".root.db1.d1",
           1,
           Collections.singletonList("s"),
           Collections.singletonList(TSDataType.INT64),
@@ -135,7 +135,7 @@ public class SessionPoolIT {
           () -> {
             try {
               SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+                  pool.executeQueryStatement("select * from root.db1.d1 where time = " + no);
               // this is incorrect because wrapper is not closed.
               // so all other 7 queries will be blocked
             } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -182,11 +182,11 @@ public class SessionPoolIT {
               SessionDataSetWrapper wrapper;
               if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
                 wrapper =
-                    pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+                    pool.executeQueryStatement("select * from root.db1.d1 where time = " + no);
               } else {
                 wrapper =
                     pool.executeQueryStatement(
-                        "select * from root.sg1.d1 where time = " + no, timeoutInMs);
+                        "select * from root.db1.d1 where time = " + no, timeoutInMs);
               }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
@@ -212,7 +212,7 @@ public class SessionPoolIT {
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
     List<String> pathList = new ArrayList<>();
-    pathList.add("root.sg1.d1.s1");
+    pathList.add("root.db1.d1.s1");
     for (int i = 0; i < 10; i++) {
       final int no = i;
       service.submit(
@@ -247,7 +247,7 @@ public class SessionPoolIT {
     SessionDataSetWrapper wrapper = null;
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
     try {
-      wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
+      wrapper = pool.executeQueryStatement("select * from root.db1.d1 where time > 1");
       node.stop();
       EnvFactory.getEnv()
           .ensureNodeStatus(
@@ -316,7 +316,7 @@ public class SessionPoolIT {
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
     try {
-      wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
+      wrapper = pool.executeQueryStatement("select * from root.db1.d1 where time > 1");
       // user does not know what happens.
       assertEquals(0, pool.currentAvailableSize());
       assertEquals(1, pool.currentOccupiedSize());
@@ -361,7 +361,7 @@ public class SessionPoolIT {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insertRecord(
-            "root.sg1.d1",
+            "root.db1.d1",
             i,
             Collections.singletonList("s" + i),
             Collections.singletonList(TSDataType.INT64),
@@ -381,7 +381,7 @@ public class SessionPoolIT {
     pool.close();
     try {
       pool.insertRecord(
-          "root.sg1.d1",
+          "root.db1.d1",
           1,
           Collections.singletonList("s1"),
           Collections.singletonList(TSDataType.INT64),

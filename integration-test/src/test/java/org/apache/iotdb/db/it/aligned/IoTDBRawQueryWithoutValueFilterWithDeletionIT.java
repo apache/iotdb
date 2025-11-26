@@ -58,10 +58,10 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
-      statement.execute("delete from root.sg1.d1.s1 where time <= 21");
-      statement.execute("delete from root.sg1.d1.s5 where time <= 31 and time > 20");
+      statement.execute("delete timeseries root.db1.d1.s2");
+      statement.execute("delete from root.db1.d1.s2 where time <= 40");
+      statement.execute("delete from root.db1.d1.s1 where time <= 21");
+      statement.execute("delete from root.db1.d1.s5 where time <= 31 and time > 20");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -119,11 +119,11 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "40,null,null,null,aligned_test40",
         };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s3", "root.db1.d1.s4", "root.db1.d1.s5"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from root.sg1.d1")) {
+        ResultSet resultSet = statement.executeQuery("select * from root.db1.d1")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -198,20 +198,20 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
         };
 
     String[] columnNames = {
-      "root.sg1.d1.s1",
-      "root.sg1.d1.s3",
-      "root.sg1.d1.s4",
-      "root.sg1.d1.s5",
-      "root.sg1.d2.s1",
-      "root.sg1.d2.s2",
-      "root.sg1.d2.s3",
-      "root.sg1.d2.s4",
-      "root.sg1.d2.s5"
+      "root.db1.d1.s1",
+      "root.db1.d1.s3",
+      "root.db1.d1.s4",
+      "root.db1.d1.s5",
+      "root.db1.d2.s1",
+      "root.db1.d2.s2",
+      "root.db1.d2.s3",
+      "root.db1.d2.s4",
+      "root.db1.d2.s5"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from root.sg1.*")) {
+        ResultSet resultSet = statement.executeQuery("select * from root.db1.*")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -269,12 +269,12 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "33,null,null,null,aligned_test33",
         };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s3", "root.db1.d1.s4", "root.db1.d1.s5"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select * from root.sg1.d1 where time >= 9 and time <= 33")) {
+            statement.executeQuery("select * from root.db1.d1 where time >= 9 and time <= 33")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -338,11 +338,11 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "40,null,null,aligned_test40",
         };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s4", "root.db1.d1.s5"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select s1,s4,s5 from root.sg1.d1")) {
+        ResultSet resultSet = statement.executeQuery("select s1,s4,s5 from root.db1.d1")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -395,11 +395,11 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "30,null,false",
         };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s4"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select s1,s4 from root.sg1.d1")) {
+        ResultSet resultSet = statement.executeQuery("select s1,s4 from root.db1.d1")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -446,13 +446,13 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "34,null,null,aligned_test34",
         };
 
-    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5"};
+    String[] columnNames = {"root.db1.d1.s1", "root.db1.d1.s4", "root.db1.d1.s5"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
             statement.executeQuery(
-                "select s1,s4,s5 from root.sg1.d1 where time >= 16 and time <= 34")) {
+                "select s1,s4,s5 from root.db1.d1 where time >= 16 and time <= 34")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();
@@ -506,19 +506,19 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
         };
 
     String[] columnNames = {
-      "root.sg1.d2.s5",
-      "root.sg1.d1.s4",
-      "root.sg1.d2.s1",
-      "root.sg1.d1.s5",
-      "root.sg1.d2.s4",
-      "root.sg1.d1.s1"
+      "root.db1.d2.s5",
+      "root.db1.d1.s4",
+      "root.db1.d2.s1",
+      "root.db1.d1.s5",
+      "root.db1.d2.s4",
+      "root.db1.d1.s1"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
             statement.executeQuery(
-                "select d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time >= 16 and time <= 34")) {
+                "select d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.db1 where time >= 16 and time <= 34")) {
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       Map<String, Integer> map = new HashMap<>();

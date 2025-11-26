@@ -72,9 +72,9 @@ public class PipeRealtimeExtractTest {
 
   private final String dataRegion1 = "1";
   private final String dataRegion2 = "2";
-  private final String pattern1 = "root.sg.d";
-  private final String pattern2 = "root.sg.d.a";
-  private final String[] device = new String[] {"root", "sg", "d"};
+  private final String pattern1 = "root.db.d";
+  private final String pattern2 = "root.db.d.a";
+  private final String[] device = new String[] {"root", "db", "d"};
   private final AtomicBoolean alive = new AtomicBoolean();
   private File tmpDir;
   private File tsFileDir;
@@ -89,14 +89,14 @@ public class PipeRealtimeExtractTest {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     writeService = Executors.newFixedThreadPool(2);
     listenerService = Executors.newFixedThreadPool(4);
-    tmpDir = new File(Files.createTempDirectory("pipeRealtimeExtractor").toString());
+    tmpDir = new File(Files.createTempDirectory("pipeRealtimeSource").toString());
     tsFileDir =
         new File(
             tmpDir.getPath()
                 + File.separator
                 + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + "root.sg");
+                + "root.db");
   }
 
   @After
@@ -109,14 +109,14 @@ public class PipeRealtimeExtractTest {
 
   @Test
   public void testRealtimeExtractProcess() {
-    // set up realtime extractor
+    // set up realtime source
 
-    try (final PipeRealtimeDataRegionLogSource extractor0 = new PipeRealtimeDataRegionLogSource();
-        final PipeRealtimeDataRegionHybridSource extractor1 =
+    try (final PipeRealtimeDataRegionLogSource source0 = new PipeRealtimeDataRegionLogSource();
+        final PipeRealtimeDataRegionHybridSource source1 =
             new PipeRealtimeDataRegionHybridSource();
-        final PipeRealtimeDataRegionTsFileSource extractor2 =
+        final PipeRealtimeDataRegionTsFileSource source2 =
             new PipeRealtimeDataRegionTsFileSource();
-        final PipeRealtimeDataRegionHybridSource extractor3 =
+        final PipeRealtimeDataRegionHybridSource source3 =
             new PipeRealtimeDataRegionHybridSource()) {
 
       final PipeParameters parameters0 =
@@ -177,24 +177,24 @@ public class PipeRealtimeExtractTest {
                   Integer.parseInt(dataRegion2),
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
 
-      // Some parameters of extractor are validated and initialized during the validation process.
-      extractor0.validate(new PipeParameterValidator(parameters0));
-      extractor0.customize(parameters0, configuration0);
-      extractor1.validate(new PipeParameterValidator(parameters1));
-      extractor1.customize(parameters1, configuration1);
-      extractor2.validate(new PipeParameterValidator(parameters2));
-      extractor2.customize(parameters2, configuration2);
-      extractor3.validate(new PipeParameterValidator(parameters3));
-      extractor3.customize(parameters3, configuration3);
+      // Some parameters of source are validated and initialized during the validation process.
+      source0.validate(new PipeParameterValidator(parameters0));
+      source0.customize(parameters0, configuration0);
+      source1.validate(new PipeParameterValidator(parameters1));
+      source1.customize(parameters1, configuration1);
+      source2.validate(new PipeParameterValidator(parameters2));
+      source2.customize(parameters2, configuration2);
+      source3.validate(new PipeParameterValidator(parameters3));
+      source3.customize(parameters3, configuration3);
 
-      final PipeRealtimeDataRegionSource[] extractors =
-          new PipeRealtimeDataRegionSource[] {extractor0, extractor1, extractor2, extractor3};
+      final PipeRealtimeDataRegionSource[] sources =
+          new PipeRealtimeDataRegionSource[] {source0, source1, source2, source3};
 
-      // start extractor 0, 1
-      extractors[0].start();
-      extractors[1].start();
+      // start source 0, 1
+      sources[0].start();
+      sources[1].start();
 
-      // test result of extractor 0, 1
+      // test result of source 0, 1
       final int writeNum = 10;
       List<Future<?>> writeFutures =
           Arrays.asList(
@@ -205,16 +205,16 @@ public class PipeRealtimeExtractTest {
       List<Future<?>> listenFutures =
           Arrays.asList(
               listen(
-                  extractors[0],
+                  sources[0],
                   event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(extractors[1], event -> 1, writeNum));
+              listen(sources[1], event -> 1, writeNum));
 
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
       } catch (final TimeoutException e) {
-        LOGGER.warn("Time out when listening extractor", e);
+        LOGGER.warn("Time out when listening source", e);
         alive.set(false);
         Assert.fail();
       }
@@ -227,11 +227,11 @@ public class PipeRealtimeExtractTest {
             }
           });
 
-      // start extractor 2, 3
-      extractors[2].start();
-      extractors[3].start();
+      // start source 2, 3
+      sources[2].start();
+      sources[3].start();
 
-      // test result of extractor 0 - 3
+      // test result of source 0 - 3
       writeFutures =
           Arrays.asList(
               write2DataRegion(writeNum, dataRegion1, writeNum),
@@ -241,22 +241,22 @@ public class PipeRealtimeExtractTest {
       listenFutures =
           Arrays.asList(
               listen(
-                  extractors[0],
+                  sources[0],
                   event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(extractors[1], event -> 1, writeNum),
+              listen(sources[1], event -> 1, writeNum),
               listen(
-                  extractors[2],
+                  sources[2],
                   event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(extractors[3], event -> 1, writeNum));
+              listen(sources[3], event -> 1, writeNum));
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
         listenFutures.get(2).get(10, TimeUnit.MINUTES);
         listenFutures.get(3).get(10, TimeUnit.MINUTES);
       } catch (final TimeoutException e) {
-        LOGGER.warn("Time out when listening extractor", e);
+        LOGGER.warn("Time out when listening source", e);
         alive.set(false);
         Assert.fail();
       }
@@ -337,7 +337,7 @@ public class PipeRealtimeExtractTest {
   }
 
   private Future<?> listen(
-      final PipeRealtimeDataRegionSource extractor,
+      final PipeRealtimeDataRegionSource source,
       final Function<Event, Integer> weight,
       final int expectNum) {
     return listenerService.submit(
@@ -347,7 +347,7 @@ public class PipeRealtimeExtractTest {
             while (alive.get() && eventNum < expectNum) {
               Event event;
               try {
-                event = extractor.supply();
+                event = source.supply();
               } catch (final Exception e) {
                 throw new RuntimeException(e);
               }

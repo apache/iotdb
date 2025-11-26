@@ -71,14 +71,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
 
 /**
@@ -543,9 +543,9 @@ public abstract class PipeTaskAgent {
 
   protected void calculateMemoryUsage(
       final PipeStaticMeta staticMeta,
-      final PipeParameters extractorParameters,
+      final PipeParameters sourceParameters,
       final PipeParameters processorParameters,
-      final PipeParameters connectorParameters) {
+      final PipeParameters sinkParameters) {
     // do nothing
   }
 
@@ -1128,7 +1128,7 @@ public abstract class PipeTaskAgent {
     return isSnapshotMode(parameters)
         || !parameters.getBooleanOrDefault(
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+            SOURCE_REALTIME_ENABLE_DEFAULT_VALUE);
   }
 
   public static boolean isRealtimeOnlyPipe(final PipeParameters parameters) {
@@ -1144,7 +1144,7 @@ public abstract class PipeTaskAgent {
       isSnapshotMode =
           parameters.getBooleanOrDefault(
               Arrays.asList(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY),
-              EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE);
+              SOURCE_MODE_SNAPSHOT_DEFAULT_VALUE);
     } else {
       final String sourceModeValue =
           parameters.getStringOrDefault(

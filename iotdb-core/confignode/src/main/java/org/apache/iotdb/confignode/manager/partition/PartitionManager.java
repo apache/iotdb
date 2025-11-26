@@ -192,8 +192,7 @@ public class PartitionManager {
   /**
    * Thread-safely get DataPartition
    *
-   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     TTimeSlotList>>
+   * @param req DataPartitionPlan with Map<DatabaseName, Map<SeriesPartitionSlot, TTimeSlotList>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
   public DataPartitionResp getDataPartition(final GetDataPartitionPlan req) {
@@ -211,9 +210,10 @@ public class PartitionManager {
    * Get SchemaPartition and create a new one if it does not exist.
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @return SchemaPartitionResp with DataPartition and TSStatus. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some Databases don't exist.
    */
   public SchemaPartitionResp getOrCreateSchemaPartition(final GetOrCreateSchemaPartitionPlan req) {
     // Check if the related Databases exist
@@ -269,15 +269,15 @@ public class PartitionManager {
       final Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
 
-      // Here we ensure that each StorageGroup has at least one SchemaRegion.
-      // And if some StorageGroups own too many slots, extend SchemaRegion for them.
+      // Here we ensure that each Database has at least one SchemaRegion.
+      // And if some Databases own too many slots, extend SchemaRegion for them.
 
-      // Map<StorageGroup, unassigned SeriesPartitionSlot count>
+      // Map<Database, unassigned SeriesPartitionSlot count>
       final Map<String, Integer> unassignedSchemaPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedSchemaPartitionSlotsMap.forEach(
-          (storageGroup, unassignedSchemaPartitionSlots) ->
+          (database, unassignedSchemaPartitionSlots) ->
               unassignedSchemaPartitionSlotsCountMap.put(
-                  storageGroup, unassignedSchemaPartitionSlots.size()));
+                  database, unassignedSchemaPartitionSlots.size()));
       TSStatus status =
           extendRegionGroupIfNecessary(
               unassignedSchemaPartitionSlotsCountMap, TConsensusGroupType.SchemaRegion);
@@ -352,7 +352,7 @@ public class PartitionManager {
   /**
    * Get DataPartition and create a new one if it does not exist.
    *
-   * @param req DataPartitionPlan with Map{@literal <}StorageGroupName, Map{@literal
+   * @param req DataPartitionPlan with Map{@literal <}DatabaseName, Map{@literal
    *     <}SeriesPartitionSlot, List{@literal <}TimePartitionSlot{@literal >}{@literal >}{@literal
    *     >}
    * @return DataPartitionResp with DataPartition and {@link TSStatus}. {@link
@@ -414,15 +414,15 @@ public class PartitionManager {
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
           partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
 
-      // Here we ensure that each StorageGroup has at least one DataRegion.
-      // And if some StorageGroups own too many slots, extend DataRegion for them.
+      // Here we ensure that each Database has at least one DataRegion.
+      // And if some Databases own too many slots, extend DataRegion for them.
 
-      // Map<StorageGroup, unassigned SeriesPartitionSlot count>
+      // Map<Database, unassigned SeriesPartitionSlot count>
       Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
-          (storageGroup, unassignedDataPartitionSlots) ->
+          (database, unassignedDataPartitionSlots) ->
               unassignedDataPartitionSlotsCountMap.put(
-                  storageGroup, unassignedDataPartitionSlots.size()));
+                  database, unassignedDataPartitionSlots.size()));
       TSStatus status =
           extendRegionGroupIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
@@ -534,12 +534,14 @@ public class PartitionManager {
   // ======================================================
 
   /**
-   * Allocate more RegionGroup to the specified StorageGroups if necessary.
+   * Allocate more RegionGroup to the specified Databases if necessary.
    *
-   * @param unassignedPartitionSlotsCountMap Map<StorageGroup, unassigned Partition count>
+   * @param unassignedPartitionSlotsCountMap Map{@literal <}Database, unassigned Partition
+   *     count{@literal >}
    * @param consensusGroupType SchemaRegion or DataRegion
-   * @return SUCCESS_STATUS when RegionGroup extension successful; NOT_ENOUGH_DATA_NODE when there
-   *     are not enough DataNodes; STORAGE_GROUP_NOT_EXIST when some StorageGroups don't exist
+   * @return {@link TSStatusCode#SUCCESS_STATUS} when RegionGroup extension successful; {@link
+   *     TSStatusCode#NO_ENOUGH_DATANODE} when there are not enough DataNodes; {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} when some Databases don't exist
    */
   private TSStatus extendRegionGroupIfNecessary(
       final Map<String, Integer> unassignedPartitionSlotsCountMap,
@@ -939,9 +941,9 @@ public class PartitionManager {
    *
    * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
-   * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
-   * @throws NoAvailableRegionGroupException When all RegionGroups within the specified StorageGroup
-   *     are unavailable currently
+   * @return The specific Database's Regions that sorted by the number of allocated slots
+   * @throws NoAvailableRegionGroupException When all RegionGroups within the specified Database are
+   *     unavailable currently
    */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
       final String database, final TConsensusGroupType type)
@@ -1343,7 +1345,7 @@ public class PartitionManager {
                                 schemaRegionCreateTask.getRegionId().getId(),
                                 new TCreateSchemaRegionReq(
                                     schemaRegionCreateTask.getRegionReplicaSet(),
-                                    schemaRegionCreateTask.getStorageGroup()));
+                                    schemaRegionCreateTask.getDatabase()));
                             createSchemaRegionHandler.putNodeLocation(
                                 schemaRegionCreateTask.getRegionId().getId(),
                                 schemaRegionCreateTask.getTargetDataNode());
@@ -1379,7 +1381,7 @@ public class PartitionManager {
                                 dataRegionCreateTask.getRegionId().getId(),
                                 new TCreateDataRegionReq(
                                     dataRegionCreateTask.getRegionReplicaSet(),
-                                    dataRegionCreateTask.getStorageGroup()));
+                                    dataRegionCreateTask.getDatabase()));
                             createDataRegionHandler.putNodeLocation(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 dataRegionCreateTask.getTargetDataNode());

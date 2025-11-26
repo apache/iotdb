@@ -168,26 +168,26 @@ public class IoTDBCountDeviceIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
 
       // Create database
-      statement.execute("CREATE DATABASE root.sg");
+      statement.execute("CREATE DATABASE root.db");
 
       // Create devices
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.g1.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.g2.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.g1.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.g2.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT64, ENCODING=PLAIN");
 
-      // Count devices exactly under root.sg.d1
-      long countResult = getCountDevices(statement, "root.sg.d1.*");
+      // Count devices exactly under root.db.d1
+      long countResult = getCountDevices(statement, "root.db.d1.*");
 
       // Get actual device count using show devices
-      long showDevicesCount = getShowDevicesCount(statement, "root.sg.d1.*");
+      long showDevicesCount = getShowDevicesCount(statement, "root.db.d1.*");
 
       // They should match
       Assert.assertEquals(
           "Count devices should match show devices count", showDevicesCount, countResult);
 
-      // Expected: root.sg.d1.g1, root.sg.d1.g2 = 2 devices
-      Assert.assertEquals("Should have exactly 2 devices under root.sg.d1", 2, countResult);
+      // Expected: root.db.d1.g1, root.db.d1.g2 = 2 devices
+      Assert.assertEquals("Should have exactly 2 devices under root.db.d1", 2, countResult);
     }
   }
 

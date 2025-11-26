@@ -508,13 +508,13 @@ public class TestMetadata implements Metadata {
 
   @Override
   public DataPartition getDataPartition(
-      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+      final String database, final List<DataPartitionQueryParam> dbNameToQueryParamsMap) {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
@@ -586,23 +586,23 @@ public class TestMetadata implements Metadata {
 
       @Override
       public DataPartition getDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return !sgNameToQueryParamsMap.isEmpty() && sgNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
+        return !dbNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
             ? TREE_VIEW_DATA_PARTITION
             : TABLE_DATA_PARTITION;
       }
 
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return !sgNameToQueryParamsMap.isEmpty() && sgNameToQueryParamsMap.get(TREE_VIEW_DB) != null
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
+        return !dbNameToQueryParamsMap.isEmpty() && dbNameToQueryParamsMap.get(TREE_VIEW_DB) != null
             ? TREE_VIEW_DATA_PARTITION
             : TABLE_DATA_PARTITION;
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return TABLE_DATA_PARTITION;
       }
 

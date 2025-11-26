@@ -233,16 +233,16 @@ public class StorageEngine implements IService {
     WALRecoverManager.getInstance()
         .setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(recoverDataRegionNum));
     for (Map.Entry<String, List<DataRegionId>> entry : localDataRegionInfo.entrySet()) {
-      String sgName = entry.getKey();
+      String dbName = entry.getKey();
       for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
               DataRegion dataRegion;
               try {
-                dataRegion = buildNewDataRegion(sgName, dataRegionId);
+                dataRegion = buildNewDataRegion(dbName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
-                    "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+                    "Failed to recover data region {}[{}]", dbName, dataRegionId.getId(), e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
@@ -260,24 +260,24 @@ public class StorageEngine implements IService {
   /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
-    File[] sgDirs = system.listFiles();
+    File[] dbDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
-    if (sgDirs == null) {
+    if (dbDirs == null) {
       return localDataRegionInfo;
     }
-    for (File sgDir : sgDirs) {
-      if (!sgDir.isDirectory()) {
+    for (File dbDir : dbDirs) {
+      if (!dbDir.isDirectory()) {
         continue;
       }
-      String sgName = sgDir.getName();
+      String dbName = dbDir.getName();
       List<DataRegionId> dataRegionIdList = new ArrayList<>();
-      for (File dataRegionDir : Objects.requireNonNull(sgDir.listFiles())) {
+      for (File dataRegionDir : Objects.requireNonNull(dbDir.listFiles())) {
         if (!dataRegionDir.isDirectory()) {
           continue;
         }
         dataRegionIdList.add(new DataRegionId(Integer.parseInt(dataRegionDir.getName())));
       }
-      localDataRegionInfo.put(sgName, dataRegionIdList);
+      localDataRegionInfo.put(dbName, dataRegionIdList);
     }
     return localDataRegionInfo;
   }
@@ -449,7 +449,7 @@ public class StorageEngine implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.db1
    */
   public DataRegion buildNewDataRegion(String databaseName, DataRegionId dataRegionId)
       throws DataRegionException {

@@ -67,7 +67,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
   private static final int approximateDataPartitionSizeInBytes = 4 + 8 + 8;
 
   /* Don't modify any of the following default configuration */
-  private static final String sg = "root.db";
+  private static final String db = "root.db";
   private static final String defaultSchemaRegionGroupExtensionPolicy = "CUSTOM";
   private static final int defaultSchemaRegionGroupNumPerDatabase = 1;
   private static final String defaultDataRegionGroupExtensionPolicy = "CUSTOM";
@@ -108,7 +108,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
         Statement statement = connection.createStatement()) {
       // Create a Database, a SchemaRegionGroup and a DataRegionGroup
       // in order to initialize test environment
-      String initSql = String.format("INSERT INTO %s.d(timestamp, s) values(0, 0.0)", sg);
+      String initSql = String.format("INSERT INTO %s.d(timestamp, s) values(0, 0.0)", db);
       statement.execute(initSql);
     }
   }
@@ -134,7 +134,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
         // Prepare PartitionSlotsMap
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
             ConfigNodeTestUtils.constructPartitionSlotsMap(
-                sg,
+                db,
                 sid,
                 sid + testSeriesPartitionBatchSize,
                 tid,
@@ -165,7 +165,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
             dataPartitionTableResp.getStatus().getCode());
         Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
         ConfigNodeTestUtils.checkDataPartitionTable(
-            sg,
+            db,
             sid,
             sid + testSeriesPartitionBatchSize,
             tid,

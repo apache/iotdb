@@ -38,12 +38,12 @@ public class SchemaRegionUtils {
   public static void deleteSchemaRegionFolder(String schemaRegionDirPath, Logger logger)
       throws MetadataException {
     File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
-    File[] sgFiles = schemaRegionDir.listFiles();
-    if (sgFiles == null) {
+    File[] dbFiles = schemaRegionDir.listFiles();
+    if (dbFiles == null) {
       throw new MetadataException(
           String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
     }
-    for (File file : sgFiles) {
+    for (File file : dbFiles) {
       try {
         Files.delete(file.toPath());
         logger.info("Delete schema region file {}", file.getAbsolutePath());

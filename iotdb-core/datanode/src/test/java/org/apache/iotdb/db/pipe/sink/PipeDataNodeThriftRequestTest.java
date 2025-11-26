@@ -88,7 +88,7 @@ public class PipeDataNodeThriftRequestTest {
         PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
             new InsertRowNode(
                 new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
+                new PartialPath(new String[] {"root", "db", "d"}),
                 false,
                 new String[] {"s"},
                 new TSDataType[] {TSDataType.INT32},
@@ -105,7 +105,7 @@ public class PipeDataNodeThriftRequestTest {
 
     final Statement statement = req.constructStatement();
     final List<PartialPath> paths = new ArrayList<>();
-    paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
+    paths.add(new PartialPath(new String[] {"root", "db", "d", "s"}));
     Assert.assertEquals(statement.getPaths(), paths);
   }
 
@@ -115,7 +115,7 @@ public class PipeDataNodeThriftRequestTest {
         PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
             new InsertRowNode(
                 new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
+                new PartialPath(new String[] {"root", "db", "d"}),
                 false,
                 new String[] {"s"},
                 new TSDataType[] {TSDataType.INT32},
@@ -135,7 +135,7 @@ public class PipeDataNodeThriftRequestTest {
 
     final InsertBaseStatement statement = req.constructStatement();
     final List<PartialPath> paths = new ArrayList<>();
-    paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
+    paths.add(new PartialPath(new String[] {"root", "db", "d", "s"}));
 
     Assert.assertEquals(statement.getPaths(), paths);
     Assert.assertTrue(statement.isWriteToTable());
@@ -176,7 +176,7 @@ public class PipeDataNodeThriftRequestTest {
         PipeTransferPlanNodeReq.toTPipeTransferReq(
             new CreateAlignedTimeSeriesNode(
                 new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
+                new PartialPath(new String[] {"root", "db", "d"}),
                 Collections.singletonList("s"),
                 Collections.singletonList(TSDataType.INT32),
                 Collections.singletonList(TSEncoding.PLAIN),
@@ -208,7 +208,7 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
-      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+      final Tablet t = new Tablet("root.db.d", schemaList, 1024);
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -231,16 +231,16 @@ public class PipeDataNodeThriftRequestTest {
       final Statement statement =
           req.constructStatement(); // will call PipeTransferTabletRawReq.sortTablet() here
       List<PartialPath> paths = new ArrayList<>();
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s1"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s2"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s3"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s4"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s5"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s6"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s7"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s8"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s9"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s10"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s1"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s2"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s3"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s4"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s5"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s6"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s7"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s8"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s9"}));
+      paths.add(new PartialPath(new String[] {"root", "db", "d", "s10"}));
       Assert.assertEquals(statement.getPaths(), paths);
     } catch (final IOException e) {
       Assert.fail();
@@ -316,7 +316,7 @@ public class PipeDataNodeThriftRequestTest {
     final InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"root", "sg", "d"}),
+            new PartialPath(new String[] {"root", "db", "d"}),
             false,
             new String[] {"s"},
             new TSDataType[] {TSDataType.INT32},
@@ -344,7 +344,7 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
-    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    final Tablet t = new Tablet("root.db.d", schemaList, 1024);
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);
@@ -390,7 +390,7 @@ public class PipeDataNodeThriftRequestTest {
     final InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"root", "sg", "d"}),
+            new PartialPath(new String[] {"root", "db", "d"}),
             false,
             new String[] {"s"},
             new TSDataType[] {TSDataType.INT32},
@@ -420,7 +420,7 @@ public class PipeDataNodeThriftRequestTest {
     schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
     schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
 
-    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    final Tablet t = new Tablet("root.db.d", schemaList, 1024);
     t.addTimestamp(0, 2000);
     t.addTimestamp(1, 1000);
     t.addValue("s1", 0, 2);

@@ -44,7 +44,7 @@ public class PipeConsensusDeleteEventHandler
 
   private final TPipeConsensusTransferReq req;
 
-  private final PipeConsensusAsyncSink connector;
+  private final PipeConsensusAsyncSink sink;
 
   private final PipeConsensusSinkMetrics metric;
 
@@ -53,11 +53,11 @@ public class PipeConsensusDeleteEventHandler
   public PipeConsensusDeleteEventHandler(
       PipeDeleteDataNodeEvent event,
       TPipeConsensusTransferReq req,
-      PipeConsensusAsyncSink connector,
+      PipeConsensusAsyncSink sink,
       PipeConsensusSinkMetrics metric) {
     this.event = event;
     this.req = req;
-    this.connector = connector;
+    this.sink = sink;
     this.metric = metric;
     this.createTime = System.nanoTime();
   }
@@ -79,7 +79,7 @@ public class PipeConsensusDeleteEventHandler
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector.statusHandler().handle(status, status.getMessage(), event.toString());
+        sink.statusHandler().handle(status, status.getMessage(), event.toString());
       }
       event.decreaseReferenceCount(PipeConsensusDeleteEventHandler.class.getName(), true);
 
@@ -90,10 +90,10 @@ public class PipeConsensusDeleteEventHandler
       }
       // if code flow reach here, meaning the file will not be resent and will be ignored.
       // events that don't need to be retried will be removed from the buffer
-      connector.removeEventFromBuffer(event);
+      sink.removeEventFromBuffer(event);
 
       long duration = System.nanoTime() - createTime;
-      metric.recordConnectorWalTransferTimer(duration);
+      metric.recordSinkWalTransferTimer(duration);
     } catch (Exception e) {
       onError(e);
     }
@@ -117,7 +117,7 @@ public class PipeConsensusDeleteEventHandler
       }
     }
     // IoTV2 ensures that only use PipeInsertionEvent, which is definitely EnrichedEvent.
-    connector.addFailureEventToRetryQueue(event);
+    sink.addFailureEventToRetryQueue(event);
     metric.recordRetryCounter();
   }
 }

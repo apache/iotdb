@@ -63,8 +63,8 @@ public class TableDeviceSchemaCacheTest {
 
   private static long originMemConfig;
 
-  private static final String database1 = "sg1";
-  private static final String database2 = "sg2";
+  private static final String database1 = "db1";
+  private static final String database2 = "db2";
   private static final String table1 = "t1";
   private static final String table2 = "t2";
   private static final String attributeName1 = "type";

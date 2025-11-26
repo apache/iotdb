@@ -67,7 +67,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** This connector is used for PipeConsensus to transfer queued event. */
+/** This sink is used for PipeConsensus to transfer queued event. */
 @TreeModel
 @TableModel
 public class PipeConsensusSyncSink extends IoTDBSink {
@@ -90,7 +90,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
       final int consensusGroupId,
       final int thisDataNodeId,
       final PipeConsensusSinkMetrics pipeConsensusSinkMetrics) {
-    // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
+    // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusSink. Thus,
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
@@ -133,7 +133,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // Note: here we don't need to do type judgment here, because PipeConsensus uses
     // PIPE_CONSENSUS_PROCESSOR and will not change the event type like
-    // org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector
+    // org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink
     try {
       if (isTabletBatchModeEnabled) {
         if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
@@ -158,7 +158,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     // Note: here we don't need to do type judgment here, because PipeConsensus uses DO_NOTHING
     // processor and will not change the event type like
-    // org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector
+    // org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink
     try {
       final long startTime = System.nanoTime();
       // In order to commit in order
@@ -446,7 +446,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
       final TCommitId tCommitId,
       final TConsensusGroupId tConsensusGroupId)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
@@ -490,7 +490,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
         position += readLength;
 
         final TSStatus status = resp.getStatus();
-        // This case only happens when the connection is broken, and the connector is reconnected
+        // This case only happens when the connection is broken, and the sink is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
         if (status.getCode()
             == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
@@ -513,12 +513,12 @@ public class PipeConsensusSyncSink extends IoTDBSink {
   }
 
   private TEndPoint getFollowerUrl() {
-    // In current pipeConsensus design, one connector corresponds to one follower, so the peers is
+    // In current pipeConsensus design, one sink corresponds to one follower, so the peers is
     // actually a singleton list
     return peers.get(0);
   }
 
-  // synchronized to avoid close connector when transfer event
+  // synchronized to avoid close sink when transfer event
   @Override
   public synchronized void close() {
     super.close();

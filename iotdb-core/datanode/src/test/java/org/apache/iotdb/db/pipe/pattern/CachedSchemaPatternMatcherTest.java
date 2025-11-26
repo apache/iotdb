@@ -75,7 +75,7 @@ public class CachedSchemaPatternMatcherTest {
 
   private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
-  private List<PipeRealtimeDataRegionSource> extractors;
+  private List<PipeRealtimeDataRegionSource> sources;
   private int dataNodeId;
 
   @Before
@@ -84,7 +84,7 @@ public class CachedSchemaPatternMatcherTest {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     matcher = new CachedSchemaPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
-    extractors = new ArrayList<>();
+    sources = new ArrayList<>();
   }
 
   @After
@@ -95,8 +95,8 @@ public class CachedSchemaPatternMatcherTest {
 
   @Test
   public void testCachedMatcher() throws Exception {
-    final PipeRealtimeDataRegionSource dataRegionExtractor = new PipeRealtimeDataRegionFakeSource();
-    dataRegionExtractor.customize(
+    final PipeRealtimeDataRegionSource dataRegionSource = new PipeRealtimeDataRegionFakeSource();
+    dataRegionSource.customize(
         new PipeParameters(
             new HashMap<String, String>() {
               {
@@ -104,14 +104,14 @@ public class CachedSchemaPatternMatcherTest {
               }
             }),
         new PipeTaskRuntimeConfiguration(new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
-    extractors.add(dataRegionExtractor);
+    sources.add(dataRegionSource);
 
-    final int deviceExtractorNum = 10;
-    final int seriesExtractorNum = 10;
-    for (int i = 0; i < deviceExtractorNum; i++) {
-      final PipeRealtimeDataRegionSource deviceExtractor = new PipeRealtimeDataRegionFakeSource();
+    final int deviceSourceNum = 10;
+    final int seriesSourceNum = 10;
+    for (int i = 0; i < deviceSourceNum; i++) {
+      final PipeRealtimeDataRegionSource deviceSource = new PipeRealtimeDataRegionFakeSource();
       int finalI1 = i;
-      deviceExtractor.customize(
+      deviceSource.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
@@ -119,12 +119,12 @@ public class CachedSchemaPatternMatcherTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
-      extractors.add(deviceExtractor);
-      for (int j = 0; j < seriesExtractorNum; j++) {
-        final PipeRealtimeDataRegionSource seriesExtractor = new PipeRealtimeDataRegionFakeSource();
+      sources.add(deviceSource);
+      for (int j = 0; j < seriesSourceNum; j++) {
+        final PipeRealtimeDataRegionSource seriesSource = new PipeRealtimeDataRegionFakeSource();
         int finalI = i;
         int finalJ = j;
-        seriesExtractor.customize(
+        seriesSource.customize(
             new PipeParameters(
                 new HashMap<String, String>() {
                   {
@@ -135,12 +135,12 @@ public class CachedSchemaPatternMatcherTest {
                 }),
             new PipeTaskRuntimeConfiguration(
                 new PipeTaskSourceRuntimeEnvironment("1", 1, 1, null)));
-        extractors.add(seriesExtractor);
+        sources.add(seriesSource);
       }
     }
 
     final Future<?> future =
-        executorService.submit(() -> extractors.forEach(extractor -> matcher.register(extractor)));
+        executorService.submit(() -> sources.forEach(source -> matcher.register(source)));
 
     final int epochNum = 10000;
     final int deviceNum = 1000;
@@ -161,12 +161,12 @@ public class CachedSchemaPatternMatcherTest {
                 null,
                 Collections.singletonMap(new StringArrayDeviceID("root.db" + i), measurements));
         final long startTime = System.currentTimeMillis();
-        matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
+        matcher.match(event).getLeft().forEach(source -> source.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
       final MockedPipeRealtimeEvent event = new MockedPipeRealtimeEvent(null, null, deviceMap);
       final long startTime = System.currentTimeMillis();
-      matcher.match(event).getLeft().forEach(extractor -> extractor.extract(event));
+      matcher.match(event).getLeft().forEach(source -> source.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());

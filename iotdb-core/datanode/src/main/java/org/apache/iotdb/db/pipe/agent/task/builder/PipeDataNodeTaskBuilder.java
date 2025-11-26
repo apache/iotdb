@@ -51,8 +51,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_TABLET_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
 
 public class PipeDataNodeTaskBuilder {
@@ -115,7 +115,7 @@ public class PipeDataNodeTaskBuilder {
               sinkParameters,
               regionId,
               pipeType.equals(PipeType.USER)
-                  ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
+                  ? PipeSubtaskExecutorManager.getInstance().getSinkExecutorSupplier()
                   : PipeSubtaskExecutorManager.getInstance()::getConsensusExecutor);
     }
 
@@ -127,7 +127,7 @@ public class PipeDataNodeTaskBuilder {
             blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters()),
             regionId,
             sourceStage.getEventSupplier(),
-            sinkStage.getPipeConnectorPendingQueue(),
+            sinkStage.getPipeSinkPendingQueue(),
             PROCESSOR_EXECUTOR,
             pipeTaskMeta,
             pipeStaticMeta
@@ -204,7 +204,7 @@ public class PipeDataNodeTaskBuilder {
     final boolean isRealtimeEnabled =
         sourceParameters.getBooleanOrDefault(
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
+            SOURCE_REALTIME_ENABLE_DEFAULT_VALUE);
 
     if (isRealtimeEnabled && !shouldTerminatePipeOnAllHistoricalEventsConsumed) {
       final Boolean enableSendTsFileLimit =

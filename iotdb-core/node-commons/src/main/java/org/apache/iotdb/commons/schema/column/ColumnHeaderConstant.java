@@ -345,7 +345,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
+  public static final List<ColumnHeader> showDevicesWithDbColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -425,7 +425,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> countTimeSeriesColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_TIMESERIES, TSDataType.INT64));
 
-  public static final List<ColumnHeader> countStorageGroupColumnHeaders =
+  public static final List<ColumnHeader> countDatabaseColumnHeaders =
       ImmutableList.of(new ColumnHeader(COUNT_DATABASE, TSDataType.INT32));
 
   public static final List<ColumnHeader> showRegionColumnHeaders =

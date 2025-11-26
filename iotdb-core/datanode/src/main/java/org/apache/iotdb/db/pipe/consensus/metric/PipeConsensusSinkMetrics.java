@@ -31,36 +31,36 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeConsensusSinkMetrics implements IMetricSet {
-  private final PipeConsensusAsyncSink pipeConsensusAsyncConnector;
+  private final PipeConsensusAsyncSink pipeConsensusAsyncSink;
 
-  private Timer connectorEnqueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer connectorWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer connectorTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer connectorTsFilePieceTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkEnqueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkTsFilePieceTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer retryWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer retryTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Counter retryCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  private static final String CONNECTOR = "pipeConsensusAsyncConnector";
+  private static final String CONNECTOR = "pipeConsensusAsyncSink";
 
-  public PipeConsensusSinkMetrics(PipeConsensusAsyncSink pipeConsensusAsyncConnector) {
-    this.pipeConsensusAsyncConnector = pipeConsensusAsyncConnector;
+  public PipeConsensusSinkMetrics(PipeConsensusAsyncSink pipeConsensusAsyncSink) {
+    this.pipeConsensusAsyncSink = pipeConsensusAsyncSink;
   }
 
-  public void recordConnectorEnqueueTimer(long costTimeInNanos) {
-    connectorEnqueueTimer.updateNanos(costTimeInNanos);
+  public void recordSinkEnqueueTimer(long costTimeInNanos) {
+    sinkEnqueueTimer.updateNanos(costTimeInNanos);
   }
 
-  public void recordConnectorWalTransferTimer(long costTimeInNanos) {
-    connectorWALTransferTimer.updateNanos(costTimeInNanos);
+  public void recordSinkWalTransferTimer(long costTimeInNanos) {
+    sinkWALTransferTimer.updateNanos(costTimeInNanos);
   }
 
-  public void recordConnectorTsFileTransferTimer(long costTimeInNanos) {
-    connectorTsFileTransferTimer.updateNanos(costTimeInNanos);
+  public void recordSinkTsFileTransferTimer(long costTimeInNanos) {
+    sinkTsFileTransferTimer.updateNanos(costTimeInNanos);
   }
 
-  public void recordConnectorTsFilePieceTransferTimer(long costTimeInNanos) {
-    connectorTsFilePieceTransferTimer.updateNanos(costTimeInNanos);
+  public void recordSinkTsFilePieceTransferTimer(long costTimeInNanos) {
+    sinkTsFilePieceTransferTimer.updateNanos(costTimeInNanos);
   }
 
   public void recordRetryWALTransferTimer(long costTimeInNanos) {
@@ -97,7 +97,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+            pipeConsensusAsyncSink.getConsensusGroupIdStr(),
             Tag.TYPE.toString(),
             "pipeConsensusRetryCount");
   }
@@ -106,68 +106,68 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.PIPE_SEND_EVENT.toString(),
         MetricLevel.IMPORTANT,
-        pipeConsensusAsyncConnector,
+        pipeConsensusAsyncSink,
         PipeConsensusAsyncSink::getTransferBufferSize,
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+        pipeConsensusAsyncSink.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "transferBufferSize");
     metricService.createAutoGauge(
         Metric.PIPE_SEND_EVENT.toString(),
         MetricLevel.IMPORTANT,
-        pipeConsensusAsyncConnector,
+        pipeConsensusAsyncSink,
         PipeConsensusAsyncSink::getRetryBufferSize,
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+        pipeConsensusAsyncSink.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "retryBufferSize");
   }
 
   private void bindTimer(AbstractMetricService metricService) {
-    connectorEnqueueTimer =
+    sinkEnqueueTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_SEND_EVENT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorEnqueue",
+            "sinkEnqueue",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
-    connectorTsFilePieceTransferTimer =
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
+    sinkTsFilePieceTransferTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_SEND_EVENT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorTsFilePieceTransfer",
+            "sinkTsFilePieceTransfer",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
-    connectorTsFileTransferTimer =
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
+    sinkTsFileTransferTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_SEND_EVENT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorTsFileTransfer",
+            "sinkTsFileTransfer",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
-    connectorWALTransferTimer =
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
+    sinkWALTransferTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_SEND_EVENT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorWALTransfer",
+            "sinkWALTransfer",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
     retryWALTransferTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_RETRY_SEND_EVENT.toString(),
@@ -177,7 +177,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "retryWALTransfer",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
     retryTsFileTransferTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_RETRY_SEND_EVENT.toString(),
@@ -187,7 +187,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             "retryTsFileTransfer",
             Tag.REGION.toString(),
-            pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+            pipeConsensusAsyncSink.getConsensusGroupIdStr());
   }
 
   private void unbindCounter(AbstractMetricService metricService) {
@@ -199,7 +199,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+        pipeConsensusAsyncSink.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "pipeConsensusRetryCount");
   }
@@ -211,7 +211,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+        pipeConsensusAsyncSink.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "transferBufferSize");
     metricService.remove(
@@ -220,16 +220,16 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr(),
+        pipeConsensusAsyncSink.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "retryBufferSize");
   }
 
   private void unbindTimer(AbstractMetricService metricService) {
-    connectorEnqueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    connectorWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    connectorTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    connectorTsFilePieceTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkEnqueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkTsFilePieceTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     retryWALTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     retryTsFileTransferTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -239,36 +239,36 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFileTransfer",
+        "sinkTsFileTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_SEND_EVENT.toString(),
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFilePieceTransfer",
+        "sinkTsFilePieceTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_SEND_EVENT.toString(),
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFileTransfer",
+        "sinkTsFileTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_SEND_EVENT.toString(),
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorWALTransfer",
+        "sinkWALTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_RETRY_SEND_EVENT.toString(),
@@ -277,7 +277,7 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "retryWALTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_RETRY_SEND_EVENT.toString(),
@@ -286,6 +286,6 @@ public class PipeConsensusSinkMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         "retryTsFileTransfer",
         Tag.REGION.toString(),
-        pipeConsensusAsyncConnector.getConsensusGroupIdStr());
+        pipeConsensusAsyncSink.getConsensusGroupIdStr());
   }
 }

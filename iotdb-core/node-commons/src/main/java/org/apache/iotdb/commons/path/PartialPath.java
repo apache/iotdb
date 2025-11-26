@@ -84,7 +84,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
-   * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
+   * = "root.db.`d.1`.`s.1`" nodes = {"root", "db", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
    */
@@ -93,11 +93,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
     }
-    // path is root.sg.`abc`, fullPath is root.sg.abc
-    // path is root.sg.`select`, fullPath is root.sg.select
-    // path is root.sg.`111`, fullPath is root.sg.`111`
-    // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
-    // path is root.sg.`a``b`, fullPath is root.sg.`a``b`
+    // path is root.db.`abc`, fullPath is root.db.abc
+    // path is root.db.`select`, fullPath is root.db.select
+    // path is root.db.`111`, fullPath is root.db.`111`
+    // path is root.db.`a.b`, fullPath is root.db.`a.b`
+    // path is root.db.`a``b`, fullPath is root.db.`a``b`
     this.fullPath = getFullPath();
   }
 
@@ -410,8 +410,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * Test if current PartialPath matches a full path. Current partialPath acts as a full path
    * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g.
-   * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
-   * and "root.sg.vehicle.s1"
+   * "root.db.device.*" matches path "root.db.device.s1" whereas it does not match "root.db.device"
+   * and "root.db.vehicle.s1"
    *
    * <p>Note: If the current path is a path ending with "**", and does not have any * before it,
    * like "root.a.b.c.**", then the rPath can be a path with *, and this method returns {@code true}
@@ -439,8 +439,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * Test if current PartialPath matches a full path. Current partialPath acts as a full path
    * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g.
-   * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
-   * and "root.sg.vehicle.s1"
+   * "root.db.device.*" matches path "root.db.device.s1" whereas it does not match "root.db.device"
+   * and "root.db.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
@@ -458,10 +458,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    *
    * <p>For example:
    *
-   * <p>1) Pattern "root.sg1.d1.*" can match prefix path "root.sg1.d1.s1", "root.sg1.d1",
-   * "root.sg1", "root" etc.
+   * <p>1) Pattern "root.db1.d1.*" can match prefix path "root.db1.d1.s1", "root.db1.d1",
+   * "root.db1", "root" etc.
    *
-   * <p>1) Pattern "root.sg1.d1.*" does not match prefix path "root.sg2", "root.sg1.d2".
+   * <p>1) Pattern "root.db1.d1.*" does not match prefix path "root.db2", "root.db1.d2".
    *
    * @param prefixPath
    * @return {@code true} if a successful match, otherwise return {@code false}
@@ -512,8 +512,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * Test if current PartialPath matches a full path's prefix. Current partialPath acts as a prefix
    * path pattern. rPath is supposed to be a full time-series path without wildcards. e.g. Current
-   * PartialPath "root.sg" or "root.*" can match rPath "root.sg.device.s1", "root.sg.device" or
-   * "root.sg.vehicle.s1".
+   * PartialPath "root.db" or "root.*" can match rPath "root.db.device.s1", "root.db.device" or
+   * "root.db.vehicle.s1".
    *
    * @param rPath a plain full path of a time-series
    * @return true if a successful match, otherwise return false.
@@ -546,9 +546,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
-   * Test if this path pattern includes input path pattern. e.g. "root.**" includes "root.sg.**",
-   * "root.*.d.s" includes "root.sg.d.s", "root.sg.**" does not include "root.**.s", "root.*.d.s"
-   * does not include "root.sg.d1.*"
+   * Test if this path pattern includes input path pattern. e.g. "root.**" includes "root.db.**",
+   * "root.*.d.s" includes "root.db.d.s", "root.db.**" does not include "root.**.s", "root.*.d.s"
+   * does not include "root.db.d1.*"
    *
    * @param rPath a pattern path of a timeseries
    * @return true if this path pattern includes input path pattern, otherwise return false
@@ -568,7 +568,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
     }
     // dp[i][j] means if nodes1[0:i) includes nodes[0:j)
-    // for example: "root.sg.**" includes "root.sg.d1.*"
+    // for example: "root.db.**" includes "root.db.d1.*"
     // 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0 |→| 1 0 0 0 0
     // 0 0 0 0 0 |↓| 0 1 0 0 0 |→| 0 1 0 0 0 |→| 0 1 0 0 0
     // 0 0 0 0 0 |↓| 0 0 0 0 0 |↓| 0 0 1 0 0 |→| 0 0 1 0 0
@@ -606,9 +606,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Test if this path pattern overlaps with input path pattern. Overlap means the result sets
-   * generated by two path pattern share some common elements. e.g. "root.sg.**" overlaps with
-   * "root.**", "root.*.d.s" overlaps with "root.sg.d.s", "root.sg.**" overlaps with "root.**.s",
-   * "root.*.d.s" doesn't overlap with "root.sg.d1.*"
+   * generated by two path pattern share some common elements. e.g. "root.db.**" overlaps with
+   * "root.**", "root.*.d.s" overlaps with "root.db.d.s", "root.db.**" overlaps with "root.**.s",
+   * "root.*.d.s" doesn't overlap with "root.db.d1.*"
    *
    * @param rPath a pattern path of a timeseries
    * @return true if overlapping otherwise return false
@@ -696,12 +696,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * generated by two path pattern share some common elements. e.g.
    *
    * <ul>
-   *   <li>"root.sg.**" overlaps with prefix full path "root" because "root.sg.**" share some common
-   *       element "root.sg.d" with "root.**"
-   *   <li>"root.*.d*.s" overlaps with prefix full path "root.sg" because "root.*.d*.s" share some
-   *       common element "root.sg.d1.s" with "root.sg.**"
-   *   <li>"root.*.d.s" doesn't overlap with prefix full path "root.sg.d1" because there is no
-   *       common element between "root.*.d.s" and "root.sg.d1.**"
+   *   <li>"root.db.**" overlaps with prefix full path "root" because "root.db.**" share some common
+   *       element "root.db.d" with "root.**"
+   *   <li>"root.*.d*.s" overlaps with prefix full path "root.db" because "root.*.d*.s" share some
+   *       common element "root.db.d1.s" with "root.db.**"
+   *   <li>"root.*.d.s" doesn't overlap with prefix full path "root.db.d1" because there is no
+   *       common element between "root.*.d.s" and "root.db.d1.**"
    * </ul>
    *
    * @param prefixFullPath prefix full path
@@ -735,7 +735,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * Generate a list of partial paths which are the intersection of this path pattern and input
    * prefix pattern.
    *
-   * @param prefixPattern must be a prefix full path ending with one "**", like "root.sg.**"
+   * @param prefixPattern must be a prefix full path ending with one "**", like "root.db.**"
    * @return a list of partial paths which are the intersection of this path pattern and input
    *     prefix pattern.
    */
@@ -751,7 +751,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     matchIndex[0] = true; // "root" must match "root"
 
     // dp[i][j] means if prefixFullPath[0:i] matches nodes[0:j]
-    // for example: "root.**.d1.**" intersect "root.sg1.d1(.**)"
+    // for example: "root.**.d1.**" intersect "root.db1.d1(.**)"
     // dp[i][j] = (nodes[j]=="**"&&dp[i][j-1]) || (nodes[j] matches prefixFullPath[i]&&dp[i-1][j-1])
     // 1 0 0 0 |→| 1 0 0 0 |→| 1 0 0 0
     // 0 0 0 0 |↓| 0 1 0 0 |→| 0 1 0 0
@@ -772,7 +772,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       matchIndex = newMatchIndex;
     }
     // Scan in reverse order to construct the result set.
-    // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.sg1.d1 + **】
+    // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.db1.d1 + **】
     // It can be pruned if the remaining nodes start with **.
     List<PartialPath> res = new ArrayList<>();
     if (matchIndex[thisLength - 1] && nodes[thisLength - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {

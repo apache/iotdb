@@ -194,106 +194,106 @@ public class ClusterSchemaTreeTest {
 
     SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
-    checkVisitorResult(visitor, 1, new String[] {"root.sg.d2.a.s1"}, null, new boolean[] {true});
+            root, new PartialPath("root.db.d2.a.s1"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.db.d2.a.s1"}, null, new boolean[] {true});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.s2"), 0, 0, false);
+            root, new PartialPath("root.db.*.s2"), 0, 0, false);
     checkVisitorResult(
-        visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
+        visitor, 2, new String[] {"root.db.d1.s2", "root.db.d2.s2"}, new String[] {"", ""}, null);
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.status"), 0, 0, false);
+            root, new PartialPath("root.db.*.status"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d1.s2", "root.db.d2.s2"},
         new String[] {"status", "status"},
         null);
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.*.*"), 0, 0, false);
+            root, new PartialPath("root.db.d2.*.*"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"root.db.d2.a.s1", "root.db.d2.a.s2"},
         new String[] {"", ""},
         new boolean[] {true, true});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d1"), 0, 0, true);
+            root, new PartialPath("root.db.d1"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"root.db.d1.s1", "root.db.d1.s2"},
         new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.a"), 0, 0, true);
+            root, new PartialPath("root.db.*.a"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"root.db.d2.a.s1", "root.db.d2.a.s2"},
         new String[] {"", ""},
         new boolean[] {true, true},
         new int[] {0, 0});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.*"), 2, 2, false);
+            root, new PartialPath("root.db.*.*"), 2, 2, false);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.s1", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.s1", "root.db.d2.s2"},
         new String[] {"", ""},
         new boolean[] {false, false},
         new int[] {3, 4});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*"), 2, 3, true);
+            root, new PartialPath("root.db.*"), 2, 3, true);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s1"},
         new String[] {"", ""},
         new boolean[] {true, false},
         new int[] {4, 5});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d1.**"), 0, 0, false);
+            root, new PartialPath("root.db.d1.**"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"root.db.d1.s1", "root.db.d1.s2"},
         new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.**"), 3, 1, true);
+            root, new PartialPath("root.db.d2.**"), 3, 1, true);
     checkVisitorResult(
         visitor,
         3,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s1", "root.db.d2.s2"},
         new String[] {"", "", ""},
         new boolean[] {true, false, false},
         new int[] {2, 3, 4});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.**.status"), 2, 1, true);
+            root, new PartialPath("root.db.**.status"), 2, 1, true);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s2"},
         new String[] {"status", "status"},
         new boolean[] {true, false},
         new int[] {2, 3});
@@ -305,12 +305,12 @@ public class ClusterSchemaTreeTest {
         visitor,
         6,
         new String[] {
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d2.a.s1",
-          "root.sg.d2.a.s2",
-          "root.sg.d2.s1",
-          "root.sg.d2.s2"
+          "root.db.d1.s1",
+          "root.db.d1.s2",
+          "root.db.d2.a.s1",
+          "root.db.d2.a.s2",
+          "root.db.d2.s1",
+          "root.db.d2.s2"
         },
         new String[] {"", "", "", "", "", ""},
         new boolean[] {false, false, true, true, false, false},
@@ -323,12 +323,12 @@ public class ClusterSchemaTreeTest {
         visitor,
         6,
         new String[] {
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d2.a.s1",
-          "root.sg.d2.a.s2",
-          "root.sg.d2.s1",
-          "root.sg.d2.s2"
+          "root.db.d1.s1",
+          "root.db.d1.s2",
+          "root.db.d2.a.s1",
+          "root.db.d2.a.s2",
+          "root.db.d2.s1",
+          "root.db.d2.s2"
         },
         new String[] {"", "", "", "", "", ""},
         new boolean[] {false, false, true, true, false, false},
@@ -341,12 +341,12 @@ public class ClusterSchemaTreeTest {
         visitor,
         6,
         new String[] {
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d2.a.s1",
-          "root.sg.d2.a.s2",
-          "root.sg.d2.s1",
-          "root.sg.d2.s2"
+          "root.db.d1.s1",
+          "root.db.d1.s2",
+          "root.db.d2.a.s1",
+          "root.db.d2.a.s2",
+          "root.db.d2.s1",
+          "root.db.d2.s2"
         },
         new String[] {"", "", "", "", "", ""},
         new boolean[] {false, false, true, true, false, false},
@@ -354,19 +354,19 @@ public class ClusterSchemaTreeTest {
   }
 
   /**
-   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
-   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   * Generate the following tree: root.db.d1.s1, root.db.d1.s2(status) root.db.d2.s1,
+   * root.db.d2.s2(status) root.db.d2.a.s1, root.db.d2.a.s2(status)
    *
    * @return the root node of the generated schemTree
    */
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
-    root.addChild("sg", sg);
+    SchemaNode db = new SchemaInternalNode("db");
+    root.addChild("db", db);
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
@@ -378,7 +378,7 @@ public class ClusterSchemaTreeTest {
     d1.addAliasChild("status", s2);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
-    sg.addChild("d2", d2);
+    db.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);
@@ -481,123 +481,123 @@ public class ClusterSchemaTreeTest {
   public void testSchemaTreeWithScope() throws Exception {
     SchemaNode root = generateSchemaTree();
     PathPatternTree scope = new PathPatternTree();
-    scope.appendPathPattern(new PartialPath("root.sg.d1.**"));
-    scope.appendPathPattern(new PartialPath("root.sg.d2.status"));
-    scope.appendPathPattern(new PartialPath("root.sg.d2.a.**"));
+    scope.appendPathPattern(new PartialPath("root.db.d1.**"));
+    scope.appendPathPattern(new PartialPath("root.db.d2.status"));
+    scope.appendPathPattern(new PartialPath("root.db.d2.a.**"));
     scope.constructTree();
 
     SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false, scope);
-    checkVisitorResult(visitor, 1, new String[] {"root.sg.d2.a.s1"}, null, new boolean[] {true});
+            root, new PartialPath("root.db.d2.a.s1"), 0, 0, false, scope);
+    checkVisitorResult(visitor, 1, new String[] {"root.db.d2.a.s1"}, null, new boolean[] {true});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.s1"), 0, 0, false, scope);
+            root, new PartialPath("root.db.d2.s1"), 0, 0, false, scope);
     checkVisitorResult(visitor, 0, new String[] {}, null, new boolean[] {});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.s2"), 0, 0, false, scope);
+            root, new PartialPath("root.db.*.s2"), 0, 0, false, scope);
     checkVisitorResult(
-        visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
+        visitor, 2, new String[] {"root.db.d1.s2", "root.db.d2.s2"}, new String[] {"", ""}, null);
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.s1"), 0, 0, false, scope);
-    checkVisitorResult(visitor, 1, new String[] {"root.sg.d1.s1"}, new String[] {""}, null);
+            root, new PartialPath("root.db.*.s1"), 0, 0, false, scope);
+    checkVisitorResult(visitor, 1, new String[] {"root.db.d1.s1"}, new String[] {""}, null);
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.status"), 0, 0, false, scope);
+            root, new PartialPath("root.db.*.status"), 0, 0, false, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d1.s2", "root.db.d2.s2"},
         new String[] {"status", "status"},
         null);
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.*.*"), 0, 0, false, scope);
+            root, new PartialPath("root.db.d2.*.*"), 0, 0, false, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"root.db.d2.a.s1", "root.db.d2.a.s2"},
         new String[] {"", ""},
         new boolean[] {true, true});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d1"), 0, 0, true, scope);
+            root, new PartialPath("root.db.d1"), 0, 0, true, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"root.db.d1.s1", "root.db.d1.s2"},
         new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.a"), 0, 0, true, scope);
+            root, new PartialPath("root.db.*.a"), 0, 0, true, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"root.db.d2.a.s1", "root.db.d2.a.s2"},
         new String[] {"", ""},
         new boolean[] {true, true},
         new int[] {0, 0});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.*"), 2, 2, false, scope);
+            root, new PartialPath("root.db.*.*"), 2, 2, false, scope);
     checkVisitorResult(
         visitor,
         1,
-        new String[] {"root.sg.d2.s2"},
+        new String[] {"root.db.d2.s2"},
         new String[] {""},
         new boolean[] {false},
         new int[] {3});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*"), 2, 3, true, scope);
+            root, new PartialPath("root.db.*"), 2, 3, true, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s2"},
         new String[] {"", ""},
         new boolean[] {true, false},
         new int[] {4, 5});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d1.**"), 0, 0, false, scope);
+            root, new PartialPath("root.db.d1.**"), 0, 0, false, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"root.db.d1.s1", "root.db.d1.s2"},
         new String[] {"", ""},
         new boolean[] {false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.**"), 3, 1, true, scope);
+            root, new PartialPath("root.db.d2.**"), 3, 1, true, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s2"},
         new String[] {"", ""},
         new boolean[] {true, false},
         new int[] {2, 3});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.**.status"), 2, 1, true, scope);
+            root, new PartialPath("root.db.**.status"), 2, 1, true, scope);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"root.db.d2.a.s2", "root.db.d2.s2"},
         new String[] {"status", "status"},
         new boolean[] {true, false},
         new int[] {2, 3});
@@ -609,7 +609,7 @@ public class ClusterSchemaTreeTest {
         visitor,
         5,
         new String[] {
-          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+          "root.db.d1.s1", "root.db.d1.s2", "root.db.d2.a.s1", "root.db.d2.a.s2", "root.db.d2.s2"
         },
         new String[] {"", "", "", "", ""},
         new boolean[] {false, false, true, true, false},
@@ -622,7 +622,7 @@ public class ClusterSchemaTreeTest {
         visitor,
         5,
         new String[] {
-          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+          "root.db.d1.s1", "root.db.d1.s2", "root.db.d2.a.s1", "root.db.d2.a.s2", "root.db.d2.s2"
         },
         new String[] {"", "", "", "", ""},
         new boolean[] {false, false, true, true, false},
@@ -635,7 +635,7 @@ public class ClusterSchemaTreeTest {
         visitor,
         5,
         new String[] {
-          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+          "root.db.d1.s1", "root.db.d1.s2", "root.db.d2.a.s1", "root.db.d2.a.s2", "root.db.d2.s2"
         },
         new String[] {"", "", "", "", ""},
         new boolean[] {false, false, true, true, false},
@@ -700,7 +700,7 @@ public class ClusterSchemaTreeTest {
   }
 
   private void testSearchDeviceInfo(ISchemaTree schemaTree) throws Exception {
-    PartialPath devicePath = new PartialPath("root.sg.d1");
+    PartialPath devicePath = new PartialPath("root.db.d1");
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -712,7 +712,7 @@ public class ClusterSchemaTreeTest {
             .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList()));
 
-    devicePath = new PartialPath("root.sg.d2.a");
+    devicePath = new PartialPath("root.db.d2.a");
     measurements.remove(1);
     measurements.add("status");
     deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
@@ -731,34 +731,34 @@ public class ClusterSchemaTreeTest {
     ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     List<DeviceSchemaInfo> deviceSchemaInfoList =
-        schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"));
+        schemaTree.getMatchedDevices(new PartialPath("root.db.d2.a"));
     Assert.assertEquals(1, deviceSchemaInfoList.size());
     DeviceSchemaInfo deviceSchemaInfo = deviceSchemaInfoList.get(0);
-    Assert.assertEquals(new PartialPath("root.sg.d2.a"), deviceSchemaInfo.getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d2.a"), deviceSchemaInfo.getDevicePath());
     Assert.assertTrue(deviceSchemaInfo.isAligned());
     Assert.assertEquals(2, deviceSchemaInfo.getMeasurements(Sets.newSet("*")).size());
 
-    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"));
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.db.*"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(2, deviceSchemaInfoList.size());
-    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
-    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d2"), deviceSchemaInfoList.get(1).getDevicePath());
 
-    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"));
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.db.**"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
-    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
-    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d2"), deviceSchemaInfoList.get(1).getDevicePath());
     Assert.assertEquals(
-        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
+        new PartialPath("root.db.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.**"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
-    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
-    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.db.d2"), deviceSchemaInfoList.get(1).getDevicePath());
     Assert.assertEquals(
-        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
+        new PartialPath("root.db.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
   }
 
   @Test
@@ -771,7 +771,7 @@ public class ClusterSchemaTreeTest {
     ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
 
     Pair<List<MeasurementPath>, Integer> visitResult =
-        schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);
+        schemaTree.searchMeasurementPaths(new PartialPath("root.db.**.status"), 2, 1, true);
     Assert.assertEquals(2, visitResult.left.size());
     Assert.assertEquals(3, (int) visitResult.right);
 
@@ -789,8 +789,8 @@ public class ClusterSchemaTreeTest {
   }
 
   /**
-   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
-   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   * Generate the following tree: root.db.d1.s1, root.db.d1.s2(status) root.db.d2.s1,
+   * root.db.d2.s2(status) root.db.d2.a.s1, root.db.d2.a.s2(status)
    */
   private List<MeasurementPath> generateMeasurementPathList() throws Exception {
     List<MeasurementPath> measurementPathList = new ArrayList<>();
@@ -798,31 +798,31 @@ public class ClusterSchemaTreeTest {
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
 
-    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1");
+    MeasurementPath measurementPath = new MeasurementPath("root.db.d1.s1");
     measurementPath.setMeasurementSchema(schema1);
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d1.s2");
+    measurementPath = new MeasurementPath("root.db.d1.s2");
     measurementPath.setMeasurementSchema(schema2);
     measurementPath.setMeasurementAlias("status");
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d2.a.s1");
+    measurementPath = new MeasurementPath("root.db.d2.a.s1");
     measurementPath.setMeasurementSchema(schema1);
     measurementPath.setUnderAlignedEntity(true);
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d2.a.s2");
+    measurementPath = new MeasurementPath("root.db.d2.a.s2");
     measurementPath.setMeasurementSchema(schema2);
     measurementPath.setMeasurementAlias("status");
     measurementPath.setUnderAlignedEntity(true);
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d2.s1");
+    measurementPath = new MeasurementPath("root.db.d2.s1");
     measurementPath.setMeasurementSchema(schema1);
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d2.s2");
+    measurementPath = new MeasurementPath("root.db.d2.s2");
     measurementPath.setMeasurementSchema(schema2);
     measurementPath.setMeasurementAlias("status");
     measurementPathList.add(measurementPath);
@@ -852,9 +852,9 @@ public class ClusterSchemaTreeTest {
     template1.setId(1);
     ClusterSchemaTree schemaTree1 = new ClusterSchemaTree();
     ClusterSchemaTree schemaTree2 = new ClusterSchemaTree();
-    schemaTree1.appendTemplateDevice(new PartialPath("root.sg1.v1.d1"), false, 1, template1);
-    schemaTree1.appendTemplateDevice(new PartialPath("root.sg1.v1.d2"), false, 1, template1);
-    schemaTree2.appendTemplateDevice(new PartialPath("root.sg1.v1"), false, 1, template1);
+    schemaTree1.appendTemplateDevice(new PartialPath("root.db1.v1.d1"), false, 1, template1);
+    schemaTree1.appendTemplateDevice(new PartialPath("root.db1.v1.d2"), false, 1, template1);
+    schemaTree2.appendTemplateDevice(new PartialPath("root.db1.v1"), false, 1, template1);
     schemaTree1.mergeSchemaTree(schemaTree2);
     List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree1.getAllDevices();
     Assert.assertEquals(3, deviceSchemaInfoList.size());
@@ -868,7 +868,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
     Assert.assertEquals(1, schemaTree1.getUsingTemplates().size());
     checkDeviceUsingTemplate(
-        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
+        schemaTree1, 1, Sets.newSet("root.db1.v1.d1", "root.db1.v1.d2", "root.db1.v1"));
     Template template2 =
         new Template(
             "t2",
@@ -878,16 +878,16 @@ public class ClusterSchemaTreeTest {
             Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
     template2.setId(2);
     ClusterSchemaTree schemaTree3 = new ClusterSchemaTree();
-    schemaTree3.appendTemplateDevice(new PartialPath("root.sg2.d1"), false, 2, template2);
+    schemaTree3.appendTemplateDevice(new PartialPath("root.db2.d1"), false, 2, template2);
     schemaTree1.mergeSchemaTree(schemaTree3);
     Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
     Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
 
     checkDeviceUsingTemplate(
-        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
-    checkDeviceUsingTemplate(schemaTree1, 2, Sets.newSet("root.sg2.d1"));
+        schemaTree1, 1, Sets.newSet("root.db1.v1.d1", "root.db1.v1.d2", "root.db1.v1"));
+    checkDeviceUsingTemplate(schemaTree1, 2, Sets.newSet("root.db2.d1"));
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
-      if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
+      if (deviceSchemaInfo.getDevicePath().startsWith("root.db1")) {
         Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
         int measurementIndex = 1;
         for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
@@ -906,18 +906,18 @@ public class ClusterSchemaTreeTest {
     }
     ClusterSchemaTree schemaTree4 = new ClusterSchemaTree();
     schemaTree4.appendSingleMeasurementPath(
-        new MeasurementPath("root.sg3.d1.s1", TSDataType.INT32));
+        new MeasurementPath("root.db3.d1.s1", TSDataType.INT32));
     schemaTree1.mergeSchemaTree(schemaTree4);
     Assert.assertTrue(schemaTree1.hasNormalTimeSeries());
     Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
-      if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
+      if (deviceSchemaInfo.getDevicePath().startsWith("root.db1")) {
         Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
         int measurementIndex = 1;
         for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
           Assert.assertEquals("s" + measurementIndex, measurementPath.getMeasurement());
         }
-      } else if (deviceSchemaInfo.getDevicePath().startsWith("root.sg2")) {
+      } else if (deviceSchemaInfo.getDevicePath().startsWith("root.db2")) {
         Assert.assertEquals(2, deviceSchemaInfo.getTemplateId());
         int measurementIndex = 1;
         for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
@@ -952,7 +952,7 @@ public class ClusterSchemaTreeTest {
     for (ClusterSchemaTree tree : generateSchemaTrees()) {
       schemaTree.mergeSchemaTree(tree);
     }
-    PartialPath devicePath = new PartialPath("root.sg.d99999");
+    PartialPath devicePath = new PartialPath("root.db.d99999");
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -982,11 +982,11 @@ public class ClusterSchemaTreeTest {
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
 
-    MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.a.s1");
+    MeasurementPath measurementPath = new MeasurementPath("root.db.d1.a.s1");
     measurementPath.setMeasurementSchema(schema1);
     measurementPathList.add(measurementPath);
 
-    measurementPath = new MeasurementPath("root.sg.d1.s1");
+    measurementPath = new MeasurementPath("root.db.d1.s1");
     measurementPath.setMeasurementSchema(schema1);
     measurementPath.setUnderAlignedEntity(true);
     measurementPathList.add(measurementPath);
@@ -996,7 +996,7 @@ public class ClusterSchemaTreeTest {
 
     Assert.assertTrue(
         schemaTree
-            .searchDeviceSchemaInfo(new PartialPath("root.sg.d1"), Collections.singletonList("s1"))
+            .searchDeviceSchemaInfo(new PartialPath("root.db.d1"), Collections.singletonList("s1"))
             .isAligned());
   }
 

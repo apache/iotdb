@@ -36,42 +36,42 @@ public class PredicateUtilsTest {
   @Test
   public void testExtractPredicateSourceSymbol() {
     Assert.assertEquals(
-        schemaMap.get("root.sg.d1.s1"),
+        schemaMap.get("root.db.d1.s1"),
         PredicateUtils.extractPredicateSourceSymbol(
-            gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10"))));
+            gt(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("10"))));
     Assert.assertEquals(
-        schemaMap.get("root.sg.d2.a.s1").getDevicePath(),
+        schemaMap.get("root.db.d2.a.s1").getDevicePath(),
         PredicateUtils.extractPredicateSourceSymbol(
-            gt(timeSeries(schemaMap.get("root.sg.d2.a.s1")), intValue("10"))));
+            gt(timeSeries(schemaMap.get("root.db.d2.a.s1")), intValue("10"))));
     Assert.assertEquals(
-        schemaMap.get("root.sg.d1.s1"),
+        schemaMap.get("root.db.d1.s1"),
         PredicateUtils.extractPredicateSourceSymbol(
             and(
-                gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")),
+                gt(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("10")),
                 gt(
-                    add(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("1")),
+                    add(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("1")),
                     intValue("10")))));
     Assert.assertNull(
         PredicateUtils.extractPredicateSourceSymbol(
             and(
-                gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")),
+                gt(timeSeries(schemaMap.get("root.db.d1.s1")), intValue("10")),
                 gt(
-                    add(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("1")),
+                    add(timeSeries(schemaMap.get("root.db.d1.s2")), intValue("1")),
                     intValue("10")))));
     Assert.assertNull(
         PredicateUtils.extractPredicateSourceSymbol(
             and(
-                gt(timeSeries(schemaMap.get("root.sg.d2.a.s1")), intValue("10")),
+                gt(timeSeries(schemaMap.get("root.db.d2.a.s1")), intValue("10")),
                 gt(
-                    add(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("1")),
+                    add(timeSeries(schemaMap.get("root.db.d1.s2")), intValue("1")),
                     intValue("10")))));
     Assert.assertEquals(
-        schemaMap.get("root.sg.d2.a.s1").getDevicePath(),
+        schemaMap.get("root.db.d2.a.s1").getDevicePath(),
         PredicateUtils.extractPredicateSourceSymbol(
             and(
-                gt(timeSeries(schemaMap.get("root.sg.d2.a.s1")), intValue("10")),
+                gt(timeSeries(schemaMap.get("root.db.d2.a.s1")), intValue("10")),
                 gt(
-                    add(timeSeries(schemaMap.get("root.sg.d2.a.s2")), intValue("1")),
+                    add(timeSeries(schemaMap.get("root.db.d2.a.s2")), intValue("1")),
                     intValue("10")))));
   }
 }

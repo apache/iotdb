@@ -36,20 +36,20 @@ public class DeviceSchemaFetchScanNodeTest {
   @Test
   public void testSerialization() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.**.*"));
     DeviceSchemaFetchScanNode deviceSchemaFetchScanNodeTest =
         new DeviceSchemaFetchScanNode(
-            new PlanNodeId("0"), new PartialPath("root.sg"), patternTree, patternTree);
+            new PlanNodeId("0"), new PartialPath("root.db"), patternTree, patternTree);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     deviceSchemaFetchScanNodeTest.serialize(byteBuffer);
     byteBuffer.flip();
     DeviceSchemaFetchScanNode recoveredNode =
         (DeviceSchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
+    Assert.assertEquals("root.db", recoveredNode.getStorageGroup().getFullPath());
     Assert.assertEquals(
-        "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
+        "root.db.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
     Assert.assertEquals(
-        "root.sg.**.*",
+        "root.db.**.*",
         recoveredNode.getAuthorityScope().getAllPathPatterns().get(0).getFullPath());
   }
 }

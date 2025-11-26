@@ -213,7 +213,7 @@ public class IoTDBJDBCDataSet {
       TSQueryDataSet queryDataSet,
       int fetchSize,
       long timeout,
-      List<String> sgList,
+      List<String> dbList,
       BitSet aliasColumnMap,
       ZoneId zoneId) {
     this.sessionId = sessionId;
@@ -248,10 +248,10 @@ public class IoTDBJDBCDataSet {
       }
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = "";
-        if (sgList != null
-            && !sgList.isEmpty()
+        if (dbList != null
+            && !dbList.isEmpty()
             && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
-          name = sgList.get(i) + "." + columnNameList.get(i);
+          name = dbList.get(i) + "." + columnNameList.get(i);
         } else {
           name = columnNameList.get(i);
         }

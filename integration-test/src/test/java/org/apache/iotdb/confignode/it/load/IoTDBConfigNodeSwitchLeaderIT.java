@@ -88,12 +88,12 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
   @Test
   public void basicDataInheritIT() throws Exception {
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
+    final String db0 = "root.db0";
+    final String db1 = "root.db1";
+    final String d00 = db0 + ".d0.s";
+    final String d01 = db0 + ".d1.s";
+    final String d10 = db1 + ".d0.s";
+    final String d11 = db1 + ".d1.s";
 
     TSStatus status;
     TSchemaPartitionTableResp schemaPartitionTableResp0;
@@ -102,9 +102,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Set Databases
-      status = client.setDatabase((new TDatabaseSchema(sg0)));
+      status = client.setDatabase((new TDatabaseSchema(db0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setDatabase((new TDatabaseSchema(sg1)));
+      status = client.setDatabase((new TDatabaseSchema(db1)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Create SchemaRegionGroups through getOrCreateSchemaPartition and record
@@ -124,11 +124,11 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TSeriesPartitionSlot(1),
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-      sgSlotsMap.put(sg0, seriesSlotMap);
-      sgSlotsMap.put(sg1, seriesSlotMap);
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+      dbSlotsMap.put(db0, seriesSlotMap);
+      dbSlotsMap.put(db1, seriesSlotMap);
       dataPartitionTableResp0 =
-          client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+          client.getOrCreateDataPartitionTable(new TDataPartitionReq(dbSlotsMap));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp0.getStatus().getCode());
@@ -152,11 +152,11 @@ public class IoTDBConfigNodeSwitchLeaderIT {
           new TSeriesPartitionSlot(1),
           new TTimeSlotList()
               .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-      sgSlotsMap.put(sg0, seriesSlotMap);
-      sgSlotsMap.put(sg1, seriesSlotMap);
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> dbSlotsMap = new HashMap<>();
+      dbSlotsMap.put(db0, seriesSlotMap);
+      dbSlotsMap.put(db1, seriesSlotMap);
       Assert.assertEquals(
-          dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(sgSlotsMap)));
+          dataPartitionTableResp0, client.getDataPartitionTable(new TDataPartitionReq(dbSlotsMap)));
     }
   }
 }

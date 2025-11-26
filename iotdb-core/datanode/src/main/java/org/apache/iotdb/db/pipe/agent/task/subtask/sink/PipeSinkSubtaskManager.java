@@ -57,17 +57,17 @@ public class PipeSinkSubtaskManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSinkSubtaskManager.class);
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
-      "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+      "Failed to deregister PipeSinkSubtask. No such subtask: ";
 
   private final Map<String, List<PipeSinkSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
-      final PipeParameters pipeConnectorParameters,
+      final PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
-    final String connectorKey =
-        pipeConnectorParameters
+    final String sinkKey =
+        pipeSinkParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
@@ -79,43 +79,42 @@ public class PipeSinkSubtaskManager {
             environment.getPipeName(),
             environment.getCreationTime(),
             environment.getRegionId(),
-            connectorKey);
+            sinkKey);
 
-    final boolean isDataRegionConnector =
+    final boolean isDataRegionSink =
         StorageEngine.getInstance()
                 .getAllDataRegionIds()
                 .contains(new DataRegionId(environment.getRegionId()))
             || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
 
-    final int connectorNum;
+    final int sinkNum;
     boolean realTimeFirst = false;
-    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
-    if (isDataRegionConnector) {
-      connectorNum =
-          pipeConnectorParameters.getIntOrDefault(
+    String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    if (isDataRegionSink) {
+      sinkNum =
+          pipeSinkParameters.getIntOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                   PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
               PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       realTimeFirst =
-          pipeConnectorParameters.getBooleanOrDefault(
+          pipeSinkParameters.getBooleanOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
       attributeSortedString = "data_" + attributeSortedString;
     } else {
-      // Do not allow parallel tasks for schema region connectors
+      // Do not allow parallel tasks for schema region sinks
       // to avoid the potential disorder of the schema region data transfer
-      connectorNum = 1;
+      sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
-          new ArrayList<>(connectorNum);
+      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
 
       AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
@@ -128,52 +127,48 @@ public class PipeSinkSubtaskManager {
         ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
       }
 
-      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
-        final PipeConnector pipeConnector =
-            isDataRegionConnector
-                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
-                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeConnectorParameters);
-        // 1. Construct, validate and customize PipeConnector, and then handshake (create
+      for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
+        final PipeConnector pipeSink =
+            isDataRegionSink
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeSinkParameters);
+        // 1. Construct, validate and customize PipeSink, and then handshake (create
         // connection) with the target
         try {
-          if (pipeConnector instanceof IoTDBDataRegionAsyncSink) {
-            ((IoTDBDataRegionAsyncSink) pipeConnector).setTransferTsFileCounter(counter);
+          if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
+            ((IoTDBDataRegionAsyncSink) pipeSink).setTransferTsFileCounter(counter);
           }
-          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
-          pipeConnector.customize(
-              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
-          pipeConnector.handshake();
+          pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
+          pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
+          pipeSink.handshake();
         } catch (final Exception e) {
           try {
-            pipeConnector.close();
+            pipeSink.close();
           } catch (final Exception closeException) {
             LOGGER.warn(
-                "Failed to close connector after failed to initialize connector. "
-                    + "Ignore this exception.",
+                "Failed to close sink after failed to initialize sink. " + "Ignore this exception.",
                 closeException);
           }
-          throw new PipeException(
-              "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+          throw new PipeException("Failed to construct PipeSink, because of " + e.getMessage(), e);
         }
 
-        // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+        // 2. Construct PipeSinkSubtaskLifeCycle to manage PipeSinkSubtask's life cycle
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
                 String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
+                    "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex),
                 environment.getCreationTime(),
                 attributeSortedString,
-                connectorIndex,
+                sinkIndex,
                 pendingQueue,
-                pipeConnector);
+                pipeSink);
         final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
             new PipeSinkSubtaskLifeCycle(executor, pipeSinkSubtask, pendingQueue);
         pipeSinkSubtaskLifeCycleList.add(pipeSinkSubtaskLifeCycle);
       }
 
       LOGGER.info(
-          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {} and callbackExecutor {}.",
+          "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and callbackExecutor {}.",
           attributeSortedString,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());
@@ -243,7 +238,7 @@ public class PipeSinkSubtaskManager {
     }
   }
 
-  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
@@ -257,9 +252,9 @@ public class PipeSinkSubtaskManager {
         .getPendingQueue();
   }
 
-  private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
+  private String generateAttributeSortedString(final PipeParameters pipeSinkParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
-        new TreeMap<>(pipeConnectorParameters.getAttribute());
+        new TreeMap<>(pipeSinkParameters.getAttribute());
     sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
     return sortedStringSourceMap.toString();
   }

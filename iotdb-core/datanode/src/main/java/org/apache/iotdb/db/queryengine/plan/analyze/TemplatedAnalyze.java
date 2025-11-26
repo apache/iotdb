@@ -401,19 +401,19 @@ public class TemplatedAnalyze {
             CONFIG.getSeriesPartitionExecutorClass(),
             CONFIG.getSeriesPartitionSlotNum());
       }
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap = new HashMap<>();
       for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
             new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
+        dbNameToQueryParamsMap
             .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 
       if (res.right.left || res.right.right) {
-        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(dbNameToQueryParamsMap);
       } else {
-        return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+        return partitionFetcher.getDataPartition(dbNameToQueryParamsMap);
       }
     } finally {
       QueryPlanCostMetricSet.getInstance()

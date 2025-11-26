@@ -137,7 +137,7 @@ public class TablePattern {
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+            PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
         || sourceParameters.getBooleanOrDefault(
             Arrays.asList(
                 PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,

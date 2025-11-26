@@ -35,12 +35,12 @@ public class PipeCompactionManager {
   private final Set<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycles =
       new CopyOnWriteArraySet<>();
 
-  public void registerPipeConnectorSubtaskLifeCycle(
+  public void registerPipeSinkSubtaskLifeCycle(
       final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle) {
     pipeSinkSubtaskLifeCycles.add(pipeSinkSubtaskLifeCycle);
   }
 
-  public void deregisterPipeConnectorSubtaskLifeCycle(
+  public void deregisterPipeSinkSubtaskLifeCycle(
       final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle) {
     pipeSinkSubtaskLifeCycles.remove(pipeSinkSubtaskLifeCycle);
   }

@@ -248,14 +248,14 @@ public class IoTDBRestServiceInsertValuesIT {
   public void testInsertValuesWithSameTimestamp() {
     List<String> sqls =
         Arrays.asList(
-            "create table sg3 (tag1 string tag, s2 double field, s1 double field)",
-            "insert into sg3(tag1,time,s2) values('d1',1,2)",
-            "insert into sg3(tag1,time,s1) values('d1',1,2)");
+            "create table db3 (tag1 string tag, s2 double field, s1 double field)",
+            "insert into db3(tag1,time,s2) values('d1',1,2)",
+            "insert into db3(tag1,time,s1) values('d1',1,2)");
     for (String sql : sqls) {
       nonQuery(sqlHandler("t1", sql));
     }
 
-    JsonObject jsonObject = query(sqlHandler("t1", "select time, s1, s2 from sg3"));
+    JsonObject jsonObject = query(sqlHandler("t1", "select time, s1, s2 from db3"));
     JsonArray valuesList = jsonObject.getAsJsonArray("values");
     for (int i = 0; i < valuesList.size(); i++) {
       JsonArray jsonArray = valuesList.get(i).getAsJsonArray();
@@ -310,12 +310,12 @@ public class IoTDBRestServiceInsertValuesIT {
 
   public void testInsertMultiRows() {
     nonQuery(
-        sqlHandler("t1", "create table sg8 (tag1 string tag, s1 int32 field, s2 int32 field)"));
+        sqlHandler("t1", "create table db8 (tag1 string tag, s1 int32 field, s2 int32 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into sg8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)"));
+                "insert into db8(tag1, time, s1, s2) values('d1', 10, 2, 2), ('d1', 11, 3, '3'), ('d1', 12,12.11,false)"));
     assertEquals(
         "507: Fail to insert measurements [s1, s2] caused by [data type is not consistent, input 12.11, registered INT32, data type is not consistent, input false, registered INT32]",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -323,12 +323,12 @@ public class IoTDBRestServiceInsertValuesIT {
 
   public void testInsertLargeNumber() {
     nonQuery(
-        sqlHandler("t1", "create table sg9 (tag1 string tag, s98 int64 field, s99 int64 field)"));
+        sqlHandler("t1", "create table db9 (tag1 string tag, s98 int64 field, s99 int64 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(
                 "t1",
-                "insert into sg9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)"));
+                "insert into db9(tag1, time, s98, s99) values('d1', 10, 2, 271840880000000000000000)"));
     assertEquals(
         "700: line 1:59: Invalid numeric literal: 271840880000000000000000",
         jsonObject.get("code") + ": " + jsonObject.get("message").getAsString());
@@ -338,15 +338,15 @@ public class IoTDBRestServiceInsertValuesIT {
     List<String> sqls =
         Arrays.asList(
             "use t1",
-            "create table sg14 (tag1 string tag, s1 string field, s2 string field)",
-            "insert into sg14(tag1,time,s1,s2) values('d1',1,'test','test')",
-            "insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')",
-            "insert into sg14(tag1,time,s1,s2) values('d1',3,'test','test')",
-            "insert into sg14(tag1,time,s1,s2) values('d1',4,'test','test')",
-            "insert into sg14(tag1,time,s1,s3) values('d1',5,'test','test')",
-            "insert into sg14(tag1,time,s1,s2) values('d1',6,'test','test')",
+            "create table db14 (tag1 string tag, s1 string field, s2 string field)",
+            "insert into db14(tag1,time,s1,s2) values('d1',1,'test','test')",
+            "insert into db14(tag1,time,s1,s2) values('d1',3,'test','test')",
+            "insert into db14(tag1,time,s1,s2) values('d1',3,'test','test')",
+            "insert into db14(tag1,time,s1,s2) values('d1',4,'test','test')",
+            "insert into db14(tag1,time,s1,s3) values('d1',5,'test','test')",
+            "insert into db14(tag1,time,s1,s2) values('d1',6,'test','test')",
             "flush",
-            "insert into sg14(tag1,time,s1,s3) values('d1',7,'test','test')");
+            "insert into db14(tag1,time,s1,s3) values('d1',7,'test','test')");
     try {
       for (String sql : sqls) {
         JsonObject jsonObject = new JsonObject();

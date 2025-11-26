@@ -215,7 +215,7 @@ public class TTLInfoTest {
         ttlInfo.unsetTTL(new SetTTLPlan(-1, "root")).getCode());
     assertEquals(
         TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
-        ttlInfo.unsetTTL(new SetTTLPlan(-1, "root", "sg100", "f10", "d1")).getCode());
+        ttlInfo.unsetTTL(new SetTTLPlan(-1, "root", "db100", "f10", "d1")).getCode());
 
     PartialPath path = new PartialPath("root.test.db1.group1.group2.d1");
     ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 11111222L));
@@ -232,12 +232,12 @@ public class TTLInfoTest {
     final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
     for (int i = 0; i < tTlRuleCapacity - 1; i++) {
       SetTTLPlan setTTLPlan =
-          new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d" + i + ".**"), 1000);
+          new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.db1.d" + i + ".**"), 1000);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
     }
     SetTTLPlan setTTLPlan =
         new SetTTLPlan(
-            PathNodesGenerator.splitPathToNodes("root.sg1.d" + tTlRuleCapacity + ".**"), 1000);
+            PathNodesGenerator.splitPathToNodes("root.db1.d" + tTlRuleCapacity + ".**"), 1000);
     final TSStatus status = ttlInfo.setTTL(setTTLPlan);
     assertEquals(TSStatusCode.OVERSIZE_TTL.getStatusCode(), status.code);
     assertEquals(
