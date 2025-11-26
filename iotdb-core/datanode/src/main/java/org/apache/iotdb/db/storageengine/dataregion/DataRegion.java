@@ -126,6 +126,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -358,6 +359,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
+
+  private Map<Long, TsFileSet> lastTsFileSetMap = new ConcurrentHashMap<>();
 
   /**
    * Construct a database processor.
@@ -644,6 +647,9 @@ public class DataRegion implements IDataRegionForQuery {
             throw new RuntimeException(e);
           }
         }
+        // ensure that seq and unseq files in the same partition have the same TsFileSet
+        Map<Long, List<TsFileSet>> recoveredTsFileSetMap = new HashMap<>();
+
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           Callable<Void> asyncRecoverTask =
               recoverFilesInPartition(
@@ -651,7 +657,8 @@ public class DataRegion implements IDataRegionForQuery {
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
-                  true);
+                  true,
+                  recoveredTsFileSetMap);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -664,7 +671,8 @@ public class DataRegion implements IDataRegionForQuery {
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
-                  false);
+                  false,
+                  recoveredTsFileSetMap);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -987,11 +995,40 @@ public class DataRegion implements IDataRegionForQuery {
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
       Map<TsFileID, FileTimeIndex> fileTimeIndexMap,
-      boolean isSeq) {
+      boolean isSeq,
+      Map<Long, List<TsFileSet>> tsFileSetMap) {
+
     List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
     List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
+      List<TsFileSet> tsFileSets = tsFileSetMap.computeIfAbsent(partitionId,
+          pid -> {
+            File fileSetDir = new File(dataRegionSysDir + File.separator + partitionId + File.separator + TsFileSet.FILE_SET_DIR_NAME);
+            File[] fileSets = fileSetDir.listFiles();
+            if (fileSets == null || fileSets.length == 0) {
+              return Collections.emptyList();
+            } else {
+              List<TsFileSet> results = new ArrayList<>();
+              for (File fileSet : fileSets) {
+                TsFileSet tsFileSet;
+                try {
+                  tsFileSet = new TsFileSet(Long.parseLong(fileSet.getName()),
+                      fileSetDir.getAbsolutePath(), true);
+                } catch (NumberFormatException e) {
+                  continue;
+                }
+                results.add(tsFileSet);
+              }
+              return results;
+            }
+          });
+      if (!tsFileSets.isEmpty()) {
+        tsFileSets.sort(null);
+      }
+
+
+
       tsFileManager.add(tsFileResource, isSeq);
       if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())
           && tsFileResource.resourceFileExists()) {

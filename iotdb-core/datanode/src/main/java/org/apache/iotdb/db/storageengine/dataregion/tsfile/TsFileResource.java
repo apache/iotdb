@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -208,6 +209,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
   private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
+
+  // TsFileSets this TsFile belongs to
+  private List<TsFileSet> tsFileSets;
 
   @TestOnly
   public TsFileResource() {
