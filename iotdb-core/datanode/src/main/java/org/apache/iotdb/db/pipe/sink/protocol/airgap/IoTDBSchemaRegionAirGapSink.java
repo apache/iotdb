@@ -133,7 +133,8 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeSchemaRegionSnapshotEvent.toString());
+          pipeSchemaRegionSnapshotEvent.toString(),
+          true);
     } else {
       LOGGER.info(
           "Successfully transferred schema region snapshot {} and {}.",
