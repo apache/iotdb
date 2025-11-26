@@ -151,8 +151,7 @@ public class TableDeviceLastCache {
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
-          final TimeValuePair pair = measurement2CachedLastMap.remove(measurements[i]);
-          diff.addAndGet(-getTVPairEntrySize(pair));
+          measurement2CachedLastMap.remove(measurements[i]);
         }
         continue;
       }
