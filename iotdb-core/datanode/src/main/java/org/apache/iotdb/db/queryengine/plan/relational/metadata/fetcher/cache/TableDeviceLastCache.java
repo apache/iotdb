@@ -120,14 +120,14 @@ public class TableDeviceLastCache {
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
-                  -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + getTVPairEntrySize(tvPair)));
+                  -(isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + getTVPairEntrySize(tvPair));
               return null;
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
                   (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                      + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
@@ -151,7 +151,8 @@ public class TableDeviceLastCache {
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
-          measurement2CachedLastMap.remove(measurements[i]);
+          final TimeValuePair pair = measurement2CachedLastMap.remove(measurements[i]);
+          diff.addAndGet(-getTVPairEntrySize(pair));
         }
         continue;
       }
