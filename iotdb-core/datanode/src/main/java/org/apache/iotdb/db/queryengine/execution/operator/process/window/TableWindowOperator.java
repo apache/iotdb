@@ -294,7 +294,7 @@ public class TableWindowOperator implements ProcessOperator {
         partitionExecutors.addLast(partitionExecutor);
 
         partitionStartInCurrentBlock = partitionEndInCurrentBlock;
-        // Cross multiple TsBlock partition ends
+        // Reset cross-TsBlock tracking after partition completion
         startIndexInFirstBlock = -1;
       } else {
         // Last partition of TsBlock

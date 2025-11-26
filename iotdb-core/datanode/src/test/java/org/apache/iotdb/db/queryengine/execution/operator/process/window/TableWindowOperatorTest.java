@@ -236,6 +236,7 @@ public class TableWindowOperatorTest {
           }
         }
       }
+      assertEquals(6, count);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
