@@ -67,6 +67,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
@@ -309,20 +310,34 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized void deleteSchemaRegion(final SchemaRegionId schemaRegionId)
       throws MetadataException {
-    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
-      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
+      logger.warn("SchemaRegion(id = {}) has been deleted, skipped", schemaRegionId);
       return;
     }
-    schemaRegion.deleteSchemaRegion();
+    final AtomicReference<MetadataException> lastException = new AtomicReference<>();
+    // Synchronize it for region deletion detection when error occurs
+    schemaRegionMap.compute(
+        schemaRegionId,
+        (regionId, iSchemaRegion) -> {
+          try {
+            schemaRegion.deleteSchemaRegion();
+          } catch (final MetadataException e) {
+            lastException.set(e);
+            return iSchemaRegion;
+          }
+          return null;
+        });
+    if (Objects.nonNull(lastException.get())) {
+      throw lastException.get();
+    }
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
-    schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
-    File[] regionDirList =
+    final File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
+    final File[] regionDirList =
         sgDir.listFiles(
             (dir, name) -> {
               try {
