@@ -22,6 +22,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -81,7 +82,8 @@ public class CteScanNode extends SourceNode {
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return new TRegionReplicaSet(
+        null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
   }
 
   @Override
