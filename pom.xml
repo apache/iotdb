@@ -319,37 +319,37 @@
                 <version>${commons-io.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-server-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-client</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-grpc</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-proto</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-metrics-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
