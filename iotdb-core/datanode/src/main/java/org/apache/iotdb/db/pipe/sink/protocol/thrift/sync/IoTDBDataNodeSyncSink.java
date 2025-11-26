@@ -127,7 +127,7 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
           String.format(
               "Transfer data node write plan %s error, result status %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString(), true);
     }
 
     if (LOGGER.isDebugEnabled()) {

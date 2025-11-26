@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigur
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
-import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -104,7 +103,10 @@ public class PipeReceiverStatusHandler {
    *     put any time-related info here
    */
   public void handle(
-      final TSStatus status, final String exceptionMessage, final String recordMessage, final boolean log4NoPrivileges) {
+      final TSStatus status,
+      final String exceptionMessage,
+      final String recordMessage,
+      final boolean log4NoPrivileges) {
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
