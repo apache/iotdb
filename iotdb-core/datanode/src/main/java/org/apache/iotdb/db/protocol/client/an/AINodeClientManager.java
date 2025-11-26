@@ -17,11 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze;
+package org.apache.iotdb.db.protocol.client.an;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
 
-public interface IModelFetcher {
-  /** Get model information by model id from configNode. */
-  TSStatus fetchModel(String modelId, Analysis analysis);
+public class AINodeClientManager {
+
+  public static final int AINODE_ID_PLACEHOLDER = 0;
+
+  private AINodeClientManager() {
+    // Empty constructor
+  }
+
+  public static IClientManager<Integer, AINodeClient> getInstance() {
+    return AINodeClientManagerHolder.INSTANCE;
+  }
+
+  private static class AINodeClientManagerHolder {
+
+    private static final IClientManager<Integer, AINodeClient> INSTANCE =
+        new IClientManager.Factory<Integer, AINodeClient>()
+            .createClientManager(new DataNodeClientPoolFactory.AINodeClientPoolFactory());
+
+    private AINodeClientManagerHolder() {
+      // Empty constructor
+    }
+  }
 }

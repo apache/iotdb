@@ -82,7 +82,7 @@ class InferenceRequestPool(mp.Process):
         self._batcher = BasicBatcher()
         self._stop_event = mp.Event()
 
-        # self._inference_pipeline = get_pipeline(self.model_info.model_id, self.device)
+        self._inference_pipeline = None
 
         self._logger = None
 

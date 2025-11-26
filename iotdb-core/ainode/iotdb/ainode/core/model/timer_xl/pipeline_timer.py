@@ -16,14 +16,12 @@
 # under the License.
 #
 
-import pandas as pd
 import torch
 
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
-from iotdb.ainode.core.util.serde import convert_to_binary
 
 
-class SundialPipeline(ForecastPipeline):
+class TimerPipeline(ForecastPipeline):
     def __init__(self, model_id, **infer_kwargs):
         super().__init__(model_id, infer_kwargs=infer_kwargs)
 
@@ -32,17 +30,13 @@ class SundialPipeline(ForecastPipeline):
 
     def infer(self, inputs, **infer_kwargs):
         predict_length = infer_kwargs.get("predict_length", 96)
-        num_samples = infer_kwargs.get("num_samples", 10)
         revin = infer_kwargs.get("revin", True)
 
         input_ids = self._preprocess(inputs)
         output = self.model.generate(
-            input_ids,
-            max_new_tokens=predict_length,
-            num_samples=num_samples,
-            revin=revin,
+            input_ids, max_new_tokens=predict_length, revin=revin
         )
         return self._postprocess(output)
 
     def _postprocess(self, output: torch.Tensor):
-        return output.mean(dim=1)
+        return output

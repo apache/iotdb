@@ -27,12 +27,13 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class DataNodeClientPoolFactory {
 
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
   private DataNodeClientPoolFactory() {
     // Empty constructor
@@ -49,11 +50,11 @@ public class DataNodeClientPoolFactory {
               new ConfigNodeClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                      .setConnectionTimeoutMs(CONF.getConnectionTimeoutInMS())
+                      .setRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                       .build()),
               new ClientPoolProperty.Builder<ConfigNodeClient>()
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                  .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -73,15 +74,38 @@ public class DataNodeClientPoolFactory {
               new ConfigNodeClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                      .setConnectionTimeoutMs(CONF.getConnectionTimeoutInMS() * 10)
+                      .setRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
                       .setSelectorNumOfAsyncClientManager(
-                          conf.getSelectorNumOfClientManager() / 10 > 0
-                              ? conf.getSelectorNumOfClientManager() / 10
+                          CONF.getSelectorNumOfClientManager() / 10 > 0
+                              ? CONF.getSelectorNumOfClientManager() / 10
                               : 1)
                       .build()),
               new ClientPoolProperty.Builder<ConfigNodeClient>()
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                  .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class AINodeClientPoolFactory implements IClientPoolFactory<Integer, AINodeClient> {
+
+    @Override
+    public GenericKeyedObjectPool<Integer, AINodeClient> createClientPool(
+        ClientManager<Integer, AINodeClient> manager) {
+      GenericKeyedObjectPool<Integer, AINodeClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new AINodeClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(CONF.getConnectionTimeoutInMS())
+                      .setRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
+                      .build()),
+              new ClientPoolProperty.Builder<AINodeClient>()
+                  .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

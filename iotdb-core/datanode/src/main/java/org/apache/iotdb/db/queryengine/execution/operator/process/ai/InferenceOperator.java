@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
+import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -309,12 +310,11 @@ public class InferenceOperator implements ProcessOperator {
             () -> {
               try (AINodeClient client =
                   AINodeClientManager.getInstance()
-                      .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
+                      .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
                 return client.inference(
-                    modelInferenceDescriptor.getModelName(),
-                    finalInputTsBlock,
-                    modelInferenceDescriptor.getInferenceAttributes(),
-                    windowParams);
+                    new TInferenceReq(
+                        modelInferenceDescriptor.getModelName(),
+                        serde.serialize(finalInputTsBlock)));
               } catch (Exception e) {
                 throw new ModelInferenceProcessException(e.getMessage());
               }

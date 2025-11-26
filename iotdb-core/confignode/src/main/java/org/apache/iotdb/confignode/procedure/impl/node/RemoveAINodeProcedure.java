@@ -28,8 +28,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveAINodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -75,7 +75,8 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
         case NODE_STOP:
           TSStatus resp = null;
           try (AINodeClient client =
-              AINodeClientManager.getInstance().borrowClient(removedAINode.getInternalEndPoint())) {
+              AINodeClientManager.getInstance()
+                  .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
             resp = client.stopAINode();
           } catch (Exception e) {
             LOGGER.warn(
