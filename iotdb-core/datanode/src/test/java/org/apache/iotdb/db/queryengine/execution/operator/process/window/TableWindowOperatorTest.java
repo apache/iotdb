@@ -196,21 +196,21 @@ public class TableWindowOperatorTest {
   public void testMixedPartition2() {
     long[][] timeArray =
         new long[][] {
-            {1, 2, 3},
-            {4, 5},
-            {6},
+          {1, 2, 3},
+          {4, 5},
+          {6},
         };
     String[][] deviceIdArray =
         new String[][] {
-            {"d1", "d1", "d2"},
-            {"d2", "d3"},
-            {"d3"},
+          {"d1", "d1", "d2"},
+          {"d2", "d3"},
+          {"d3"},
         };
     int[][] valueArray =
         new int[][] {
-            {1, 2, 3},
-            {4, 5},
-            {6},
+          {1, 2, 3},
+          {4, 5},
+          {6},
         };
 
     long[] expectColumn1 = new long[] {1, 2, 3, 4, 5, 6};
@@ -220,7 +220,7 @@ public class TableWindowOperatorTest {
 
     int count = 0;
     try (TableWindowOperator windowOperator =
-             genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
       ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
       listenableFuture.get();
       while (!windowOperator.isFinished() && windowOperator.hasNext()) {
