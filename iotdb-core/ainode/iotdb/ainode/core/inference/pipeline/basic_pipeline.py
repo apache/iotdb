@@ -21,15 +21,14 @@ from abc import ABC
 import torch
 
 from iotdb.ainode.core.exception import InferenceModelInternalError
-from iotdb.ainode.core.manager.model_manager import get_model_manager
+from iotdb.ainode.core.manager.model_manager import ModelManager
 
 
 class BasicPipeline(ABC):
     def __init__(self, model_id, **infer_kwargs):
         self.model_id = model_id
         self.device = infer_kwargs.get("device", "cpu")
-        # self.model = get_model_manager().load_model(model_id).to(self.device)
-        self.model = get_model_manager().load_model(
+        self.model = ModelManager().load_model(
             model_id, device_map=str(self.device)
         )
 
@@ -38,15 +37,6 @@ class BasicPipeline(ABC):
         Preprocess the input before inference, including shape validation and value transformation.
         """
         # TODO: Integrate with the data processing pipeline operators
-        pass
-
-    def infer(self, inputs):
-        pass
-
-    def _post_decode(self):
-        """
-        Post-process the outputs after each decode step.
-        """
         pass
 
     def _postprocess(self, output: torch.Tensor):
@@ -68,9 +58,6 @@ class ForecastPipeline(BasicPipeline):
         return inputs
 
     def forecast(self, inputs, **infer_kwargs):
-        pass
-
-    def _post_decode(self):
         pass
 
     def _postprocess(self, output: torch.Tensor):

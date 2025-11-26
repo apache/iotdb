@@ -32,7 +32,7 @@ from transformers import (
 
 from iotdb.ainode.core.exception import ModelNotExistError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_enums import ModelCategory
+from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.model.model_storage import ModelStorage
 from iotdb.ainode.core.model.sktime.modeling_sktime import create_sktime_model
@@ -73,13 +73,13 @@ class ModelLoader:
         train_from_scratch = kwargs.get("train_from_scratch", False)
 
         if model_info.category == ModelCategory.BUILTIN:
-            if model_info.model_id == "timerxl":
-                from iotdb.ainode.core.model.timerxl.configuration_timer import (
+            if model_info.model_id == "timer_xl":
+                from iotdb.ainode.core.model.timer_xl.configuration_timer import (
                     TimerConfig,
                 )
 
                 model_config = TimerConfig()
-                from iotdb.ainode.core.model.timerxl.modeling_timer import (
+                from iotdb.ainode.core.model.timer_xl.modeling_timer import (
                     TimerForPrediction,
                 )
 

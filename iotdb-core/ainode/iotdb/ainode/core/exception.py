@@ -17,10 +17,7 @@
 #
 import re
 
-from iotdb.ainode.core.constant import (
-    MODEL_CONFIG_FILE_IN_YAML,
-    MODEL_WEIGHTS_FILE_IN_PT,
-)
+from iotdb.ainode.core.model.model_constants import MODEL_WEIGHTS_FILE_IN_PT, MODEL_CONFIG_FILE_IN_YAML
 
 
 class _BaseError(Exception):

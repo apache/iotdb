@@ -18,14 +18,13 @@
 
 import importlib
 import json
+import os.path
 import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, Tuple
 
-from iotdb.ainode.core.model.model_enums import (
-    MODEL_CONFIG_FILE,
-    MODEL_WEIGHTS_FILE,
+from iotdb.ainode.core.model.model_constants import (
     UriType,
 )
 
@@ -58,7 +57,7 @@ def temporary_sys_path(path: str):
             sys.path.remove(path)
 
 
-def load_model_config(config_path: Path) -> Dict:
+def load_model_config_in_json(config_path: Path) -> Dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -87,8 +86,10 @@ def import_class_from_path(module_name, class_path: str):
     return getattr(module, class_name)
 
 
-def ensure_init_file(path: Path):
-    """Ensure __init__.py file exists in the given path"""
-    init_file = path / "__init__.py"
-    if not init_file.exists():
-        init_file.touch()
+def ensure_init_file(dir_path: str):
+    """Ensure __init__.py file exists in the given dir path"""
+    init_file = os.path.join(dir_path, "__init__.py")
+    os.makedirs(dir_path, exist_ok=True)
+    if not os.path.exists(init_file):
+        with open(init_file, 'w'):
+            pass

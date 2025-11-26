@@ -51,7 +51,7 @@ AINODE_INFERENCE_BATCH_INTERVAL_IN_MS = 15
 AINODE_INFERENCE_MAX_PREDICT_LENGTH = 2880
 AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
     "sundial": 1036 * 1024**2,  # 1036 MiB
-    "timerxl": 856 * 1024**2,  # 856 MiB
+    "timer_xl": 856 * 1024**2,  # 856 MiB
 }  # the memory usage of each model in bytes
 AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.4  # the device space allocated for inference
 AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
@@ -59,15 +59,6 @@ AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
 )
 
 AINODE_MODELS_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/models")
-AINODE_BUILTIN_MODELS_DIR = os.path.join(
-    IOTDB_AINODE_HOME, "data/ainode/models/builtin"
-)  # For built-in models, we only need to store their weights and config.
-AINODE_FINETUNE_MODELS_DIR = os.path.join(
-    IOTDB_AINODE_HOME, "data/ainode/models/finetune"
-)
-AINODE_USER_DEFINED_MODELS_DIR = os.path.join(
-    IOTDB_AINODE_HOME, "data/ainode/models/user_defined"
-)
 AINODE_SYSTEM_DIR = "data/ainode/system"
 AINODE_LOG_DIR = "logs"
 
@@ -80,11 +71,6 @@ INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
     "log_inference_rank_{}_"  # example: log_inference_rank_0_all.log
 )
 
-# AINode model management
-MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
-MODEL_CONFIG_FILE_IN_JSON = "config.json"
-MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
-MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
 DEFAULT_CHUNK_SIZE = 8192
 
 

@@ -16,13 +16,13 @@
 # under the License.
 #
 
-from iotdb.ainode.core.inference.pipeline.sundial_pipeline import SundialPipeline
-from iotdb.ainode.core.inference.pipeline.timerxl_pipeline import TimerxlPipeline
+from iotdb.ainode.core.model.sundial.pipeline_sundial import SundialPipeline
+from iotdb.ainode.core.model.timer_xl.pipeline_timer import TimerPipeline
 
 
 def get_pipeline(model_id, device):
-    if model_id == "timerxl":
-        return TimerxlPipeline(model_id, device=device)
+    if model_id == "timer_xl":
+        return TimerPipeline(model_id, device=device)
     elif model_id == "sundial":
         return SundialPipeline(model_id, device=device)
     else:

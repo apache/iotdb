@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -29,11 +29,8 @@ from transformers.modeling_outputs import (
     MoeModelOutputWithPast,
 )
 
-from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
-from iotdb.ainode.core.model.timerxl.ts_generation_mixin import TSGenerationMixin
-
-logger = Logger()
+from iotdb.ainode.core.model.timer_xl.configuration_timer import TimerConfig
+from iotdb.ainode.core.model.timer_xl.ts_generation_mixin import TSGenerationMixin
 
 
 def rotate_half(x):
