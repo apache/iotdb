@@ -28,7 +28,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.TableIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.junit.Assert.fail;
 
-@Category({ClusterIT.class})
+@Category({TableIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
