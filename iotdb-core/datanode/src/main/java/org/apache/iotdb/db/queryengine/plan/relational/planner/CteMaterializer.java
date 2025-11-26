@@ -83,7 +83,7 @@ public class CteMaterializer {
                 if (dataStore == null) {
                   // CTE query execution failed. Use inline instead of materialization
                   // in the outer query
-                  query.setMaterialized(false);
+                  query.setDone(false);
                   return;
                 }
 
