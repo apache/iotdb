@@ -659,6 +659,13 @@ struct TAINodeInfo {
   4: required i32 internalPort
 }
 
+// ----------- New messages -----------
+
+struct TGetAINodeLocationResp {
+  1: required common.TSStatus status
+  2: optional common.TAINodeLocation aiNodeLocation
+}
+
 struct TShowDataNodes4InformationSchemaResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
@@ -919,6 +926,16 @@ struct TPipeConfigTransferResp {
   2: optional binary body
 }
 
+struct TAlterEncodingCompressorReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: required byte encoding
+  4: required byte compressor
+  5: required bool ifExists
+  6: required bool mayAlterAudit
+  7: optional bool isGeneratedByPipe
+}
+
 struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1086,42 +1103,6 @@ struct TCreateModelReq {
 
 struct TDropModelReq {
   1: required string modelId
-}
-
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: optional list<string> modelIdList
-  3: optional map<string, string> modelTypeMap
-  4: optional map<string, string> categoryMap
-  5: optional map<string, string> stateMap
-}
-
-struct TShowLoadedModelReq {
-    1: required list<string> deviceIdList
-}
-
-struct TShowLoadedModelResp {
-  1: required common.TSStatus status
-  2: required map<string, map<string, i32>> deviceLoadedModelsMap
-}
-
-struct TShowAIDevicesResp {
-    1: required common.TSStatus status
-    2: required list<string> deviceIdList
-}
-
-struct TLoadModelReq {
-  1: required string existingModelId
-  2: required list<string> deviceIdList
-}
-
-struct TUnloadModelReq {
-  1: required string modelId
-  2: required list<string> deviceIdList
 }
 
 struct TGetModelInfoReq {
@@ -1362,6 +1343,11 @@ service IConfigNodeRPCService {
   TShowAINodesResp showAINodes()
 
   TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
+
+  /**
+   * Return a reachable AINode location.
+   */
+  TGetAINodeLocationResp getAINodeLocation()
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -1884,6 +1870,8 @@ service IConfigNodeRPCService {
 
   common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
 
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
    *
@@ -2039,42 +2027,11 @@ service IConfigNodeRPCService {
   common.TSStatus dropModel(TDropModelReq req)
 
   /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-  /**
-   * Return the loaded model table
-   */
-  TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req)
-
-  /**
-   * Return the available ai devices
-   */
-  TShowAIDevicesResp showAIDevices()
-
-  /**
-   * Load an existing model to specific devices
-   *
-   * @return SUCCESS_STATUS if the model loading task was submitted successfully
-   */
-  common.TSStatus loadModel(TLoadModelReq req)
-
-  /**
-   * Unload an existing model to specific devices
-   *
-   * @return SUCCESS_STATUS if the model unloading task was submitted successfully
-   */
-  common.TSStatus unloadModel(TUnloadModelReq req)
-
-   /**
-   * Return the model info by model_id
-   */
+  * Return the model info by model_id
+  */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota

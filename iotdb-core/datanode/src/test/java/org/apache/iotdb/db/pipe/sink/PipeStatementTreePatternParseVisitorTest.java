@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBTreePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -44,27 +46,44 @@ import java.util.Map;
 
 public class PipeStatementTreePatternParseVisitorTest {
 
-  private final UnionIoTDBTreePattern prefixPathPattern =
+  private final IoTDBTreePatternOperations prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
-  private final UnionIoTDBTreePattern fullPathPattern =
+  private final IoTDBTreePatternOperations fullPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.s1"));
-  private final UnionIoTDBTreePattern multiplePathPattern =
+  private final IoTDBTreePatternOperations multiplePathPattern =
       new UnionIoTDBTreePattern(
           Arrays.asList(
               new IoTDBTreePattern("root.db.device.s1"),
               new IoTDBTreePattern("root.db.device.s2")));
+  private final IoTDBTreePatternOperations exclusionPattern =
+      new WithExclusionIoTDBTreePattern(
+          new UnionIoTDBTreePattern(
+              new IoTDBTreePattern("root.db.device.**")), // Inclusion: root.db.device.**
+          new UnionIoTDBTreePattern(
+              new IoTDBTreePattern("root.db.device.s2")) // Exclusion: root.db.device.s2
+          );
 
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
-    final CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
-    createTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
-    createTimeSeriesStatement.setDataType(TSDataType.FLOAT);
-    createTimeSeriesStatement.setEncoding(TSEncoding.RLE);
-    createTimeSeriesStatement.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatement.setProps(Collections.emptyMap());
-    createTimeSeriesStatement.setTags(Collections.emptyMap());
-    createTimeSeriesStatement.setAttributes(Collections.emptyMap());
-    createTimeSeriesStatement.setAlias("a1");
+    final CreateTimeSeriesStatement createTimeSeriesStatementS1 = new CreateTimeSeriesStatement();
+    createTimeSeriesStatementS1.setPath(new MeasurementPath("root.db.device.s1"));
+    createTimeSeriesStatementS1.setDataType(TSDataType.FLOAT);
+    createTimeSeriesStatementS1.setEncoding(TSEncoding.RLE);
+    createTimeSeriesStatementS1.setCompressor(CompressionType.SNAPPY);
+    createTimeSeriesStatementS1.setProps(Collections.emptyMap());
+    createTimeSeriesStatementS1.setTags(Collections.emptyMap());
+    createTimeSeriesStatementS1.setAttributes(Collections.emptyMap());
+    createTimeSeriesStatementS1.setAlias("a1");
+
+    final CreateTimeSeriesStatement createTimeSeriesStatementS2 = new CreateTimeSeriesStatement();
+    createTimeSeriesStatementS2.setPath(new MeasurementPath("root.db.device.s2"));
+    createTimeSeriesStatementS2.setDataType(TSDataType.INT32);
+    createTimeSeriesStatementS2.setEncoding(TSEncoding.PLAIN);
+    createTimeSeriesStatementS2.setCompressor(CompressionType.SNAPPY);
+    createTimeSeriesStatementS2.setProps(Collections.emptyMap());
+    createTimeSeriesStatementS2.setTags(Collections.emptyMap());
+    createTimeSeriesStatementS2.setAttributes(Collections.emptyMap());
+    createTimeSeriesStatementS2.setAlias("a2");
 
     final CreateTimeSeriesStatement createTimeSeriesStatementToFilter =
         new CreateTimeSeriesStatement();
@@ -75,90 +94,128 @@ public class PipeStatementTreePatternParseVisitorTest {
     createTimeSeriesStatementToFilter.setProps(Collections.emptyMap());
     createTimeSeriesStatementToFilter.setTags(Collections.emptyMap());
     createTimeSeriesStatementToFilter.setAttributes(Collections.emptyMap());
-    createTimeSeriesStatementToFilter.setAlias("a2");
+    createTimeSeriesStatementToFilter.setAlias("a3");
 
     Assert.assertEquals(
-        createTimeSeriesStatement,
+        createTimeSeriesStatementS1,
         new PipeStatementTreePatternParseVisitor()
-            .visitCreateTimeseries(createTimeSeriesStatement, prefixPathPattern)
+            .visitCreateTimeseries(createTimeSeriesStatementS1, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
+
     Assert.assertEquals(
-        createTimeSeriesStatement,
+        createTimeSeriesStatementS1,
         new PipeStatementTreePatternParseVisitor()
-            .visitCreateTimeseries(createTimeSeriesStatement, multiplePathPattern)
+            .visitCreateTimeseries(createTimeSeriesStatementS1, multiplePathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitCreateTimeseries(createTimeSeriesStatementToFilter, multiplePathPattern)
             .isPresent());
+
+    Assert.assertEquals(
+        createTimeSeriesStatementS1,
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatementS1, exclusionPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatementS2, exclusionPattern)
+            .isPresent());
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateTimeseries(createTimeSeriesStatementToFilter, exclusionPattern)
+            .isPresent());
   }
 
   @Test
   public void testCreateAlignedTimeSeries() throws IllegalPathException {
-    final CreateAlignedTimeSeriesStatement expectedCreateAlignedTimeSeriesStatement =
-        new CreateAlignedTimeSeriesStatement();
-    expectedCreateAlignedTimeSeriesStatement.setDevicePath(new PartialPath("root.db.device"));
-    expectedCreateAlignedTimeSeriesStatement.setMeasurements(Collections.singletonList("s1"));
-    expectedCreateAlignedTimeSeriesStatement.setDataTypes(
-        Collections.singletonList(TSDataType.FLOAT));
-    expectedCreateAlignedTimeSeriesStatement.setEncodings(
-        Collections.singletonList(TSEncoding.RLE));
-    expectedCreateAlignedTimeSeriesStatement.setCompressors(
-        Collections.singletonList(CompressionType.SNAPPY));
-    expectedCreateAlignedTimeSeriesStatement.setTagsList(
-        Collections.singletonList(Collections.emptyMap()));
-    expectedCreateAlignedTimeSeriesStatement.setAttributesList(
-        Collections.singletonList(Collections.emptyMap()));
-    expectedCreateAlignedTimeSeriesStatement.setAliasList(Collections.singletonList("a1"));
+    final CreateAlignedTimeSeriesStatement expectedS1Only = new CreateAlignedTimeSeriesStatement();
+    expectedS1Only.setDevicePath(new PartialPath("root.db.device"));
+    expectedS1Only.setMeasurements(Collections.singletonList("s1"));
+    expectedS1Only.setDataTypes(Collections.singletonList(TSDataType.FLOAT));
+    expectedS1Only.setEncodings(Collections.singletonList(TSEncoding.RLE));
+    expectedS1Only.setCompressors(Collections.singletonList(CompressionType.SNAPPY));
+    expectedS1Only.setTagsList(Collections.singletonList(Collections.emptyMap()));
+    expectedS1Only.setAttributesList(Collections.singletonList(Collections.emptyMap()));
+    expectedS1Only.setAliasList(Collections.singletonList("a1"));
 
-    final CreateAlignedTimeSeriesStatement originalCreateAlignedTimeSeriesStatement =
-        new CreateAlignedTimeSeriesStatement();
-    originalCreateAlignedTimeSeriesStatement.setDevicePath(new PartialPath("root.db.device"));
-    originalCreateAlignedTimeSeriesStatement.setMeasurements(Arrays.asList("s1", "s2"));
-    originalCreateAlignedTimeSeriesStatement.setDataTypes(
-        Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN));
-    originalCreateAlignedTimeSeriesStatement.setEncodings(
-        Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN));
-    originalCreateAlignedTimeSeriesStatement.setCompressors(
-        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
-    originalCreateAlignedTimeSeriesStatement.setTagsList(
-        Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
-    originalCreateAlignedTimeSeriesStatement.setAttributesList(
-        Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
-    originalCreateAlignedTimeSeriesStatement.setAliasList(Arrays.asList("a1", "a2"));
+    final CreateAlignedTimeSeriesStatement originalS1S2 = new CreateAlignedTimeSeriesStatement();
+    originalS1S2.setDevicePath(new PartialPath("root.db.device"));
+    originalS1S2.setMeasurements(Arrays.asList("s1", "s2"));
+    originalS1S2.setDataTypes(Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN));
+    originalS1S2.setEncodings(Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN));
+    originalS1S2.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    originalS1S2.setTagsList(Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
+    originalS1S2.setAttributesList(Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
+    originalS1S2.setAliasList(Arrays.asList("a1", "a2"));
+
+    final CreateAlignedTimeSeriesStatement originalS1S2S3 = new CreateAlignedTimeSeriesStatement();
+    originalS1S2S3.setDevicePath(new PartialPath("root.db.device"));
+    originalS1S2S3.setMeasurements(Arrays.asList("s1", "s2", "s3"));
+    originalS1S2S3.setDataTypes(
+        Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN, TSDataType.INT32));
+    originalS1S2S3.setEncodings(Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN, TSEncoding.RLE));
+    originalS1S2S3.setCompressors(
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
+    originalS1S2S3.setTagsList(
+        Arrays.asList(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap()));
+    originalS1S2S3.setAttributesList(
+        Arrays.asList(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap()));
+    originalS1S2S3.setAliasList(Arrays.asList("a1", "a2", "a3"));
 
     Assert.assertEquals(
-        expectedCreateAlignedTimeSeriesStatement,
+        expectedS1Only,
         new PipeStatementTreePatternParseVisitor()
-            .visitCreateAlignedTimeseries(originalCreateAlignedTimeSeriesStatement, fullPathPattern)
+            .visitCreateAlignedTimeseries(originalS1S2, fullPathPattern)
             .orElseThrow(AssertionError::new));
 
     Assert.assertEquals(
-        originalCreateAlignedTimeSeriesStatement,
+        originalS1S2,
         new PipeStatementTreePatternParseVisitor()
-            .visitCreateAlignedTimeseries(
-                originalCreateAlignedTimeSeriesStatement, multiplePathPattern)
+            .visitCreateAlignedTimeseries(originalS1S2S3, multiplePathPattern)
+            .orElseThrow(AssertionError::new));
+
+    final CreateAlignedTimeSeriesStatement expectedS1S3 = new CreateAlignedTimeSeriesStatement();
+    expectedS1S3.setDevicePath(new PartialPath("root.db.device"));
+    expectedS1S3.setMeasurements(Arrays.asList("s1", "s3"));
+    expectedS1S3.setDataTypes(Arrays.asList(TSDataType.FLOAT, TSDataType.INT32));
+    expectedS1S3.setEncodings(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
+    expectedS1S3.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    expectedS1S3.setTagsList(Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
+    expectedS1S3.setAttributesList(Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
+    expectedS1S3.setAliasList(Arrays.asList("a1", "a3"));
+
+    Assert.assertEquals(
+        expectedS1S3,
+        new PipeStatementTreePatternParseVisitor()
+            .visitCreateAlignedTimeseries(originalS1S2S3, exclusionPattern)
             .orElseThrow(AssertionError::new));
   }
 
   @Test
   public void testAlterTimeSeries() throws IllegalPathException {
-    final AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement(true);
-
     final Map<String, String> attributeMap = Collections.singletonMap("k1", "v1");
-    alterTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
-    alterTimeSeriesStatement.setAlterMap(attributeMap);
-    alterTimeSeriesStatement.setTagsMap(Collections.emptyMap());
-    alterTimeSeriesStatement.setAttributesMap(attributeMap);
-    alterTimeSeriesStatement.setAlias("");
+
+    final AlterTimeSeriesStatement alterTimeSeriesStatementS1 = new AlterTimeSeriesStatement(true);
+    alterTimeSeriesStatementS1.setPath(new MeasurementPath("root.db.device.s1"));
+    alterTimeSeriesStatementS1.setAlterMap(attributeMap);
+    alterTimeSeriesStatementS1.setTagsMap(Collections.emptyMap());
+    alterTimeSeriesStatementS1.setAttributesMap(attributeMap);
+    alterTimeSeriesStatementS1.setAlias("");
+
+    final AlterTimeSeriesStatement alterTimeSeriesStatementS2 = new AlterTimeSeriesStatement(true);
+    alterTimeSeriesStatementS2.setPath(new MeasurementPath("root.db.device.s2")); // Different path
+    alterTimeSeriesStatementS2.setAlterMap(attributeMap);
+    alterTimeSeriesStatementS2.setTagsMap(Collections.emptyMap());
+    alterTimeSeriesStatementS2.setAttributesMap(attributeMap);
+    alterTimeSeriesStatementS2.setAlias("");
 
     final AlterTimeSeriesStatement alterTimeSeriesStatementToFilter =
         new AlterTimeSeriesStatement(true);
-
     alterTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
     alterTimeSeriesStatementToFilter.setAlterMap(attributeMap);
     alterTimeSeriesStatementToFilter.setTagsMap(Collections.emptyMap());
@@ -166,22 +223,37 @@ public class PipeStatementTreePatternParseVisitorTest {
     alterTimeSeriesStatementToFilter.setAlias("");
 
     Assert.assertEquals(
-        alterTimeSeriesStatement,
+        alterTimeSeriesStatementS1,
         new PipeStatementTreePatternParseVisitor()
-            .visitAlterTimeSeries(alterTimeSeriesStatement, fullPathPattern)
+            .visitAlterTimeSeries(alterTimeSeriesStatementS1, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
             .isPresent());
+
     Assert.assertEquals(
-        alterTimeSeriesStatement,
+        alterTimeSeriesStatementS1,
         new PipeStatementTreePatternParseVisitor()
-            .visitAlterTimeSeries(alterTimeSeriesStatement, multiplePathPattern)
+            .visitAlterTimeSeries(alterTimeSeriesStatementS1, multiplePathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
         new PipeStatementTreePatternParseVisitor()
             .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, multiplePathPattern)
+            .isPresent());
+
+    Assert.assertEquals(
+        alterTimeSeriesStatementS1,
+        new PipeStatementTreePatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementS1, exclusionPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementS2, exclusionPattern)
+            .isPresent());
+    Assert.assertFalse(
+        new PipeStatementTreePatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, exclusionPattern)
             .isPresent());
   }
 

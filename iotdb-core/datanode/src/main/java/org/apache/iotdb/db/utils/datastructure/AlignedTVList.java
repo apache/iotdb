@@ -292,6 +292,7 @@ public abstract class AlignedTVList extends TVList {
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
+  @SuppressWarnings("java:S6541")
   private TsPrimitiveType getAlignedValueByValueIndex(
       int valueIndex,
       int[] validIndexesForTimeDuplicatedRows,
@@ -1135,6 +1136,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /** Build TsBlock by column. */
+  @SuppressWarnings("java:S6541")
   public TsBlock buildTsBlock(
       int floatPrecision,
       List<TSEncoding> encodingList,
@@ -1459,6 +1461,7 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  @SuppressWarnings("java:S6541")
   public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     if (dataType != TSDataType.VECTOR) {
@@ -1780,6 +1783,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     protected void prepareNext() {
       // find the first row that is neither deleted nor empty (all NULL values)
       findValidRow = false;
@@ -1956,6 +1960,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     public boolean hasNextBatch() {
       if (!paginationController.hasCurLimit()) {
         return false;
@@ -2242,11 +2247,18 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      int maxRowCountOfCurrentBatch =
+          Math.min(
+              rows - index,
+              Math.min(
+                  (int) encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk, // NOSONAR
+                  encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
       // duplicated time or deleted time are all invalid, true if we don't need this row
-      BitMap timeDuplicateInfo = null;
+      LazyBitMap timeDuplicateInfo = null;
 
       int startIndex = index;
       // time column
@@ -2275,7 +2287,7 @@ public abstract class AlignedTVList extends TVList {
           encodeInfo.pointNumInChunk++;
         } else {
           if (Objects.isNull(timeDuplicateInfo)) {
-            timeDuplicateInfo = new BitMap(rows);
+            timeDuplicateInfo = new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1);
           }
           timeDuplicateInfo.mark(index);
         }

@@ -1642,6 +1642,7 @@ public class IoTDBSessionRelationalIT {
     Collections.addAll(dataTypes, TSDataType.values());
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
+    dataTypes.remove(TSDataType.OBJECT);
 
     try {
       for (TSDataType from : dataTypes) {
@@ -1732,6 +1733,7 @@ public class IoTDBSessionRelationalIT {
     Collections.addAll(dataTypes, TSDataType.values());
     dataTypes.remove(TSDataType.VECTOR);
     dataTypes.remove(TSDataType.UNKNOWN);
+    dataTypes.remove(TSDataType.OBJECT);
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {

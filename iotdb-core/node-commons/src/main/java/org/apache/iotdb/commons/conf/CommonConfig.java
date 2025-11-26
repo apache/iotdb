@@ -214,6 +214,8 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
+  private boolean pipeRetryLocallyForParallelOrUserConflict = true;
+
   private int pipeDataStructureTabletRowSize = 2048;
   private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
@@ -252,12 +254,15 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
 
+  private volatile long pipeSinkSubtaskSleepIntervalInitMs = 250L;
+  private volatile long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
+
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
   private long pipeMaxWaitFinishTime = 10 * 1000;
 
-  private int pipeExtractorAssignerDisruptorRingBufferSize = 128;
-  private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
+  private int pipeSourceAssignerDisruptorRingBufferSize = 128;
+  private long pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
   private long pipeSourceMatcherCacheSize = 1024;
 
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
@@ -267,9 +272,9 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold = 5;
-  private int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold = 20;
-  private int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold = 30;
+  private int pipeAsyncSinkForcedRetryTsFileEventQueueSize = 5;
+  private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
+  private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
   private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
@@ -996,38 +1001,37 @@ public class CommonConfig {
         "pipeTotalFloatingMemoryProportion is set to {}.", pipeTotalFloatingMemoryProportion);
   }
 
-  public int getPipeExtractorAssignerDisruptorRingBufferSize() {
-    return pipeExtractorAssignerDisruptorRingBufferSize;
+  public int getPipeSourceAssignerDisruptorRingBufferSize() {
+    return pipeSourceAssignerDisruptorRingBufferSize;
   }
 
-  public void setPipeExtractorAssignerDisruptorRingBufferSize(
-      int pipeExtractorAssignerDisruptorRingBufferSize) {
-    if (this.pipeExtractorAssignerDisruptorRingBufferSize
-        == pipeExtractorAssignerDisruptorRingBufferSize) {
+  public void setPipeSourceAssignerDisruptorRingBufferSize(
+      int pipeSourceAssignerDisruptorRingBufferSize) {
+    if (this.pipeSourceAssignerDisruptorRingBufferSize
+        == pipeSourceAssignerDisruptorRingBufferSize) {
       return;
     }
-    this.pipeExtractorAssignerDisruptorRingBufferSize =
-        pipeExtractorAssignerDisruptorRingBufferSize;
+    this.pipeSourceAssignerDisruptorRingBufferSize = pipeSourceAssignerDisruptorRingBufferSize;
     logger.info(
-        "pipeExtractorAssignerDisruptorRingBufferSize is set to {}.",
-        pipeExtractorAssignerDisruptorRingBufferSize);
+        "pipeSourceAssignerDisruptorRingBufferSize is set to {}.",
+        pipeSourceAssignerDisruptorRingBufferSize);
   }
 
-  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
-    return pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes;
+  public long getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes;
   }
 
-  public void setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes(
-      long pipeExtractorAssignerDisruptorRingBufferEntrySize) {
-    if (pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes
-        == pipeExtractorAssignerDisruptorRingBufferEntrySize) {
+  public void setPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes(
+      long pipeSourceAssignerDisruptorRingBufferEntrySize) {
+    if (pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes
+        == pipeSourceAssignerDisruptorRingBufferEntrySize) {
       return;
     }
-    this.pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes =
-        pipeExtractorAssignerDisruptorRingBufferEntrySize;
+    this.pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes =
+        pipeSourceAssignerDisruptorRingBufferEntrySize;
     logger.info(
-        "pipeExtractorAssignerDisruptorRingBufferEntrySize is set to {}.",
-        pipeExtractorAssignerDisruptorRingBufferEntrySize);
+        "pipeSourceAssignerDisruptorRingBufferEntrySize is set to {}.",
+        pipeSourceAssignerDisruptorRingBufferEntrySize);
   }
 
   public long getPipeSourceMatcherCacheSize() {
@@ -1057,7 +1061,7 @@ public class CommonConfig {
     } finally {
       if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorHandshakeTimeoutMs) {
         logger.info(
-            "pipeConnectorHandshakeTimeoutMs is set to {}.", fPipeConnectorHandshakeTimeoutMs);
+            "pipeConnectorHandshakeTimeoutMs is set to {}.", this.pipeConnectorHandshakeTimeoutMs);
       }
     }
   }
@@ -1126,55 +1130,54 @@ public class CommonConfig {
     return pipeConnectorRPCThriftCompressionEnabled;
   }
 
-  public void setPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold(
-      int pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold) {
-    if (this.pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold
-        == pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold) {
+  public void setPipeAsyncSinkForcedRetryTsFileEventQueueSize(
+      int pipeAsyncSinkForcedRetryTsFileEventQueueSize) {
+    if (this.pipeAsyncSinkForcedRetryTsFileEventQueueSize
+        == pipeAsyncSinkForcedRetryTsFileEventQueueSize) {
       return;
     }
-    this.pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold =
-        pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
+    this.pipeAsyncSinkForcedRetryTsFileEventQueueSize =
+        pipeAsyncSinkForcedRetryTsFileEventQueueSize;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold is set to {}.",
-        pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold);
+        "pipeAsyncSinkForcedRetryTsFileEventQueueSize is set to {}.",
+        pipeAsyncSinkForcedRetryTsFileEventQueueSize);
   }
 
-  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
-    return pipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold;
+  public int getPipeAsyncSinkForcedRetryTsFileEventQueueSize() {
+    return pipeAsyncSinkForcedRetryTsFileEventQueueSize;
   }
 
-  public void setPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold(
-      int pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold) {
-    if (this.pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold
-        == pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold) {
+  public void setPipeAsyncSinkForcedRetryTabletEventQueueSize(
+      int pipeAsyncSinkForcedRetryTabletEventQueueSize) {
+    if (this.pipeAsyncSinkForcedRetryTabletEventQueueSize
+        == pipeAsyncSinkForcedRetryTabletEventQueueSize) {
       return;
     }
-    this.pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold =
-        pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+    this.pipeAsyncSinkForcedRetryTabletEventQueueSize =
+        pipeAsyncSinkForcedRetryTabletEventQueueSize;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold is set to {}.",
-        pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold);
+        "pipeAsyncSinkForcedRetryTabletEventQueueSize is set to {}.",
+        pipeAsyncSinkForcedRetryTabletEventQueueSize);
   }
 
-  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
-    return pipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold;
+  public int getPipeAsyncSinkForcedRetryTabletEventQueueSize() {
+    return pipeAsyncSinkForcedRetryTabletEventQueueSize;
   }
 
-  public void setPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold(
-      int pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold) {
-    if (this.pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold
-        == pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold) {
+  public void setPipeAsyncSinkForcedRetryTotalEventQueueSize(
+      int pipeAsyncSinkForcedRetryTotalEventQueueSize) {
+    if (this.pipeAsyncSinkForcedRetryTotalEventQueueSize
+        == pipeAsyncSinkForcedRetryTotalEventQueueSize) {
       return;
     }
-    this.pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold =
-        pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
+    this.pipeAsyncSinkForcedRetryTotalEventQueueSize = pipeAsyncSinkForcedRetryTotalEventQueueSize;
     logger.info(
-        "pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold is set to {}.",
-        pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold);
+        "pipeAsyncSinkForcedRetryTotalEventQueueSize is set to {}.",
+        pipeAsyncSinkForcedRetryTotalEventQueueSize);
   }
 
-  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
-    return pipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold;
+  public int getPipeAsyncSinkForcedRetryTotalEventQueueSize() {
+    return pipeAsyncSinkForcedRetryTotalEventQueueSize;
   }
 
   public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
@@ -1398,6 +1401,47 @@ public class CommonConfig {
     }
     this.pipeSubtaskExecutorMaxThreadNum = pipeSubtaskExecutorMaxThreadNum;
     logger.info("pipeSubtaskExecutorMaxThreadNum is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+  }
+
+  public boolean isPipeRetryLocallyForParallelOrUserConflict() {
+    return pipeRetryLocallyForParallelOrUserConflict;
+  }
+
+  public void setPipeRetryLocallyForParallelOrUserConflict(
+      boolean pipeRetryLocallyForParallelOrUserConflict) {
+    if (this.pipeRetryLocallyForParallelOrUserConflict
+        == pipeRetryLocallyForParallelOrUserConflict) {
+      return;
+    }
+    this.pipeRetryLocallyForParallelOrUserConflict = pipeRetryLocallyForParallelOrUserConflict;
+    logger.info(
+        "pipeRetryLocallyForParallelOrUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return pipeSinkSubtaskSleepIntervalInitMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalInitMs(long pipeSinkSubtaskSleepIntervalInitMs) {
+    if (this.pipeSinkSubtaskSleepIntervalInitMs == pipeSinkSubtaskSleepIntervalInitMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalInitMs = pipeSinkSubtaskSleepIntervalInitMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalInitMs is set to {}.", pipeSinkSubtaskSleepIntervalInitMs);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return pipeSinkSubtaskSleepIntervalMaxMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalMaxMs(long pipeSinkSubtaskSleepIntervalMaxMs) {
+    if (this.pipeSinkSubtaskSleepIntervalMaxMs == pipeSinkSubtaskSleepIntervalMaxMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalMaxMs = pipeSinkSubtaskSleepIntervalMaxMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalMaxMs is set to {}.", pipeSinkSubtaskSleepIntervalMaxMs);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {

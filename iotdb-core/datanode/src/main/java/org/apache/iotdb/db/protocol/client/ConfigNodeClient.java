@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -78,7 +79,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -135,7 +136,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -153,7 +153,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -162,10 +161,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -187,7 +182,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -527,6 +521,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) throws TException {
     throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+  }
+
+  @Override
+  public TGetAINodeLocationResp getAINodeLocation() throws TException {
+    return client.getAINodeLocation();
   }
 
   @Override
@@ -1106,6 +1105,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterEncodingCompressor(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteTimeSeries(req), status -> !updateConfigNodeLeader(status));
@@ -1346,51 +1351,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.dropModel(req), status -> !updateConfigNodeLeader(status));
   }
 
-  @Override
-  public TShowModelResp showModel(TShowModelReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.showModel(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.showLoadedModel(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TShowAIDevicesResp showAIDevices() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.showAIDevices(), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TSStatus loadModel(TLoadModelReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.loadModel(req), status -> !updateConfigNodeLeader(status));
-  }
-
-  public TSStatus unloadModel(TUnloadModelReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.unloadModel(req), status -> !updateConfigNodeLeader(status));
-  }
-
-  @Override
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getModelInfo(req), resp -> !updateConfigNodeLeader(resp.getStatus()));
   }
 
-  @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.updateModelInfo(req), status -> !updateConfigNodeLeader(status));
-  }
-
-  @Override
-  public TSStatus createTraining(TCreateTrainingReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.createTraining(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

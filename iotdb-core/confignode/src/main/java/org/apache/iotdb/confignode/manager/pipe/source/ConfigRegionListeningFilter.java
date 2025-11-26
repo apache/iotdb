@@ -92,6 +92,9 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.UnsetTemplate, ConfigPhysicalPlanType.PipeUnsetTemplate)));
 
       OPTION_PLAN_MAP.put(
+          new PartialPath("schema.timeseries.ordinary.alter"),
+          Collections.singletonList(ConfigPhysicalPlanType.PipeAlterEncodingCompressor));
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteTimeSeries));
       OPTION_PLAN_MAP.put(
