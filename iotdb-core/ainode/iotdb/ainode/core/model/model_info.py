@@ -16,29 +16,20 @@
 # under the License.
 #
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
-from iotdb.ainode.core.model.model_enums import ModelCategory, ModelStates
-
-# Map for inferring which HuggingFace repository to download from based on model ID
-REPO_ID_MAP = {
-    "timerxl": "thuml/timer-base-84m",
-    "sundial": "thuml/sundial-base-128m",
-    # More mappings can be added as needed
-}
-
-# Model file constants
-MODEL_CONFIG_FILE = "config.json"
-MODEL_WEIGHTS_FILE = "model.safetensors"
-
+from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates
 
 class ModelInfo:
     def __init__(
         self,
         model_id: str,
-        model_type: str,
         category: ModelCategory,
         state: ModelStates,
+        model_type: str = "",
+        model_cls: str = "",
+        pipeline_cls: str = "",
+        repo_id: str = "",
         path: str = "",
         auto_map: Optional[Dict] = None,
         _transformers_registered: bool = False,
@@ -47,6 +38,9 @@ class ModelInfo:
         self.model_type = model_type
         self.category = category
         self.state = state
+        self.model_cls = model_cls
+        self.pipeline_cls = pipeline_cls
+        self.repo_id = repo_id
         self.path = path
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
         self._transformers_registered = _transformers_registered  # Internal flag: whether registered to Transformers
@@ -63,67 +57,73 @@ BUILTIN_SKTIME_MODEL_MAP = {
     # forecast models
     "arima": ModelInfo(
         model_id="arima",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "holtwinters": ModelInfo(
         model_id="holtwinters",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "exponential_smoothing": ModelInfo(
         model_id="exponential_smoothing",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "naive_forecaster": ModelInfo(
         model_id="naive_forecaster",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "stl_forecaster": ModelInfo(
         model_id="stl_forecaster",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     # anomaly detection models
     "gaussian_hmm": ModelInfo(
         model_id="gaussian_hmm",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "gmm_hmm": ModelInfo(
         model_id="gmm_hmm",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "stray": ModelInfo(
         model_id="stray",
-        model_type="sktime",
         category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
 }
 
 # Built-in huggingface transformers models, their weights are not included in AINode by default
 BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
-    "timerxl": ModelInfo(
-        model_id="timerxl",
-        model_type="timer",
+    "timer_xl": ModelInfo(
+        model_id="timer_xl",
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
+        model_type="timer",
+        model_cls="modeling_timer.TimerForPrediction",
+        pipeline_cls="pipeline_timer.TimerPipeline",
+        repo_id="thuml/timer-base-84m",
     ),
     "sundial": ModelInfo(
         model_id="sundial",
-        model_type="sundial",
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
+        model_type="sundial",
+        model_cls="modeling_sundial.SundialForPrediction",
+        pipeline_cls="pipeline_sundial.SundialPipeline",
+        repo_id="thuml/sundial-base-128m",
     ),
 }

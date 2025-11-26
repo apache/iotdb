@@ -17,23 +17,27 @@
 #
 
 import concurrent.futures
+import json
 import os
 import shutil
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Dict
 
 from huggingface_hub import hf_hub_download, snapshot_download
 from transformers import AutoConfig, AutoModelForCausalLM
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import BuiltInModelDeletionError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_enums import REPO_ID_MAP, ModelCategory, ModelStates
+from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates, UriType, \
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS, MODEL_CONFIG_FILE_IN_JSON
 from iotdb.ainode.core.model.model_info import (
     BUILTIN_HF_TRANSFORMERS_MODEL_MAP,
     BUILTIN_SKTIME_MODEL_MAP,
-    ModelInfo,
-)
-from iotdb.ainode.core.model.utils import *
+    ModelInfo)
+from iotdb.ainode.core.model.utils import ensure_init_file, load_model_config_in_json, parse_uri_type, get_parsed_uri, \
+    validate_model_files, temporary_sys_path, import_class_from_path
 from iotdb.ainode.core.util.lock import ModelLockPool
 from iotdb.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from iotdb.thrift.common.ttypes import TSStatus
@@ -44,56 +48,49 @@ logger = Logger()
 class ModelStorage:
     """Model storage class - unified management of model discovery and registration"""
 
-    def __init__(self, models_dir: str):
-        self.models_dir = Path(models_dir)
+    def __init__(self):
+        self._models_dir = os.path.join(
+            os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+        )
         # Unified storage: category -> {model_id -> ModelInfo}
         self._models: Dict[str, Dict[str, ModelInfo]] = {
             ModelCategory.BUILTIN.value: {},
             ModelCategory.USER_DEFINED.value: {},
-            ModelCategory.FINETUNE.value: {},
         }
-        # Async download executor (using single-threaded executor because hf download interface is unstable with concurrent downloads)
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        # Async download executor
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
         # Thread lock pool for protecting concurrent access to model information
         self._lock_pool = ModelLockPool()
         self._initialize_directories()
+        self.discover_all_models()
 
     def _initialize_directories(self):
         """Initialize directory structure and ensure __init__.py files exist"""
-        self.models_dir.mkdir(parents=True, exist_ok=True)
-        ensure_init_file(self.models_dir)
-
+        os.makedirs(self._models_dir, exist_ok=True)
+        ensure_init_file(self._models_dir)
         for category in ModelCategory:
-            category_path = self.models_dir / category.value
-            category_path.mkdir(parents=True, exist_ok=True)
+            category_path = os.path.join(self._models_dir, category.value)
+            os.makedirs(category_path, exist_ok=True)
             ensure_init_file(category_path)
 
     # ==================== Discovery Methods ====================
 
-    def discover_all(self) -> Dict[str, Dict[str, ModelInfo]]:
+    def discover_all_models(self):
         """Scan file system to discover all models"""
         self._discover_category(ModelCategory.BUILTIN)
         self._discover_category(ModelCategory.USER_DEFINED)
-        self._discover_category(ModelCategory.FINETUNE)
-        return self._models
 
     def _discover_category(self, category: ModelCategory):
         """Discover all models in a category directory"""
-        category_path = self.models_dir / category.value
-        if not category_path.exists():
-            return
-
+        category_path = os.path.join(self._models_dir, category.value)
         if category == ModelCategory.BUILTIN:
             self._discover_builtin_models(category_path)
-        else:
-            # For finetune and user_defined, scan directories
-            for item in category_path.iterdir():
-                if item.is_dir() and not item.name.startswith("__"):
-                    relative_path = item.relative_to(category_path)
-                    model_id = str(relative_path).replace("/", "_").replace("\\", "_")
-                    self._process_model_directory(item, model_id, category)
+        elif category == ModelCategory.USER_DEFINED:
+            for model_id in os.listdir(category_path):
+                if os.path.isdir(os.path.join(category_path, model_id)):
+                    self._process_user_defined_model_directory(os.path.join(category_path, model_id), model_id)
 
-    def _discover_builtin_models(self, category_path: Path):
+    def _discover_builtin_models(self, category_path: str):
         # Register SKTIME models directly from map
         for model_id in BUILTIN_SKTIME_MODEL_MAP.keys():
             with self._lock_pool.get_lock(model_id).write_lock():
@@ -103,136 +100,115 @@ class ModelStorage:
 
         # Process HuggingFace Transformers models
         for model_id in BUILTIN_HF_TRANSFORMERS_MODEL_MAP.keys():
-            model_dir = category_path / model_id
-            model_dir.mkdir(parents=True, exist_ok=True)
-            self._process_model_directory(model_dir, model_id, ModelCategory.BUILTIN)
+            model_dir = os.path.join(category_path, model_id)
+            os.makedirs(model_dir, exist_ok=True)
+            self._process_builtin_model_directory(model_dir, model_id)
 
-    def _process_model_directory(
-        self, model_dir: Path, model_id: str, category: ModelCategory
+    def _process_builtin_model_directory(
+        self, model_dir: str, model_id: str
     ):
-        """Handling the discovery logic for a single model directory."""
+        """Handling the discovery logic for a builtin model directory."""
         ensure_init_file(model_dir)
+        with self._lock_pool.get_lock(model_id).write_lock():
+            self._models[ModelCategory.BUILTIN.value][model_id] = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
+            self._models[ModelCategory.BUILTIN.value][model_id].state = ModelStates.ACTIVATING
 
-        config_path = model_dir / MODEL_CONFIG_FILE
-        weights_path = model_dir / MODEL_WEIGHTS_FILE
-        needs_download = not config_path.exists() or not weights_path.exists()
+        def _download_model_if_necessary() -> bool:
+            """Returns: True if the model is existed or downloaded successfully, False otherwise."""
+            repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
+            weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+            config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+            if not os.path.exists(weights_path):
+                try:
+                    hf_hub_download(
+                        repo_id=repo_id,
+                        filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                        local_dir=model_dir,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to download model weights from HuggingFace: {e}")
+                    return False
+            if not os.path.exists(config_path):
+                try:
+                    hf_hub_download(
+                        repo_id=repo_id,
+                        filename=MODEL_CONFIG_FILE_IN_JSON,
+                        local_dir=model_dir,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to download model config from HuggingFace: {e}")
+                    return False
+            return True
 
-        if needs_download:
-            with self._lock_pool.get_lock(model_id).write_lock():
-                model_info = ModelInfo(
-                    model_id=model_id,
-                    model_type="",  # Read from config.json after download
-                    category=category,
-                    state=ModelStates.ACTIVATING,
-                    path=str(model_dir),
-                    auto_map=None,
-                    _transformers_registered=False,
-                )
-                self._models[category.value][model_id] = model_info
-
-            future = self._executor.submit(
-                self._download_model_if_necessary, str(model_dir), model_id
+        future = self._executor.submit(_download_model_if_necessary)
+        future.add_done_callback(
+            lambda f, mid=model_id: self._callback_model_download_result(
+                f, mid
             )
-            future.add_done_callback(
-                lambda f, mid=model_id, cat=category: self._callback_model_download_result(
-                    f, mid, cat
-                )
-            )
-        else:
-            config = load_model_config(config_path)
-            model_type = config.get("model_type", "")
-            auto_map = config.get("auto_map")
-
-            with self._lock_pool.get_lock(model_id).write_lock():
-                model_info = ModelInfo(
-                    model_id=model_id,
-                    model_type=model_type,
-                    category=category,
-                    state=ModelStates.ACTIVE,
-                    path=str(model_dir),
-                    auto_map=auto_map,
-                    _transformers_registered=False,  # Lazy registration
-                )
-                self._models[category.value][model_id] = model_info
-
-    def _download_model_if_necessary(self, model_dir: str, model_id: str) -> bool:
-        """Returns: True if the model is existed or downloaded successfully, False otherwise."""
-        if model_id in REPO_ID_MAP:
-            repo_id = REPO_ID_MAP[model_id]
-        else:
-            logger.error(f"Model {model_id} not found in REPO_ID_MAP")
-            return False
-
-        weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE)
-        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE)
-
-        if not os.path.exists(weights_path):
-            try:
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=MODEL_WEIGHTS_FILE,
-                    local_dir=model_dir,
-                )
-            except Exception as e:
-                logger.error(f"Failed to download model weights from HuggingFace: {e}")
-                return False
-
-        if not os.path.exists(config_path):
-            try:
-                hf_hub_download(
-                    repo_id=repo_id,
-                    filename=MODEL_CONFIG_FILE,
-                    local_dir=model_dir,
-                )
-            except Exception as e:
-                logger.error(f"Failed to download model config from HuggingFace: {e}")
-                return False
-
-        return True
+        )
 
     def _callback_model_download_result(
-        self, future, model_id: str, category: ModelCategory
+        self, future, model_id: str
     ):
         """Callback function for handling model download results"""
         with self._lock_pool.get_lock(model_id).write_lock():
             try:
                 if future.result():
-                    if model_id in self._models[category.value]:
-                        model_info = self._models[category.value][model_id]
-                        model_info.state = ModelStates.ACTIVE
-                        config_path = os.path.join(model_info.path, MODEL_CONFIG_FILE)
-                        if os.path.exists(config_path):
-                            with open(config_path, "r", encoding="utf-8") as f:
-                                config = json.load(f)
+                    model_info = self._models[ModelCategory.BUILTIN.value][model_id]
+                    model_info.state = ModelStates.ACTIVE
+                    config_path = os.path.join(model_info.path, MODEL_CONFIG_FILE_IN_JSON)
+                    if os.path.exists(config_path):
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            config = json.load(f)
+                        if model_info.model_type == "":
                             model_info.model_type = config.get("model_type", "")
-                            model_info.auto_map = config.get("auto_map")
-                        logger.info(
-                            f"Model {model_id} downloaded successfully and is ready to use."
-                        )
+                    logger.info(
+                        f"Model {model_id} downloaded successfully and is ready to use."
+                    )
                 else:
-                    if model_id in self._models[category.value]:
-                        self._models[category.value][
-                            model_id
-                        ].state = ModelStates.INACTIVE
-                        logger.warning(f"Failed to download model {model_id}.")
+                    self._models[ModelCategory.BUILTIN.value][
+                        model_id
+                    ].state = ModelStates.INACTIVE
+                    logger.warning(f"Failed to download model {model_id}.")
             except Exception as e:
                 logger.error(f"Error in download callback for model {model_id}: {e}")
-                if model_id in self._models[category.value]:
-                    self._models[category.value][model_id].state = ModelStates.INACTIVE
+                self._models[ModelCategory.BUILTIN.value][model_id].state = ModelStates.INACTIVE
+
+    def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
+        """Handling the discovery logic for a user-defined model directory."""
+        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+        model_type = ""
+        auto_map = {}
+        if os.path.exists(config_path):
+            config = load_model_config_in_json(Path(config_path))
+            model_type = config.get("model_type", "")
+            auto_map = config.get("auto_map")
+
+        with self._lock_pool.get_lock(model_id).write_lock():
+            model_info = ModelInfo(
+                model_id=model_id,
+                model_type=model_type,
+                category=ModelCategory.USER_DEFINED,
+                state=ModelStates.ACTIVE,
+                path=str(model_dir),
+                auto_map=auto_map,
+                _transformers_registered=False,  # Lazy registration
+            )
+            self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
     # ==================== Registration Methods ====================
 
     def register_model(self, model_id: str, uri: str) -> bool:
         """
         Supported URI formats:
-            - repo://<huggingface_repo_id>
+            - repo://<huggingface_repo_id> (Maybe in the future)
             - file://<local_path>
         """
         uri_type = parse_uri_type(uri)
         parsed_uri = get_parsed_uri(uri)
 
-        model_dir = Path(self.models_dir) / "user_defined" / model_id
-        model_dir.mkdir(parents=True, exist_ok=True)
+        model_dir = os.path.join(self._models_dir, ModelCategory.USER_DEFINED.value, model_id)
+        os.makedirs(model_dir, exist_ok=True)
         ensure_init_file(model_dir)
 
         if uri_type == UriType.REPO:
@@ -241,7 +217,7 @@ class ModelStorage:
             self._fetch_model_from_local(os.path.expanduser(parsed_uri), str(model_dir))
 
         config_path, _ = validate_model_files(model_dir)
-        config = load_model_config(config_path)
+        config = load_model_config_in_json(config_path)
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
 
@@ -279,7 +255,6 @@ class ModelStorage:
         logger.info(
             f"Downloading model from HuggingFace repository: {repo_id} -> {storage_path}"
         )
-
         # Use snapshot_download to download entire repository (including config.json and model.safetensors)
         try:
             snapshot_download(
@@ -293,29 +268,13 @@ class ModelStorage:
 
     def _fetch_model_from_local(self, source_path: str, storage_path: str):
         logger.info(f"Copying model from local path: {source_path} -> {storage_path}")
-
-        source_dir = Path(source_path)
-        if not source_dir.is_dir():
+        if not os.path.isdir(source_path):
             raise ValueError(
                 f"Source path does not exist or is not a directory: {source_path}"
             )
-
-        source_config = source_dir / MODEL_CONFIG_FILE
-        source_weights = source_dir / MODEL_WEIGHTS_FILE
-        if not source_config.exists():
-            raise ValueError(
-                f"Config file missing in source directory: {source_config}"
-            )
-        if not source_weights.exists():
-            raise ValueError(
-                f"Weights file missing in source directory: {source_weights}"
-            )
-
-        # Copy all files
-        storage_dir = Path(storage_path)
-        for file in source_dir.iterdir():
-            if file.is_file():
-                shutil.copy2(file, storage_dir / file.name)
+        for file in os.listdir(source_path):
+            if os.path.isfile(os.path.join(source_path, file)):
+                shutil.copy2(file, os.path.join(storage_path, file))
 
     def _register_transformers_model(self, model_info: ModelInfo) -> bool:
         """
@@ -360,7 +319,7 @@ class ModelStorage:
             f"Registered other type model: {model_info.model_id} ({model_info.model_type})"
         )
 
-    def ensure_transformers_registered(self, model_id: str) -> "ModelInfo":
+    def ensure_transformers_registered(self, model_id: str) -> ModelInfo:
         """
         Ensure Transformers model is registered (called for lazy registration)
         This method uses locks to ensure thread safety. All check logic is within lock protection.
@@ -422,54 +381,50 @@ class ModelStorage:
             code=TSStatusCode.SUCCESS_STATUS.value,
             message="Show models successfully",
         )
+        if req.modelId:
+            # Find specified model
+            model_info = None
+            for category_dict in self._models.values():
+                if req.modelId in category_dict:
+                    model_info = category_dict[req.modelId]
+                    break
 
-        # Use global lock to protect entire dictionary structure
-        with self._lock_pool.get_lock("").read_lock():
-            if req.modelId:
-                # Find specified model
-                model_info = None
-                for category_dict in self._models.values():
-                    if req.modelId in category_dict:
-                        model_info = category_dict[req.modelId]
-                        break
-
-                if model_info:
-                    return TShowModelsResp(
-                        status=resp_status,
-                        modelIdList=[req.modelId],
-                        modelTypeMap={req.modelId: model_info.model_type},
-                        categoryMap={req.modelId: model_info.category.value},
-                        stateMap={req.modelId: model_info.state.value},
-                    )
-                else:
-                    return TShowModelsResp(
-                        status=resp_status,
-                        modelIdList=[],
-                        modelTypeMap={},
-                        categoryMap={},
-                        stateMap={},
-                    )
-            else:
-                # Return all models
-                model_id_list = []
-                model_type_map = {}
-                category_map = {}
-                state_map = {}
-
-                for category_dict in self._models.values():
-                    for model_id, model_info in category_dict.items():
-                        model_id_list.append(model_id)
-                        model_type_map[model_id] = model_info.model_type
-                        category_map[model_id] = model_info.category.value
-                        state_map[model_id] = model_info.state.value
-
+            if model_info:
                 return TShowModelsResp(
                     status=resp_status,
-                    modelIdList=model_id_list,
-                    modelTypeMap=model_type_map,
-                    categoryMap=category_map,
-                    stateMap=state_map,
+                    modelIdList=[req.modelId],
+                    modelTypeMap={req.modelId: model_info.model_type},
+                    categoryMap={req.modelId: model_info.category.value},
+                    stateMap={req.modelId: model_info.state.value},
                 )
+            else:
+                return TShowModelsResp(
+                    status=resp_status,
+                    modelIdList=[],
+                    modelTypeMap={},
+                    categoryMap={},
+                    stateMap={},
+                )
+        # Return all models
+        model_id_list = []
+        model_type_map = {}
+        category_map = {}
+        state_map = {}
+
+        for category_dict in self._models.values():
+            for model_id, model_info in category_dict.items():
+                model_id_list.append(model_id)
+                model_type_map[model_id] = model_info.model_type
+                category_map[model_id] = model_info.category.value
+                state_map[model_id] = model_info.state.value
+
+        return TShowModelsResp(
+            status=resp_status,
+            modelIdList=model_id_list,
+            modelTypeMap=model_type_map,
+            categoryMap=category_map,
+            stateMap=state_map,
+        )
 
     def delete_model(self, model_id: str) -> None:
         # Use write lock to protect entire deletion process
@@ -488,7 +443,7 @@ class ModelStorage:
 
             if model_info.category == ModelCategory.BUILTIN:
                 raise BuiltInModelDeletionError(model_id)
-
+            model_info.state = ModelStates.DROPPING
             model_path = Path(model_info.path)
             if model_path.exists():
                 try:

@@ -18,41 +18,24 @@
 from enum import Enum
 
 
+# Model file constants
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
+MODEL_CONFIG_FILE_IN_JSON = "config.json"
+MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
+MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
+
 class ModelCategory(Enum):
     BUILTIN = "builtin"
     USER_DEFINED = "user_defined"
-    FINETUNE = "finetune"
 
 
 class ModelStates(Enum):
     INACTIVE = "inactive"
     ACTIVATING = "activating"
     ACTIVE = "active"
-    LOADING = "loading"
-    LOADED = "loaded"
     DROPPING = "dropping"
-    TRAINING = "training"
-    FAILED = "failed"
-
-
-class ModelFileType(Enum):
-    SAFETENSORS = "safetensors"
-    PYTORCH = "pytorch"
-    UNKNOWN = "unknown"
 
 
 class UriType(Enum):
     REPO = "repo"
     FILE = "file"
-
-
-# Map for inferring which HuggingFace repository to download from based on model ID
-REPO_ID_MAP = {
-    "timerxl": "thuml/timer-base-84m",
-    "sundial": "thuml/sundial-base-128m",
-    # More mappings can be added as needed
-}
-
-# Model file constants
-MODEL_CONFIG_FILE = "config.json"
-MODEL_WEIGHTS_FILE = "model.safetensors"
