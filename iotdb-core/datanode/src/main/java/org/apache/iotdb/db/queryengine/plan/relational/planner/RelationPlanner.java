@@ -249,7 +249,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         throw new SemanticException("unexpected recursive cte");
       }
 
-      if (namedQuery.isMaterialized()) {
+      if (namedQuery.isMaterialized() && namedQuery.isDone()) {
         CteDataStore dataStore = queryContext.getCteDataStore(table);
         if (dataStore != null) {
           List<Symbol> cteSymbols =
