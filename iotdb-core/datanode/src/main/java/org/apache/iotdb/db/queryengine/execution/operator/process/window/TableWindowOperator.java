@@ -318,8 +318,7 @@ public class TableWindowOperator implements ProcessOperator {
       // Reset window functions for new partition
       partitionExecutor.resetWindowFunctions();
 
-      while (!tsBlockBuilder.isFull()
-          && partitionExecutor.hasNext()) {
+      while (!tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
         partitionExecutor.processNextRow(tsBlockBuilder);
       }
 
