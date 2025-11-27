@@ -297,4 +297,9 @@ public class PipeEnrichedInsertNode extends InsertNode {
   public int hashCode() {
     return insertNode.hashCode();
   }
+
+  @Override
+  public String toString() {
+    return insertNode.toString();
+  }
 }

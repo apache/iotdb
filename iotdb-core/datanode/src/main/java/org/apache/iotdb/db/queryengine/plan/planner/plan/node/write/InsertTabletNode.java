@@ -721,15 +721,22 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     int measurementSize = buffer.getInt();
+    System.out.println("size+++++" + measurementSize);
     measurements = new String[measurementSize];
 
     boolean hasSchema = buffer.get() == 1;
     if (hasSchema) {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementName();
+        try {
+          measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+          measurements[i] = measurementSchemas[i].getMeasurementName();
+          System.out.println(measurements[i]);
+        } catch (Exception e) {
+
+        }
       }
+      System.out.println("end");
     } else {
       for (int i = 0; i < measurementSize; i++) {
         measurements[i] = ReadWriteIOUtils.readString(buffer);

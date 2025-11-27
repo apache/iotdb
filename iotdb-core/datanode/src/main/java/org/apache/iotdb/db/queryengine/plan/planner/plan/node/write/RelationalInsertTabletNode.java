@@ -47,6 +47,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -371,5 +372,225 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       startOffset = endOffset;
     }
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("RelationalInsertTabletNode{");
+
+    // 基本信息
+    sb.append("targetPath=").append(targetPath != null ? targetPath.getFullPath() : "null");
+    sb.append(", tableName=").append(getTableName());
+    sb.append(", isAligned=").append(isAligned);
+    sb.append(", singleDevice=").append(singleDevice);
+    sb.append(", rowCount=").append(rowCount);
+
+    // 时间范围
+    if (times != null && times.length > 0) {
+      sb.append(", timeRange=[")
+          .append(times[0])
+          .append(", ")
+          .append(times[times.length - 1])
+          .append("]");
+      sb.append(", timeCount=").append(times.length);
+    } else {
+      sb.append(", timeRange=[]");
+    }
+
+    // 测量值信息
+    if (measurements != null) {
+      sb.append(", measurements=").append(Arrays.toString(measurements));
+      sb.append(", measurementCount=").append(measurements.length);
+    } else {
+      sb.append(", measurements=null");
+    }
+
+    // 数据类型
+    if (dataTypes != null) {
+      sb.append(", dataTypes=").append(Arrays.toString(dataTypes));
+    } else {
+      sb.append(", dataTypes=null");
+    }
+
+    // 列类别信息
+    if (columnCategories != null) {
+      sb.append(", columnCategories=").append(Arrays.toString(columnCategories));
+
+      // 统计各类别的数量
+      long tagCount =
+          Arrays.stream(columnCategories).filter(c -> c == TsTableColumnCategory.TAG).count();
+      long fieldCount =
+          Arrays.stream(columnCategories).filter(c -> c == TsTableColumnCategory.FIELD).count();
+      long attributeCount =
+          Arrays.stream(columnCategories).filter(c -> c == TsTableColumnCategory.ATTRIBUTE).count();
+      sb.append(", categoryCounts={TAG=")
+          .append(tagCount)
+          .append(", FIELD=")
+          .append(fieldCount)
+          .append(", ATTRIBUTE=")
+          .append(attributeCount)
+          .append("}");
+
+      // 列索引信息
+      if (tagColumnIndices != null && !tagColumnIndices.isEmpty()) {
+        sb.append(", tagColumnIndices=").append(tagColumnIndices);
+      }
+      // 手动计算 attributeColumnIndices
+      List<Integer> attributeColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i] == TsTableColumnCategory.ATTRIBUTE) {
+          attributeColumnIndices.add(i);
+        }
+      }
+      if (!attributeColumnIndices.isEmpty()) {
+        sb.append(", attributeColumnIndices=").append(attributeColumnIndices);
+      }
+    } else {
+      sb.append(", columnCategories=null");
+    }
+
+    // 列数据信息
+    if (columns != null) {
+      sb.append(", columns=[");
+      for (int i = 0; i < Math.min(columns.length, 10); i++) {
+        if (i > 0) {
+          sb.append(", ");
+        }
+        Object col = columns[i];
+        if (col != null) {
+          if (col instanceof boolean[]) {
+            boolean[] arr = (boolean[]) col;
+            sb.append("boolean[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0]);
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else if (col instanceof int[]) {
+            int[] arr = (int[]) col;
+            sb.append("int[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0]);
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else if (col instanceof long[]) {
+            long[] arr = (long[]) col;
+            sb.append("long[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0]);
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else if (col instanceof float[]) {
+            float[] arr = (float[]) col;
+            sb.append("float[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0]);
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else if (col instanceof double[]) {
+            double[] arr = (double[]) col;
+            sb.append("double[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0]);
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else if (col instanceof Object[]) {
+            Object[] arr = (Object[]) col;
+            sb.append("Object[").append(arr.length).append("]");
+            if (arr.length > 0) {
+              sb.append("={").append(arr[0] != null ? arr[0].toString() : "null");
+              if (arr.length > 1) {
+                sb.append(", ...");
+              }
+              sb.append("}");
+            }
+          } else {
+            sb.append(col.getClass().getSimpleName()).append("=").append(col);
+          }
+        } else {
+          sb.append("null");
+        }
+      }
+      if (columns.length > 10) {
+        sb.append(", ... (total ").append(columns.length).append(" columns)");
+      }
+      sb.append("]");
+    } else {
+      sb.append(", columns=null");
+    }
+
+    // BitMap 信息
+    if (bitMaps != null) {
+      int nonNullBitMapCount = 0;
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap != null) {
+          nonNullBitMapCount++;
+        }
+      }
+      sb.append(", bitMaps=")
+          .append(nonNullBitMapCount)
+          .append("/")
+          .append(bitMaps.length)
+          .append(" non-null");
+    } else {
+      sb.append(", bitMaps=null");
+    }
+
+    // DeviceID 缓存信息
+    if (deviceIDs != null) {
+      int nonNullDeviceIDCount = 0;
+      for (IDeviceID deviceID : deviceIDs) {
+        if (deviceID != null) {
+          nonNullDeviceIDCount++;
+        }
+      }
+      sb.append(", deviceIDs=")
+          .append(nonNullDeviceIDCount)
+          .append("/")
+          .append(deviceIDs.length)
+          .append(" cached");
+      if (nonNullDeviceIDCount > 0 && nonNullDeviceIDCount <= 5) {
+        sb.append(", deviceIDs=[");
+        for (int i = 0; i < deviceIDs.length; i++) {
+          if (deviceIDs[i] != null) {
+            if (i > 0) {
+              sb.append(", ");
+            }
+            sb.append(deviceIDs[i].toString());
+          }
+        }
+        sb.append("]");
+      }
+    } else {
+      sb.append(", deviceIDs=null");
+    }
+
+    // PlanNodeId
+    if (getPlanNodeId() != null) {
+      sb.append(", planNodeId=").append(getPlanNodeId());
+    }
+
+    // SearchIndex
+    if (getSearchIndex() != SearchNode.NO_CONSENSUS_INDEX) {
+      sb.append(", searchIndex=").append(getSearchIndex());
+    }
+
+    sb.append('}');
+    return sb.toString();
   }
 }

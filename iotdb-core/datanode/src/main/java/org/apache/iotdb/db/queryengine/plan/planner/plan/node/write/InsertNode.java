@@ -277,12 +277,17 @@ public abstract class InsertNode extends SearchNode {
 
   /** Serialize measurement schemas, ignoring failed time series */
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
+    int j = 0;
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
         continue;
       }
+      j++;
       WALWriteUtils.write(measurementSchemas[i], buffer);
+    }
+    if (measurements.length - getFailedMeasurementNumber() > j) {
+      System.out.printf(this.toString());
     }
   }
 
