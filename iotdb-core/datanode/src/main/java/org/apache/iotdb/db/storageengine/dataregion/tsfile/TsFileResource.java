@@ -1630,4 +1630,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
     return (TsFileResource) clone();
   }
+
+  public void addFileSet(TsFileSet tsFileSet) {
+    tsFileSets.add(tsFileSet);
+  }
+
+  public List<TsFileSet> getTsFileSets() {
+    return tsFileSets;
+  }
 }

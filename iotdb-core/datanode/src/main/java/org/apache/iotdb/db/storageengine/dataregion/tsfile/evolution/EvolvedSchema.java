@@ -22,25 +22,25 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
-  private final Map<String, String> originalTableNames = new HashMap<>();
+  private Map<String, String> originalTableNames = new LinkedHashMap<>();
 
   /**
    * the first key is the evolved table name, the second key is the evolved column name, and the
    * value is the original column name before any schema evolution.
    */
-  private final Map<String, Map<String, String>> originalColumnNames = new HashMap<>();
+  private Map<String, Map<String, String>> originalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
     if (!originalTableNames.containsKey(oldTableName)) {
       originalTableNames.put(newTableName, oldTableName);
-      // mark the old table name as non-exists
-      originalTableNames.put(oldTableName, "");
     } else {
       // mark the old table name as non-exists
-      String originalName = originalTableNames.put(oldTableName, "");
+      String originalName = originalTableNames.remove(oldTableName);
       originalTableNames.put(newTableName, originalName);
     }
 
@@ -55,10 +55,8 @@ public class EvolvedSchema {
         originalColumnNames.computeIfAbsent(tableName, t -> new LinkedHashMap<>());
     if (!columnNameMap.containsKey(oldColumnName)) {
       columnNameMap.put(newColumnName, oldColumnName);
-      // mark the old column name as non-exists
-      columnNameMap.put(oldColumnName, "");
     } else {
-      String originalName = columnNameMap.put(oldColumnName, "");
+      String originalName = columnNameMap.remove(oldColumnName);
       columnNameMap.put(newColumnName, originalName);
     }
   }
@@ -73,5 +71,60 @@ public class EvolvedSchema {
       return evolvedColumnName;
     }
     return columnNameMap.getOrDefault(evolvedColumnName, evolvedColumnName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    EvolvedSchema that = (EvolvedSchema) o;
+    return Objects.equals(originalTableNames, that.originalTableNames)
+        && Objects.equals(originalColumnNames, that.originalColumnNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(originalTableNames, originalColumnNames);
+  }
+
+  @Override
+  public String toString() {
+    return "EvolvedSchema{" +
+        "originalTableNames=" + originalTableNames +
+        ", originalColumnNames=" + originalColumnNames +
+        '}';
+  }
+
+  public static EvolvedSchema deepCopy(EvolvedSchema evolvedSchema) {
+    EvolvedSchema newEvolvedSchema = new EvolvedSchema();
+    newEvolvedSchema.originalTableNames = new HashMap<>(evolvedSchema.originalTableNames);
+    newEvolvedSchema.originalColumnNames = new HashMap<>(evolvedSchema.originalColumnNames);
+    return newEvolvedSchema;
+  }
+
+  public static EvolvedSchema merge(EvolvedSchema oldSchema, EvolvedSchema newSchema) {
+    if (oldSchema == null) {
+      return newSchema;
+    }
+    if (newSchema == null) {
+      return oldSchema;
+    }
+
+    EvolvedSchema mergedSchema = deepCopy(oldSchema);
+    for (Entry<String, String> finalOriginalTableName : newSchema.originalTableNames.entrySet()) {
+      mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+    }
+    for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry : newSchema.originalColumnNames.entrySet()) {
+      for (Entry<String, String> finalColNameOriginalColNameEntry : finalTableNameColumnNameMapEntry.getValue()
+          .entrySet()) {
+        String finalTableName = finalTableNameColumnNameMapEntry.getKey();
+        String finalColName = finalColNameOriginalColNameEntry.getKey();
+        String originalColName = finalColNameOriginalColNameEntry.getValue();
+        mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+      }
+    }
+
+    return mergedSchema;
   }
 }

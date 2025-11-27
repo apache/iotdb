@@ -35,12 +35,24 @@ public class TsFileSet implements Comparable<TsFileSet> {
 
   private final long endVersion;
   private final File fileSetDir;
-  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock lock;
   private SchemaEvolutionFile schemaEvolutionFile;
+
+  // only As comparator key
+  private TsFileSet(long endVersion) {
+    this.endVersion = endVersion;
+    this.fileSetDir = null;
+    this.lock = null;
+  }
+
+  public static TsFileSet comparatorKey(long endVersion) {
+    return new TsFileSet(endVersion);
+  }
 
   public TsFileSet(long endVersion, String fileSetsDir, boolean recover) {
     this.endVersion = endVersion;
     this.fileSetDir = new File(fileSetsDir + File.separator + endVersion);
+    this.lock = new ReentrantReadWriteLock();
 
     if (recover) {
       recover();
@@ -103,5 +115,9 @@ public class TsFileSet implements Comparable<TsFileSet> {
 
   public void readUnlock() {
     lock.readLock().unlock();
+  }
+
+  public long getEndVersion() {
+    return endVersion;
   }
 }

@@ -126,6 +126,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -648,7 +649,7 @@ public class DataRegion implements IDataRegionForQuery {
           }
         }
         // ensure that seq and unseq files in the same partition have the same TsFileSet
-        Map<Long, List<TsFileSet>> recoveredTsFileSetMap = new HashMap<>();
+        Map<Long, List<TsFileSet>> recoveredPartitionTsFileSetMap = new HashMap<>();
 
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           Callable<Void> asyncRecoverTask =
@@ -658,7 +659,7 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
                   true,
-                  recoveredTsFileSetMap);
+                  recoveredPartitionTsFileSetMap);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -672,7 +673,7 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
                   false,
-                  recoveredTsFileSetMap);
+                  recoveredPartitionTsFileSetMap);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -990,52 +991,74 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private String getFileSetsDir(long partitionId) {
+    return dataRegionSysDir
+        + File.separator
+        + partitionId
+        + File.separator
+        + TsFileSet.FILE_SET_DIR_NAME;
+  }
+
+  private List<TsFileSet> recoverTsFileSets(
+      long partitionId,
+      Map<Long, List<TsFileSet>> tsFileSetMap
+  ) {
+    List<TsFileSet> tsFileSets =
+        tsFileSetMap.computeIfAbsent(
+            partitionId,
+            pid -> {
+              File fileSetDir =
+                  new File(getFileSetsDir(partitionId));
+              File[] fileSets = fileSetDir.listFiles();
+              if (fileSets == null || fileSets.length == 0) {
+                return Collections.emptyList();
+              } else {
+                List<TsFileSet> results = new ArrayList<>();
+                for (File fileSet : fileSets) {
+                  TsFileSet tsFileSet;
+                  try {
+                    tsFileSet =
+                        new TsFileSet(
+                            Long.parseLong(fileSet.getName()),
+                            fileSetDir.getAbsolutePath(),
+                            true);
+                  } catch (NumberFormatException e) {
+                    continue;
+                  }
+                  results.add(tsFileSet);
+                }
+                return results;
+              }
+            });
+    if (!tsFileSets.isEmpty()) {
+      tsFileSets.sort(null);
+      lastTsFileSetMap.put(partitionId, tsFileSets.get(tsFileSets.size() - 1));
+    }
+    return tsFileSets;
+  }
+
+
   private Callable<Void> recoverFilesInPartition(
       long partitionId,
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
       Map<TsFileID, FileTimeIndex> fileTimeIndexMap,
       boolean isSeq,
-      Map<Long, List<TsFileSet>> tsFileSetMap) {
+      Map<Long, List<TsFileSet>> partitionTsFileSetMap) {
 
     List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
     List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
-      List<TsFileSet> tsFileSets =
-          tsFileSetMap.computeIfAbsent(
-              partitionId,
-              pid -> {
-                File fileSetDir =
-                    new File(
-                        dataRegionSysDir
-                            + File.separator
-                            + partitionId
-                            + File.separator
-                            + TsFileSet.FILE_SET_DIR_NAME);
-                File[] fileSets = fileSetDir.listFiles();
-                if (fileSets == null || fileSets.length == 0) {
-                  return Collections.emptyList();
-                } else {
-                  List<TsFileSet> results = new ArrayList<>();
-                  for (File fileSet : fileSets) {
-                    TsFileSet tsFileSet;
-                    try {
-                      tsFileSet =
-                          new TsFileSet(
-                              Long.parseLong(fileSet.getName()),
-                              fileSetDir.getAbsolutePath(),
-                              true);
-                    } catch (NumberFormatException e) {
-                      continue;
-                    }
-                    results.add(tsFileSet);
-                  }
-                  return results;
-                }
-              });
-      if (!tsFileSets.isEmpty()) {
-        tsFileSets.sort(null);
+      List<TsFileSet> tsFileSets = recoverTsFileSets(partitionId, partitionTsFileSetMap);
+      long fileVersion = tsFileResource.getTsFileID().fileVersion;
+      int i = Collections.binarySearch(tsFileSets, TsFileSet.comparatorKey(fileVersion));
+      if (i < 0) {
+        i = -i;
+      }
+      if (i < tsFileSets.size()) {
+        List<TsFileSet> containedSets = tsFileSets.subList(i, tsFileSets.size());
+        containedSets.forEach(tsFileResource::addFileSet);
       }
 
       tsFileManager.add(tsFileResource, isSeq);
@@ -1155,6 +1178,45 @@ public class DataRegion implements IDataRegionForQuery {
       return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
     } else {
       return cmp;
+    }
+  }
+
+  private TsFileSet createNewFileSet(long maxVersion, long partitionId) {
+    TsFileSet newSet = new TsFileSet(maxVersion, getFileSetsDir(partitionId), false);
+    tsFileManager.addTsFileSet(newSet, partitionId);
+    return newSet;
+  }
+
+  public void applySchemaEvolution(List<SchemaEvolution> schemaEvolutions) {
+    long startTime = System.nanoTime();
+    writeLock("InsertRow");
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
+    try {
+      if (deleted) {
+        return;
+      }
+
+      syncCloseAllWorkingTsFileProcessors();
+
+      for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {
+        long partitionId = partitionVersionEntry.getKey();
+        long maxVersion = partitionVersionEntry.getValue();
+        lastTsFileSetMap.compute(partitionId, (pid, lastSet) -> {
+          if (lastSet == null) {
+            lastSet = createNewFileSet(maxVersion, partitionId);
+          } else if (lastSet.getEndVersion() < maxVersion) {
+            lastSet = createNewFileSet(maxVersion, partitionId);
+          }
+          try {
+            lastSet.appendSchemaEvolution(schemaEvolutions);
+          } catch (IOException e) {
+            logger.error("Cannot append schema evolutions to fileSets in partition {}-{}", dataRegionId, partitionId, e);
+          }
+          return lastSet;
+        });
+      }
+    } finally {
+      writeUnlock();
     }
   }
 

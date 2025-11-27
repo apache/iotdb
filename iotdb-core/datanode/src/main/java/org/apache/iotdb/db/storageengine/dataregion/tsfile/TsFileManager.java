@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
@@ -506,5 +507,26 @@ public class TsFileManager {
       resourceListLock.readLock().unlock();
     }
     return maxFileTimestamp;
+  }
+
+  public void addTsFileSet(TsFileSet newSet, long partitionId) {
+    writeLock("addTsFileSet");
+    try {
+      TsFileResourceList tsFileResources = sequenceFiles.get(partitionId);
+      if (tsFileResources != null) {
+        for (TsFileResource tsFileResource : tsFileResources) {
+          tsFileResource.addFileSet(newSet);
+        }
+      }
+
+      tsFileResources = unsequenceFiles.get(partitionId);
+      if (tsFileResources != null) {
+        for (TsFileResource tsFileResource : tsFileResources) {
+          tsFileResource.addFileSet(newSet);
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
   }
 }
