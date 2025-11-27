@@ -53,7 +53,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -95,13 +94,7 @@ public class CteMaterializer {
 
   public void cleanUpCTE(MPPQueryContext context) {
     Map<NodeRef<Table>, CteDataStore> cteDataStores = context.getCteDataStores();
-    cteDataStores
-        .values()
-        .forEach(
-            dataStore -> {
-              context.releaseMemoryReservedForFrontEnd(dataStore.getCachedBytes());
-              dataStore.clear();
-            });
+    cteDataStores.values().forEach(CteDataStore::clear);
     cteDataStores.clear();
   }
 
@@ -121,7 +114,7 @@ public class CteMaterializer {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               String.format("Materialize query for CTE '%s'", table.getName()),
               LocalExecutionPlanner.getInstance().metadata,
-              ImmutableMap.of(),
+              context.getCteDataStores(),
               context.getExplainType(),
               context.getTimeOut(),
               false);
