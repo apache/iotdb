@@ -120,8 +120,8 @@ public class TableDeviceLastCache {
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
-                  -(isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + getTVPairEntrySize(tvPair));
+                  -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
