@@ -141,9 +141,13 @@ public class DataRegionTest {
     config.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(2), null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(2), null);
   }
 
   @After
@@ -1822,6 +1826,11 @@ public class DataRegionTest {
         Collections.singletonList(0L), Long.MAX_VALUE);
     assertEquals(1, dataSource.getSeqResources().size());
 
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
+
     // write again with table1
     insertRowNode = new RelationalInsertRowNode(new PlanNodeId(""),
         new PartialPath(new String[] {"table1"}),
@@ -1835,5 +1844,20 @@ public class DataRegionTest {
         new TsTableColumnCategory[]{TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD});
     dataRegion.insert(insertRowNode);
 
+    // can query with table1
+    fullPaths = Arrays.asList(
+        new AlignedFullPath(deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
+    );
+    dataSource = dataRegion.query(fullPaths, deviceID1, new QueryContext(), null,
+        Collections.singletonList(0L), Long.MAX_VALUE);
+    assertEquals(1, dataSource.getUnseqResources().size());
+
+    // can query with table2
+    fullPaths = Arrays.asList(
+        new AlignedFullPath(deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
+    );
+    dataSource = dataRegion.query(fullPaths, deviceID2, new QueryContext(), null,
+        Collections.singletonList(0L), Long.MAX_VALUE);
+    assertEquals(1, dataSource.getSeqResources().size());
   }
 }
