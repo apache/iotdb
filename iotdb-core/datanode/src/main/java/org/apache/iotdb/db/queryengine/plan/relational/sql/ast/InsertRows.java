@@ -89,7 +89,7 @@ public class InsertRows extends WrappedInsertStatement {
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final String database = AnalyzeUtils.getDatabaseName(insertRowStatement, context);
-      super.validateTableSchema(metadata, context, insertRowStatement, database);
+      super.validateTableSchema(metadata, context, insertRowStatement, database, allowCreateTable);
     }
   }
 

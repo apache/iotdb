@@ -145,12 +145,13 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       final Metadata metadata,
       final MPPQueryContext context,
       final InsertRowStatement insertRowStatement,
-      final String databaseName) {
+      final String databaseName,
+      final boolean allowCreateTable) {
     metadata.validateInsertNodeMeasurements(
         databaseName,
         toInsertNodeMeasurementInfo(insertRowStatement),
         context,
-        true,
+        allowCreateTable,
         (index, measurement, dataType, columnCategory, existingColumn) ->
             validate(
                 index, insertRowStatement, measurement, dataType, columnCategory, existingColumn),
