@@ -94,7 +94,8 @@ public class DataNodeInternalRPCServiceImplTest {
 
     org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(storageDir);
     SchemaEngine.getInstance().init();
-    SchemaEngine.getInstance().createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
+    SchemaEngine.getInstance()
+        .createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
     final DataRegionId id = new DataRegionId(1);
     dataRegion = new DataRegion("root.ln", "1");
     instance = DataRegionConsensusImpl.getInstance();

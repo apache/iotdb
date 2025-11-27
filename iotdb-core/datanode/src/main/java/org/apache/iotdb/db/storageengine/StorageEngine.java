@@ -803,7 +803,8 @@ public class StorageEngine implements IService {
         WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
         WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
         WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
-        FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
+        FileMetrics.getInstance()
+            .deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",

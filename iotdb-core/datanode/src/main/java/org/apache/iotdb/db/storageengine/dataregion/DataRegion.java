@@ -670,7 +670,8 @@ public class DataRegion implements IDataRegionForQuery {
           || config
               .getDataRegionConsensusProtocolClass()
               .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionIdString);
+        WALManager.getInstance()
+            .applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionIdString);
       }
       logger.info(
           "The data region {}[{}] is created successfully", databaseName, dataRegionIdString);
@@ -3471,7 +3472,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
-    PipeInsertionDataNodeListener.getInstance().listenToTsFile(dataRegionIdString, tsFileResource, true);
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToTsFile(dataRegionIdString, tsFileResource, true);
 
     tsFileManager.add(tsFileResource, false);
 

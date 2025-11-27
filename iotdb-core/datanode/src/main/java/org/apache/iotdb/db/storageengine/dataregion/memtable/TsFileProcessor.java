@@ -542,7 +542,9 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionIdString(), insertTabletNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            insertTabletNode,
+            tsFileResource);
 
     int pointInserted;
     try {
@@ -1585,7 +1587,8 @@ public class TsFileProcessor {
     // Listen after "endFile" to avoid unnecessary waiting for tsFile close
     // before resource serialization to avoid missing hardlink after restart
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionIdString(), tsFileResource, false);
+        .listenToTsFile(
+            dataRegionInfo.getDataRegion().getDataRegionIdString(), tsFileResource, false);
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
