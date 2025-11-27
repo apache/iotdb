@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.access;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -136,6 +137,20 @@ public class RecordIterator implements Iterator<Record> {
     @Override
     public Object getObject(int columnIndex) {
       return childrenColumns.get(columnIndex).getObject(index);
+    }
+
+    @Override
+    public Binary readObject(int columnIndex, long offset, long length) {
+      if (getDataType(columnIndex) == Type.OBJECT) {
+        throw new UnsupportedOperationException("current column is not object column");
+      }
+      Binary binary = getBinary(columnIndex);
+      return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
+    }
+
+    @Override
+    public Binary readObject(int columnIndex) {
+      return readObject(columnIndex, 0L, -1);
     }
 
     @Override

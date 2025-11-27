@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function.partition;
 
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -184,6 +185,20 @@ public class Slice {
     @Override
     public Object getObject(int columnIndex) {
       return originalColumns[columnIndex].getObject(offset);
+    }
+
+    @Override
+    public Binary readObject(int columnIndex, long offset, long length) {
+      if (getDataType(columnIndex) == Type.OBJECT) {
+        throw new UnsupportedOperationException("current column is not object column");
+      }
+      Binary binary = getBinary(columnIndex);
+      return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
+    }
+
+    @Override
+    public Binary readObject(int columnIndex) {
+      return readObject(columnIndex, 0L, -1);
     }
 
     @Override

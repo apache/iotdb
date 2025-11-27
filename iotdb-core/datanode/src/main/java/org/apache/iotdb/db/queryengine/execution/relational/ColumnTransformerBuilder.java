@@ -163,6 +163,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ln
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Log10ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LowerColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ObjectLengthColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
@@ -243,7 +244,6 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
-import static org.apache.tsfile.read.common.type.ObjectType.OBJECT;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class ColumnTransformerBuilder
@@ -780,7 +780,9 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new LengthColumnTransformer(INT32, first);
+        return context.inputDataTypes.get(0) == TSDataType.OBJECT
+            ? new ObjectLengthColumnTransformer(INT64, first)
+            : new LengthColumnTransformer(INT64, first);
       }
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
@@ -1456,10 +1458,10 @@ public class ColumnTransformerBuilder
         .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new ReadObjectColumnTransformer(OBJECT, first, context.fragmentInstanceContext);
+        return new ReadObjectColumnTransformer(BLOB, first, context.fragmentInstanceContext);
       } else if (children.size() == 2) {
         return new ReadObjectColumnTransformer(
-            OBJECT,
+            BLOB,
             ((LongLiteral) children.get(1)).getParsedValue(),
             first,
             context.fragmentInstanceContext);
@@ -1468,7 +1470,7 @@ public class ColumnTransformerBuilder
         long length = ((LongLiteral) children.get(2)).getParsedValue();
         checkArgument(offset >= 0 && length >= 0);
         return new ReadObjectColumnTransformer(
-            OBJECT,
+            BLOB,
             ((LongLiteral) children.get(1)).getParsedValue(),
             ((LongLiteral) children.get(2)).getParsedValue(),
             first,

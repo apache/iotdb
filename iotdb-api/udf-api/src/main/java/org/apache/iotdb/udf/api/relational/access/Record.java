@@ -83,7 +83,7 @@ public interface Record {
    * Returns the Binary value at the specified column in this row.
    *
    * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT},
-   * {@code TSDataType.STRING} or {@code TSDataType.BLOB}.
+   * {@code TSDataType.STRING} or {@code TSDataType.BLOB} or {@code TSDataType.OBJECT}.
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
@@ -94,7 +94,7 @@ public interface Record {
    * Returns the String value at the specified column in this row.
    *
    * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}
-   * or {@code TSDataType.STRING}.
+   * or {@code TSDataType.STRING} or {@code TSDataType.OBJECT}.
    *
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
@@ -112,6 +112,37 @@ public interface Record {
   LocalDate getLocalDate(int columnIndex);
 
   Object getObject(int columnIndex);
+
+  /**
+   * Returns the Binary representation of an object stored at the specified column in this row.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code
+   * TSDataType.OBJECT}.
+   *
+   * <p>This method returns the entire binary data of the object and may require considerable memory
+   * if the stored object is large.
+   *
+   * @param columnIndex index of the specified column
+   * @return the Binary content of the object at the specified column
+   */
+  Binary readObject(int columnIndex);
+
+  /**
+   * Returns a partial Binary segment of an object stored at the specified column in this row.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code
+   * TSDataType.OBJECT}.
+   *
+   * <p>This method enables reading a subset of the stored object without materializing the entire
+   * binary data in memory, which is useful for large objects and streaming access patterns.
+   *
+   * @param columnIndex index of the specified column
+   * @param offset byte offset of the subsection read
+   * @param length number of bytes to read starting from the offset. If length < 0, read the entire
+   *     binary data from offset.
+   * @return the Binary content of the object segment at the specified column
+   */
+  Binary readObject(int columnIndex, long offset, long length);
 
   /**
    * Returns the actual data type of the value at the specified column in this row.
