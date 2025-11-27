@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public interface ILastFlushTime {
@@ -28,4 +29,6 @@ public interface ILastFlushTime {
   void updateLastFlushTime(IDeviceID device, long time);
 
   ILastFlushTime degradeLastFlushTime();
+
+  void accept(SchemaEvolution schemaEvolution);
 }

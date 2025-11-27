@@ -24,6 +24,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
@@ -38,9 +40,10 @@ public class EvolvedSchema {
   public void renameTable(String oldTableName, String newTableName) {
     if (!originalTableNames.containsKey(oldTableName)) {
       originalTableNames.put(newTableName, oldTableName);
+      originalTableNames.put(oldTableName, "");
     } else {
       // mark the old table name as non-exists
-      String originalName = originalTableNames.remove(oldTableName);
+      String originalName = originalTableNames.put(oldTableName, "");
       originalTableNames.put(newTableName, originalName);
     }
 
@@ -55,8 +58,10 @@ public class EvolvedSchema {
         originalColumnNames.computeIfAbsent(tableName, t -> new LinkedHashMap<>());
     if (!columnNameMap.containsKey(oldColumnName)) {
       columnNameMap.put(newColumnName, oldColumnName);
+      columnNameMap.put(oldColumnName, "");
     } else {
-      String originalName = columnNameMap.remove(oldColumnName);
+      // mark the old column name as non-exists
+      String originalName = columnNameMap.put(oldColumnName, "");
       columnNameMap.put(newColumnName, originalName);
     }
   }
@@ -96,6 +101,25 @@ public class EvolvedSchema {
         '}';
   }
 
+  public IDeviceID rewriteDeviceId(IDeviceID deviceID) {
+    String tableName = deviceID.getTableName();
+    String originalTableName = getOriginalTableName(tableName);
+    return rewriteDeviceId(deviceID, originalTableName);
+  }
+
+  @SuppressWarnings("SuspiciousSystemArraycopy")
+  public static IDeviceID rewriteDeviceId(IDeviceID deviceID, String originalTableName) {
+    String tableName = deviceID.getTableName();
+    if (!tableName.equals(originalTableName)) {
+      Object[] segments = deviceID.getSegments();
+      String[] newSegments = new String[segments.length];
+      newSegments[0] = originalTableName;
+      System.arraycopy(segments, 1, newSegments, 1, segments.length - 1);
+      return Factory.DEFAULT_FACTORY.create(newSegments);
+    }
+    return deviceID;
+  }
+
   public static EvolvedSchema deepCopy(EvolvedSchema evolvedSchema) {
     EvolvedSchema newEvolvedSchema = new EvolvedSchema();
     newEvolvedSchema.originalTableNames = new LinkedHashMap<>(evolvedSchema.originalTableNames);
@@ -123,15 +147,19 @@ public class EvolvedSchema {
       if (schemas[i] != null) {
         EvolvedSchema newSchema = schemas[i];
         for (Entry<String, String> finalOriginalTableName : newSchema.originalTableNames.entrySet()) {
-          mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+          if (!finalOriginalTableName.getValue().isEmpty()) {
+            mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+          }
         }
         for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry : newSchema.originalColumnNames.entrySet()) {
           for (Entry<String, String> finalColNameOriginalColNameEntry : finalTableNameColumnNameMapEntry.getValue()
               .entrySet()) {
-            String finalTableName = finalTableNameColumnNameMapEntry.getKey();
-            String finalColName = finalColNameOriginalColNameEntry.getKey();
-            String originalColName = finalColNameOriginalColNameEntry.getValue();
-            mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+            if (!finalColNameOriginalColNameEntry.getValue().isEmpty()) {
+              String finalTableName = finalTableNameColumnNameMapEntry.getKey();
+              String finalColName = finalColNameOriginalColNameEntry.getKey();
+              String originalColName = finalColNameOriginalColNameEntry.getValue();
+              mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+            }
           }
         }
       }

@@ -126,6 +126,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -167,6 +168,7 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -1196,6 +1198,8 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       DataNodeTableCache.getInstance().invalid(databaseName);
+      schemaEvolutions.forEach(lastFlushTimeMap::accept);
+
       syncCloseAllWorkingTsFileProcessors();
 
       for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {
@@ -2607,6 +2611,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
+  @SuppressWarnings("SuspiciousSystemArraycopy")
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<IFullPath> pathList,
@@ -2619,7 +2624,18 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
+      EvolvedSchema evolvedSchema;
+      try {
+        evolvedSchema = tsFileResource.getMergedEvolvedSchema();
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+      IDeviceID deviceIdBackThen = singleDeviceId;
+      if (evolvedSchema != null) {
+        deviceIdBackThen = evolvedSchema.rewriteDeviceId(singleDeviceId);
+      }
+
+      if (!tsFileResource.isSatisfied(deviceIdBackThen, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       try {

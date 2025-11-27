@@ -124,3 +124,4 @@ iotdb-core/tsfile/src/main/antlr4/org/apache/tsfile/parser/gen/
 .mvn/.gradle-enterprise/
 .mvn/.develocity/
 .run/
+*.sevo

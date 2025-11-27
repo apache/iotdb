@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -213,7 +212,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   // TsFileSets this TsFile belongs to
-  private List<TsFileSet> tsFileSets;
+  private final List<TsFileSet> tsFileSets = new ArrayList<>();
 
   @TestOnly
   public TsFileResource() {
@@ -1641,7 +1640,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return tsFileSets;
   }
 
-  public EvolvedSchema getMergedSchema() throws IOException {
+  public EvolvedSchema getMergedEvolvedSchema() throws IOException {
     List<EvolvedSchema> list = new ArrayList<>();
     for (TsFileSet fileSet : getTsFileSets()) {
       EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
