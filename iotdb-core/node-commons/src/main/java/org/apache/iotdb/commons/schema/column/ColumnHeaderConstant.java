@@ -461,6 +461,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
 
+  public static final List<ColumnHeader> showAvailableUrlsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32));
+
   public static final List<ColumnHeader> showConfigNodesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
