@@ -20,12 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class WrappedStatement extends Statement {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedStatement.class);
+
   protected org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
   protected MPPQueryContext context;
 
@@ -34,7 +42,41 @@ public abstract class WrappedStatement extends Statement {
       MPPQueryContext context) {
     super(null);
     this.innerTreeStatement = innerTreeStatement;
+
     this.context = context;
+
+    // 检查 measurements 是否有 null
+    if (innerTreeStatement instanceof InsertBaseStatement) {
+      InsertBaseStatement insertStatement = (InsertBaseStatement) innerTreeStatement;
+      String[] measurements = insertStatement.getMeasurements();
+      if (measurements != null) {
+        List<Integer> nullIndices = new ArrayList<>();
+        for (int i = 0; i < measurements.length; i++) {
+          if (measurements[i] == null) {
+            nullIndices.add(i);
+          }
+        }
+        if (!nullIndices.isEmpty()) {
+          String devicePath =
+              insertStatement.getDevicePath() != null
+                  ? insertStatement.getDevicePath().getFullPath()
+                  : "null";
+          LOGGER.error(
+              "Found {} null measurements at indices {} in WrappedStatement constructor. DevicePath={}, Measurements={}, TotalCount={}, DataTypes={}, ColumnCategories={}",
+              nullIndices.size(),
+              nullIndices,
+              devicePath,
+              Arrays.toString(measurements),
+              measurements.length,
+              insertStatement.getDataTypes() != null
+                  ? Arrays.toString(insertStatement.getDataTypes())
+                  : "null",
+              insertStatement.getColumnCategories() != null
+                  ? Arrays.toString(insertStatement.getColumnCategories())
+                  : "null");
+        }
+      }
+    }
   }
 
   @Override

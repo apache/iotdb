@@ -287,7 +287,7 @@ public abstract class InsertNode extends SearchNode {
       WALWriteUtils.write(measurementSchemas[i], buffer);
     }
     if (measurements.length - getFailedMeasurementNumber() > j) {
-      System.out.printf(this.toString());
+      System.out.printf("serializeMeasurementSchemasToWAL has Null" + this.toString());
     }
   }
 

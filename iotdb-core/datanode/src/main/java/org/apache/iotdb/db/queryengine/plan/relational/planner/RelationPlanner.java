@@ -133,8 +133,11 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -176,6 +179,8 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RelationPlanner.class);
 
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -1221,6 +1226,38 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     String[] measurements = insertTabletStatement.getMeasurements();
     MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+
+    // 检查 measurements 是否有 null
+    if (measurements != null) {
+      List<Integer> nullIndices = new ArrayList<>();
+      for (int i = 0; i < measurements.length; i++) {
+        if (measurements[i] == null) {
+          nullIndices.add(i);
+        }
+      }
+      if (!nullIndices.isEmpty()) {
+        String devicePath =
+            insertTabletStatement.getDevicePath() != null
+                ? insertTabletStatement.getDevicePath().getFullPath()
+                : "null";
+        LOGGER.error(
+            "Found {} null measurements at indices {} in visitInsertTablet. DevicePath={}, Measurements={}, TotalCount={}, DataTypes={}, ColumnCategories={}, RowCount={}, FailedMeasurementNumber={}",
+            nullIndices.size(),
+            nullIndices,
+            devicePath,
+            Arrays.toString(measurements),
+            measurements.length,
+            insertTabletStatement.getDataTypes() != null
+                ? Arrays.toString(insertTabletStatement.getDataTypes())
+                : "null",
+            insertTabletStatement.getColumnCategories() != null
+                ? Arrays.toString(insertTabletStatement.getColumnCategories())
+                : "null",
+            insertTabletStatement.getRowCount(),
+            insertTabletStatement.getFailedMeasurementNumber());
+      }
+    }
+
     stayConsistent(measurements, measurementSchemas);
 
     RelationalInsertTabletNode insertNode =
@@ -1477,8 +1514,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     int minLength = Math.min(measurements.length, measurementSchemas.length);
     for (int j = 0; j < minLength; j++) {
       if (measurements[j] == null || measurementSchemas[j] == null) {
+        // 记录置 null 的情况
+        boolean measurementWasNull = measurements[j] == null;
+        boolean schemaWasNull = measurementSchemas[j] == null;
+        String measurementBefore = measurements[j];
+        String schemaBefore =
+            measurementSchemas[j] != null ? measurementSchemas[j].getMeasurementName() : null;
+
         measurements[j] = null;
         measurementSchemas[j] = null;
+
+        LOGGER.error(
+            "stayConsistent: Set both measurements[{}] and measurementSchemas[{}] to null. "
+                + "measurementWasNull={}, schemaWasNull={}, "
+                + "measurementBefore={}, schemaBefore={}, "
+                + "totalLength={}, minLength={}",
+            j,
+            j,
+            measurementWasNull,
+            schemaWasNull,
+            measurementBefore,
+            schemaBefore,
+            measurements.length,
+            minLength);
       }
     }
   }

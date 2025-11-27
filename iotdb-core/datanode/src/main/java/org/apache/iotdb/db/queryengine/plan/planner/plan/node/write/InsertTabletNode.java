@@ -494,6 +494,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
+        if (measurementSchemas != null && measurementSchemas[i] != null) {
+          System.out.println("writeMeasurementsOrSchemas " + measurementSchemas[i]);
+        }
         continue;
       }
       // serialize measurement schemas when exist
@@ -721,22 +724,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     int measurementSize = buffer.getInt();
-    System.out.println("size+++++" + measurementSize);
     measurements = new String[measurementSize];
 
     boolean hasSchema = buffer.get() == 1;
     if (hasSchema) {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
-        try {
-          measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-          measurements[i] = measurementSchemas[i].getMeasurementName();
-          System.out.println(measurements[i]);
-        } catch (Exception e) {
-
-        }
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurements[i] = measurementSchemas[i].getMeasurementName();
       }
-      System.out.println("end");
     } else {
       for (int i = 0; i < measurementSize; i++) {
         measurements[i] = ReadWriteIOUtils.readString(buffer);
