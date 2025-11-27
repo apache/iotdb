@@ -707,6 +707,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         + Arrays.toString(deviceIDs)
         + ", measurements="
         + Arrays.toString(measurements)
+        + ", measurementSchemas="
+        + (measurementSchemas != null ? Arrays.toString(measurementSchemas) : null)
+        + ", type="
+        + (dataTypes != null ? Arrays.toString(dataTypes) : null)
         + ", rowCount="
         + rowCount
         + ", timeRange=["
