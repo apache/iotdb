@@ -142,7 +142,7 @@ public interface Record {
    *     binary data from offset.
    * @return the Binary content of the object segment at the specified column
    */
-  Binary readObject(int columnIndex, long offset, long length);
+  Binary readObject(int columnIndex, long offset, int length);
 
   /**
    * Returns the actual data type of the value at the specified column in this row.

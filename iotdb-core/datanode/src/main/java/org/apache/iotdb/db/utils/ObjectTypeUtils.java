@@ -59,19 +59,19 @@ public class ObjectTypeUtils {
   private ObjectTypeUtils() {}
 
   public static ByteBuffer readObjectContent(
-      Binary binary, long offset, long length, boolean mayNotInCurrentNode) {
+      Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
     Pair<Long, String> ObjectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
     long fileLength = ObjectLengthPathPair.getLeft();
-    length = length < 0 ? fileLength : length;
     String relativePath = ObjectLengthPathPair.getRight();
     int actualReadSize =
-        ObjectTypeUtils.getActualReadSize(relativePath, fileLength, offset, length);
+        ObjectTypeUtils.getActualReadSize(
+            relativePath, fileLength, offset, length < 0 ? fileLength : length);
     return ObjectTypeUtils.readObjectContent(
         relativePath, offset, actualReadSize, mayNotInCurrentNode);
   }
 
   public static ByteBuffer readObjectContent(
-      String relativePath, long offset, long readSize, boolean mayNotInCurrentNode) {
+      String relativePath, long offset, int readSize, boolean mayNotInCurrentNode) {
     Optional<File> objectFile = TIER_MANAGER.getAbsoluteObjectFilePath(relativePath, false);
     if (objectFile.isPresent()) {
       return readObjectContentFromLocalFile(objectFile.get(), offset, readSize);
@@ -95,8 +95,8 @@ public class ObjectTypeUtils {
   }
 
   private static ByteBuffer readObjectContentFromRemoteFile(
-      final String relativePath, final long offset, final long readSize) {
-    byte[] bytes = new byte[(int) readSize];
+      final String relativePath, final long offset, final int readSize) {
+    byte[] bytes = new byte[readSize];
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     TConsensusGroupId consensusGroupId =
         new TConsensusGroupId(
@@ -111,7 +111,7 @@ public class ObjectTypeUtils {
     req.setRelativePath(relativePath);
     for (int i = 0; i < regionReplicaSet.getDataNodeLocations().size(); i++) {
       TDataNodeLocation dataNodeLocation = regionReplicaSet.getDataNodeLocations().get(i);
-      long toReadSizeInCurrentDataNode = readSize;
+      int toReadSizeInCurrentDataNode = readSize;
       try (SyncDataNodeInternalServiceClient client =
           Coordinator.getInstance()
               .getInternalServiceClientManager()

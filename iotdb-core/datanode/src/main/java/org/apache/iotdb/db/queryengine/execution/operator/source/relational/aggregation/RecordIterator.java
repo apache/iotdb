@@ -140,7 +140,7 @@ public class RecordIterator implements Iterator<Record> {
     }
 
     @Override
-    public Binary readObject(int columnIndex, long offset, long length) {
+    public Binary readObject(int columnIndex, long offset, int length) {
       if (getDataType(columnIndex) == Type.OBJECT) {
         throw new UnsupportedOperationException("current column is not object column");
       }

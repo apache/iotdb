@@ -775,8 +775,8 @@ struct TKillQueryInstanceReq {
 
 struct TReadObjectReq {
   1: string relativePath
-  2: optional i64 offset
-  3: optional i64 size
+  2: i64 offset
+  3: i32 size
 }
 
 /**
