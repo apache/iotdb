@@ -98,33 +98,44 @@ public class EvolvedSchema {
 
   public static EvolvedSchema deepCopy(EvolvedSchema evolvedSchema) {
     EvolvedSchema newEvolvedSchema = new EvolvedSchema();
-    newEvolvedSchema.originalTableNames = new HashMap<>(evolvedSchema.originalTableNames);
-    newEvolvedSchema.originalColumnNames = new HashMap<>(evolvedSchema.originalColumnNames);
+    newEvolvedSchema.originalTableNames = new LinkedHashMap<>(evolvedSchema.originalTableNames);
+    newEvolvedSchema.originalColumnNames = new LinkedHashMap<>(evolvedSchema.originalColumnNames);
     return newEvolvedSchema;
   }
 
-  public static EvolvedSchema merge(EvolvedSchema oldSchema, EvolvedSchema newSchema) {
-    if (oldSchema == null) {
-      return newSchema;
-    }
-    if (newSchema == null) {
-      return oldSchema;
-    }
+  public static EvolvedSchema merge(EvolvedSchema... schemas) {
+      EvolvedSchema firstNotNullSchema = null;
+      int i = 0;
+      for (; i < schemas.length; i++) {
+        if (schemas[i] != null) {
+          firstNotNullSchema = schemas[i];
+          i++;
+          break;
+        }
+      }
 
-    EvolvedSchema mergedSchema = deepCopy(oldSchema);
-    for (Entry<String, String> finalOriginalTableName : newSchema.originalTableNames.entrySet()) {
-      mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
-    }
-    for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry : newSchema.originalColumnNames.entrySet()) {
-      for (Entry<String, String> finalColNameOriginalColNameEntry : finalTableNameColumnNameMapEntry.getValue()
-          .entrySet()) {
-        String finalTableName = finalTableNameColumnNameMapEntry.getKey();
-        String finalColName = finalColNameOriginalColNameEntry.getKey();
-        String originalColName = finalColNameOriginalColNameEntry.getValue();
-        mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+      if (firstNotNullSchema == null) {
+        return null;
+      }
+      EvolvedSchema mergedSchema = deepCopy(firstNotNullSchema);
+
+    for (; i < schemas.length; i++) {
+      if (schemas[i] != null) {
+        EvolvedSchema newSchema = schemas[i];
+        for (Entry<String, String> finalOriginalTableName : newSchema.originalTableNames.entrySet()) {
+          mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+        }
+        for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry : newSchema.originalColumnNames.entrySet()) {
+          for (Entry<String, String> finalColNameOriginalColNameEntry : finalTableNameColumnNameMapEntry.getValue()
+              .entrySet()) {
+            String finalTableName = finalTableNameColumnNameMapEntry.getKey();
+            String finalColName = finalColNameOriginalColNameEntry.getKey();
+            String originalColName = finalColNameOriginalColNameEntry.getValue();
+            mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+          }
+        }
       }
     }
-
     return mergedSchema;
   }
 }

@@ -1189,13 +1189,13 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void applySchemaEvolution(List<SchemaEvolution> schemaEvolutions) {
     long startTime = System.nanoTime();
-    writeLock("InsertRow");
+    writeLock("applySchemaEvolution");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
       }
-
+      DataNodeTableCache.getInstance().invalid(databaseName);
       syncCloseAllWorkingTsFileProcessors();
 
       for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {

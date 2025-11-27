@@ -40,10 +40,15 @@ public class SchemaEvolutionFile {
     this.filePath = filePath;
   }
 
-  private void recoverFile() throws IOException {
+  /**
+   * Recover the SchemaEvolutionFile if it is broken.
+   * @return true if the file exists false otherwise
+   * @throws IOException if the file cannot be recovered
+   */
+  private boolean recoverFile() throws IOException {
     File file = new File(filePath);
     if (!file.exists() || file.length() == 0) {
-      return;
+      return false;
     }
 
     long length = file.length();
@@ -55,6 +60,7 @@ public class SchemaEvolutionFile {
         fileChannel.truncate(validLength);
       }
     }
+    return true;
   }
 
   public static long parseValidLength(String fileName) {
@@ -79,7 +85,10 @@ public class SchemaEvolutionFile {
   }
 
   public EvolvedSchema readAsSchema() throws IOException {
-    recoverFile();
+    boolean exists = recoverFile();
+    if (!exists) {
+      return null;
+    }
 
     EvolvedSchema evolvedSchema = new EvolvedSchema();
     try (FileInputStream fis = new FileInputStream(filePath);

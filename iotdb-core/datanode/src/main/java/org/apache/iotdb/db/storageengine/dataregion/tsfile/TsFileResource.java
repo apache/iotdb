@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -1637,5 +1639,15 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public List<TsFileSet> getTsFileSets() {
     return tsFileSets;
+  }
+
+  public EvolvedSchema getMergedSchema() throws IOException {
+    List<EvolvedSchema> list = new ArrayList<>();
+    for (TsFileSet fileSet : getTsFileSets()) {
+      EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
+      list.add(readEvolvedSchema);
+    }
+
+    return EvolvedSchema.merge(list.toArray(new EvolvedSchema[0]));
   }
 }
