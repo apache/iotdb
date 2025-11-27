@@ -104,8 +104,7 @@ public class DeviceLastCache {
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
-                  (int) RamUsageEstimator.sizeOf(measurement)
-                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                  (int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
