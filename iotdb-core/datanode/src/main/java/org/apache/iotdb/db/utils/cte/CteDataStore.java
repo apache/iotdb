@@ -30,6 +30,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CteDataStore {
   private final Query query;
@@ -40,6 +41,9 @@ public class CteDataStore {
   private long cachedBytes;
   private int cachedRows;
 
+  // reference count by CteScanOperator
+  private final AtomicInteger count;
+
   public CteDataStore(
       Query query, TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.query = query;
@@ -48,6 +52,7 @@ public class CteDataStore {
     this.cachedData = new ArrayList<>();
     this.cachedBytes = 0L;
     this.cachedRows = 0;
+    this.count = new AtomicInteger(0);
   }
 
   public boolean addTsBlock(TsBlock tsBlock) {
@@ -88,5 +93,13 @@ public class CteDataStore {
 
   public List<Integer> getColumnIndex2TsBlockColumnIndexList() {
     return columnIndex2TsBlockColumnIndexList;
+  }
+
+  public int getRefCount() {
+    return count.get();
+  }
+
+  public void increaseRefCount() {
+    count.getAndIncrement();
   }
 }
