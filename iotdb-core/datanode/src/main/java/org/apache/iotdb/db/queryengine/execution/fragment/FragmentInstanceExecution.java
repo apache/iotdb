@@ -152,7 +152,7 @@ public class FragmentInstanceExecution {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }
-    statistics.setDataRegion(context.getDataRegion().getDataRegionId());
+    statistics.setDataRegion(context.getDataRegion().getDataRegionIdString());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(

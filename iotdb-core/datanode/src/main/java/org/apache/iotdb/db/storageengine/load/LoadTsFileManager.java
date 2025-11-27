@@ -359,7 +359,7 @@ public class LoadTsFileManager {
       final long writePointCount,
       final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
-        writePointCount, databaseName, dataRegion.getDataRegionId());
+        writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
         .count(
             writePointCount,
@@ -370,7 +370,7 @@ public class LoadTsFileManager {
             Tag.DATABASE.toString(),
             databaseName,
             Tag.REGION.toString(),
-            dataRegion.getDataRegionId(),
+            dataRegion.getDataRegionIdString(),
             Tag.TYPE.toString(),
             Metric.LOAD_POINT_COUNT.toString());
     // Because we cannot accurately judge who is the leader here,
@@ -381,7 +381,7 @@ public class LoadTsFileManager {
             .getReplicationNum(
                 ConsensusGroupId.Factory.create(
                     TConsensusGroupType.DataRegion.getValue(),
-                    Integer.parseInt(dataRegion.getDataRegionId())));
+                    Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
     if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
@@ -395,7 +395,7 @@ public class LoadTsFileManager {
               Tag.DATABASE.toString(),
               databaseName,
               Tag.REGION.toString(),
-              dataRegion.getDataRegionId(),
+              dataRegion.getDataRegionIdString(),
               Tag.TYPE.toString(),
               Metric.LOAD_POINT_COUNT.toString());
     }
@@ -844,7 +844,7 @@ public class LoadTsFileManager {
       return String.join(
           IoTDBConstant.FILE_NAME_SEPARATOR,
           dataRegion.getDatabaseName(),
-          dataRegion.getDataRegionId(),
+          dataRegion.getDataRegionIdString(),
           Long.toString(timePartitionSlot.getStartTime()));
     }
 
