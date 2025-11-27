@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.db.utils.cte.MemoryReader;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -42,10 +43,14 @@ public class CteScanOperator extends AbstractSourceOperator {
   private final CteDataStore dataStore;
   private CteDataReader dataReader;
 
+  private final long maxReturnSize =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
   public CteScanOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
+    dataStore.increaseRefCount();
     this.dataStore = dataStore;
     prepareReader();
   }
@@ -84,27 +89,31 @@ public class CteScanOperator extends AbstractSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    if (dataReader == null) {
-      return 0;
-    }
-    return dataReader.bytesUsed();
+    return calculateRetainedSizeAfterCallingNext() + calculateMaxReturnSize();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    // The returned object is a reference to TsBlock in CteDataReader
-    return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return calculateMaxPeekMemoryWithCounter();
+    return 0L;
   }
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
+    long bytes =
+        INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
+    if (dataReader != null) {
+      bytes += dataReader.bytesUsed();
+    }
+    if (dataStore.getRefCount() == 1) {
+      bytes += dataStore.getCachedBytes();
+    }
+
+    return bytes;
   }
 
   private void prepareReader() {
