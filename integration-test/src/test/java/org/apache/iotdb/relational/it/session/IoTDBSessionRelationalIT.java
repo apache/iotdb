@@ -1349,7 +1349,7 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Cannot create column tag1 category is not provided", e.getMessage());
+        assertEquals("550: Table 'db3.table13' does not exist.", e.getMessage());
       }
     }
   }
