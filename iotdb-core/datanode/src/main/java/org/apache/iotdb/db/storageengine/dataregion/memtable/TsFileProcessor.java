@@ -359,7 +359,7 @@ public class TsFileProcessor {
       // recordCreateMemtableBlockCost
       costsForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
 
     long[] memIncrements;
@@ -478,7 +478,7 @@ public class TsFileProcessor {
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
 
     long[] memIncrements;
