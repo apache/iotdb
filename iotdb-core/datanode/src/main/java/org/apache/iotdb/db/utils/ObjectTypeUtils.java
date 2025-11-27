@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -97,7 +95,7 @@ public class ObjectTypeUtils {
   }
 
   private static ByteBuffer readObjectContentFromRemoteFile(
-      String relativePath, long offset, long readSize) {
+      final String relativePath, final long offset, final long readSize) {
     byte[] bytes = new byte[(int) readSize];
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     TConsensusGroupId consensusGroupId =
@@ -108,25 +106,34 @@ public class ObjectTypeUtils {
         ClusterPartitionFetcher.getInstance()
             .getRegionReplicaSet(Collections.singletonList(consensusGroupId));
     TRegionReplicaSet regionReplicaSet = regionReplicaSetList.iterator().next();
-    final int batchSize = 1024 * 1024 * 1024;
+    final int batchSize = 1024 * 1024;
     final TReadObjectReq req = new TReadObjectReq();
     req.setRelativePath(relativePath);
-    for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+    for (int i = 0; i < regionReplicaSet.getDataNodeLocations().size(); i++) {
+      TDataNodeLocation dataNodeLocation = regionReplicaSet.getDataNodeLocations().get(i);
+      long toReadSizeInCurrentDataNode = readSize;
       try (SyncDataNodeInternalServiceClient client =
           Coordinator.getInstance()
               .getInternalServiceClientManager()
               .borrowClient(dataNodeLocation.getInternalEndPoint())) {
-        while (readSize > 0) {
+        while (toReadSizeInCurrentDataNode > 0) {
           req.setOffset(offset + buffer.position());
-          req.setSize(Math.min(readSize, batchSize));
-          readSize -= req.getSize();
+          req.setSize(Math.min(toReadSizeInCurrentDataNode, batchSize));
+          toReadSizeInCurrentDataNode -= req.getSize();
           ByteBuffer partial = client.readObject(req);
           buffer.put(partial);
         }
-      } catch (ClientManagerException | TException e) {
-        logger.error(e.getMessage(), e);
-        throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      } catch (Exception e) {
+        logger.error(
+            "Failed to read object from datanode: {}" + e.getMessage(), dataNodeLocation, e);
+        if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
+          throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        }
+        buffer.clear();
+        req.setOffset(offset);
+        continue;
       }
+      break;
     }
     buffer.flip();
     return buffer;
