@@ -397,6 +397,12 @@ public class TableHeaderSchemaValidator {
                 TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
           }
           missingMeasurementIndices.add(i);
+        } else {
+          // Custom validation handler - get MeasurementSchema on demand
+          if (measurementValidator != null) {
+            measurementValidator.validate(
+                i, measurementName, measurementInfo.getType(i), category, existingColumn);
+          }
         }
 
         if (noField && category == TsTableColumnCategory.FIELD) {
