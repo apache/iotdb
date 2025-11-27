@@ -42,6 +42,8 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,6 +57,8 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 
 public abstract class WrappedInsertStatement extends WrappedStatement
     implements ITableDeviceSchemaValidation {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedInsertStatement.class);
 
   protected TableSchema tableSchema;
 
@@ -139,6 +143,33 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         true,
         this::validate,
         this::adjustTagColumns);
+
+    // Check for null measurementSchemas after validation
+    final InsertBaseStatement innerTreeStatement = getInnerTreeStatement();
+    final MeasurementSchema[] measurementSchemas = innerTreeStatement.getMeasurementSchemas();
+    if (measurementSchemas != null) {
+      final List<Integer> nullIndices = new ArrayList<>();
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        if (measurementSchemas[i] == null) {
+          nullIndices.add(i);
+        }
+      }
+      if (!nullIndices.isEmpty()) {
+        LOGGER.error(
+            "After validateTableSchema: Found null measurementSchemas at indices: {}, "
+                + "total count: {}, tableName: {}, databaseName: {}, "
+                + "measurements: {}, dataTypes: {}, columnCategories: {}",
+            nullIndices,
+            nullIndices.size(),
+            innerTreeStatement.getDevicePath() != null
+                ? innerTreeStatement.getDevicePath().getFullPath()
+                : "null",
+            databaseName,
+            java.util.Arrays.toString(innerTreeStatement.getMeasurements()),
+            java.util.Arrays.toString(innerTreeStatement.getDataTypes()),
+            java.util.Arrays.toString(innerTreeStatement.getColumnCategories()));
+      }
+    }
   }
 
   public void validateTableSchema(
