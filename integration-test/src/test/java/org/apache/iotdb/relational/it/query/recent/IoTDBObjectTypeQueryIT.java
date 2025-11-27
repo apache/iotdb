@@ -69,13 +69,6 @@ public class IoTDBObjectTypeQueryIT {
                   "X'cafebabe'",
                   j,
                   "to_object(true, 0, X'cafebabe')"));
-          if (i == 10 && j == 9) {
-            statement.execute(
-                String.format(
-                    "insert into table1(time, device, s4, s5, s6, s7, s8) "
-                        + "values(%d, '%s', '%s', %d, %s, '%s', %s)",
-                    j, "d" + i, LocalDate.of(2024, 5, i % 31 + 1), j, "X'cafebabe'", j, "null"));
-          }
         }
       }
     }
