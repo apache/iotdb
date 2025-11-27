@@ -273,7 +273,7 @@ public class TsFileProcessor {
       // recordCreateMemtableBlockCost
       costsForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
 
     long[] memIncrements;
@@ -327,7 +327,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionIdString(), insertRowNode, tsFileResource);
 
     int pointInserted;
     if (insertRowNode.isAligned()) {
@@ -359,7 +359,7 @@ public class TsFileProcessor {
       // recordCreateMemtableBlockCost
       costsForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
 
     long[] memIncrements;
@@ -426,7 +426,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowsNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionIdString(), insertRowsNode, tsFileResource);
 
     int pointInserted = 0;
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
@@ -455,7 +455,7 @@ public class TsFileProcessor {
         MemTableManager.getInstance()
             .getAvailableMemTable(
                 dataRegionInfo.getDataRegion().getDatabaseName(),
-                dataRegionInfo.getDataRegion().getDataRegionId());
+                dataRegionInfo.getDataRegion().getDataRegionIdString());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -478,7 +478,7 @@ public class TsFileProcessor {
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
 
     long[] memIncrements;
@@ -542,7 +542,9 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            insertTabletNode,
+            tsFileResource);
 
     int pointInserted;
     try {
@@ -1282,7 +1284,7 @@ public class TsFileProcessor {
     WritingMetrics.getInstance()
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     WritingMetrics.getInstance()
-        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
+        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), -1);
     WritingMetrics.getInstance().recordWALEntryNumForOneTsFile(walEntryNum);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
@@ -1378,7 +1380,7 @@ public class TsFileProcessor {
                   memTableToFlush,
                   writer,
                   storageGroupName,
-                  dataRegionInfo.getDataRegion().getDataRegionId());
+                  dataRegionInfo.getDataRegion().getDataRegionIdString());
           flushTask.syncFlushMemTable();
           memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
@@ -1562,7 +1564,7 @@ public class TsFileProcessor {
           String.format("%.2f", compressionRatio),
           totalMemTableSize,
           writer.getPos());
-      String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
+      String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionIdString();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
       CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
@@ -1585,7 +1587,8 @@ public class TsFileProcessor {
     // Listen after "endFile" to avoid unnecessary waiting for tsFile close
     // before resource serialization to avoid missing hardlink after restart
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
+        .listenToTsFile(
+            dataRegionInfo.getDataRegion().getDataRegionIdString(), tsFileResource, false);
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
