@@ -19,32 +19,26 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.TsFileMetadata;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-/**
- * A schema evolution operation that renames a table in a schema map.
- */
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+/** A schema evolution operation that renames a table in a schema map. */
 public class TableRename implements SchemaEvolution {
 
   private String nameBefore;
   private String nameAfter;
 
   // for deserialization
-  public TableRename() {
-  }
+  public TableRename() {}
 
   public TableRename(String nameBefore, String nameAfter) {
     this.nameBefore = nameBefore.toLowerCase();
     this.nameAfter = nameAfter.toLowerCase();
   }
-
 
   @Override
   public void applyTo(EvolvedSchema evolvedSchema) {

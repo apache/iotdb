@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.io.IOException;
-import java.io.InputStream;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
+
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
-/**
- * A schema evolution operation that can be applied to a TableSchemaMap.
- */
+import java.io.IOException;
+import java.io.InputStream;
+
+/** A schema evolution operation that can be applied to a TableSchemaMap. */
 public interface SchemaEvolution extends StreamSerializable {
 
   /**

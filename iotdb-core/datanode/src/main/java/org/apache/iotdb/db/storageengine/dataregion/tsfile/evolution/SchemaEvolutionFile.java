@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -27,11 +29,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
-import org.apache.iotdb.commons.utils.FileUtils;
 
-/**
- * SchemaEvolutionFile manages schema evolutions related to a TsFileSet.
- */
+/** SchemaEvolutionFile manages schema evolutions related to a TsFileSet. */
 public class SchemaEvolutionFile {
   public static final String FILE_SUFFIX = ".sevo";
 
@@ -49,21 +48,24 @@ public class SchemaEvolutionFile {
 
     long length = file.length();
     String fileName = file.getName();
-    long validLength = Long.parseLong(fileName.substring(fileName.lastIndexOf('.')));
+    long validLength = parseValidLength(fileName);
     if (length > validLength) {
-      try (FileInputStream fis = new FileInputStream(file);
+      try (FileOutputStream fis = new FileOutputStream(file, true);
           FileChannel fileChannel = fis.getChannel()) {
         fileChannel.truncate(validLength);
       }
     }
   }
 
+  public static long parseValidLength(String fileName) {
+    return Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
+  }
 
   public void append(Collection<SchemaEvolution> schemaEvolutions) throws IOException {
     recoverFile();
 
     try (FileOutputStream fos = new FileOutputStream(filePath, true);
-    BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+        BufferedOutputStream bos = new BufferedOutputStream(fos)) {
       for (SchemaEvolution schemaEvolution : schemaEvolutions) {
         schemaEvolution.serialize(bos);
       }
@@ -81,7 +83,7 @@ public class SchemaEvolutionFile {
 
     EvolvedSchema evolvedSchema = new EvolvedSchema();
     try (FileInputStream fis = new FileInputStream(filePath);
-    BufferedInputStream bis = new BufferedInputStream(fis)) {
+        BufferedInputStream bis = new BufferedInputStream(fis)) {
       while (bis.available() > 0) {
         SchemaEvolution evolution = SchemaEvolution.createFrom(bis);
         evolution.applyTo(evolvedSchema);

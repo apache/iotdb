@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import org.apache.tsfile.file.metadata.TsFileMetadata;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-/**
- * A schema evolution operation that renames a column in a table schema.
- */
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+/** A schema evolution operation that renames a column in a table schema. */
 public class ColumnRename implements SchemaEvolution {
 
   private String tableName;
@@ -37,8 +34,7 @@ public class ColumnRename implements SchemaEvolution {
   private String nameAfter;
 
   // for deserialization
-  public ColumnRename() {
-  }
+  public ColumnRename() {}
 
   public ColumnRename(String tableName, String nameBefore, String nameAfter) {
     this.tableName = tableName.toLowerCase();

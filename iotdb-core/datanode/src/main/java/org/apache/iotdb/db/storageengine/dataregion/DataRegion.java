@@ -1002,32 +1002,41 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
-      List<TsFileSet> tsFileSets = tsFileSetMap.computeIfAbsent(partitionId,
-          pid -> {
-            File fileSetDir = new File(dataRegionSysDir + File.separator + partitionId + File.separator + TsFileSet.FILE_SET_DIR_NAME);
-            File[] fileSets = fileSetDir.listFiles();
-            if (fileSets == null || fileSets.length == 0) {
-              return Collections.emptyList();
-            } else {
-              List<TsFileSet> results = new ArrayList<>();
-              for (File fileSet : fileSets) {
-                TsFileSet tsFileSet;
-                try {
-                  tsFileSet = new TsFileSet(Long.parseLong(fileSet.getName()),
-                      fileSetDir.getAbsolutePath(), true);
-                } catch (NumberFormatException e) {
-                  continue;
+      List<TsFileSet> tsFileSets =
+          tsFileSetMap.computeIfAbsent(
+              partitionId,
+              pid -> {
+                File fileSetDir =
+                    new File(
+                        dataRegionSysDir
+                            + File.separator
+                            + partitionId
+                            + File.separator
+                            + TsFileSet.FILE_SET_DIR_NAME);
+                File[] fileSets = fileSetDir.listFiles();
+                if (fileSets == null || fileSets.length == 0) {
+                  return Collections.emptyList();
+                } else {
+                  List<TsFileSet> results = new ArrayList<>();
+                  for (File fileSet : fileSets) {
+                    TsFileSet tsFileSet;
+                    try {
+                      tsFileSet =
+                          new TsFileSet(
+                              Long.parseLong(fileSet.getName()),
+                              fileSetDir.getAbsolutePath(),
+                              true);
+                    } catch (NumberFormatException e) {
+                      continue;
+                    }
+                    results.add(tsFileSet);
+                  }
+                  return results;
                 }
-                results.add(tsFileSet);
-              }
-              return results;
-            }
-          });
+              });
       if (!tsFileSets.isEmpty()) {
         tsFileSets.sort(null);
       }
-
-
 
       tsFileManager.add(tsFileResource, isSeq);
       if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())

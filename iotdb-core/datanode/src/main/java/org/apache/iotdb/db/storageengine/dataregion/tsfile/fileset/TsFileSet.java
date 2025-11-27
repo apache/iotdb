@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 
-/**
- * TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion.
- */
+/** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
 
   public static final String FILE_SET_DIR_NAME = "filesets";

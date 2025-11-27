@@ -20,19 +20,16 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import org.apache.tsfile.file.metadata.TableSchema;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
   private final Map<String, String> originalTableNames = new HashMap<>();
+
   /**
-   * the first key is the evolved table name, the second key is the evolved column name,
-   * and the value is the original column name before any schema evolution.
+   * the first key is the evolved table name, the second key is the evolved column name, and the
+   * value is the original column name before any schema evolution.
    */
   private final Map<String, Map<String, String>> originalColumnNames = new HashMap<>();
 
@@ -54,8 +51,8 @@ public class EvolvedSchema {
   }
 
   public void renameColumn(String tableName, String oldColumnName, String newColumnName) {
-    Map<String, String> columnNameMap = originalColumnNames.computeIfAbsent(tableName,
-        t -> new LinkedHashMap<>());
+    Map<String, String> columnNameMap =
+        originalColumnNames.computeIfAbsent(tableName, t -> new LinkedHashMap<>());
     if (!columnNameMap.containsKey(oldColumnName)) {
       columnNameMap.put(newColumnName, oldColumnName);
       // mark the old column name as non-exists
