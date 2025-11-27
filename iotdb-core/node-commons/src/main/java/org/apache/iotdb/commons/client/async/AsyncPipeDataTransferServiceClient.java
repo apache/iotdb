@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncClient
     implements ThriftClient {
@@ -84,7 +85,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void onError(final Exception e) {
     super.onError(e);
     ThriftClient.resolveException(e, this);
-    returnSelf();
+    returnSelf(
+        (i) -> i instanceof IllegalStateException && "Client has an error!".equals(i.getMessage()));
   }
 
   @Override
@@ -111,6 +113,16 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void returnSelf() {
     if (shouldReturnSelf.get()) {
       clientManager.returnClient(endpoint, this);
+    }
+  }
+
+  /**
+   * return self, the method doesn't need to be called by the user and will be triggered after the
+   * RPC is finished.
+   */
+  public void returnSelf(Function<Exception, Boolean> ignoreError) {
+    if (shouldReturnSelf.get()) {
+      clientManager.returnClient(endpoint, this, ignoreError);
     }
   }
 
