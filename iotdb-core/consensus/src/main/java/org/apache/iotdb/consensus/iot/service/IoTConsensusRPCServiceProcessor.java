@@ -129,7 +129,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
         "execute TSyncLogEntriesReq for {} with result {}",
         req.consensusGroupId,
         writeStatus.subStatus);
-    return new TSyncLogEntriesRes(writeStatus.subStatus);
+    return new TSyncLogEntriesRes(writeStatus.subStatus)
+        .setReceiverMemSize(deserializedRequest.getMemorySize());
   }
 
   @Override

@@ -45,8 +45,9 @@ public abstract class SearchNode extends WritePlanNode {
   }
 
   /** Search index should start from 1 */
-  public void setSearchIndex(long searchIndex) {
+  public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
+    return this;
   }
 
   public abstract SearchNode merge(List<SearchNode> searchNodes);
