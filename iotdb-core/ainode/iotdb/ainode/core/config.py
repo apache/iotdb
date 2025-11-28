@@ -20,7 +20,6 @@ import re
 
 from iotdb.ainode.core.constant import (
     AINODE_BUILD_INFO,
-    AINODE_BUILTIN_MODELS_DIR,
     AINODE_CLUSTER_INGRESS_ADDRESS,
     AINODE_CLUSTER_INGRESS_PASSWORD,
     AINODE_CLUSTER_INGRESS_PORT,
@@ -31,7 +30,6 @@ from iotdb.ainode.core.constant import (
     AINODE_CONF_FILE_NAME,
     AINODE_CONF_GIT_FILE_NAME,
     AINODE_CONF_POM_FILE_NAME,
-    AINODE_FINETUNE_MODELS_DIR,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_EXTRA_MEMORY_RATIO,
     AINODE_INFERENCE_MAX_PREDICT_LENGTH,
@@ -45,7 +43,6 @@ from iotdb.ainode.core.constant import (
     AINODE_SYSTEM_FILE_NAME,
     AINODE_TARGET_CONFIG_NODE_LIST,
     AINODE_THRIFT_COMPRESSION_ENABLED,
-    AINODE_USER_DEFINED_MODELS_DIR,
     AINODE_VERSION_INFO,
 )
 from iotdb.ainode.core.exception import BadNodeUrlError
@@ -97,9 +94,6 @@ class AINodeConfig(object):
 
         # Directory to save models
         self._ain_models_dir = AINODE_MODELS_DIR
-        self._ain_builtin_models_dir = AINODE_BUILTIN_MODELS_DIR
-        self._ain_finetune_models_dir = AINODE_FINETUNE_MODELS_DIR
-        self._ain_user_defined_models_dir = AINODE_USER_DEFINED_MODELS_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
 
         # Whether to enable compression for thrift
@@ -207,24 +201,6 @@ class AINodeConfig(object):
 
     def set_ain_models_dir(self, ain_models_dir: str) -> None:
         self._ain_models_dir = ain_models_dir
-
-    def get_ain_builtin_models_dir(self) -> str:
-        return self._ain_builtin_models_dir
-
-    def set_ain_builtin_models_dir(self, ain_builtin_models_dir: str) -> None:
-        self._ain_builtin_models_dir = ain_builtin_models_dir
-
-    def get_ain_finetune_models_dir(self) -> str:
-        return self._ain_finetune_models_dir
-
-    def set_ain_finetune_models_dir(self, ain_finetune_models_dir: str) -> None:
-        self._ain_finetune_models_dir = ain_finetune_models_dir
-
-    def get_ain_user_defined_models_dir(self) -> str:
-        return self._ain_user_defined_models_dir
-
-    def set_ain_user_defined_models_dir(self, ain_user_defined_models_dir: str) -> None:
-        self._ain_user_defined_models_dir = ain_user_defined_models_dir
 
     def get_ain_system_dir(self) -> str:
         return self._ain_system_dir

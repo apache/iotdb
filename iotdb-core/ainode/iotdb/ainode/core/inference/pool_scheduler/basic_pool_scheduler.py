@@ -28,7 +28,7 @@ from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     ScaleActionType,
 )
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.manager.model_manager import get_model_manager, ModelManager
+from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.manager.utils import (
     INFERENCE_EXTRA_MEMORY_RATIO,
     INFERENCE_MEMORY_USAGE_RATIO,

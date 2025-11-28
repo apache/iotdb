@@ -24,6 +24,7 @@ MODEL_CONFIG_FILE_IN_JSON = "config.json"
 MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
 MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
 
+
 class ModelCategory(Enum):
     BUILTIN = "builtin"
     USER_DEFINED = "user_defined"

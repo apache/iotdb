@@ -30,7 +30,7 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
 from iotdb.ainode.core.inference.inference_request import InferenceRequest
-from iotdb.ainode.core.inference.pipeline import get_pipeline
+from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler import (
     BasicRequestScheduler,
 )
@@ -119,7 +119,6 @@ class InferenceRequestPool(mp.Process):
             batch_output = self._inference_pipeline.infer(
                 batch_inputs,
                 predict_length=requests[0].max_new_tokens,
-                # num_samples=10,
                 revin=True,
             )
             offset = 0
@@ -128,12 +127,9 @@ class InferenceRequestPool(mp.Process):
                 cur_batch_size = request.batch_size
                 cur_output = batch_output[offset : offset + cur_batch_size]
                 offset += cur_batch_size
-                # request.write_step_output(cur_output.mean(dim=1))
                 request.write_step_output(cur_output)
 
-                # self._inference_pipeline.post_decode()
                 if request.is_finished():
-                    # self._inference_pipeline.post_inference()
                     # ensure the output tensor is on CPU before sending to result queue
                     request.output_tensor = request.output_tensor.cpu()
                     self._finished_queue.put(request)
@@ -157,7 +153,7 @@ class InferenceRequestPool(mp.Process):
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
         self._request_scheduler.device = self.device
-        self._inference_pipeline = get_pipeline(self.model_info.model_id, self.device)
+        self._inference_pipeline = load_pipeline(self.model_info, str(self.device))
         self.ready_event.set()
 
         activate_daemon = threading.Thread(
