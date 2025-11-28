@@ -120,22 +120,20 @@ public class TableDeviceLastCache {
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
-                  -((isTableModel ? 0 : sizeOf(finalMeasurement)) + getTVPairEntrySize(tvPair)));
+                  -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
-                  (isTableModel ? 0 : sizeOf(finalMeasurement)) + getTVPairEntrySize(newPair));
+                  (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                      + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
           });
     }
     return diff.get();
-  }
-
-  private int sizeOf(String s) {
-    return s == "" ? 0 : (int) RamUsageEstimator.sizeOf(s);
   }
 
   int tryUpdate(
@@ -154,7 +152,7 @@ public class TableDeviceLastCache {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
           diff.addAndGet(
-              sizeOf(measurements[i])
+              (int) RamUsageEstimator.sizeOf(measurements[i])
                   + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i])));
         }
         continue;
@@ -191,7 +189,9 @@ public class TableDeviceLastCache {
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set((isTableModel ? 0 : sizeOf(s)) + getTVPairEntrySize(timeValuePair));
+          diff.set(
+              (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(s))
+                  + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });
@@ -202,7 +202,7 @@ public class TableDeviceLastCache {
         "",
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= time.get()) {
-            diff.addAndGet(sizeOf(s) + getTVPairEntrySize(timeValuePair));
+            diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
             return null;
           }
           return timeValuePair;
