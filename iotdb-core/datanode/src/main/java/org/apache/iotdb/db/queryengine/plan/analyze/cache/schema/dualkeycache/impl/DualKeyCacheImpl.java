@@ -153,13 +153,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 if (!secondKeyChecker.test(entry.getKey())) {
                   return;
                 }
-                entryGroup.computeCacheEntry(
+                entryGroup.computeCacheEntryIfPresent(
                     entry.getKey(),
                     memory ->
                         (secondKey, cacheEntry) -> {
-                          if (Objects.nonNull(cacheEntry)) {
-                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                          }
+                          memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
                           return cacheEntry;
                         });
               });
@@ -185,7 +183,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                   if (!secondKeyChecker.test(entry.getKey())) {
                     return;
                   }
-                  entryGroup.computeCacheEntry(
+                  entryGroup.computeCacheEntryIfPresent(
                       entry.getKey(),
                       memory ->
                           (secondKey, cacheEntry) -> {
