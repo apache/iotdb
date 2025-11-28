@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.function.Split;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -244,8 +245,16 @@ public class TestMetadata implements Metadata {
       throws OperatorNotFoundException {
 
     switch (operatorType) {
-      case ADD:
       case SUBTRACT:
+        Optional<Type> resolvedType = SubtractionResolver.checkConditions(argumentTypes);
+        return resolvedType.orElseThrow(
+            () ->
+                new OperatorNotFoundException(
+                    operatorType,
+                    argumentTypes,
+                    new IllegalArgumentException(
+                        "The combination of argument types is not supported for this operator.")));
+      case ADD:
       case MULTIPLY:
       case DIVIDE:
       case MODULUS:
