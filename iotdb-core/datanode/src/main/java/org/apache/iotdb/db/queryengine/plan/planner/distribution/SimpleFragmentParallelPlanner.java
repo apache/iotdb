@@ -158,7 +158,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
         || analysis.getTreeStatement() instanceof ShowQueriesStatement
         || (analysis.getTreeStatement() instanceof ShowTimeSeriesStatement
             && (((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat()
-                || ((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByTimeseries()))) {
+                || ((ShowTimeSeriesStatement) analysis.getTreeStatement())
+                    .isOrderByTimeseries()))) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

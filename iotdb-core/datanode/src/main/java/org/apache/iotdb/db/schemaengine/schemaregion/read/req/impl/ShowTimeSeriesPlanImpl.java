@@ -37,6 +37,10 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   private final SchemaFilter schemaFilter;
   private final boolean needViewDetail;
 
+  // order-by-timeseries pushdown flags inside a single SchemaRegion
+  private final boolean orderByTimeseries;
+  private final boolean orderByTimeseriesDesc;
+
   public ShowTimeSeriesPlanImpl(
       PartialPath path,
       Map<Integer, Template> relatedTemplate,
@@ -45,11 +49,15 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       boolean needViewDetail,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean orderByTimeseries,
+      boolean orderByTimeseriesDesc) {
     super(path, limit, offset, isPrefixMatch, scope);
     this.relatedTemplate = relatedTemplate;
     this.schemaFilter = schemaFilter;
     this.needViewDetail = needViewDetail;
+    this.orderByTimeseries = orderByTimeseries;
+    this.orderByTimeseriesDesc = orderByTimeseriesDesc;
   }
 
   @Override
@@ -68,17 +76,30 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   }
 
   @Override
+  public boolean isOrderByTimeseries() {
+    return orderByTimeseries;
+  }
+
+  @Override
+  public boolean isOrderByTimeseriesDesc() {
+    return orderByTimeseriesDesc;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     ShowTimeSeriesPlanImpl that = (ShowTimeSeriesPlanImpl) o;
-    return Objects.equals(relatedTemplate, that.relatedTemplate)
+    return orderByTimeseries == that.orderByTimeseries
+        && orderByTimeseriesDesc == that.orderByTimeseriesDesc
+        && Objects.equals(relatedTemplate, that.relatedTemplate)
         && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), relatedTemplate, schemaFilter);
+    return Objects.hash(
+        super.hashCode(), relatedTemplate, schemaFilter, orderByTimeseries, orderByTimeseriesDesc);
   }
 }

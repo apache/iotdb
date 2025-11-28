@@ -79,7 +79,9 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
               SchemaFilterFactory.and(
                   schemaFilter, SchemaFilterFactory.createViewTypeFilter(ViewType.VIEW)),
               true,
-              scope));
+              scope,
+              false,
+              false));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }

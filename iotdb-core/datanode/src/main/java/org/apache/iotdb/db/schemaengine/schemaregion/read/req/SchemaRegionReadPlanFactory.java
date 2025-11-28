@@ -61,9 +61,20 @@ public class SchemaRegionReadPlanFactory {
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       boolean needViewDetail,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean orderByTimeseries,
+      boolean orderByTimeseriesDesc) {
     return new ShowTimeSeriesPlanImpl(
-        path, relatedTemplate, limit, offset, isPrefixMatch, schemaFilter, needViewDetail, scope);
+        path,
+        relatedTemplate,
+        limit,
+        offset,
+        isPrefixMatch,
+        schemaFilter,
+        needViewDetail,
+        scope,
+        orderByTimeseries,
+        orderByTimeseriesDesc);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path, PathPatternTree scope) {

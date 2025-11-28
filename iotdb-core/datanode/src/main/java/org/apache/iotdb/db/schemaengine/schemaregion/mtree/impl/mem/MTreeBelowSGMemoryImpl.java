@@ -1495,6 +1495,36 @@ public class MTreeBelowSGMemoryImpl {
               }
             };
           }
+
+          @Override
+          protected Iterator<IMemMNode> getChildrenIterator(final IMemMNode parent)
+              throws MetadataException {
+            Iterator<IMemMNode> baseIterator = super.getChildrenIterator(parent);
+
+            if (!showTimeSeriesPlan.isOrderByTimeseries()) {
+              return baseIterator;
+            }
+
+            List<IMemMNode> children = new ArrayList<>();
+            if (baseIterator instanceof IMNodeIterator) {
+              IMNodeIterator<IMemMNode> it = (IMNodeIterator<IMemMNode>) baseIterator;
+              while (it.hasNext()) {
+                children.add(it.next());
+              }
+              it.close();
+            } else {
+              while (baseIterator.hasNext()) {
+                children.add(baseIterator.next());
+              }
+            }
+
+            children.sort(
+                (a, b) -> {
+                  int cmp = a.getName().compareTo(b.getName());
+                  return showTimeSeriesPlan.isOrderByTimeseriesDesc() ? -cmp : cmp;
+                });
+            return children.iterator();
+          }
         };
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);

@@ -47,7 +47,7 @@ public class SchemaSourceFactory {
       Map<Integer, Template> templateMap,
       PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope);
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope, false, false);
   }
 
   // show time series
@@ -58,9 +58,20 @@ public class SchemaSourceFactory {
       long offset,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean orderByTimeseries,
+      boolean orderByTimeseriesDesc) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap, true, scope);
+        pathPattern,
+        isPrefixMatch,
+        limit,
+        offset,
+        schemaFilter,
+        templateMap,
+        true,
+        scope,
+        orderByTimeseries,
+        orderByTimeseriesDesc);
   }
 
   // count device

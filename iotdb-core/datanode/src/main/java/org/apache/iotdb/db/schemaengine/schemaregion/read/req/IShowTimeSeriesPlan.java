@@ -32,4 +32,10 @@ public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
   SchemaFilter getSchemaFilter();
 
   Map<Integer, Template> getRelatedTemplate();
+
+  /** Whether to order result by timeseries full path in this region. */
+  boolean isOrderByTimeseries();
+
+  /** Whether the timeseries ordering is descending when {@link #isOrderByTimeseries()} is true. */
+  boolean isOrderByTimeseriesDesc();
 }

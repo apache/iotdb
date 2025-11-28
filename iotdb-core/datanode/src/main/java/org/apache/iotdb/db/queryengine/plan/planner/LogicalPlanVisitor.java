@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -558,13 +559,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     // Ensure TypeProvider has schema query column types for later SortNode
-    org.apache.iotdb.commons.schema.column.ColumnHeaderConstant
-        .showTimeSeriesColumnHeaders.forEach(
-            columnHeader ->
-                context
-                    .getTypeProvider()
-                    .setTreeModelType(
-                        columnHeader.getColumnName(), columnHeader.getColumnType()));
+    ColumnHeaderConstant.showTimeSeriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
@@ -579,11 +578,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     // If there is only one region, we can push down the offset and limit operation to
     // source operator.
-    boolean canPushDownOffsetLimit =
+    boolean singleSchemaRegion =
         analysis.getSchemaPartitionInfo() != null
-            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
-            && !showTimeSeriesStatement.isOrderByHeat()
-            && !showTimeSeriesStatement.isOrderByTimeseries();
+            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+    boolean canPushDownOffsetLimit = singleSchemaRegion && !showTimeSeriesStatement.isOrderByHeat();
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;
@@ -592,6 +590,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
       offset = 0;
     }
+    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries() && singleSchemaRegion;
+    boolean orderByTimeseriesDesc =
+        orderByTimeseries && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
+
     planBuilder =
         planBuilder
             .planTimeSeriesSchemaSource(
@@ -602,11 +604,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.isOrderByHeat(),
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo(),
-                showTimeSeriesStatement.getAuthorityScope())
+                showTimeSeriesStatement.getAuthorityScope(),
+                orderByTimeseries,
+                orderByTimeseriesDesc)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
-    // order by timeseries name
-    if (showTimeSeriesStatement.isOrderByTimeseries()) {
+    // order by timeseries name in multi-region case: still need global SortNode
+    if (showTimeSeriesStatement.isOrderByTimeseries() && !singleSchemaRegion) {
       SortItem sortItem =
           new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
       planBuilder = planBuilder.planOrderBy(java.util.Collections.singletonList(sortItem));

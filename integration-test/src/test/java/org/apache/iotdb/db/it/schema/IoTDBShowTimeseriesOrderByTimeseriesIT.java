@@ -84,12 +84,12 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
   public void testOrderByTimeseriesAsc() throws Exception {
     prepareSimpleSchema();
 
-    List<String> expected =
-        new ArrayList<>(Arrays.asList("root.ln.d0.s0", "root.sg.d0.s1", "root.sg.d0.s2"));
+    List<String> expected = new ArrayList<>(Arrays.asList("root.ln.d0.s0", "root.sg.d0.s1"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("show timeseries order by timeseries")) {
+        ResultSet resultSet =
+            statement.executeQuery("show timeseries order by timeseries offset 2 limit 2")) {
       List<String> actual = new ArrayList<>();
       while (resultSet.next()) {
         actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
