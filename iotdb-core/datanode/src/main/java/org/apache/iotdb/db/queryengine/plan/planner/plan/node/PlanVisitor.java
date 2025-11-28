@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -843,6 +844,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitIntersect(IntersectNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitExcept(ExceptNode node, C context) {
     return visitPlan(node, context);
   }
 }
