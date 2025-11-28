@@ -98,21 +98,19 @@ public class DeviceLastCache {
           measurement,
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
-              diff.addAndGet(-(sizeOf(measurement) + getTVPairEntrySize(tvPair)));
+              diff.addAndGet(
+                  -((int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
-              diff.addAndGet(sizeOf(measurement) + getTVPairEntrySize(newPair));
+              diff.addAndGet(
+                  (int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
           });
     }
     return diff.get();
-  }
-
-  private int sizeOf(String s) {
-    return s == "" ? 0 : (int) RamUsageEstimator.sizeOf(s);
   }
 
   int tryUpdate(
@@ -131,7 +129,7 @@ public class DeviceLastCache {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
           diff.addAndGet(
-              sizeOf(measurements[i])
+              (int) RamUsageEstimator.sizeOf(measurements[i])
                   + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i])));
         }
         continue;
@@ -168,7 +166,7 @@ public class DeviceLastCache {
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set(sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });
@@ -179,7 +177,7 @@ public class DeviceLastCache {
         "",
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= time.get()) {
-            diff.addAndGet(sizeOf(s) + getTVPairEntrySize(timeValuePair));
+            diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
             return null;
           }
           return timeValuePair;
