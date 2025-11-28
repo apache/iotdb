@@ -32,8 +32,8 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -87,7 +87,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -168,8 +167,10 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -184,6 +185,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -260,15 +262,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
 
-  // Cache TableSchema to prevent OOM
-  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
-      Caffeine.newBuilder()
-          .maximumWeight(config.getDataNodeTableSchemaCacheSize())
-          .weigher(
-              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
-                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
-          .build();
-
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -329,6 +322,18 @@ public class DataRegion implements IDataRegionForQuery {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
+
+  private static final Cache<TableSchemaCacheKey, Triple<Long, Long, TableSchema>>
+      TABLE_SCHEMA_CACHE =
+          Caffeine.newBuilder()
+              .maximumWeight(
+                  IoTDBDescriptor.getInstance().getConfig().getDataNodeTableSchemaCacheSize())
+              .weigher(
+                  (TableSchemaCacheKey k, Triple<Long, Long, TableSchema> v) ->
+                      (int)
+                          (PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v.getRight())
+                              + 2 * Long.BYTES))
+              .build();
 
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
@@ -1442,14 +1447,73 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  private TableSchema getTableSchemaFromCache(
+      final String database, final String tableName, final Pair<Long, Long> currentVersion) {
+    final TableSchemaCacheKey key = new TableSchemaCacheKey(database, tableName);
+    final Triple<Long, Long, TableSchema> cached = TABLE_SCHEMA_CACHE.getIfPresent(key);
+    if (cached == null) {
+      return null;
+    }
+    if (cached.getLeft().equals(currentVersion.getLeft())
+        && cached.getMiddle().equals(currentVersion.getRight())) {
+      return cached.getRight();
+    } else {
+      // remove stale entry to avoid unbounded growth (only on version mismatch)
+      TABLE_SCHEMA_CACHE.invalidate(key);
+      return null;
+    }
+  }
+
+  private void cacheTableSchema(
+      final String database,
+      final String tableName,
+      final Pair<Long, Long> version,
+      final TableSchema tableSchema) {
+    if (tableSchema == null) {
+      TABLE_SCHEMA_CACHE.invalidate(new TableSchemaCacheKey(database, tableName));
+      return;
+    }
+    TABLE_SCHEMA_CACHE.put(
+        new TableSchemaCacheKey(database, tableName),
+        Triple.of(version.getLeft(), version.getRight(), tableSchema));
+  }
+
+  private static final class TableSchemaCacheKey {
+    private final String database;
+    private final String tableName;
+
+    private TableSchemaCacheKey(final String database, final String tableName) {
+      this.database = database;
+      this.tableName = tableName;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof TableSchemaCacheKey)) {
+        return false;
+      }
+      final TableSchemaCacheKey that = (TableSchemaCacheKey) o;
+      return Objects.equals(database, that.database) && Objects.equals(tableName, that.tableName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(database, tableName);
+    }
+  }
+
   private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
     final String tableName = node.getTableName();
     if (tableName != null) {
       tsFileProcessor.registerToTsFile(
           tableName,
           t -> {
-            TsTable tsTable =
-                DataNodeTableCache.getInstance().getTable(getDatabaseName(), t, false);
+            final String database = getDatabaseName();
+
+            TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
@@ -1461,17 +1525,21 @@ public class DataRegion implements IDataRegionForQuery {
                     ConfigNodeClientManager.getInstance()
                         .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
                   resp = client.describeTable(getDatabaseName(), tableName, false);
-                  tsTable =
-                      (resp != null) && (resp.tableInfo != null)
-                          ? TsTableInternalRPCUtil.deserializeSingleTsTable(resp.getTableInfo())
-                          : null;
+                  if (resp == null || resp.tableInfo == null) {
+                    TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                  }
+                  // For table schema from ConfigNode, we cannot get version info,
+                  // so we don't cache it to avoid version mismatch
+                  final TableSchema schema =
+                      TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
+                          ByteBuffer.wrap(resp.getTableInfo()));
+                  return schema;
                 } catch (TException | ClientManagerException e) {
                   logger.error(
                       "Remote request config node failed that judgment if table is exist, occur exception. {}",
                       e.getMessage());
-                }
-                if (tsTable == null) {
                   TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                  return null; // unreachable, throwTableNotExistsException always throws
                 }
               } else {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
@@ -1482,15 +1550,16 @@ public class DataRegion implements IDataRegionForQuery {
               }
             }
 
-            org.apache.tsfile.file.metadata.TableSchema tableSchema =
-                TableSchema.of(tsTable).toTsFileTableSchemaNoAttribute();
-            org.apache.tsfile.file.metadata.TableSchema cachedSchema =
-                SCHEMA_CACHE.getIfPresent(tableName);
-            if (Objects.equals(cachedSchema, tableSchema)) {
+            final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
+            final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
+            if (cachedSchema != null) {
               return cachedSchema;
             }
-            SCHEMA_CACHE.put(tableName, tableSchema);
-            return tableSchema;
+
+            final TableSchema schema =
+                TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
+            cacheTableSchema(database, t, currentVersion, schema);
+            return schema;
           });
     }
   }

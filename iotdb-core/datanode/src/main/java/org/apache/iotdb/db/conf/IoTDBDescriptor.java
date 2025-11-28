@@ -2353,12 +2353,6 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
-    conf.setLoadTableSchemaCacheSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_table_schema_cache_size_in_bytes",
-                Long.toString(conf.getLoadTableSchemaCacheSizeInBytes()))));
-
     conf.setLoadMeasurementIdCacheSizeInBytes(
         Long.parseLong(
             properties.getProperty(
