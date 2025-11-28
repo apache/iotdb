@@ -98,19 +98,21 @@ public class DeviceLastCache {
           measurement,
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
-              diff.addAndGet(
-                  -((int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(tvPair)));
+              diff.addAndGet(-(sizeOf(measurement) + getTVPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
-              diff.addAndGet(
-                  (int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(newPair));
+              diff.addAndGet(sizeOf(measurement) + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
           });
     }
     return diff.get();
+  }
+
+  private int sizeOf(String s) {
+    return s == "" ? 0 : (int) RamUsageEstimator.sizeOf(s);
   }
 
   int tryUpdate(
@@ -128,7 +130,9 @@ public class DeviceLastCache {
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
-          measurement2CachedLastMap.remove(measurements[i]);
+          diff.addAndGet(
+              sizeOf(measurements[i])
+                  + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i])));
         }
         continue;
       }
@@ -164,7 +168,7 @@ public class DeviceLastCache {
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          diff.set(sizeOf(s) + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });
@@ -175,7 +179,7 @@ public class DeviceLastCache {
         "",
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= time.get()) {
-            diff.addAndGet(getTVPairEntrySize(timeValuePair));
+            diff.addAndGet(sizeOf(s) + getTVPairEntrySize(timeValuePair));
             return null;
           }
           return timeValuePair;
@@ -184,13 +188,18 @@ public class DeviceLastCache {
     return diff.get();
   }
 
-  private int getTVPairEntrySize(final TimeValuePair tvPair) {
-    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-        + ((Objects.isNull(tvPair)
-                || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
-                || tvPair == EMPTY_TIME_VALUE_PAIR)
-            ? 0
-            : tvPair.getSize());
+  private static int getTVPairEntrySize(final TimeValuePair tvPair) {
+    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + getTVPairSize(tvPair);
+  }
+
+  private static int getTVPairSize(final TimeValuePair tvPair) {
+    return isEmptyTVPair(tvPair) ? 0 : tvPair.getSize();
+  }
+
+  private static boolean isEmptyTVPair(final TimeValuePair tvPair) {
+    return Objects.isNull(tvPair)
+        || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
+        || tvPair == EMPTY_TIME_VALUE_PAIR;
   }
 
   @Nullable
@@ -203,15 +212,17 @@ public class DeviceLastCache {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
         + measurement2CachedLastMap.values().stream()
-            .mapToInt(TimeValuePair::getSize)
+            .mapToInt(DeviceLastCache::getTVPairSize)
             .reduce(0, Integer::sum);
   }
 
   private static int getDiffSize(
       final TimeValuePair oldTimeValuePair, final TimeValuePair newTimeValuePair) {
-    if (oldTimeValuePair == EMPTY_TIME_VALUE_PAIR
-        || oldTimeValuePair == PLACEHOLDER_TIME_VALUE_PAIR) {
-      return newTimeValuePair.getSize();
+    if (isEmptyTVPair(oldTimeValuePair)) {
+      return getTVPairSize(newTimeValuePair);
+    }
+    if (isEmptyTVPair(newTimeValuePair)) {
+      return -getTVPairSize(oldTimeValuePair);
     }
     final TsPrimitiveType oldValue = oldTimeValuePair.getValue();
     final TsPrimitiveType newValue = newTimeValuePair.getValue();
