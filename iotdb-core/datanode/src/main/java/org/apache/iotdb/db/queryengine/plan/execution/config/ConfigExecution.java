@@ -166,28 +166,30 @@ public class ConfigExecution implements IQueryExecution {
     if (cause instanceof IoTDBException) {
       if (Objects.nonNull(((IoTDBException) cause).getStatus())) {
         status = ((IoTDBException) cause).getStatus();
+        errorCode = status.getCode();
       } else {
         errorCode = ((IoTDBException) cause).getErrorCode();
       }
     } else if (cause instanceof IoTDBRuntimeException) {
       if (Objects.nonNull(((IoTDBRuntimeException) cause).getStatus())) {
         status = ((IoTDBRuntimeException) cause).getStatus();
+        errorCode = status.getCode();
       } else {
         errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
       }
     }
-    if (Objects.nonNull(status) && isUserException(status)
-        || !userExceptionCodes.contains(errorCode)) {
-      LOGGER.warn(
-          "Failures happened during running ConfigExecution when executing {}.",
-          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
-          cause);
-    } else {
+    if ((Objects.nonNull(status) && isUserException(status))
+        || userExceptionCodes.contains(errorCode)) {
       LOGGER.info(
           "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
           cause.getMessage(),
           errorCode);
+    } else {
+      LOGGER.warn(
+          "Failures happened during running ConfigExecution when executing {}.",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause);
     }
     stateMachine.transitionToFailed(cause);
     final ConfigTaskResult result;

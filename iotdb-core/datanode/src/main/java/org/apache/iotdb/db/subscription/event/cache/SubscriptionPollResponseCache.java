@@ -27,7 +27,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
-import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +42,6 @@ import java.util.Optional;
 public class SubscriptionPollResponseCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponseCache.class);
-
-  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
   private final LoadingCache<CachedSubscriptionPollResponse, ByteBuffer> cache;
 
@@ -113,41 +110,36 @@ public class SubscriptionPollResponseCache {
 
     // properties required by pipe memory control framework
     final PipeMemoryBlock allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .tryAllocate(initMemorySizeInBytes)
-            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
-            .setShrinkCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor * ((double) oldMemory / newMemory));
-                  LOGGER.info(
-                      "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
-                      oldMemory,
-                      newMemory);
-                })
-            .setExpandMethod(
-                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
-            .setExpandCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor / ((double) newMemory / oldMemory));
-                  LOGGER.info(
-                      "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
-                      oldMemory,
-                      newMemory);
-                });
+        PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
 
     this.cache =
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
                 (Weigher<CachedSubscriptionPollResponse, ByteBuffer>)
-                    (message, buffer) -> {
-                      // TODO: overflow
-                      return (int) (buffer.capacity() * memoryUsageCheatFactor.get());
-                    })
+                    (message, buffer) -> buffer.capacity())
             .recordStats() // TODO: metrics
             // NOTE: lambda CAN NOT be replaced with method reference
-            .build(response -> CachedSubscriptionPollResponse.serialize(response));
+            .build(CachedSubscriptionPollResponse::serialize);
+
+    allocatedMemoryBlock
+        .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
+        .setShrinkCallback(
+            (oldMemory, newMemory) -> {
+              cache.policy().eviction().ifPresent(eviction -> eviction.setMaximum(newMemory));
+              LOGGER.info(
+                  "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                  oldMemory,
+                  newMemory);
+            })
+        .setExpandMethod(oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
+        .setExpandCallback(
+            (oldMemory, newMemory) -> {
+              cache.policy().eviction().ifPresent(eviction -> eviction.setMaximum(newMemory));
+              LOGGER.info(
+                  "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
+                  oldMemory,
+                  newMemory);
+            });
   }
 }

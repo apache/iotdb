@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -29,16 +27,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
 public class ShowSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
 
+  // own SYSTEM can see all
+  private boolean canSeeAll = true;
+
   public ShowSchemaTemplateStatement() {
     super();
     statementType = StatementType.SHOW_SCHEMA_TEMPLATE;
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.SUPER_USER.equals(userName),
-        "Only the admin user can perform this operation");
   }
 
   @Override
@@ -49,5 +43,13 @@ public class ShowSchemaTemplateStatement extends ShowStatement implements IConfi
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  public void setCanSeeAll(boolean canSeeAll) {
+    this.canSeeAll = canSeeAll;
+  }
+
+  public boolean isCanSeeAll() {
+    return canSeeAll;
   }
 }

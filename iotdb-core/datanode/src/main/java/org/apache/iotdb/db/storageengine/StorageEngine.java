@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogg
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -80,8 +81,8 @@ import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -528,7 +529,7 @@ public class StorageEngine implements IService {
   public void syncCloseProcessorsInRegion(List<String> dataRegionIds) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion != null && dataRegionIds.contains(dataRegion.getDataRegionId())) {
+      if (dataRegion != null && dataRegionIds.contains(dataRegion.getDataRegionIdString())) {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
@@ -770,6 +771,7 @@ public class StorageEngine implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      LOGGER.info("Removing data region {}", regionId);
       region.markDeleted();
       try {
         region.abortCompaction();
@@ -783,7 +785,9 @@ public class StorageEngine implements IService {
             // delete wal
             WALManager.getInstance()
                 .deleteWALNode(
-                    region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+                    region.getDatabaseName()
+                        + FILE_NAME_SEPARATOR
+                        + region.getDataRegionIdString());
             // delete snapshot
             for (String dataDir : CONFIG.getLocalDataDirs()) {
               File regionSnapshotDir =
@@ -803,7 +807,7 @@ public class StorageEngine implements IService {
             // delete region information in wal and may delete wal
             WALManager.getInstance()
                 .deleteRegionAndMayDeleteWALNode(
-                    region.getDatabaseName(), region.getDataRegionId());
+                    region.getDatabaseName(), region.getDataRegionIdString());
             break;
           case ConsensusFactory.RATIS_CONSENSUS:
           default:
@@ -812,12 +816,15 @@ public class StorageEngine implements IService {
         WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
         WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
         WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
-        FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
+        FileMetrics.getInstance()
+            .deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
+        CompressionRatio.getInstance().removeDataRegionRatio(String.valueOf(regionId.getId()));
+        LOGGER.info("Removed data region {}", regionId);
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",
             region.getDatabaseName(),
-            region.getDataRegionId(),
+            region.getDataRegionIdString(),
             e);
       } finally {
         deletingDataRegionMap.remove(regionId);

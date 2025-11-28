@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -307,8 +308,51 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus alterEncodingCompressor(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final byte encoding,
+      final byte compressor,
+      final boolean ifExists,
+      final boolean isGeneratedByPipe,
+      final boolean mayAlterAudit) {
+    AlterEncodingCompressorProcedure procedure = null;
+    synchronized (this) {
+      ProcedureType type;
+      AlterEncodingCompressorProcedure alterEncodingCompressorProcedure;
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
+        if (type == null || !type.equals(ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE)) {
+          continue;
+        }
+        alterEncodingCompressorProcedure = ((AlterEncodingCompressorProcedure) runningProcedure);
+        if (queryId.equals(alterEncodingCompressorProcedure.getQueryId())) {
+          procedure = alterEncodingCompressorProcedure;
+          break;
+        }
+      }
+
+      if (procedure == null) {
+        procedure =
+            new AlterEncodingCompressorProcedure(
+                isGeneratedByPipe,
+                queryId,
+                patternTree,
+                ifExists,
+                encoding,
+                compressor,
+                mayAlterAudit);
+        this.executor.submitProcedure(procedure);
+      }
+    }
+    return waitingProcedureFinished(procedure);
+  }
+
   public TSStatus deleteTimeSeries(
-      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+      String queryId,
+      PathPatternTree patternTree,
+      boolean isGeneratedByPipe,
+      boolean mayDeleteAudit) {
     DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -336,7 +380,8 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        procedure =
+            new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -1799,7 +1844,7 @@ public class ProcedureManager {
    * @param procedure The specific procedure
    * @return TSStatus the running result of this procedure
    */
-  private TSStatus waitingProcedureFinished(Procedure<?> procedure) {
+  protected TSStatus waitingProcedureFinished(Procedure<?> procedure) {
     if (procedure == null) {
       LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
@@ -2065,6 +2110,33 @@ public class ProcedureManager {
     } else {
       return new TDeleteTableDeviceResp(status);
     }
+  }
+
+  public Map<String, List<String>> getAllExecutingTables() {
+    final Map<String, List<String>> result = new HashMap<>();
+    for (final Procedure<?> procedure : executor.getProcedures().values()) {
+      if (procedure.isFinished()) {
+        continue;
+      }
+      // CreateTableOrViewProcedure is covered by the default process, thus we can ignore it here
+      // Note that if a table is creating there will not be a working table, and the DN will either
+      // be updated by commit or fetch the CN tables
+      // And it won't be committed by other procedures because:
+      // if the preUpdate of other procedure has failed there will not be any commit here
+      // if it succeeded then it will go to the normal process and will not leave any problems
+      if (procedure instanceof AbstractAlterOrDropTableProcedure) {
+        result
+            .computeIfAbsent(
+                ((AbstractAlterOrDropTableProcedure<?>) procedure).getDatabase(),
+                k -> new ArrayList<>())
+            .add(((AbstractAlterOrDropTableProcedure<?>) procedure).getTableName());
+      }
+      if (procedure instanceof DeleteDatabaseProcedure
+          && ((DeleteDatabaseProcedure) procedure).getDeleteDatabaseSchema().isIsTableModel()) {
+        result.put(((DeleteDatabaseProcedure) procedure).getDatabase(), null);
+      }
+    }
+    return result;
   }
 
   public TSStatus executeWithoutDuplicate(

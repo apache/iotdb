@@ -96,7 +96,8 @@ public class PipeConfigNodeThriftRequestTest {
             templateInfoName,
             10,
             fileType,
-            typeString);
+            typeString,
+            "");
     PipeTransferConfigSnapshotSealReq deserializeReq =
         PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req);
 

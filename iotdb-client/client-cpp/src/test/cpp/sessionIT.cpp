@@ -63,6 +63,19 @@ TEST_CASE("Create timeseries success", "[createTimeseries]") {
     session->deleteTimeseries("root.test.d1.s1");
 }
 
+TEST_CASE("Login Test - Authentication failed with error code 801", "[Authentication]") {
+    CaseReporter cr("Login Test");
+
+    try {
+        Session session("127.0.0.1", 6667, "root", "wrong-password");
+        session.open(false);
+        FAIL("Expected authentication exception"); // Test fails if no exception
+    } catch (const std::exception& e) {
+        // Verify exception contains error code 801
+        REQUIRE(std::string(e.what()).find("801") != std::string::npos);
+    }
+}
+
 TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
     CaseReporter cr("SessionInitWithNodeUrls");
 
@@ -128,7 +141,8 @@ TEST_CASE("Test insertRecord by string", "[testInsertRecord]") {
     while (sessionDataSet->hasNext()) {
         long index = 1;
         count++;
-        for (const Field &f: sessionDataSet->next()->fields) {
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
             REQUIRE(f.longV.value() == index);
             index++;
         }
@@ -173,7 +187,8 @@ TEST_CASE("Test insertRecords ", "[testInsertRecords]") {
     while (sessionDataSet->hasNext()) {
         long index = 1;
         count++;
-        for (const Field &f: sessionDataSet->next()->fields) {
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
             REQUIRE(f.longV.value() == index);
             index++;
         }
@@ -373,7 +388,8 @@ TEST_CASE("Test insertTablet ", "[testInsertTablet]") {
     while (sessionDataSet->hasNext()) {
         long index = 0;
         count++;
-        for (const Field& f: sessionDataSet->next()->fields) {
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
             REQUIRE(f.longV.value() == index);
             index++;
         }
@@ -423,7 +439,8 @@ TEST_CASE("Test insertTablets ", "[testInsertTablets]") {
     while (sessionDataSet->hasNext()) {
         long index = 0;
         count++;
-        for (const Field& f: sessionDataSet->next()->fields) {
+        auto fields = sessionDataSet->next()->fields;
+        for (const Field &f: fields) {
             REQUIRE(f.longV.value() == index);
             index++;
         }
@@ -601,10 +618,6 @@ TEST_CASE("Test executeRawDataQuery ", "[executeRawDataQuery]") {
     sessionDataSet->setFetchSize(10);
     vector<string> columns = sessionDataSet->getColumnNames();
     columns = sessionDataSet->getColumnNames();
-    for (const string &column : columns) {
-        cout << column << " " ;
-    }
-    cout << endl;
     REQUIRE(columns[0] == "Time");
     REQUIRE(columns[1] == paths[0]);
     REQUIRE(columns[2] == paths[1]);

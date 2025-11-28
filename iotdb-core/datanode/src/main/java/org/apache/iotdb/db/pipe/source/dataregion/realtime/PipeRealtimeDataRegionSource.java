@@ -53,7 +53,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +132,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeID;
   private String taskID;
+  protected long userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
 
   protected PipeRealtimeDataRegionSource() {
@@ -278,12 +279,24 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
     }
 
+    userId =
+        parameters.getLongOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            -1);
+
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
@@ -526,8 +539,16 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return tablePattern;
   }
 
+  public long getUserId() {
+    return userId;
+  }
+
   public String getUserName() {
     return userName;
+  }
+
+  public String getCliHostname() {
+    return cliHostname;
   }
 
   public boolean isSkipIfNoPrivileges() {
@@ -546,8 +567,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(
-      @NonNull final Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
         "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,

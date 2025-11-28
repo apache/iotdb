@@ -78,11 +78,17 @@ public class PipeSinkConstant {
   public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = MB;
   public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
 
+  public static final String CONNECTOR_IOTDB_USER_ID = "connector.user-id";
+  public static final String SINK_IOTDB_USER_ID = "sink.user-id";
+
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
   public static final String CONNECTOR_IOTDB_USERNAME_KEY = "connector.username";
   public static final String SINK_IOTDB_USERNAME_KEY = "sink.username";
   public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+
+  public static final String CONNECTOR_IOTDB_CLI_HOSTNAME = "connector.cli-hostname";
+  public static final String SINK_IOTDB_CLI_HOSTNAME = "sink.cli-hostname";
 
   public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
@@ -219,6 +225,11 @@ public class PipeSinkConstant {
       Zstd.defaultCompressionLevel();
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = Zstd.minCompressionLevel();
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE = Zstd.maxCompressionLevel();
+
+  public static final String CONNECTOR_ENABLE_SEND_TSFILE_LIMIT =
+      "connector.enable-send-tsfile-limit";
+  public static final String SINK_ENABLE_SEND_TSFILE_LIMIT = "sink.enable-send-tsfile-limit";
+  public static final boolean CONNECTOR_ENABLE_SEND_TSFILE_LIMIT_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";

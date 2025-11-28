@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -179,18 +181,24 @@ public class IoTDBSnapshotTest {
     try {
       List<TsFileResource> resources = writeTsFiles();
       DataRegion region = new DataRegion(testSgName, "0");
+      CompressionRatio.getInstance().updateRatio(100, 100, "0");
       region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
       try {
         Assert.assertTrue(
             new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+        CompressionRatio.getInstance().reset();
+
         DataRegion dataRegion =
             new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
                 .loadSnapshotForStateMachine();
         Assert.assertNotNull(dataRegion);
         List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
         Assert.assertEquals(100, resource.size());
+        Assert.assertEquals(
+            new Pair<>(100L, 100L),
+            CompressionRatio.getInstance().getDataRegionRatioMap().get("0"));
       } finally {
         FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
       }
@@ -217,7 +225,7 @@ public class IoTDBSnapshotTest {
                 + "1-1-0-0.tsfile");
     DataRegion region = Mockito.mock(DataRegion.class);
     Mockito.when(region.getDatabaseName()).thenReturn("root.test");
-    Mockito.when(region.getDataRegionId()).thenReturn("0");
+    Mockito.when(region.getDataRegionIdString()).thenReturn("0");
     File snapshotFile =
         new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
     Assert.assertEquals(

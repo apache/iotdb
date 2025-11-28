@@ -22,13 +22,15 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -58,12 +60,12 @@ import java.util.stream.Stream;
 
 /**
  * The {@link PipeConfigPhysicalPlanTreePatternParseVisitor} will transform the schema {@link
- * ConfigPhysicalPlan}s using {@link IoTDBTreePattern}. Rule:
+ * ConfigPhysicalPlan}s using {@link IoTDBTreePatternOperations}. Rule:
  *
  * <p>1. All patterns in the output {@link ConfigPhysicalPlan} will be the intersection of the
- * original {@link ConfigPhysicalPlan}'s patterns and the given {@link IoTDBTreePattern}.
+ * original {@link ConfigPhysicalPlan}'s patterns and the given {@link IoTDBTreePatternOperations}.
  *
- * <p>2. If a pattern does not intersect with the {@link IoTDBTreePattern}, it's dropped.
+ * <p>2. If a pattern does not intersect with the {@link IoTDBTreePatternOperations}, it's dropped.
  *
  * <p>3. If all the patterns in the {@link ConfigPhysicalPlan} is dropped, the {@link
  * ConfigPhysicalPlan} is dropped.
@@ -72,13 +74,13 @@ import java.util.stream.Stream;
  * one is used in the {@link PipeConfigRegionWritePlanEvent} in {@link ConfigRegionListeningQueue}.
  */
 public class PipeConfigPhysicalPlanTreePatternParseVisitor
-    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBTreePattern> {
+    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBTreePatternOperations> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigPhysicalPlanTreePatternParseVisitor.class);
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
-      final ConfigPhysicalPlan plan, final IoTDBTreePattern pattern) {
+      final ConfigPhysicalPlan plan, final IoTDBTreePatternOperations pattern) {
     return Optional.of(plan);
   }
 
@@ -90,7 +92,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   // Other matches using "matchPrefixPath" are with the same principle.
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
-      final DatabaseSchemaPlan createDatabasePlan, final IoTDBTreePattern pattern) {
+      final DatabaseSchemaPlan createDatabasePlan, final IoTDBTreePatternOperations pattern) {
     return pattern.matchPrefixPath(createDatabasePlan.getSchema().getName())
         ? Optional.of(createDatabasePlan)
         : Optional.empty();
@@ -98,7 +100,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitAlterDatabase(
-      final DatabaseSchemaPlan alterDatabasePlan, final IoTDBTreePattern pattern) {
+      final DatabaseSchemaPlan alterDatabasePlan, final IoTDBTreePatternOperations pattern) {
     return pattern.matchPrefixPath(alterDatabasePlan.getSchema().getName())
         ? Optional.of(alterDatabasePlan)
         : Optional.empty();
@@ -106,7 +108,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
-      final DeleteDatabasePlan deleteDatabasePlan, final IoTDBTreePattern pattern) {
+      final DeleteDatabasePlan deleteDatabasePlan, final IoTDBTreePatternOperations pattern) {
     return pattern.matchPrefixPath(deleteDatabasePlan.getName())
         ? Optional.of(deleteDatabasePlan)
         : Optional.empty();
@@ -114,7 +116,8 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
-      final CreateSchemaTemplatePlan createSchemaTemplatePlan, final IoTDBTreePattern pattern) {
+      final CreateSchemaTemplatePlan createSchemaTemplatePlan,
+      final IoTDBTreePatternOperations pattern) {
     // This is a deserialized template and can be arbitrarily altered
     final Template template = createSchemaTemplatePlan.getTemplate();
     template.getSchemaMap().keySet().removeIf(measurement -> !pattern.matchTailNode(measurement));
@@ -126,7 +129,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan,
-      final IoTDBTreePattern pattern) {
+      final IoTDBTreePatternOperations pattern) {
     return pattern.matchPrefixPath(commitSetSchemaTemplatePlan.getPath())
         ? Optional.of(commitSetSchemaTemplatePlan)
         : Optional.empty();
@@ -135,7 +138,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
       final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan,
-      final IoTDBTreePattern pattern) {
+      final IoTDBTreePatternOperations pattern) {
     return pattern.matchPrefixPath(pipeUnsetSchemaTemplatePlan.getPath())
         ? Optional.of(pipeUnsetSchemaTemplatePlan)
         : Optional.empty();
@@ -143,7 +146,8 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
-      final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final IoTDBTreePattern pattern) {
+      final ExtendSchemaTemplatePlan extendSchemaTemplatePlan,
+      final IoTDBTreePatternOperations pattern) {
     final TemplateExtendInfo extendInfo = extendSchemaTemplatePlan.getTemplateExtendInfo();
     final int[] filteredIndexes =
         IntStream.range(0, extendInfo.getMeasurements().size())
@@ -154,41 +158,39 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
             new ExtendSchemaTemplatePlan(
                 new TemplateExtendInfo(
                     extendInfo.getTemplateName(),
-                    IoTDBTreePattern.applyIndexesOnList(
-                        filteredIndexes, extendInfo.getMeasurements()),
-                    IoTDBTreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getDataTypes()),
-                    IoTDBTreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getEncodings()),
-                    IoTDBTreePattern.applyIndexesOnList(
-                        filteredIndexes, extendInfo.getCompressors()))))
+                    TreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getMeasurements()),
+                    TreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getDataTypes()),
+                    TreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getEncodings()),
+                    TreePattern.applyIndexesOnList(filteredIndexes, extendInfo.getCompressors()))))
         : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorTreePlan grantUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan grantUserPlan, final IoTDBTreePatternOperations pattern) {
     return visitTreeAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
-      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePatternOperations pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePatternOperations pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePatternOperations pattern) {
     return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(
-      final AuthorTreePlan pathRelatedAuthorTreePlan, final IoTDBTreePattern pattern) {
+      final AuthorTreePlan pathRelatedAuthorTreePlan, final IoTDBTreePatternOperations pattern) {
     final List<PartialPath> intersectedPaths =
         pathRelatedAuthorTreePlan.getNodeNameList().stream()
             .map(pattern::getIntersection)
@@ -216,7 +218,8 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
-      final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final IoTDBTreePattern pattern) {
+      final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan,
+      final IoTDBTreePatternOperations pattern) {
     try {
       final PathPatternTree intersectedTree =
           pattern.getIntersection(
@@ -234,7 +237,8 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
-      final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, final IoTDBTreePattern pattern) {
+      final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan,
+      final IoTDBTreePatternOperations pattern) {
     try {
       final PathPatternTree intersectedTree =
           pattern.getIntersection(
@@ -251,8 +255,33 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   }
 
   @Override
+  public Optional<ConfigPhysicalPlan> visitPipeAlterEncodingCompressor(
+      final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan,
+      final IoTDBTreePatternOperations pattern) {
+    try {
+      final PathPatternTree intersectedTree =
+          pattern.getIntersection(
+              PathPatternTree.deserialize(pipeAlterEncodingCompressorPlan.getPatternTreeBytes()));
+      return !intersectedTree.isEmpty()
+          ? Optional.of(
+              new PipeAlterEncodingCompressorPlan(
+                  intersectedTree.serialize(),
+                  pipeAlterEncodingCompressorPlan.getEncoding(),
+                  pipeAlterEncodingCompressorPlan.getCompressor(),
+                  pipeAlterEncodingCompressorPlan.isMayAlterAudit()))
+          : Optional.empty();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Serialization failed for the alter encoding time series plan in pipe transmission, skip transfer",
+          e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
-      final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, final IoTDBTreePattern pattern) {
+      final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan,
+      final IoTDBTreePatternOperations pattern) {
     final Map<PartialPath, List<Template>> newTemplateSetInfo =
         pipeDeactivateTemplatePlan.getTemplateSetInfo().entrySet().stream()
             .flatMap(
@@ -275,7 +304,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
-      final SetTTLPlan setTTLPlan, final IoTDBTreePattern pattern) {
+      final SetTTLPlan setTTLPlan, final IoTDBTreePatternOperations pattern) {
     final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
     final List<PartialPath> intersectionList =
         pattern.matchPrefixPath(partialPath.getFullPath())

@@ -159,7 +159,8 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
           result.add(resultSet.getString(1));
         }
       }
-      assertEquals(0, result.size());
+      // One for un-deletable AUDIT database
+      assertEquals(1, result.size());
     }
   }
 

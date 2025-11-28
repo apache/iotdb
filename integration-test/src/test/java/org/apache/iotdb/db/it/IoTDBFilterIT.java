@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -234,6 +235,19 @@ public class IoTDBFilterIT {
       assertTestFail(
           "select s1 from root.vehicle.testUDTF where sin(s2)",
           "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testFilterWithEmptySatisfiedTimeRanges() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery("select count(*) from root.** where time >= 0 and time < 0")) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(0, resultSet.getInt(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

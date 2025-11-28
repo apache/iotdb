@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -255,6 +256,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     conf.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()));
 
     conf.setRpcAddress(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
@@ -526,7 +528,7 @@ public class IoTDBDescriptor {
                 "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
 
     if (conf.getDegreeOfParallelism() <= 0) {
-      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setMergeThresholdOfExplainAnalyze(
@@ -801,10 +803,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
-    if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
-      conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
-    }
-
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -901,7 +899,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
-
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -980,6 +977,24 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
+    conf.setDataNodeTableSchemaCacheSize(
+        Long.parseLong(
+            properties.getProperty(
+                "data_node_table_schema_cache_max_size_in_bytes",
+                String.valueOf(conf.getDataNodeTableSchemaCacheSize()))));
+
+    conf.setDeviceSchemaRequestCacheMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_max_size",
+                String.valueOf(conf.getDeviceSchemaRequestCacheMaxSize()))));
+
+    conf.setDeviceSchemaRequestCacheWaitTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "device_schema_request_cache_wait_time_ms",
+                String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1000,7 +1015,7 @@ public class IoTDBDescriptor {
     loadUDFProps(properties);
 
     // Thrift ssl
-    initThriftSSL(properties);
+    commonDescriptor.initThriftSSL(properties);
 
     // Trigger
     loadTriggerProps(properties);
@@ -1041,6 +1056,12 @@ public class IoTDBDescriptor {
     conf.setDataNodeSchemaCacheEvictionPolicy(
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+
+    conf.setCacheEvictionMemoryComputationThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "cache_eviction_memory_computation_threshold",
+                String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
     conf.setDataNodeTableCacheSemaphorePermitNum(
         Integer.parseInt(
@@ -1710,12 +1731,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "nan_string_infer_type",
                 ConfigurationFileUtils.getConfigurationDefaultValue("nan_string_infer_type"))));
-    conf.setDefaultStorageGroupLevel(
+    conf.setDefaultDatabaseLevel(
         Integer.parseInt(
-            properties.getProperty(
-                "default_storage_group_level",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "default_storage_group_level"))),
+            Optional.ofNullable(properties.getProperty("default_database_level"))
+                .orElse(
+                    properties.getProperty(
+                        "default_storage_group_level",
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_database_level"))
+                            .orElse(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "default_storage_group_level"))))),
         startUp);
     conf.setDefaultBooleanEncoding(
         properties.getProperty(
@@ -1960,7 +1987,8 @@ public class IoTDBDescriptor {
   }
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
-      throws QueryProcessException {
+      throws QueryProcessException, IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2105,6 +2133,13 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // update cache_eviction_memory_computation_threshold
+      conf.setCacheEvictionMemoryComputationThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "cache_eviction_memory_computation_threshold",
+                  String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
+
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
           Integer.parseInt(
@@ -2209,7 +2244,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadLoadTsFileProps(TrimProperties properties) throws IOException {
+  private void loadLoadTsFileProps(TrimProperties properties) {
     conf.setMaxAllocateMemoryRatioForLoad(
         Double.parseDouble(
             properties.getProperty(
@@ -2307,12 +2342,6 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
-    conf.setLoadTableSchemaCacheSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_table_schema_cache_size_in_bytes",
-                Long.toString(conf.getLoadTableSchemaCacheSizeInBytes()))));
-
     conf.setLoadMeasurementIdCacheSizeInBytes(
         Long.parseLong(
             properties.getProperty(
@@ -2360,6 +2389,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cache_last_values_memory_budget_in_byte",
                 String.valueOf(conf.getCacheLastValuesMemoryBudgetInByte()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2401,10 +2436,23 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+
+    conf.setLoadTsFileSpiltPartitionMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_split_partition_max_size",
+                Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setSkipFailedTableSchemaCheck(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "skip_failed_table_schema_check",
+                String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipePeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -2429,36 +2477,32 @@ public class IoTDBDescriptor {
 
     String readerTransformerCollectorMemoryProportion =
         properties.getProperty("udf_reader_transformer_collector_memory_proportion");
+    String[] proportions;
     if (readerTransformerCollectorMemoryProportion != null) {
-      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
-      try {
-        conf.setUdfReaderMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setUdfTransformerMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setUdfCollectorMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-                + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion,
-            e);
-      }
+      proportions = readerTransformerCollectorMemoryProportion.split(":");
+    } else {
+      // Make the default proportion is 1:1:1
+      proportions = new String[] {"1", "1", "1"};
     }
-  }
-
-  private void initThriftSSL(TrimProperties properties) {
-    conf.setEnableSSL(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_thrift_ssl", Boolean.toString(conf.isEnableSSL()))));
-    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
-    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePath()));
+    int proportionSum = 0;
+    for (String proportion : proportions) {
+      proportionSum += Integer.parseInt(proportion.trim());
+    }
+    float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+    try {
+      conf.setUdfReaderMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+      conf.setUdfTransformerMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      conf.setUdfCollectorMemoryBudgetInMB(
+          maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
+              + " should be an integer, which is "
+              + readerTransformerCollectorMemoryProportion,
+          e);
+    }
   }
 
   private void loadTriggerProps(TrimProperties properties) {
@@ -2545,7 +2589,7 @@ public class IoTDBDescriptor {
                 "continuous_query_thread_num",
                 Integer.toString(conf.getContinuousQueryThreadNum()))));
     if (conf.getContinuousQueryThreadNum() <= 0) {
-      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+      conf.setContinuousQueryThreadNum(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
     conf.setContinuousQueryMinimumEveryInterval(

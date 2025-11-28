@@ -284,7 +284,6 @@ public class IoTDBConstant {
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
   // thrift
-  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
@@ -368,4 +367,10 @@ public class IoTDBConstant {
   public static final String TTL_INFINITE = "INF";
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
+
+  // Class Name
+  public static final String STRING_2D_ARRAY_CLASS_NAME = String[][].class.getName();
+  public static final String STRING_ARRAY_CLASS_NAME = String[].class.getName();
+
+  public static final int SUPER_USER_ID = 0;
 }

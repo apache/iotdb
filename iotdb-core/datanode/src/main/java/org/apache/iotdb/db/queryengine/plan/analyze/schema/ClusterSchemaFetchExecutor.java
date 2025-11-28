@@ -109,7 +109,8 @@ class ClusterSchemaFetchExecutor {
       PathPatternTree patternTree,
       boolean withTags,
       boolean withTemplate,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
@@ -117,7 +118,7 @@ class ClusterSchemaFetchExecutor {
     }
     return executeSchemaFetchQuery(
         new SeriesSchemaFetchStatement(
-            patternTree, templateMap, withTags, false, withTemplate, false),
+            patternTree, templateMap, withTags, false, withTemplate, false, canSeeAuditDB),
         context);
   }
 
@@ -133,7 +134,8 @@ class ClusterSchemaFetchExecutor {
       List<PartialPath> fullPathList,
       PathPatternTree rawPatternTree,
       boolean withTemplate,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SeriesSchemaFetchStatement(
@@ -142,7 +144,8 @@ class ClusterSchemaFetchExecutor {
                 false,
                 withTemplate,
                 withTemplate,
-                withTemplate),
+                withTemplate,
+                canSeeAuditDB),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -151,20 +154,25 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchDeviceLevelRawSchema(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     return executeSchemaFetchQuery(
-        new DeviceSchemaFetchStatement(patternTree, authorityScope), context);
+        new DeviceSchemaFetchStatement(patternTree, authorityScope, canSeeAuditDB), context);
   }
 
   ClusterSchemaTree fetchMeasurementLevelRawSchema(
-      PathPatternTree patternTree, MPPQueryContext context) {
+      PathPatternTree patternTree, MPPQueryContext context, boolean canSeeAuditDB) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SeriesSchemaFetchStatement(patternTree, templateMap, true, true, false, true), context);
+        new SeriesSchemaFetchStatement(
+            patternTree, templateMap, true, true, false, true, canSeeAuditDB),
+        context);
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(
@@ -228,7 +236,8 @@ class ClusterSchemaFetchExecutor {
                 false,
                 false,
                 true,
-                false),
+                false,
+                true),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);

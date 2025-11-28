@@ -26,18 +26,17 @@ import com.google.common.util.concurrent.RateLimiter;
 
 import java.util.concurrent.TimeUnit;
 
-/** This is a global rate limiter for all connectors. */
-public class GlobalRateLimiter {
-
-  private static final PipeConfig CONFIG = PipeConfig.getInstance();
+public abstract class GlobalRateLimiter {
 
   private final AtomicDouble throughputBytesPerSecond =
-      new AtomicDouble(CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond());
+      new AtomicDouble(getThroughputBytesPerSecond());
+
   private final RateLimiter rateLimiter;
 
   public GlobalRateLimiter() {
     final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
     rateLimiter =
+        // if throughput <= 0, disable rate limiting
         throughputBytesPerSecondLimit <= 0
             ? RateLimiter.create(Double.MAX_VALUE)
             : RateLimiter.create(throughputBytesPerSecondLimit);
@@ -71,8 +70,7 @@ public class GlobalRateLimiter {
   }
 
   private boolean reloadParams() {
-    final double throughputBytesPerSecondLimit =
-        CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
+    final double throughputBytesPerSecondLimit = getThroughputBytesPerSecond();
 
     if (throughputBytesPerSecond.get() != throughputBytesPerSecondLimit) {
       throughputBytesPerSecond.set(throughputBytesPerSecondLimit);
@@ -84,4 +82,6 @@ public class GlobalRateLimiter {
     // For performance, we don't need to acquire rate limiter if throughput <= 0
     return throughputBytesPerSecondLimit <= 0;
   }
+
+  protected abstract double getThroughputBytesPerSecond();
 }

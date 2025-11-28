@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
@@ -267,7 +266,8 @@ public class MTreeBelowSGCachedImpl {
       String alias)
       throws MetadataException {
     IMeasurementMNode<ICachedMNode> measurementMNode =
-        createTimeSeriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias, false);
+        createTimeSeriesWithPinnedReturn(
+            path, dataType, encoding, compressor, props, alias, false, null);
     unPinMNode(measurementMNode.getAsMNode());
     return measurementMNode;
   }
@@ -290,7 +290,8 @@ public class MTreeBelowSGCachedImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -305,6 +306,12 @@ public class MTreeBelowSGCachedImpl {
       // only write on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
@@ -332,14 +339,6 @@ public class MTreeBelowSGCachedImpl {
             } else {
               throw new PathAlreadyExistException(path.getFullPath());
             }
-          }
-
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "Time series under this device is aligned, please use createAlignedTimeSeries or change device.",
-                device.getFullPath());
           }
 
           final IDeviceMNode<ICachedMNode> entityMNode;
@@ -396,7 +395,8 @@ public class MTreeBelowSGCachedImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -407,6 +407,12 @@ public class MTreeBelowSGCachedImpl {
       // only write operations on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           for (int i = 0; i < measurements.size(); i++) {
@@ -438,14 +444,6 @@ public class MTreeBelowSGCachedImpl {
               throw new AliasAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
             }
-          }
-
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && !device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",
-                devicePath.getFullPath());
           }
 
           final IDeviceMNode<ICachedMNode> entityMNode;

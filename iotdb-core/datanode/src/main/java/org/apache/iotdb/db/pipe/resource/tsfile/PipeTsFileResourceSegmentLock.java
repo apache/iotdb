@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.slf4j.Logger;
@@ -31,25 +32,29 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeTsFileResourceSegmentLock {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceSegmentLock.class);
-
   private static final int SEGMENT_LOCK_MIN_SIZE = 32;
   private static final int SEGMENT_LOCK_MAX_SIZE = 128;
-
   private volatile ReentrantLock[] locks;
 
   private void initIfNecessary() {
     if (locks == null) {
       synchronized (this) {
+        int lockSegmentSize = PipeConfig.getInstance().getPipeTsFileResourceSegmentLockNum();
         if (locks == null) {
-          int lockSegmentSize = SEGMENT_LOCK_MIN_SIZE;
-          try {
-            lockSegmentSize = StorageEngine.getInstance().getAllDataRegionIds().size();
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
+          if (lockSegmentSize <= 0) {
+            try {
+              lockSegmentSize =
+                  Math.min(
+                      Math.max(
+                          StorageEngine.getInstance().getAllDataRegionIds().size(),
+                          SEGMENT_LOCK_MIN_SIZE),
+                      SEGMENT_LOCK_MAX_SIZE);
+            } catch (final Exception e) {
+              LOGGER.warn(
+                  "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
+              lockSegmentSize = SEGMENT_LOCK_MIN_SIZE;
+            }
           }
-          lockSegmentSize = Math.min(SEGMENT_LOCK_MAX_SIZE, lockSegmentSize);
-          lockSegmentSize = Math.max(SEGMENT_LOCK_MIN_SIZE, lockSegmentSize);
 
           final ReentrantLock[] tmpLocks = new ReentrantLock[lockSegmentSize];
           for (int i = 0; i < tmpLocks.length; i++) {
@@ -57,6 +62,13 @@ public class PipeTsFileResourceSegmentLock {
           }
 
           // publish this variable
+          locks = tmpLocks;
+        } else if (locks.length < lockSegmentSize) {
+          final ReentrantLock[] tmpLocks = new ReentrantLock[lockSegmentSize];
+          System.arraycopy(locks, 0, tmpLocks, 0, locks.length);
+          for (int i = locks.length; i < lockSegmentSize; ++i) {
+            tmpLocks[i] = new ReentrantLock();
+          }
           locks = tmpLocks;
         }
       }
@@ -74,39 +86,8 @@ public class PipeTsFileResourceSegmentLock {
     return locks[Math.abs(file.hashCode()) % locks.length].tryLock(timeout, timeUnit);
   }
 
-  public boolean tryLockAll(final long timeout, final TimeUnit timeUnit)
-      throws InterruptedException {
-    initIfNecessary();
-    int alreadyLocked = 0;
-    for (final ReentrantLock lock : locks) {
-      if (lock.tryLock(timeout, timeUnit)) {
-        alreadyLocked++;
-      } else {
-        break;
-      }
-    }
-
-    if (alreadyLocked == locks.length) {
-      return true;
-    } else {
-      unlockUntil(alreadyLocked);
-      return false;
-    }
-  }
-
-  private void unlockUntil(final int index) {
-    for (int i = 0; i < index; i++) {
-      locks[i].unlock();
-    }
-  }
-
   public void unlock(final File file) {
     initIfNecessary();
     locks[Math.abs(file.hashCode()) % locks.length].unlock();
-  }
-
-  public void unlockAll() {
-    initIfNecessary();
-    unlockUntil(locks.length);
   }
 }

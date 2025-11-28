@@ -56,12 +56,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
@@ -249,7 +249,7 @@ public class MemMTreeSnapshotUtil {
           currentTableName.set(node.getName());
         }
         break;
-      case STORAGE_GROUP_MNODE_TYPE:
+      case DATABASE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeStorageGroupMNode(inputStream);
         break;
@@ -353,7 +353,7 @@ public class MemMTreeSnapshotUtil {
           // database node in schemaRegion doesn't store any database schema
           return true;
         } else {
-          ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
+          ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
           serializeBasicMNode(node.getBasicMNode(), outputStream);
           ReadWriteIOUtils.write(0, outputStream); // for compatibly
           ReadWriteIOUtils.write(false, outputStream); // for compatibly

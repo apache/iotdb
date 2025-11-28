@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -46,8 +48,7 @@ public class RenameTable extends Statement {
     this.tableIfExists = tableIfExists;
     this.view = view;
     if (!view) {
-      throw new UnsupportedOperationException(
-          "The renaming for base table is currently unsupported");
+      throw new SemanticException("The renaming for base table is currently unsupported");
     }
   }
 

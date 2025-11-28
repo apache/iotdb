@@ -21,11 +21,14 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -63,6 +66,11 @@ public class DataRegionConsensusImpl {
     // do nothing
   }
 
+  @TestOnly
+  public static void setInstance(final IConsensus instance) {
+    DataRegionConsensusImplHolder.INSTANCE = instance;
+  }
+
   public static IConsensus getInstance() {
     return DataRegionConsensusImplHolder.INSTANCE;
   }
@@ -78,6 +86,7 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
     private static final DataNodeMemoryConfig MEMORY_CONFIG =
         IoTDBDescriptor.getInstance().getMemoryConfig();
 
@@ -135,6 +144,11 @@ public class DataRegionConsensusImpl {
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setReplication(
                       IoTConsensusConfig.Replication.newBuilder()
@@ -159,6 +173,11 @@ public class DataRegionConsensusImpl {
                           .setThriftServerAwaitTimeForStopService(
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setPipe(
                       PipeConsensusConfig.Pipe.newBuilder()
@@ -209,6 +228,11 @@ public class DataRegionConsensusImpl {
                                   CONF.getDataRatisConsensusGrpcFlowControlWindow()))
                           .setLeaderOutstandingAppendsMax(
                               CONF.getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
+                          .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                          .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                          .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                          .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                          .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setRpc(
                       RatisConfig.Rpc.newBuilder()

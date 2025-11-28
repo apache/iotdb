@@ -127,7 +127,8 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Transfer data node write plan %s error, result status %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString(),
+          true);
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -222,7 +223,8 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Seal file %s, %s and %s error, result status %s.",
               mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, resp.getStatus()),
-          snapshotEvent.toString());
+          snapshotEvent.toString(),
+          true);
     }
 
     LOGGER.info(
@@ -243,5 +245,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
+  }
+
+  @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
   }
 }

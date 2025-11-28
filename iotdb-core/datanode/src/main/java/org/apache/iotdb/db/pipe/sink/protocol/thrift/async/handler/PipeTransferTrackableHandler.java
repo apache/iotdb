@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
+import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -61,6 +62,10 @@ public abstract class PipeTransferTrackableHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (client != null) {
+      ThriftClient.resolveException(exception, client);
+    }
+
     if (connector.isClosed()) {
       clearEventsReferenceCount();
       connector.eliminateHandler(this, true);

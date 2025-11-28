@@ -122,7 +122,8 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeSchemaRegionWritePlanEvent.toString());
+          pipeSchemaRegionWritePlanEvent.toString(),
+          true);
     }
   }
 
@@ -187,7 +188,8 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeSchemaRegionSnapshotEvent.toString());
+          pipeSchemaRegionSnapshotEvent.toString(),
+          true);
     } else {
       LOGGER.info(
           "Successfully transferred schema region snapshot {}, {} and {}.",
@@ -195,6 +197,11 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           tagLogSnapshotFile,
           attributeSnapshotFile);
     }
+  }
+
+  @Override
+  protected void mayLimitRateAndRecordIO(final long requiredBytes) {
+    // Do nothing
   }
 
   @Override

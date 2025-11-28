@@ -41,11 +41,13 @@ services:
     volumes:
         - ./data/iotdb:/iotdb/data
         - ./logs/iotdb:/iotdb/logs
-    # Enable this configuration for kylinOS
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
     # ulimits:
     #   nofile:
-    #     soft: 20000
-    #     hard: 20000
+    #     soft: 1048576
+    #     hard: 1048576
     networks:
       iotdb:
         # ipv4_address: 127.0.0.1
@@ -62,6 +64,13 @@ services:
     networks:
       iotdb:
     #     ipv4_address: 127.0.0.1
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
 networks:
   iotdb:

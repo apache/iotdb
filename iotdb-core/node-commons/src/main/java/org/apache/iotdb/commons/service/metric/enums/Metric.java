@@ -176,6 +176,7 @@ public enum Metric {
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_LINKED_TSFILE_SIZE("pipe_linked_tsfile_size"),
   PIPE_PHANTOM_REFERENCE_COUNT("pipe_phantom_reference_count"),
+  PIPE_TSFILE_SEND_DISK_IO("pipe_tsfile_send_disk_io"),
   PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),
@@ -197,6 +198,9 @@ public enum Metric {
   PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
   PIPE_TSFILE_TO_TABLETS_TIME("pipe_tsfile_to_tablets_time"),
   PIPE_TSFILE_TO_TABLETS_RATE("pipe_tsfile_to_tablets_rate"),
+  PIPE_TSFILE_TO_TABLETS_COUNT("pipe_tsfile_to_tablets_count"),
+  PIPE_TSFILE_TO_TABLETS_TOTAL_MEMORY("pipe_tsfile_to_tablets_total_memory"),
+  PIPE_TSFILE_PARSE_FILE_COUNT("pipe_tsfile_parse_file_count"),
   // subscription related
   SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),

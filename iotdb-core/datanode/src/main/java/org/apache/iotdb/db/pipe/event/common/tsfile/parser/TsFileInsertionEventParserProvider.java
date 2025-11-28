@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -78,7 +78,7 @@ public class TsFileInsertionEventParserProvider {
     this.sourceEvent = sourceEvent;
   }
 
-  public TsFileInsertionEventParser provide() throws IOException {
+  public TsFileInsertionEventParser provide(final boolean isWithMod) throws IOException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
           .markTsFileToTabletInvocation(pipeName + "_" + creationTime);
@@ -94,7 +94,8 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           userName,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     // Use scan container to save memory
@@ -109,11 +110,12 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
-    if (treePattern instanceof IoTDBTreePattern
-        && !((IoTDBTreePattern) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
+    if (treePattern instanceof IoTDBTreePatternOperations
+        && !((IoTDBTreePatternOperations) treePattern).mayMatchMultipleTimeSeriesInOneDevice()) {
       // If the pattern matches only one time series in one device, use query container here
       // because there is no timestamps merge overhead.
       //
@@ -128,7 +130,8 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -144,7 +147,8 @@ public class TsFileInsertionEventParserProvider {
           startTime,
           endTime,
           pipeTaskMeta,
-          sourceEvent);
+          sourceEvent,
+          isWithMod);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -161,7 +165,8 @@ public class TsFileInsertionEventParserProvider {
             startTime,
             endTime,
             pipeTaskMeta,
-            sourceEvent)
+            sourceEvent,
+            isWithMod)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -171,7 +176,8 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            filteredDeviceIsAlignedMap);
+            filteredDeviceIsAlignedMap,
+            isWithMod);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(

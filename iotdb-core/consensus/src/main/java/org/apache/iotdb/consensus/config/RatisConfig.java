@@ -705,18 +705,33 @@ public class RatisConfig {
     private final boolean asyncRequestThreadPoolCached;
     private final int asyncRequestThreadPoolSize;
     private final int leaderOutstandingAppendsMax;
+    private final boolean isEnableSSL;
+    private final String sslTrustStorePath;
+    private final String sslTrustStorePassword;
+    private final String sslKeyStorePath;
+    private final String sslKeyStorePassword;
 
     private Grpc(
         SizeInBytes messageSizeMax,
         SizeInBytes flowControlWindow,
         boolean asyncRequestThreadPoolCached,
         int asyncRequestThreadPoolSize,
-        int leaderOutstandingAppendsMax) {
+        int leaderOutstandingAppendsMax,
+        boolean isEnableSSL,
+        String sslTrustStorePath,
+        String sslTrustStorePassword,
+        String sslKeyStorePath,
+        String sslKeyStorePassword) {
       this.messageSizeMax = messageSizeMax;
       this.flowControlWindow = flowControlWindow;
       this.asyncRequestThreadPoolCached = asyncRequestThreadPoolCached;
       this.asyncRequestThreadPoolSize = asyncRequestThreadPoolSize;
       this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+      this.isEnableSSL = isEnableSSL;
+      this.sslTrustStorePath = sslTrustStorePath;
+      this.sslTrustStorePassword = sslTrustStorePassword;
+      this.sslKeyStorePath = sslKeyStorePath;
+      this.sslKeyStorePassword = sslKeyStorePassword;
     }
 
     public SizeInBytes getMessageSizeMax() {
@@ -739,6 +754,26 @@ public class RatisConfig {
       return leaderOutstandingAppendsMax;
     }
 
+    public boolean isEnableSSL() {
+      return isEnableSSL;
+    }
+
+    public String getSslTrustStorePath() {
+      return sslTrustStorePath;
+    }
+
+    public String getSslTrustStorePassword() {
+      return sslTrustStorePassword;
+    }
+
+    public String getSslKeyStorePath() {
+      return sslKeyStorePath;
+    }
+
+    public String getSslKeyStorePassword() {
+      return sslKeyStorePassword;
+    }
+
     public static Grpc.Builder newBuilder() {
       return new Grpc.Builder();
     }
@@ -751,6 +786,11 @@ public class RatisConfig {
           Server.ASYNC_REQUEST_THREAD_POOL_CACHED_DEFAULT;
       private int asyncRequestThreadPoolSize = Server.ASYNC_REQUEST_THREAD_POOL_SIZE_DEFAULT;
       private int leaderOutstandingAppendsMax = Server.LEADER_OUTSTANDING_APPENDS_MAX_DEFAULT;
+      private boolean isEnableSSL = false;
+      private String sslTrustStorePath = "";
+      private String sslTrustStorePassword = "";
+      private String sslKeyStorePath = "";
+      private String sslKeyStorePassword = "";
 
       public Grpc build() {
         return new Grpc(
@@ -758,7 +798,12 @@ public class RatisConfig {
             flowControlWindow,
             asyncRequestThreadPoolCached,
             asyncRequestThreadPoolSize,
-            leaderOutstandingAppendsMax);
+            leaderOutstandingAppendsMax,
+            isEnableSSL,
+            sslTrustStorePath,
+            sslTrustStorePassword,
+            sslKeyStorePath,
+            sslKeyStorePassword);
       }
 
       public Grpc.Builder setMessageSizeMax(SizeInBytes messageSizeMax) {
@@ -783,6 +828,31 @@ public class RatisConfig {
 
       public Grpc.Builder setLeaderOutstandingAppendsMax(int leaderOutstandingAppendsMax) {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+        return this;
+      }
+
+      public Grpc.Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Grpc.Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
         return this;
       }
     }

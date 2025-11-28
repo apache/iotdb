@@ -32,12 +32,6 @@
         <!-- These dependencies are just added to ensure the other modules are built first -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>2.0.6-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
@@ -50,7 +44,19 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-ainode</artifactId>
+            <version>2.0.6-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-python-api</artifactId>
             <version>2.0.6-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
@@ -67,17 +73,19 @@
                             <directory>dist</directory>
                         </fileset>
                         <fileset>
-                            <directory>ainode</directory>
+                            <directory>iotdb</directory>
                             <includes>
-                                <include>conf/</include>
+                                <include>ainode/conf/</include>
+                                <include>dbapi/</include>
+                                <include>sqlalchemy/</include>
+                                <include>template/</include>
                                 <include>thrift/</include>
+                                <include>tsfile/</include>
+                                <include>utils/</include>
                             </includes>
                         </fileset>
                         <fileset>
                             <directory>target</directory>
-                        </fileset>
-                        <fileset>
-                            <directory>venv</directory>
                         </fileset>
                     </filesets>
                 </configuration>
@@ -131,27 +139,20 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
                 <executions>
+                    <!--
+                        Copy the python api of IoTDB from iotdb-client.
+                    -->
                     <execution>
-                        <id>copy-thrift-python-resources</id>
+                        <id>copy-python-dependencies</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/ainode/thrift/</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-ainode/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../../iotdb-protocol/thrift-datanode/target/generated-sources-python/iotdb/thrift/</directory>
-                                    <excludes>rpc/**</excludes>
+                                    <directory>${basedir}/../../iotdb-client/client-py/iotdb</directory>
                                 </resource>
                             </resources>
                         </configuration>
@@ -167,7 +168,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/ainode/conf/</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/ainode/conf/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/resources/</directory>
@@ -192,7 +193,7 @@
                         </goals>
                         <configuration>
                             <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                            <generateGitPropertiesFilename>${project.basedir}/ainode/conf/git.properties</generateGitPropertiesFilename>
+                            <generateGitPropertiesFilename>${project.basedir}/iotdb/ainode/conf/git.properties</generateGitPropertiesFilename>
                             <includeOnlyProperties>
                                 <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
                                 <includeOnlyProperty>^git.dirty$</includeOnlyProperty>
@@ -211,55 +212,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <executions>
-                    <!-- Prepare a local installation of python -->
-                    <execution>
-                        <id>python-venv</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>venv</argument>
-                                <argument>./venv</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Update pip in our local working environment -->
-                    <execution>
-                        <id>python-upgrade-pip</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>pip</argument>
-                                <argument>install</argument>
-                                <argument>--upgrade</argument>
-                                <argument>pip</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Install poetry in our local working environment -->
-                    <execution>
-                        <id>python-install-poetry</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}pip3</executable>
-                            <arguments>
-                                <argument>install</argument>
-                                <argument>poetry</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
                     <execution>
                         <id>python-compile</id>
                         <phase>compile</phase>
@@ -267,44 +219,13 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>${python.venv.bin}poetry</executable>
+                            <executable>${python.exe.bin}</executable>
+                            <workingDirectory>${project.basedir}</workingDirectory>
                             <arguments>
-                                <argument>build</argument>
+                                <argument>build_binary.py</argument>
                             </arguments>
                         </configuration>
                     </execution>
-                    <!--execution>
-                        <id>python-test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>pytest</argument>
-                                <argument>tests</argument>
-                            </arguments>
-                        </configuration>
-                    </execution-->
-                    <!--execution>
-                        <id>python-package</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}pip3</executable>
-                            <arguments>
-                                <argument>wheel</argument>
-                                <argument>.</argument>
-                                <argument>-w</argument>
-                                <argument>dist</argument>
-                                <argument>- -no-deps</argument>
-                            </arguments>
-                        </configuration>
-                    </execution-->
                 </executions>
             </plugin>
             <plugin>
@@ -346,6 +267,9 @@
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-confignode</usedDependency>
                                 <usedDependency>org.apache.iotdb:iotdb-thrift-ainode</usedDependency>
                             </usedDependencies>
+                            <ignoredUnusedDeclaredDependencies>
+                                <ignoredUnusedDeclaredDependency>org.apache.iotdb:iotdb-python-api</ignoredUnusedDeclaredDependency>
+                            </ignoredUnusedDeclaredDependencies>
                         </configuration>
                     </execution>
                 </executions>

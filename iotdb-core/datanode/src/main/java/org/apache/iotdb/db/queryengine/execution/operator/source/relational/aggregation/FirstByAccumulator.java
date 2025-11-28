@@ -40,11 +40,11 @@ public class FirstByAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FirstByAccumulator.class);
 
-  private final TSDataType xDataType;
-  private final TSDataType yDataType;
+  protected final TSDataType xDataType;
+  protected final TSDataType yDataType;
 
-  private final boolean xIsTimeColumn;
-  private final boolean yIsTimeColumn;
+  protected final boolean xIsTimeColumn;
+  protected final boolean yIsTimeColumn;
 
   private long yFirstTime = Long.MAX_VALUE;
 
@@ -53,14 +53,21 @@ public class FirstByAccumulator implements TableAccumulator {
 
   private boolean initResult = false;
 
+  private final boolean canFinishAfterInit;
+
   public FirstByAccumulator(
-      TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
+      TSDataType xDataType,
+      TSDataType yDataType,
+      boolean xIsTimeColumn,
+      boolean yIsTimeColumn,
+      boolean canFinishAfterInit) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
     this.xIsTimeColumn = xIsTimeColumn;
     this.yIsTimeColumn = yIsTimeColumn;
 
     this.xResult = TsPrimitiveType.getByType(xDataType);
+    this.canFinishAfterInit = canFinishAfterInit;
   }
 
   @Override
@@ -70,7 +77,8 @@ public class FirstByAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new FirstByAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+    return new FirstByAccumulator(
+        xDataType, yDataType, xIsTimeColumn, yIsTimeColumn, canFinishAfterInit);
   }
 
   @Override
@@ -225,7 +233,7 @@ public class FirstByAccumulator implements TableAccumulator {
 
   @Override
   public boolean hasFinalResult() {
-    return initResult;
+    return canFinishAfterInit && initResult;
   }
 
   @Override
@@ -309,7 +317,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -319,7 +329,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateIntFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }
@@ -355,7 +367,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -365,7 +379,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateLongFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }
@@ -401,7 +417,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -411,7 +429,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateFloatFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }
@@ -447,7 +467,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -457,7 +479,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateDoubleFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }
@@ -493,7 +517,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -503,7 +529,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateBinaryFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }
@@ -539,7 +567,9 @@ public class FirstByAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         if (!yColumn.isNull(i)) {
           updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     } else {
@@ -549,7 +579,9 @@ public class FirstByAccumulator implements TableAccumulator {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
           updateBooleanFirstValue(xColumn, position, timeColumn.getLong(position));
-          return;
+          if (canFinishAfterInit) {
+            return;
+          }
         }
       }
     }

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -203,7 +203,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
             Objects.nonNull(snapshotEvent.getTemplateFile())
                 ? Paths.get(snapshotEvent.getTemplateFile().getPath())
                 : null,
-            snapshotEvent.getFileType());
+            snapshotEvent.getFileType(),
+            snapshotEvent.getAuthUserName());
   }
 
   @Override
@@ -252,7 +253,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   public static Optional<ConfigPhysicalPlan> parseConfigPlan(
       final ConfigPhysicalPlan plan,
-      final IoTDBTreePattern treePattern,
+      final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     Optional<ConfigPhysicalPlan> result = Optional.of(plan);
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
@@ -295,7 +296,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   public static boolean isTypeListened(
       final ConfigPhysicalPlan plan,
       final Set<ConfigPhysicalPlanType> listenedTypeSet,
-      final IoTDBTreePattern treePattern,
+      final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     return listenedTypeSet.contains(plan.getType())

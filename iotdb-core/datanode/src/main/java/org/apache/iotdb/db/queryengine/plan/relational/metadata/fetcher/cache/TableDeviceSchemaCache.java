@@ -112,7 +112,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -150,7 +150,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -235,7 +235,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(

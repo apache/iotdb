@@ -67,7 +67,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     this.rowLimit = rowLimit;
   }
 
-  public void initialize() {
+  public void reset() {
     this.rowCount = 0;
     this.times = new long[rowLimit];
     this.columns = new Object[this.measurements.length];
@@ -105,43 +105,6 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     for (int i = 0; i < this.bitMaps.length; ++i) {
       this.bitMaps[i] = new BitMap(rowLimit);
       this.bitMaps[i].markAll();
-    }
-  }
-
-  public void reset() {
-    this.rowCount = 0;
-    Arrays.fill(times, 0L);
-    for (int i = 0; i < this.measurements.length; i++) {
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          Arrays.fill((boolean[]) columns[i], false);
-          break;
-        case INT32:
-        case DATE:
-          Arrays.fill((int[]) columns[i], 0);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          Arrays.fill((long[]) columns[i], 0L);
-          break;
-        case FLOAT:
-          Arrays.fill((float[]) columns[i], 0F);
-          break;
-        case DOUBLE:
-          Arrays.fill((double[]) columns[i], 0D);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes[i]));
-      }
-    }
-    for (BitMap bitMap : this.bitMaps) {
-      bitMap.markAll();
     }
   }
 

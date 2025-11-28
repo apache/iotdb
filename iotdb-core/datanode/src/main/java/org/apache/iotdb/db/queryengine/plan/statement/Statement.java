@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
@@ -62,14 +60,12 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<? extends PartialPath> getPaths();
 
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.SUPER_USER.equals(userName),
-        "Only the admin user can perform this operation");
-  }
-
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       final MPPQueryContext context) {
     throw new UnsupportedOperationException("Method not implemented yet");
+  }
+
+  public String getPipeLoggingString() {
+    return toString();
   }
 }

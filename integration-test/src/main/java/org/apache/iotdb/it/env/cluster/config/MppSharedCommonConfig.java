@@ -555,6 +555,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    dnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    cnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     dnConfig.setQueryMemoryProportion(queryMemoryProportion);
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);
@@ -595,9 +602,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
-    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+    cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
     return this;
   }
 
@@ -608,9 +615,73 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    cnConfig.setEnableInternalSSL(enableInternalSSL);
+    dnConfig.setEnableInternalSSL(enableInternalSSL);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    cnConfig.setKeyStorePath(keyStorePath);
+    dnConfig.setKeyStorePath(keyStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    cnConfig.setKeyStorePwd(keyStorePwd);
+    dnConfig.setKeyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    cnConfig.setTrustStorePath(trustStorePath);
+    dnConfig.setTrustStorePath(trustStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    cnConfig.setTrustStorePwd(trustStorePwd);
+    dnConfig.setTrustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
     cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    dnConfig.setEnableAuditLog(enableAuditLog);
+    cnConfig.setEnableAuditLog(enableAuditLog);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    dnConfig.setAuditableOperationType(auditableOperationType);
+    cnConfig.setAuditableOperationType(auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    dnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    cnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    dnConfig.setAuditableOperationResult(auditableOperationResult);
+    cnConfig.setAuditableOperationResult(auditableOperationResult);
     return this;
   }
 }

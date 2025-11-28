@@ -20,13 +20,16 @@
 package org.apache.iotdb.db.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -93,29 +96,32 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final boolean isTSFileUsed) {
+      final boolean isTSFileUsed,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useLeaderCache,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
 
     endPointSet = new HashSet<>(endPoints);
 
     receiverAttributes =
         String.format(
             "%s-%s-%s-%s-%s-%s",
-            Base64.getEncoder().encodeToString((username + ":" + password).getBytes()),
+            Base64.getEncoder()
+                .encodeToString((userEntity.getUsername() + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             validateTsFile,
@@ -227,8 +233,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             resp.set(response);
 
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn(
-                  "Handshake error with receiver {}:{}, code: {}, message: {}.",
+              PipeLogger.log(
+                  LOGGER::warn,
+                  "Handshake error with receiver %s:%s, code: %s, message: %s.",
                   targetNodeUrl.getIp(),
                   targetNodeUrl.getPort(),
                   response.getStatus().getCode(),
@@ -250,18 +257,26 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             }
 
             isHandshakeFinished.set(true);
+            synchronized (isHandshakeFinished) {
+              isHandshakeFinished.notifyAll();
+            }
           }
 
           @Override
           public void onError(final Exception e) {
-            LOGGER.warn(
-                "Handshake error with receiver {}:{}.",
+            ThriftClient.resolveException(e, client);
+            PipeLogger.log(
+                LOGGER::warn,
+                e,
+                "Handshake error with receiver %s:%s.",
                 targetNodeUrl.getIp(),
-                targetNodeUrl.getPort(),
-                e);
+                targetNodeUrl.getPort());
             exception.set(e);
 
             isHandshakeFinished.set(true);
+            synchronized (isHandshakeFinished) {
+              isHandshakeFinished.notifyAll();
+            }
           }
         };
 
@@ -280,7 +295,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID,
+          String.valueOf(userEntity.getUserId()));
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, userEntity.getUsername());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME, userEntity.getCliHostname());
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
@@ -288,6 +308,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
           Boolean.toString(shouldMarkAsPipeRequest));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
+          Boolean.toString(skipIfNoPrivileges));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
@@ -296,8 +319,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       // Retry to handshake by PipeTransferHandshakeV1Req.
       if (resp.get() != null
           && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-        LOGGER.warn(
-            "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
+        PipeLogger.log(
+            LOGGER::warn,
+            "Handshake error by PipeTransferHandshakeV2Req with receiver %s:%s "
                 + "retry to handshake by PipeTransferHandshakeV1Req.",
             targetNodeUrl.getIp(),
             targetNodeUrl.getPort());
@@ -346,14 +370,13 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private void waitHandshakeFinished(final AtomicBoolean isHandshakeFinished) {
     try {
-      final long startTime = System.currentTimeMillis();
       while (!isHandshakeFinished.get()) {
-        if (isClosed
-            || System.currentTimeMillis() - startTime
-                > PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs() * 2L) {
+        if (isClosed) {
           throw new PipeConnectionException("Timed out when waiting for client handshake finish.");
         }
-        Thread.sleep(10);
+        synchronized (isHandshakeFinished) {
+          isHandshakeFinished.wait(1);
+        }
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();

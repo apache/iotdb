@@ -19,6 +19,8 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 
 import java.io.ByteArrayOutputStream;
@@ -34,6 +36,14 @@ import java.util.Set;
 /** This class contains all information of a User. */
 public class User extends Role {
 
+  public static final long INTERNAL_USER_END_ID = 9999;
+
+  public static final long INTERNAL_SYSTEM_ADMIN = 1;
+  public static final long INTERNAL_SECURITY_ADMIN = 2;
+  public static final long INTERNAL_AUDIT_ADMIN = 3;
+
+  private long userId = -1;
+
   private String password;
 
   private Set<String> roleSet;
@@ -44,15 +54,24 @@ public class User extends Role {
     // empty constructor
   }
 
+  @TestOnly
+  public User(String name, String password) {
+    super(name);
+    this.password = password;
+    this.roleSet = new HashSet<>();
+  }
+
   /**
    * construct function for User.
    *
    * @param name -user name
    * @param password -user password
+   * @param userId -user index
    */
-  public User(String name, String password) {
+  public User(String name, String password, long userId) {
     super(name);
     this.password = password;
+    this.userId = userId;
     this.roleSet = new HashSet<>();
   }
 
@@ -73,7 +92,15 @@ public class User extends Role {
     roleSet.add(roleName);
   }
 
+  public void setUserId(long userId) {
+    this.userId = userId;
+  }
+
   /** ------------ get func ----------------* */
+  public long getUserId() {
+    return userId;
+  }
+
   public String getPassword() {
     return password;
   }
@@ -96,7 +123,17 @@ public class User extends Role {
     resp.setPassword(password);
     resp.setIsOpenIdUser(isOpenIdUser);
     resp.setRoleSet(roleSet);
+    resp.setUserId(userId);
     return resp;
+  }
+
+  public TListUserInfo convertToListUserInfo() {
+    TListUserInfo userInfo = new TListUserInfo();
+    userInfo.setUserId(userId);
+    userInfo.setUsername(name);
+    userInfo.setMaxSessionPerUser(maxSessionPerUser);
+    userInfo.setMinSessionPerUser(minSessionPerUser);
+    return userInfo;
   }
 
   /** -------------- misc ----------------* */
@@ -196,7 +233,9 @@ public class User extends Role {
   @Override
   public String toString() {
     return "User{"
-        + "name='"
+        + "id="
+        + userId
+        + ", name='"
         + super.getName()
         + '\''
         + ", pathPrivilegeList="

@@ -169,7 +169,9 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipeTaskMeta(),
                       extractor.getTreePattern(),
                       extractor.getTablePattern(),
+                      String.valueOf(extractor.getUserId()),
                       extractor.getUserName(),
+                      extractor.getCliHostname(),
                       extractor.isSkipIfNoPrivileges(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
@@ -180,7 +182,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 innerEvent.setReplicateIndexForIoTV2(
                     ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
                         extractor.getPipeName()));
-                LOGGER.info(
+                LOGGER.debug(
                     "[{}]Set {} for realtime event {}",
                     extractor.getPipeName(),
                     innerEvent.getReplicateIndexForIoTV2(),

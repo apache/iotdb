@@ -22,27 +22,34 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,8 +88,21 @@ public class PipeDataNodeRuntimeAgent implements IService {
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleProgressIndexAssigner.start();
 
-    IoTDBTreePattern.setDevicePathGetter(CompactionPathUtils::getPath);
-    IoTDBTreePattern.setMeasurementPathGetter(CompactionPathUtils::getPath);
+    IoTDBTreePattern.setDevicePathGetter(PipeDataNodeRuntimeAgent::getPath);
+    IoTDBTreePattern.setMeasurementPathGetter(PipeDataNodeRuntimeAgent::getPath);
+    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
+  }
+
+  private static MeasurementPath getPath(final IDeviceID device, final String measurement)
+      throws IllegalPathException {
+    return getPath(device).concatAsMeasurementPath(measurement);
+  }
+
+  private static PartialPath getPath(final IDeviceID device) throws IllegalPathException {
+    final String deviceId = device.toString();
+    return deviceId.contains(TsFileConstant.BACK_QUOTE_STRING)
+        ? DataNodeDevicePathCache.getInstance().getPartialPath(deviceId)
+        : new PartialPath(deviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
   }
 
   @Override
@@ -205,12 +225,11 @@ public class PipeDataNodeRuntimeAgent implements IService {
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
 
-    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
-
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeDataNodeAgent.task().stopAllPipesWithCriticalException();
+      PipeDataNodeAgent.task()
+          .stopAllPipesWithCriticalExceptionAndTrackException(pipeTaskMeta, pipeRuntimeException);
     }
   }
 

@@ -21,11 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -207,6 +206,7 @@ public class ForecastTableFunction implements TableFunction {
   private static final String IS_INPUT_COLUMN_NAME = "is_input";
   private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
   private static final String DEFAULT_OPTIONS = "";
+  private static final int MAX_INPUT_LENGTH = 2880;
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
@@ -284,16 +284,7 @@ public class ForecastTableFunction implements TableFunction {
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
 
-    // make sure modelId exists
-    ModelInferenceDescriptor descriptor = getModelInfo(modelId);
-    if (descriptor == null || !descriptor.getModelInformation().available()) {
-      throw new IoTDBRuntimeException(
-          String.format("model [%s] is not available", modelId),
-          TSStatusCode.GET_MODEL_INFO_ERROR.getStatusCode());
-    }
-
-    int maxInputLength = descriptor.getModelInformation().getInputShape()[0];
-    TEndPoint targetAINode = descriptor.getTargetAINode();
+    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
@@ -393,7 +384,7 @@ public class ForecastTableFunction implements TableFunction {
     ForecastTableFunctionHandle functionHandle =
         new ForecastTableFunctionHandle(
             keepInput,
-            maxInputLength,
+            MAX_INPUT_LENGTH,
             modelId,
             parseOptions(options),
             outputLength,
@@ -465,8 +456,7 @@ public class ForecastTableFunction implements TableFunction {
   private static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final IClientManager<TEndPoint, AINodeClient> CLIENT_MANAGER =
-        AINodeClientManager.getInstance();
+    private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
 
     private final TEndPoint targetAINode;
     private final String modelId;

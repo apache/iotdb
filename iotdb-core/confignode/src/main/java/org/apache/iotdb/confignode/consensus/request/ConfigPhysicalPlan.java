@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -290,6 +291,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateUser:
         case CreateRole:
         case DropUser:
+        case DropUserV2:
         case DropRole:
         case GrantRole:
         case GrantUser:
@@ -298,14 +300,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRole:
         case RevokeRoleFromUser:
         case UpdateUser:
+        case UpdateUserV2:
         case CreateUserWithRawPassword:
+        case RenameUser:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
         case RCreateUser:
         case RCreateRole:
         case RUpdateUser:
+        case RUpdateUserV2:
         case RDropRole:
         case RDropUser:
+        case RDropUserV2:
         case RGrantUserRole:
         case RRevokeUserRole:
         case RGrantRoleAny:
@@ -328,6 +334,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RGrantRoleSysPri:
         case RRevokeUserSysPri:
         case RRevokeRoleSysPri:
+        case RRenameUser:
           plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
@@ -545,6 +552,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeleteDevices:
           plan = new PipeDeleteDevicesPlan();
+          break;
+        case PipeAlterEncodingCompressor:
+          plan = new PipeAlterEncodingCompressorPlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();

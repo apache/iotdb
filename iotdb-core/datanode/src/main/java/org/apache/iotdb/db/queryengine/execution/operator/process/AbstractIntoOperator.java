@@ -79,10 +79,11 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean childDone = childBlocked.isDone();
     boolean writeDone = writeOperationDone();
-    if (writeDone && childBlocked.isDone()) {
+    if (writeDone && childDone) {
       return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
+    } else if (childDone) {
       return writeOperationFuture;
     } else if (writeDone) {
       return childBlocked;

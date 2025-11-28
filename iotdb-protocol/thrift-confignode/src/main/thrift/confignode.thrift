@@ -29,6 +29,13 @@ struct TSystemConfigurationResp {
   4: optional TCQConfig cqConfig
 }
 
+struct TAuditConfig {
+  1: required bool enableAuditLog
+  2: optional string auditableOperationType
+  3: optional string auditableOperationLevel
+  4: optional string auditableOperationResult
+}
+
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -37,11 +44,12 @@ struct TGlobalConfig {
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
-  8: optional string timestampPrecision
-  9: optional string schemaEngineMode
-  10: optional i32 tagAttributeTotalSize
-  11: optional bool isEnterprise
-  12: optional i64 timePartitionOrigin
+  8: required bool enableGrantOption
+  9: optional string timestampPrecision
+  10: optional string schemaEngineMode
+  11: optional i32 tagAttributeTotalSize
+  12: optional bool isEnterprise
+  13: optional i64 timePartitionOrigin
 }
 
 struct TRatisConfig {
@@ -109,6 +117,9 @@ struct TRuntimeConfiguration {
   5: required list<binary> allPipeInformation
   6: optional string clusterId
   7: optional binary tableInfo
+  8: required TAuditConfig auditConfig
+  9: required string superUserName
+  10: optional bool enableSeparationOfAdminPowers
 }
 
 struct TDataNodeRegisterReq {
@@ -232,6 +243,7 @@ struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
   3: optional binary scopePatternTree
+  4: optional bool needAuditDB
 }
 
 struct TSchemaNodeManagementResp {
@@ -343,6 +355,8 @@ struct TAuthorizerReq {
   6: required set<i32> permissions
   7: required bool grantOpt
   8: required binary nodeNameList
+  9: required i64 executedByUserID
+  10: required string newUsername
 }
 
 struct TAuthorizerRelationalReq {
@@ -354,6 +368,8 @@ struct TAuthorizerRelationalReq {
    6: required string table
    7: required set<i32> permissions
    8: required bool grantOpt
+   9: required i64 executedByUserID
+   10: required string newUsername
 }
 
 struct TAuthorizerResp {
@@ -361,6 +377,14 @@ struct TAuthorizerResp {
   2: optional string tag
   3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
+  5: optional list<TListUserInfo> usersInfo
+}
+
+struct TListUserInfo{
+ 1: required i64 userId
+ 2: required string username
+ 3: required i32 maxSessionPerUser
+ 4: required i32 minSessionPerUser
 }
 
 struct TUserResp {
@@ -368,6 +392,7 @@ struct TUserResp {
   2: required string password
   3: required set<string> roleSet
   4: required bool isOpenIdUser
+  5: required i64 userId
 }
 
 struct TRoleResp {
@@ -634,6 +659,13 @@ struct TAINodeInfo {
   4: required i32 internalPort
 }
 
+// ----------- New messages -----------
+
+struct TGetAINodeLocationResp {
+  1: required common.TSStatus status
+  2: optional common.TAINodeLocation aiNodeLocation
+}
+
 struct TShowDataNodes4InformationSchemaResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo4InformationSchema> dataNodesInfoList
@@ -695,6 +727,7 @@ struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
   3: optional bool isTableModel
+  4: optional bool canSeeAuditDB
 }
 
 struct TShowDatabaseResp {
@@ -872,6 +905,7 @@ struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
   3: optional bool isTableModel
+  4: optional string userName
 }
 
 struct TShowPipeResp {
@@ -892,10 +926,21 @@ struct TPipeConfigTransferResp {
   2: optional binary body
 }
 
+struct TAlterEncodingCompressorReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: required byte encoding
+  4: required byte compressor
+  5: required bool ifExists
+  6: required bool mayAlterAudit
+  7: optional bool isGeneratedByPipe
+}
+
 struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional bool mayDeleteAudit
 }
 
 struct TDeleteLogicalViewReq {
@@ -1058,18 +1103,6 @@ struct TCreateModelReq {
 
 struct TDropModelReq {
   1: required string modelId
-}
-
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: optional list<string> modelIdList
-  3: optional map<string, string> modelTypeMap
-  4: optional map<string, string> categoryMap
-  5: optional map<string, string> stateMap
 }
 
 struct TGetModelInfoReq {
@@ -1308,6 +1341,11 @@ service IConfigNodeRPCService {
   TShowAINodesResp showAINodes()
 
   TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
+
+  /**
+   * Return a reachable AINode location.
+   */
+  TGetAINodeLocationResp getAINodeLocation()
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -1702,6 +1740,9 @@ service IConfigNodeRPCService {
   /** Show content of configuration file */
   common.TShowConfigurationResp showConfiguration(1: i32 nodeId)
 
+  /** Show applied configurations by TsBlock */
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations(1: i32 nodeId)
+
   /** Check and repair unsorted tsfile by compaction */
   common.TSStatus startRepairData()
 
@@ -1730,7 +1771,7 @@ service IConfigNodeRPCService {
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
-  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+  common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
   /** Get all DataNodeLocations of Readable DataNodes */
   TGetDataNodeLocationsResp getReadableDataNodeLocations()
@@ -1826,6 +1867,8 @@ service IConfigNodeRPCService {
   common.TSStatus dropSchemaTemplate(string req)
 
   common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
+
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
 
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
@@ -1982,18 +2025,11 @@ service IConfigNodeRPCService {
   common.TSStatus dropModel(TDropModelReq req)
 
   /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-   /**
-   * Return the model info by model_id
-   */
+  * Return the model info by model_id
+  */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  common.TSStatus createTraining(TCreateTrainingReq req)
 
   // ======================================================
   // Quota

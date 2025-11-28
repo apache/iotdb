@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -134,12 +135,13 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
-            username,
+            userEntity,
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             loadTsFileValidation,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            skipIfNoPrivileges);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -151,12 +153,13 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest);
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges);
 
   @Override
   public void handshake() throws Exception {
@@ -186,6 +189,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
+        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
@@ -254,6 +258,8 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
 
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException;
+
+  protected abstract void mayLimitRateAndRecordIO(final long requiredBytes);
 
   @Override
   public void close() {

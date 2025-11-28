@@ -45,13 +45,13 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,15 +170,22 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
+      final String filePath = tsFileResource.getTsFile().getAbsolutePath();
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.serialize();
+        TsFileResource cloneTsFileResource = null;
+        try {
+          cloneTsFileResource = tsFileResource.shallowCloneForNative();
+        } catch (CloneNotSupportedException e) {
+          cloneTsFileResource = tsFileResource.shallowClone();
+        }
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
-                tsFileResource,
+                cloneTsFileResource,
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
                 isGeneratedByPipe,
                 false);
@@ -189,8 +196,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         resultStatus.setMessage(e.getMessage());
         throw new FragmentInstanceDispatchException(resultStatus);
       } catch (IOException e) {
-        LOGGER.warn(
-            "Serialize TsFileResource {} error.", tsFileResource.getTsFile().getAbsolutePath(), e);
+        LOGGER.warn("Serialize TsFileResource {} error.", filePath, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
-  protected final String username;
+  protected final UserEntity userEntity;
   protected final String password;
 
   protected final boolean validateTsFile;
@@ -48,6 +49,7 @@ public abstract class IoTDBClientManager {
   protected final String loadTsFileStrategy;
 
   protected final boolean shouldMarkAsPipeRequest;
+  protected final boolean skipIfNoPrivileges;
 
   // This flag indicates whether the receiver supports mods transferring if
   // it is a DataNode receiver. The flag is useless for configNode receiver.
@@ -63,22 +65,24 @@ public abstract class IoTDBClientManager {
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     this.endPointList = endPointList;
 
     this.useLeaderCache = useLeaderCache;
 
-    this.username = username;
+    this.userEntity = userEntity;
     this.password = password;
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
     this.loadTsFileStrategy = loadTsFileStrategy;
     this.validateTsFile = validateTsFile;
     this.shouldMarkAsPipeRequest = shouldMarkAsPipeRequest;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

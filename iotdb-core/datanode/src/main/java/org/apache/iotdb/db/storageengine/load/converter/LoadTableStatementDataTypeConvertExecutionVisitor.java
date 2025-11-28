@@ -27,13 +27,11 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,10 +63,13 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitLoadTsFile(
       final LoadTsFile loadTsFileStatement, final String databaseName) {
     if (Objects.isNull(databaseName)) {
-      LOGGER.warn(
-          "Database name is unexpectedly null for LoadTsFileStatement: {}. Skip data type conversion.",
-          loadTsFileStatement);
-      return Optional.empty();
+      final String errorMsg =
+          String.format(
+              "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type conversion.",
+              loadTsFileStatement);
+      LOGGER.warn(errorMsg);
+      return Optional.of(
+          new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(errorMsg));
     }
 
     LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
@@ -83,7 +84,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MAX_VALUE,
               null,
               "root",
-              null)) {
+              null,
+              true)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
             continue;
@@ -100,15 +102,17 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
-          if (!handleTSStatus(
-              executeInsertTabletWithRetry(statement, databaseName), loadTsFileStatement)) {
-            return Optional.empty();
+          final TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
+          if (!handleTSStatus(status, loadTsFileStatement)) {
+            return Optional.of(status);
           }
         }
       } catch (final Exception e) {
         LOGGER.warn(
             "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.empty();
+        return Optional.of(
+            LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
+                loadTsFileStatement, e));
       }
     }
 
@@ -119,9 +123,9 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               tsfile -> {
                 FileUtils.deleteQuietly(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 
@@ -156,7 +160,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = statement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+      result = statement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }

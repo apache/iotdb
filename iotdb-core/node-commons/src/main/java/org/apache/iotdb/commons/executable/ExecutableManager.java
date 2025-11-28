@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.executable;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,26 +96,11 @@ public class ExecutableManager {
     }
   }
 
-  public void moveFileUnderTempRootToExtLibDir(ExecutableResource resource, String name)
-      throws IOException {
-    FileUtils.moveFileToDirectory(
-        getFileByFullPath(
-            getDirStringUnderTempRootByRequestId(resource.getRequestId()) + File.separator + name),
-        getFileByFullPath(libRoot),
-        false);
-  }
-
   // endregion
 
   // ======================================================
   // region File under LibRoot
   // ======================================================
-
-  public void copyFileToExtLibDir(String filePath) throws IOException {
-    FileUtils.copyFileToDirectory(
-        FSFactoryProducer.getFSFactory().getFile(filePath),
-        FSFactoryProducer.getFSFactory().getFile(this.libRoot));
-  }
 
   public void removeFileUnderLibRoot(String fileName) throws IOException {
     Path path = Paths.get(this.libRoot + File.separator + fileName);

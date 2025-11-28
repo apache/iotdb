@@ -56,9 +56,21 @@ public class IoTDBDatabaseIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnforceStrongPassword(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     // enable subscription
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -345,6 +357,7 @@ public class IoTDBDatabaseIT {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create pipe test ('sink'='do-nothing-sink')");
     }
 
     try (final Connection connection =
@@ -553,7 +566,6 @@ public class IoTDBDatabaseIT {
 
       // Only root user is allowed
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from regions"));
-      Assert.assertThrows(SQLException.class, () -> statement.execute("select * from pipes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from topics"));
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from subscriptions"));
@@ -563,6 +575,12 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from config_nodes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
+
+      // Filter out not self-created pipes
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from pipes"),
+          "id,creation_time,state,pipe_source,pipe_processor,pipe_sink,exception_message,remaining_event_count,estimated_remaining_seconds,",
+          Collections.emptySet());
 
       // No auth needed
       TestUtils.assertResultSetEqual(
@@ -586,7 +604,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODE,1,"));
+          Collections.singleton("ACCOUNT,1,"));
     }
 
     try (final Connection connection =
@@ -663,7 +681,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select id from pipes where creation_time > 0"),
           "id,",
-          Collections.singleton("a2b,"));
+          new HashSet<>(Arrays.asList("a2b,", "test,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
@@ -704,7 +722,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery(
               "select * from information_schema.keywords where reserved > 0 limit 1"),
           "word,reserved,",
-          Collections.singleton("AINODE,1,"));
+          Collections.singleton("ACCOUNT,1,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select distinct(status) from information_schema.nodes"),
@@ -786,6 +804,7 @@ public class IoTDBDatabaseIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
+      // One for AUDIT database
       TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
     }
   }

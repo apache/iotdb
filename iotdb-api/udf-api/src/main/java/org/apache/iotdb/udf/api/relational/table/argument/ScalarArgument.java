@@ -76,9 +76,10 @@ public class ScalarArgument implements Argument {
         buffer.put(bytes);
         break;
       case BLOB:
-        bytes = ((Binary) value).getValues();
-        buffer.putInt(bytes.length);
-        buffer.put(bytes);
+        byte[] blobBytes = ((Binary) value).getValues();
+        buffer.putInt(blobBytes.length);
+        buffer.put(blobBytes);
+        break;
       default:
         throw new IllegalArgumentException("Unknown type: " + type);
     }
@@ -115,9 +116,10 @@ public class ScalarArgument implements Argument {
         buffer.write(bytes);
         break;
       case BLOB:
-        bytes = ((Binary) value).getValues();
-        buffer.writeInt(bytes.length);
-        buffer.write(bytes);
+        byte[] blobBytes = ((Binary) value).getValues();
+        buffer.writeInt(blobBytes.length);
+        buffer.write(blobBytes);
+        break;
       default:
         throw new IllegalArgumentException("Unknown type: " + type);
     }
@@ -140,12 +142,12 @@ public class ScalarArgument implements Argument {
       case DATE:
         return new ScalarArgument(type, LocalDate.ofEpochDay(buffer.getLong()));
       case BLOB:
-        byte[] bytes = new byte[buffer.getInt()];
-        buffer.get(bytes);
-        return new ScalarArgument(type, new Binary(bytes));
+        byte[] blobBytes = new byte[buffer.getInt()];
+        buffer.get(blobBytes);
+        return new ScalarArgument(type, new Binary(blobBytes));
       case TEXT:
       case STRING:
-        bytes = new byte[buffer.getInt()];
+        byte[] bytes = new byte[buffer.getInt()];
         buffer.get(bytes);
         return new ScalarArgument(type, new String(bytes));
       default:

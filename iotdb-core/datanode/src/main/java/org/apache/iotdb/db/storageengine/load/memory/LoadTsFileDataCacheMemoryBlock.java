@@ -59,8 +59,9 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
   @Override
   public synchronized void addMemoryUsage(long memoryInBytes) {
+    // May temporarily exceed the max size
     if (memoryUsageInBytes.addAndGet(memoryInBytes) > limitedMemorySizeInBytes.get()) {
-      LOGGER.warn("{} has exceed total memory size", this);
+      LOGGER.debug("{} has exceed total memory size", this);
     }
   }
 
