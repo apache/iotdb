@@ -71,6 +71,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
 import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
@@ -126,6 +128,9 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
 public class InformationSchemaContentSupplierFactory {
+
+  private static final SessionManager sessionManager = SessionManager.getInstance();
+
   private InformationSchemaContentSupplierFactory() {}
 
   public static Iterator<TsBlock> getSupplier(
@@ -166,6 +171,8 @@ public class InformationSchemaContentSupplierFactory {
           return new ConfigNodesSupplier(dataTypes, userEntity);
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
+        case InformationSchema.CONNECTIONS:
+          return new ConnectionsSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -1254,5 +1261,32 @@ public class InformationSchemaContentSupplierFactory {
     }
 
     protected abstract void constructLine();
+  }
+
+  private static class ConnectionsSupplier extends TsBlockSupplier {
+    private Iterator<ConnectionInfo> sessionConnectionIterator;
+
+    private ConnectionsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      sessionConnectionIterator = sessionManager.getAllSessionConnectionInfo().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      ConnectionInfo connectionInfo = sessionConnectionIterator.next();
+      columnBuilders[0].writeInt(connectionInfo.getDataNodeId());
+      columnBuilders[1].writeLong(connectionInfo.getUserId());
+      columnBuilders[2].writeLong(connectionInfo.getSessionId());
+      columnBuilders[3].writeLong(connectionInfo.getLastActiveTime());
+      columnBuilders[4].writeBinary(
+          new Binary(connectionInfo.getClientAddress(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return sessionConnectionIterator.hasNext();
+    }
   }
 }

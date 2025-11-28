@@ -205,6 +205,13 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
 
+  // column names for show idle connection
+  public static final String DATANODE_ID = "data_node_id";
+  public static final String USERID = "user_id";
+  public static final String SESSION_ID = "session_id";
+  public static final String LAST_ACTIVE_TIME = "last_active_time";
+  public static final String CLIENT_IP = "client_ip";
+
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
   public static final String QUERY_ID_START_TIME_TABLE_MODEL = "start_time";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
