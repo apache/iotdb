@@ -209,8 +209,11 @@ public class DeviceLastCache {
   int estimateSize() {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
-        + measurement2CachedLastMap.values().stream()
-            .mapToInt(DeviceLastCache::getTVPairSize)
+        + measurement2CachedLastMap.entrySet().stream()
+            .mapToInt(
+                entry ->
+                    (int) RamUsageEstimator.sizeOf(entry.getKey())
+                        + DeviceLastCache.getTVPairSize(entry.getValue()))
             .reduce(0, Integer::sum);
   }
 
