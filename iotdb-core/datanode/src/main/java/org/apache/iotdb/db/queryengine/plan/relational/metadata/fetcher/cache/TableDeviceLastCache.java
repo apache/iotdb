@@ -93,13 +93,17 @@ public class TableDeviceLastCache {
 
   // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
+  private final boolean isTableModel;
+
+  TableDeviceLastCache(final boolean isTableModel) {
+    this.isTableModel = isTableModel;
+  }
 
   int initOrInvalidate(
       final String database,
       final String tableName,
       final String[] measurements,
-      final boolean isInvalidate,
-      final boolean isTableModel) {
+      final boolean isInvalidate) {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (final String measurement : measurements) {
@@ -183,7 +187,7 @@ public class TableDeviceLastCache {
   }
 
   @GuardedBy("DataRegionInsertLock#writeLock")
-  int invalidate(final String measurement, final boolean isTableModel) {
+  int invalidate(final String measurement) {
     final AtomicInteger diff = new AtomicInteger();
     final AtomicLong time = new AtomicLong();
     measurement2CachedLastMap.computeIfPresent(
@@ -269,8 +273,11 @@ public class TableDeviceLastCache {
   int estimateSize() {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
-        + measurement2CachedLastMap.values().stream()
-            .mapToInt(TableDeviceLastCache::getTVPairSize)
+        + measurement2CachedLastMap.entrySet().stream()
+            .mapToInt(
+                entry ->
+                    (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(entry.getKey()))
+                        + TableDeviceLastCache.getTVPairSize(entry.getValue()))
             .reduce(0, Integer::sum);
   }
 
