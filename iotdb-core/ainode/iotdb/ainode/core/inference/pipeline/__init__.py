@@ -16,14 +16,3 @@
 # under the License.
 #
 
-from iotdb.ainode.core.model.sundial.pipeline_sundial import SundialPipeline
-from iotdb.ainode.core.model.timer_xl.pipeline_timer import TimerPipeline
-
-
-def get_pipeline(model_id, device):
-    if model_id == "timer_xl":
-        return TimerPipeline(model_id, device=device)
-    elif model_id == "sundial":
-        return SundialPipeline(model_id, device=device)
-    else:
-        raise ValueError(f"Unsupported model_id: {model_id} with pipeline")

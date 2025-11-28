@@ -32,6 +32,7 @@ class ModelInfo:
         repo_id: str = "",
         path: str = "",
         auto_map: Optional[Dict] = None,
+
         _transformers_registered: bool = False,
     ):
         self.model_id = model_id

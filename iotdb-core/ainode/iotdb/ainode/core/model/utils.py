@@ -21,9 +21,12 @@ import json
 import os.path
 import sys
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Dict, Tuple
 
+from iotdb.ainode.core.model.model_constants import (
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    MODEL_CONFIG_FILE_IN_JSON,
+)
 from iotdb.ainode.core.model.model_constants import (
     UriType,
 )
@@ -57,25 +60,27 @@ def temporary_sys_path(path: str):
             sys.path.remove(path)
 
 
-def load_model_config_in_json(config_path: Path) -> Dict:
+def load_model_config_in_json(config_path: str) -> Dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def validate_model_files(model_dir: Path) -> Tuple[Path, Path]:
+def validate_model_files(model_dir: str) -> Tuple[str, str]:
     """Validate model files exist, return config and weights file paths"""
-    config_path = model_dir / MODEL_CONFIG_FILE
-    weights_path = model_dir / MODEL_WEIGHTS_FILE
 
-    if not config_path.exists():
+    config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+    weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+
+    if not os.path.exists(config_path):
         raise ValueError(f"Model config file does not exist: {config_path}")
-    if not weights_path.exists():
+    if not os.path.exists(weights_path):
         raise ValueError(f"Model weights file does not exist: {weights_path}")
 
     # Create __init__.py file to ensure model directory can be imported as a module
-    init_file = model_dir / "__init__.py"
-    if not init_file.exists():
-        init_file.touch()
+    init_file = os.path.join(model_dir, "__init__.py")
+    if not os.path.exists(init_file):
+        with open(init_file, 'w'):
+            pass
 
     return config_path, weights_path
 
