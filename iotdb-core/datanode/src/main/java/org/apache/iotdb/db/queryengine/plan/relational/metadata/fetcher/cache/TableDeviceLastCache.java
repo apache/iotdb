@@ -152,8 +152,8 @@ public class TableDeviceLastCache {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
           diff.addAndGet(
-              (int) RamUsageEstimator.sizeOf(measurements[i])
-                  + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i])));
+              -((int) RamUsageEstimator.sizeOf(measurements[i])
+                  + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i]))));
         }
         continue;
       }
