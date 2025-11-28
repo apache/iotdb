@@ -162,6 +162,7 @@ class ModelStorage:
                             config = json.load(f)
                         if model_info.model_type == "":
                             model_info.model_type = config.get("model_type", "")
+                        model_info.auto_map = config.get("auto_map")
                     logger.info(
                         f"Model {model_id} downloaded successfully and is ready to use."
                     )
@@ -179,10 +180,12 @@ class ModelStorage:
         config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
         model_type = ""
         auto_map = {}
+        pipeline_class = ""
         if os.path.exists(config_path):
-            config = load_model_config_in_json(Path(config_path))
+            config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
-            auto_map = config.get("auto_map")
+            auto_map = config.get("auto_map", None)
+            pipeline_class = config.get("pipeline_class", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -190,6 +193,7 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
+                pipeline_cls=pipeline_class,
                 path=str(model_dir),
                 auto_map=auto_map,
                 _transformers_registered=False,  # Lazy registration
@@ -212,14 +216,15 @@ class ModelStorage:
         ensure_init_file(model_dir)
 
         if uri_type == UriType.REPO:
-            self._fetch_model_from_hf_repo(parsed_uri, str(model_dir))
+            self._fetch_model_from_hf_repo(parsed_uri, model_dir)
         else:
-            self._fetch_model_from_local(os.path.expanduser(parsed_uri), str(model_dir))
+            self._fetch_model_from_local(os.path.expanduser(parsed_uri), model_dir)
 
         config_path, _ = validate_model_files(model_dir)
         config = load_model_config_in_json(config_path)
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
+        pipeline_class = config.get("pipeline_class", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -227,6 +232,7 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
+                pipeline_cls=pipeline_class,
                 path=str(model_dir),
                 auto_map=auto_map,
                 _transformers_registered=False,  # Register later
@@ -268,13 +274,18 @@ class ModelStorage:
 
     def _fetch_model_from_local(self, source_path: str, storage_path: str):
         logger.info(f"Copying model from local path: {source_path} -> {storage_path}")
-        if not os.path.isdir(source_path):
+        source_dir = Path(source_path)
+        if not source_dir.is_dir():
             raise ValueError(
                 f"Source path does not exist or is not a directory: {source_path}"
             )
-        for file in os.listdir(source_path):
-            if os.path.isfile(os.path.join(source_path, file)):
-                shutil.copy2(file, os.path.join(storage_path, file))
+
+        storage_dir = Path(storage_path)
+        for file in source_dir.iterdir():
+            if file.is_file():
+                shutil.copy2(file, storage_dir / file.name)
+        return
+
 
     def _register_transformers_model(self, model_info: ModelInfo) -> bool:
         """

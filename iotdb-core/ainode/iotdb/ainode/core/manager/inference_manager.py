@@ -18,7 +18,6 @@
 
 import threading
 import time
-from abc import ABC, abstractmethod
 from typing import Dict
 
 import pandas as pd
@@ -29,19 +28,17 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import (
     InferenceModelInternalError,
-    InvalidWindowArgumentError,
     NumericalRangeException,
-    runtime_error_extractor,
 )
 from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
-from iotdb.ainode.core.inference.pipeline import get_pipeline
+from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.pool_controller import PoolController
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.manager.model_manager import get_model_manager
+from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.ainode.core.util.serde import convert_to_binary
@@ -67,7 +64,7 @@ class InferenceManager:
     )  # How often to check for requests in the result queue
 
     def __init__(self):
-        self._model_manager = get_model_manager()
+        self._model_manager =  ModelManager()
         self._model_mem_usage_map: Dict[str, int] = (
             {}
         )  # store model memory usage for each model
@@ -211,7 +208,8 @@ class InferenceManager:
                 outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
-                inference_pipeline = get_pipeline(model_id, device="cpu")
+                model_info = self._model_manager.get_model_info(model_id)
+                inference_pipeline = load_pipeline(model_info, device="cpu")
                 outputs = inference_pipeline.infer(
                     inputs, predict_length=predict_length, **inference_attrs
                 )
