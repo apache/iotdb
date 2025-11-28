@@ -19,6 +19,7 @@
 package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.it.utils.TSDataTypeTestUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -68,7 +69,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -1807,13 +1807,7 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalTabletWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 14;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.OBJECT);
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
-    dataTypes.remove(TSDataType.OBJECT);
-
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
     try {
       for (TSDataType from : dataTypes) {
         for (TSDataType to : dataTypes) {
@@ -1899,12 +1893,7 @@ public class IoTDBSessionRelationalIT {
   public void insertRelationalRowWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 17;
-    Set<TSDataType> dataTypes = new HashSet<>();
-    Collections.addAll(dataTypes, TSDataType.values());
-    dataTypes.remove(TSDataType.OBJECT);
-    dataTypes.remove(TSDataType.VECTOR);
-    dataTypes.remove(TSDataType.UNKNOWN);
-    dataTypes.remove(TSDataType.OBJECT);
+    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
 
     for (TSDataType from : dataTypes) {
       for (TSDataType to : dataTypes) {
