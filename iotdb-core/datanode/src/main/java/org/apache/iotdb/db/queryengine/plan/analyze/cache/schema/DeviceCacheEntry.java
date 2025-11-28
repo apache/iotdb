@@ -98,7 +98,7 @@ public class DeviceCacheEntry {
     deviceSchema.updateAndGet(
         schema -> {
           size.set(schema.estimateSize());
-          return schema;
+          return null;
         });
     return size.get();
   }

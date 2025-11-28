@@ -99,12 +99,12 @@ public class DeviceLastCache {
           (measurementKey, tvPair) -> {
             if (Objects.isNull(newPair)) {
               diff.addAndGet(
-                  -((int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(tvPair)));
+                  -((int) RamUsageEstimator.sizeOf(measurement) + getTvPairEntrySize(tvPair)));
               return null;
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
-                  (int) RamUsageEstimator.sizeOf(measurement) + getTVPairEntrySize(newPair));
+                  (int) RamUsageEstimator.sizeOf(measurement) + getTvPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;
@@ -130,7 +130,7 @@ public class DeviceLastCache {
         if (invalidateNull) {
           diff.addAndGet(
               -((int) RamUsageEstimator.sizeOf(measurements[i])
-                  + getTVPairEntrySize(measurement2CachedLastMap.remove(measurements[i]))));
+                  + getTvPairEntrySize(measurement2CachedLastMap.remove(measurements[i]))));
         }
         continue;
       }
@@ -166,7 +166,7 @@ public class DeviceLastCache {
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          diff.set((int) RamUsageEstimator.sizeOf(s) + getTvPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });
@@ -177,7 +177,7 @@ public class DeviceLastCache {
         "",
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= time.get()) {
-            diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+            diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTvPairEntrySize(timeValuePair));
             return null;
           }
           return timeValuePair;
@@ -186,15 +186,15 @@ public class DeviceLastCache {
     return diff.get();
   }
 
-  private static int getTVPairEntrySize(final TimeValuePair tvPair) {
-    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + getTVPairSize(tvPair);
+  private static int getTvPairEntrySize(final TimeValuePair tvPair) {
+    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + getTvPairSize(tvPair);
   }
 
-  private static int getTVPairSize(final TimeValuePair tvPair) {
-    return isEmptyTVPair(tvPair) ? 0 : tvPair.getSize();
+  private static int getTvPairSize(final TimeValuePair tvPair) {
+    return isEmptyTvPair(tvPair) ? 0 : tvPair.getSize();
   }
 
-  private static boolean isEmptyTVPair(final TimeValuePair tvPair) {
+  private static boolean isEmptyTvPair(final TimeValuePair tvPair) {
     return Objects.isNull(tvPair)
         || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
         || tvPair == EMPTY_TIME_VALUE_PAIR;
@@ -213,17 +213,17 @@ public class DeviceLastCache {
             .mapToInt(
                 entry ->
                     (int) RamUsageEstimator.sizeOf(entry.getKey())
-                        + DeviceLastCache.getTVPairSize(entry.getValue()))
+                        + DeviceLastCache.getTvPairSize(entry.getValue()))
             .reduce(0, Integer::sum);
   }
 
   private static int getDiffSize(
       final TimeValuePair oldTimeValuePair, final TimeValuePair newTimeValuePair) {
-    if (isEmptyTVPair(oldTimeValuePair)) {
-      return getTVPairSize(newTimeValuePair);
+    if (isEmptyTvPair(oldTimeValuePair)) {
+      return getTvPairSize(newTimeValuePair);
     }
-    if (isEmptyTVPair(newTimeValuePair)) {
-      return -getTVPairSize(oldTimeValuePair);
+    if (isEmptyTvPair(newTimeValuePair)) {
+      return -getTvPairSize(oldTimeValuePair);
     }
     final TsPrimitiveType oldValue = oldTimeValuePair.getValue();
     final TsPrimitiveType newValue = newTimeValuePair.getValue();
