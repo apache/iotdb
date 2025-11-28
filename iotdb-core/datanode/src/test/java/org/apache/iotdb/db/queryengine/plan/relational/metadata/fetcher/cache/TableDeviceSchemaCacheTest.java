@@ -509,6 +509,7 @@ public class TableDeviceSchemaCacheTest {
         result.get().getRight());
 
     cache.invalidateLastCache();
+    cache.invalidateLastCache();
     Assert.assertTrue(cache.getMemoryUsage() > 0);
   }
 
