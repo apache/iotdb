@@ -229,7 +229,7 @@ public class DeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  long getMemoryUsage() {
+  public long getMemoryUsage() {
     return dualKeyCache.stats().memoryUsage();
   }
 
@@ -284,7 +284,7 @@ public class DeviceSchemaCache {
     }
   }
 
-  public void invalidateTreeSchema() {
+  public void invalidateSchema() {
     lock.lock();
     try {
       dualKeyCache.update(segment -> true, device -> true, entry -> -entry.invalidateSchema());

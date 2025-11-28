@@ -97,7 +97,9 @@ public class DeviceCacheEntry {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
         schema -> {
-          size.set(schema.estimateSize());
+          if (Objects.nonNull(schema)) {
+            size.set(schema.estimateSize());
+          }
           return null;
         });
     return size.get();
