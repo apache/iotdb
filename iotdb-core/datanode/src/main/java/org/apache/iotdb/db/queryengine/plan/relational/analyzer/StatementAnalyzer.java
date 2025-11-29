@@ -894,6 +894,7 @@ public class StatementAnalyzer {
           Scope.builder()
               .withParent(withScope)
               .withRelationType(RelationId.of(node), queryBodyScope.getRelationType())
+              .withTables(queryBodyScope.getTables())
               .build();
 
       analysis.setScope(node, queryScope);
@@ -935,7 +936,7 @@ public class StatementAnalyzer {
 
         if (!isRecursive) {
           Query query = withQuery.getQuery();
-          analyze(query, withScopeBuilder.build());
+          Scope queryScope = analyze(query, withScopeBuilder.build());
 
           // check if all or none of the columns are explicitly alias
           if (withQuery.getColumnNames().isPresent()) {
@@ -945,6 +946,7 @@ public class StatementAnalyzer {
           }
 
           withScopeBuilder.withNamedQuery(name, withQuery);
+          queryContext.getSubQueryTables().put(withQuery.getQuery(), queryScope.getTables());
         }
       }
       Scope withScope = withScopeBuilder.build();
@@ -3064,6 +3066,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitTable(Table table, Optional<Scope> scope) {
       if (!table.getName().getPrefix().isPresent()) {
+        scope.ifPresent(s -> s.addTable(table));
         // is this a reference to a WITH query?
         Optional<WithQuery> withQuery =
             createScope(scope).getNamedQuery(table.getName().getSuffix());
@@ -3095,15 +3098,15 @@ public class StatementAnalyzer {
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
-      // if table schema is not found in metadata, we check if it's a CTE defined in the parent
-      // query
+      // check if table schema is found in CTE data stores
+      CteDataStore dataStore = queryContext.getCteDataStore(table);
+      Optional<TableSchema> tableSchema =
+          dataStore != null ? Optional.of(dataStore.getTableSchema()) : Optional.empty();
+      // If table schema is not found, check if it is in metadata
       if (!tableSchema.isPresent()) {
-        CteDataStore dataStore = queryContext.getCteDataStore(table);
-        if (dataStore != null) {
-          tableSchema = Optional.of(dataStore.getTableSchema());
-        }
+        tableSchema = metadata.getTableSchema(sessionContext, name);
       }
+
       // This can only be a table
       if (!tableSchema.isPresent()) {
         TableMetadataImpl.throwTableNotExistsException(
@@ -3593,8 +3596,15 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
-      Scope left = process(node.getLeft(), scope);
-      Scope right = process(node.getRight(), scope);
+      Optional<Scope> leftScope = scope.map(Scope::clone);
+      Scope left = process(node.getLeft(), leftScope);
+      Optional<Scope> rightScope = scope.map(Scope::clone);
+      Scope right = process(node.getRight(), rightScope);
+
+      if (scope.isPresent()) {
+        leftScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
+        rightScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
+      }
 
       if (criteria instanceof JoinUsing) {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
@@ -4446,7 +4456,10 @@ public class StatementAnalyzer {
     private Scope createAndAssignScope(
         Node node, Optional<Scope> parentScope, RelationType relationType) {
       Scope scope =
-          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType).build();
+          scopeBuilder(parentScope)
+              .withRelationType(RelationId.of(node), relationType)
+              .withTables(parentScope.get().getTables())
+              .build();
 
       analysis.setScope(node, scope);
       return scope;
