@@ -42,8 +42,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
@@ -71,14 +74,15 @@ public class CteMaterializer {
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
-  public void materializeCTE(Analysis analysis, MPPQueryContext context) {
+  public void materializeCTE(MPPQueryContext context, Analysis analysis, Query mainQuery) {
     analysis
         .getNamedQueries()
         .forEach(
             (tableRef, query) -> {
               Table table = tableRef.getNode();
               if (query.isMaterialized() && !query.isDone()) {
-                CteDataStore dataStore = fetchCteQueryResult(table, query, context);
+                CteDataStore dataStore =
+                    fetchCteQueryResult(context, table, query, mainQuery.getWith().orElse(null));
                 if (dataStore == null) {
                   // CTE query execution failed. Use inline instead of materialization
                   // in the outer query
@@ -98,15 +102,41 @@ public class CteMaterializer {
     cteDataStores.clear();
   }
 
-  public CteDataStore fetchCteQueryResult(Table table, Query query, MPPQueryContext context) {
+  public CteDataStore fetchCteQueryResult(
+      MPPQueryContext context, Table table, Query query, With with) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     CteDataStore cteDataStore = null;
     long startTime = System.nanoTime();
     try {
+      Query q = query;
+      if (with != null) {
+        List<Identifier> tables =
+            context.getSubQueryTables().getOrDefault(query, ImmutableList.of());
+        List<WithQuery> withQueries =
+            with.getQueries().stream()
+                .filter(
+                    x ->
+                        tables.contains(x.getName())
+                            && !x.getQuery().isMaterialized()
+                            && !x.getQuery().isDone())
+                .collect(Collectors.toList());
+
+        if (!withQueries.isEmpty()) {
+          With w = new With(with.getLocation().orElse(null), with.isRecursive(), withQueries);
+          q =
+              new Query(
+                  Optional.of(w),
+                  query.getQueryBody(),
+                  query.getFill(),
+                  query.getOrderBy(),
+                  query.getOffset(),
+                  query.getLimit());
+        }
+      }
       final ExecutionResult executionResult =
           coordinator.executeForTableModel(
-              query,
+              q,
               new SqlParser(),
               SessionManager.getInstance().getCurrSession(),
               queryId,
