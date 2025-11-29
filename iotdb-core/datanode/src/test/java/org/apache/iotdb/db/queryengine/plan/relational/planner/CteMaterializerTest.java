@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
@@ -95,7 +96,7 @@ public class CteMaterializerTest {
     CteMaterializer cteMaterializer = Mockito.spy(new CteMaterializer());
     Mockito.doReturn(null)
         .when(cteMaterializer)
-        .fetchCteQueryResult(Mockito.any(), Mockito.any(), Mockito.any());
+        .fetchCteQueryResult(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
     CteMaterializer.setInstance(cteMaterializer);
   }
 
@@ -130,7 +131,10 @@ public class CteMaterializerTest {
             })
         .when(cteMaterializer)
         .fetchCteQueryResult(
-            Mockito.any(Table.class), Mockito.any(Query.class), Mockito.any(MPPQueryContext.class));
+            Mockito.any(MPPQueryContext.class),
+            Mockito.any(Table.class),
+            Mockito.any(Query.class),
+            Mockito.any(With.class));
     CteMaterializer.setInstance(cteMaterializer);
   }
 
