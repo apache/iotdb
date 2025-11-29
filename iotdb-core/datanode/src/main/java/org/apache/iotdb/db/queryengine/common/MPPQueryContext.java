@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
@@ -122,6 +124,9 @@ public class MPPQueryContext implements IAuditEntity {
       new HashMap<>();
   // Do not release CTE query result if it is a subquery.
   private boolean subquery = false;
+
+  // Tables in the subquery
+  private final Map<Query, List<Identifier>> subQueryTables = new HashMap<>();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -501,6 +506,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setCteDataStores(Map<NodeRef<Table>, CteDataStore> cteDataStores) {
     this.cteDataStores = cteDataStores;
+  }
+
+  public Map<Query, List<Identifier>> getSubQueryTables() {
+    return subQueryTables;
   }
 
   public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
