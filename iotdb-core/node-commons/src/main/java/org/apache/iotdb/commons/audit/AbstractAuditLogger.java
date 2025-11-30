@@ -40,7 +40,16 @@ public abstract class AbstractAuditLogger {
   public static final String AUDIT_LOG_LOG = "log";
 
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
-  protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
+
+  /**
+   * Check if audit log is enabled. This method reads the configuration dynamically instead of using
+   * a static final field to ensure that the configuration is properly loaded before being used.
+   *
+   * @return true if audit log is enabled, false otherwise
+   */
+  protected static boolean isAuditLogEnabled() {
+    return CONFIG.isEnableAuditLog();
+  }
 
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
