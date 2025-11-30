@@ -42,12 +42,43 @@ public abstract class AbstractAuditLogger {
   public static final String AUDIT_LOG_LOG = "log";
 
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
-  protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
-  private static final List<AuditLogOperation> AUDITABLE_OPERATION_TYPE =
-      CONFIG.getAuditableOperationType();
-  private static final PrivilegeLevel AUDITABLE_OPERATION_LEVEL =
-      CONFIG.getAuditableOperationLevel();
-  private static final String AUDITABLE_OPERATION_RESULT = CONFIG.getAuditableOperationResult();
+
+  /**
+   * Check if audit log is enabled. This method reads the configuration dynamically instead of using
+   * a static final field to ensure that the configuration is properly loaded before being used.
+   *
+   * @return true if audit log is enabled, false otherwise
+   */
+  protected static boolean isAuditLogEnabled() {
+    return CONFIG.isEnableAuditLog();
+  }
+
+  /**
+   * Get the list of auditable operation types. This method reads the configuration dynamically.
+   *
+   * @return the list of auditable operation types
+   */
+  private static List<AuditLogOperation> getAuditableOperationType() {
+    return CONFIG.getAuditableOperationType();
+  }
+
+  /**
+   * Get the auditable operation level. This method reads the configuration dynamically.
+   *
+   * @return the auditable operation level
+   */
+  private static PrivilegeLevel getAuditableOperationLevel() {
+    return CONFIG.getAuditableOperationLevel();
+  }
+
+  /**
+   * Get the auditable operation result. This method reads the configuration dynamically.
+   *
+   * @return the auditable operation result
+   */
+  private static String getAuditableOperationResult() {
+    return CONFIG.getAuditableOperationResult();
+  }
 
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
@@ -58,22 +89,25 @@ public abstract class AbstractAuditLogger {
     // to do: check whether this event should be logged.
     // if whitelist or blacklist is used, only ip on the whitelist or blacklist can be logged
 
-    if (AUDITABLE_OPERATION_TYPE == null || !AUDITABLE_OPERATION_TYPE.contains(operation)) {
+    List<AuditLogOperation> auditableOperationType = getAuditableOperationType();
+    if (auditableOperationType == null || !auditableOperationType.contains(operation)) {
       return true;
     }
     if (auditLogFields.getPrivilegeTypes() != null) {
+      PrivilegeLevel auditableOperationLevel = getAuditableOperationLevel();
       for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
         PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-        if (AUDITABLE_OPERATION_LEVEL == PrivilegeLevel.OBJECT
+        if (auditableOperationLevel == PrivilegeLevel.OBJECT
             && privilegeLevel == PrivilegeLevel.GLOBAL) {
           return true;
         }
       }
     }
-    if (result && !AUDITABLE_OPERATION_RESULT.contains("SUCCESS")) {
+    String auditableOperationResult = getAuditableOperationResult();
+    if (result && !auditableOperationResult.contains("SUCCESS")) {
       return true;
     }
-    return !result && !AUDITABLE_OPERATION_RESULT.contains("FAIL");
+    return !result && !auditableOperationResult.contains("FAIL");
   }
 
   public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {

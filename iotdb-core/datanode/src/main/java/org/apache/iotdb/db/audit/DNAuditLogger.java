@@ -356,7 +356,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public synchronized void log(IAuditEntity auditLogFields, Supplier<String> log) {
-    if (!IS_AUDIT_LOG_ENABLED) {
+    if (!isAuditLogEnabled()) {
       return;
     }
     try {
@@ -419,7 +419,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId)
       throws IllegalPathException {
-    if (!IS_AUDIT_LOG_ENABLED) {
+    if (!isAuditLogEnabled()) {
       return;
     }
     createViewIfNecessary();
