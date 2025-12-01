@@ -20,17 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 // TODO: This class should contact with AINode directly and cache model info in DataNode
 public class ModelFetcher implements IModelFetcher {
-
-  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-      ConfigNodeClientManager.getInstance();
 
   private static final class ModelFetcherHolder {
 
@@ -46,7 +41,9 @@ public class ModelFetcher implements IModelFetcher {
   private ModelFetcher() {}
 
   @Override
-  public TSStatus fetchModel(String modelName, Analysis analysis) {
+  public TSStatus fetchModel(String modelId, Analysis analysis) {
+    analysis.setModelInferenceDescriptor(
+        new ModelInferenceDescriptor(new ModelInformation(modelId)));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }
