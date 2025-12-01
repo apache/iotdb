@@ -1421,13 +1421,6 @@ public class IoTDBScalarFunctionTableIT {
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
-
-    // case 9: wrong data type
-    tableAssertTestFail(
-        "select s1,Length(s10) from lengthTable",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
-        DATABASE_NAME);
   }
 
   @Test

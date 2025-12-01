@@ -31,7 +31,7 @@ import org.mockito.Mockito;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
-import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class BlobLengthColumnTransformerTest {
 
@@ -69,7 +69,7 @@ public class BlobLengthColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     BlobLengthColumnTransformer blobLengthColumnTransformer =
-        new BlobLengthColumnTransformer(INT32, childColumnTransformer);
+        new BlobLengthColumnTransformer(INT64, childColumnTransformer);
     blobLengthColumnTransformer.addReferenceCount();
     blobLengthColumnTransformer.evaluate();
     Column result = blobLengthColumnTransformer.getColumn();
@@ -87,7 +87,7 @@ public class BlobLengthColumnTransformerTest {
 
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
     BlobLengthColumnTransformer blobLengthColumnTransformer =
-        new BlobLengthColumnTransformer(INT32, childColumnTransformer);
+        new BlobLengthColumnTransformer(INT64, childColumnTransformer);
     blobLengthColumnTransformer.addReferenceCount();
     blobLengthColumnTransformer.evaluate();
     Column result = blobLengthColumnTransformer.getColumn();
@@ -109,7 +109,7 @@ public class BlobLengthColumnTransformerTest {
     ColumnTransformer childColumnTransformer = mockChildColumnTransformer(binaryColumn);
 
     BlobLengthColumnTransformer blobLengthColumnTransformer =
-        new BlobLengthColumnTransformer(INT32, childColumnTransformer);
+        new BlobLengthColumnTransformer(INT64, childColumnTransformer);
     blobLengthColumnTransformer.addReferenceCount();
     blobLengthColumnTransformer.evaluate();
     Column result = blobLengthColumnTransformer.getColumn();
@@ -133,7 +133,7 @@ public class BlobLengthColumnTransformerTest {
     ColumnTransformer child =
         mockChildColumnTransformer(new BinaryColumn(values.length, Optional.empty(), values));
     BlobLengthColumnTransformer blobLengthColumnTransformer =
-        new BlobLengthColumnTransformer(INT32, child);
+        new BlobLengthColumnTransformer(INT64, child);
     blobLengthColumnTransformer.addReferenceCount();
     blobLengthColumnTransformer.evaluateWithSelection(booleans);
     Column result = blobLengthColumnTransformer.getColumn();
