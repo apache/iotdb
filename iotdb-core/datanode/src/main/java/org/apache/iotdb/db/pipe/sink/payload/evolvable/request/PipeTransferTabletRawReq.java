@@ -141,8 +141,9 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     final ByteBuffer buffer = transferReq.body;
     final int startPosition = buffer.position();
     try {
+      // V1: no databaseName, readDatabaseName = false
       Pair<InsertTabletStatement, String> statementAndDevice =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
+          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
       tabletReq.isAligned = statementAndDevice.getLeft().isAligned();
       final InsertTabletStatement insertTabletStatement = statementAndDevice.getLeft();
       final String tableName = statementAndDevice.getRight();

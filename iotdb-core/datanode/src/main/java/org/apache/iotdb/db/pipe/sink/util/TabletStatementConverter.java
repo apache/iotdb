@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.sink.util;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -273,8 +275,16 @@ public class TabletStatementConverter {
     return columnValue;
   }
 
+  /**
+   * Deserialize InsertTabletStatement from Tablet format ByteBuffer.
+   *
+   * @param byteBuffer ByteBuffer containing serialized data
+   * @param readDatabaseName whether to read databaseName from buffer (for V2 format)
+   * @return Pair of InsertTabletStatement and insertTargetName (device name or table name). If
+   *     readDatabaseName is true, the statement will have databaseName set if it exists in buffer.
+   */
   public static Pair<InsertTabletStatement, String> deserializeStatementFromTabletFormat(
-      ByteBuffer byteBuffer) {
+      ByteBuffer byteBuffer, boolean readDatabaseName) throws IllegalPathException {
     InsertTabletStatement statement = new InsertTabletStatement();
     final String insertTargetName = ReadWriteIOUtils.readString(byteBuffer);
 
@@ -333,7 +343,35 @@ public class TabletStatementConverter {
     statement.setColumns(values);
     statement.setRowCount(rowSize);
     statement.setAligned(isAligned);
+
+    // Read databaseName if requested (V2 format)
+    if (readDatabaseName) {
+      final String databaseName = ReadWriteIOUtils.readString(byteBuffer);
+      if (databaseName != null) {
+        statement.setDatabaseName(databaseName);
+        statement.setWriteToTable(true);
+        // For table model, insertTargetName is table name, convert to lowercase
+        statement.setDevicePath(new PartialPath(insertTargetName.toLowerCase(), false));
+      } else {
+        // For tree model, use DataNodeDevicePathCache
+        statement.setDevicePath(
+            DataNodeDevicePathCache.getInstance().getPartialPath(insertTargetName));
+        statement.setColumnCategories(null);
+      }
+    }
+
     return new Pair<>(statement, insertTargetName);
+  }
+
+  /**
+   * Deserialize InsertTabletStatement from Tablet format ByteBuffer (V1 format, no databaseName).
+   *
+   * @param byteBuffer ByteBuffer containing serialized data
+   * @return Pair of InsertTabletStatement and insertTargetName (device name)
+   */
+  public static Pair<InsertTabletStatement, String> deserializeStatementFromTabletFormat(
+      ByteBuffer byteBuffer) throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, false);
   }
 
   private static Pair<String, TSDataType> readMeasurement(ByteBuffer buffer) {

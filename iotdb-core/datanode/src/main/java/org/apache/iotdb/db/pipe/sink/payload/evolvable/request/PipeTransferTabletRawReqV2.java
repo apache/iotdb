@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -188,22 +186,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   public void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
     final int startPosition = buffer.position();
     try {
+      // V2: read databaseName, readDatabaseName = true
       Pair<InsertTabletStatement, String> statementAndDevice =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
+          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, true);
       this.isAligned = statementAndDevice.getLeft().isAligned();
-      final String dataBaseName = ReadWriteIOUtils.readString(buffer);
       final InsertTabletStatement insertTabletStatement = statementAndDevice.getLeft();
-      final String tableName = statementAndDevice.getRight();
-      this.dataBaseName = dataBaseName;
-      if (dataBaseName == null) {
-        insertTabletStatement.setDevicePath(
-            DataNodeDevicePathCache.getInstance().getPartialPath(tableName));
-        insertTabletStatement.setColumnCategories(null);
-      } else {
-        insertTabletStatement.setDevicePath(new PartialPath(tableName.toLowerCase(), false));
-        insertTabletStatement.setWriteToTable(true);
-        insertTabletStatement.setDatabaseName(dataBaseName);
-      }
+      // databaseName is already set in deserializeStatementFromTabletFormat when
+      // readDatabaseName=true
+      this.dataBaseName = insertTabletStatement.getDatabaseName().orElse(null);
       this.statement = insertTabletStatement;
     } catch (final Exception e) {
       // If Statement deserialization fails, fallback to Tablet format
