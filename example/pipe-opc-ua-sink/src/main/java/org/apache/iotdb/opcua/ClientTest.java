@@ -20,12 +20,18 @@
 package org.apache.iotdb.opcua;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
+import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
+import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 public class ClientTest implements ClientExample {
@@ -58,6 +64,22 @@ public class ClientTest implements ClientExample {
 
     StatusCode writeStatus = client.writeValue(nodeId, writeValue).get();
     System.out.println("写入状态: " + writeStatus);
+
+    AddNodesResponse addStatus =
+        client
+            .addNodes(
+                Collections.singletonList(
+                    new AddNodesItem(
+                        new NodeId(2, "chen.grass").expanded(),
+                        Identifiers.Organizes,
+                        new NodeId(2, "chen.grass.bishop").expanded(),
+                        new QualifiedName(2, "bishop"),
+                        NodeClass.Variable,
+                        null,
+                        Identifiers.BaseDataVariableType.expanded())))
+            .get();
+    System.out.println("新增节点状态: " + addStatus);
+
     client.disconnect().get();
   }
 }
