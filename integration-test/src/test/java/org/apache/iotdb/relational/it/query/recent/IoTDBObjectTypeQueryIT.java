@@ -225,7 +225,7 @@ public class IoTDBObjectTypeQueryIT {
       // ORDER BY
       Assert.assertThrows(
           StatementExecutionException.class,
-          () -> session.executeNonQueryStatement("select count(*) from table1 group by s8"));
+          () -> session.executeNonQueryStatement("select count(*) from table1 order by s8"));
 
       // FILL
       Assert.assertThrows(
