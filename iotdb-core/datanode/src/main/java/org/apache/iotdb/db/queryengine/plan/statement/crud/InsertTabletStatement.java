@@ -612,6 +612,65 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Call parent to rebuild base arrays
+    super.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
+
+    // Save old arrays
+    final BitMap[] oldNullBitMaps = nullBitMaps;
+    final Object[] oldColumns = columns;
+    final boolean[] oldMeasurementIsAligned = measurementIsAligned;
+
+    // Create new arrays
+    final BitMap[] newNullBitMaps = new BitMap[newLength];
+    final Object[] newColumns = oldColumns != null ? new Object[newLength] : null;
+    final boolean[] newMeasurementIsAligned =
+        oldMeasurementIsAligned != null ? new boolean[newLength] : null;
+
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Create new BitMap with all positions marked (all null)
+        newNullBitMaps[newIdx] = new BitMap(rowCount);
+        newNullBitMaps[newIdx].markAll();
+        if (newColumns != null) {
+          // Create default column based on data type (STRING for TAG)
+          newColumns[newIdx] =
+              CommonUtils.createValueColumnOfDataType(
+                  TSDataType.STRING, TsTableColumnCategory.TAG, rowCount);
+        }
+        if (newMeasurementIsAligned != null) {
+          // Default to false for missing TAG columns
+          newMeasurementIsAligned[newIdx] = false;
+        }
+      } else {
+        // Copy from old array
+        if (oldNullBitMaps != null) {
+          newNullBitMaps[newIdx] = oldNullBitMaps[oldIdx];
+        }
+        if (newColumns != null && oldColumns != null) {
+          newColumns[newIdx] = oldColumns[oldIdx];
+        }
+        if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
+          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+        }
+      }
+    }
+
+    // Replace old arrays with new arrays
+    nullBitMaps = newNullBitMaps;
+    columns = newColumns;
+    measurementIsAligned = newMeasurementIsAligned;
+
+    deviceIDs = null;
+  }
+
+  @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(times)

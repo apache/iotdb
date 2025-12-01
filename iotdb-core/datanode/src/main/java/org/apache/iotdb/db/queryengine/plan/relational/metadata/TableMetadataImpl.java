@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
@@ -266,11 +267,13 @@ public class TableMetadataImpl implements Metadata {
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
-          && (isCharType(argumentTypes.get(0)) || isObjectType(argumentTypes.get(0))))) {
+          && (isCharType(argumentTypes.get(0))
+              || isBlobType(argumentTypes.get(0))
+              || isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string or object data type.");
+                + " only accepts one argument and it must be text or string or blob or object data type.");
       }
       return INT64;
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -1421,6 +1424,24 @@ public class TableMetadataImpl implements Metadata {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
             database, tableSchema, context, allowCreateTable, isStrictTagColumn);
+  }
+
+  @Override
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+    TableHeaderSchemaValidator.getInstance()
+        .validateInsertNodeMeasurements(
+            database,
+            measurementInfo,
+            context,
+            allowCreateTable,
+            measurementValidator,
+            tagColumnHandler);
   }
 
   @Override
