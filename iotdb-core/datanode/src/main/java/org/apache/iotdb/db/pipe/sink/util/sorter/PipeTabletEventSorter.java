@@ -27,6 +27,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 public class PipeTabletEventSorter {
 
@@ -84,6 +85,10 @@ public class PipeTabletEventSorter {
       final TSDataType dataType,
       final BitMap originalBitMap,
       final BitMap deDuplicatedBitMap) {
+    // Older version's sender may contain null values, we need to cover this case
+    if (Objects.isNull(valueList)) {
+      return null;
+    }
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
