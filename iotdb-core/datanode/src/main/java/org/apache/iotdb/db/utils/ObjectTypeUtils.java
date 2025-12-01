@@ -88,7 +88,7 @@ public class ObjectTypeUtils {
     try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
       fileChannel.read(buffer, offset);
     } catch (IOException e) {
-      throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }
     buffer.flip();
     return buffer;
@@ -135,7 +135,7 @@ public class ObjectTypeUtils {
           buffer.put(partial);
         }
       } catch (Exception e) {
-        logger.error("Failed to read object from datanode: {}", dataNodeLocation, e);
+        logger.warn("Failed to read object from datanode: {}", dataNodeLocation, e);
         if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
           throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
         }
@@ -151,7 +151,7 @@ public class ObjectTypeUtils {
     if (offset >= fileSize) {
       throw new SemanticException(
           String.format(
-              "offset %d is greater than object size %d, file path is %s",
+              "offset %d is greater than or equal to object size %d, file path is %s",
               offset, fileSize, filePath));
     }
     long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);

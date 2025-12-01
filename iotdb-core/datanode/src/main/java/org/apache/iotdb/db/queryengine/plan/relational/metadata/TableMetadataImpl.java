@@ -265,8 +265,8 @@ public class TableMetadataImpl implements Metadata {
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1 && (isCharType(argumentTypes.get(0)))
-          || isObjectType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
