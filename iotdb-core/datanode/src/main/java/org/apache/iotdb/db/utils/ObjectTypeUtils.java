@@ -96,18 +96,30 @@ public class ObjectTypeUtils {
 
   private static ByteBuffer readObjectContentFromRemoteFile(
       final String relativePath, final long offset, final int readSize) {
-    ByteBuffer buffer = ByteBuffer.allocate(readSize);
+    int regionId;
+    try {
+      regionId = Integer.parseInt(Paths.get(relativePath).getName(0).toString());
+    } catch (NumberFormatException e) {
+      throw new IoTDBRuntimeException(
+          "wrong object file path: " + relativePath,
+          TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+    }
     TConsensusGroupId consensusGroupId =
-        new TConsensusGroupId(
-            TConsensusGroupType.DataRegion,
-            Integer.parseInt(Paths.get(relativePath).getName(0).toString()));
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
     List<TRegionReplicaSet> regionReplicaSetList =
         ClusterPartitionFetcher.getInstance()
             .getRegionReplicaSet(Collections.singletonList(consensusGroupId));
+    if (regionReplicaSetList.isEmpty()) {
+      throw new ObjectFileNotExist(relativePath);
+    }
     TRegionReplicaSet regionReplicaSet = regionReplicaSetList.iterator().next();
+    if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+      throw new ObjectFileNotExist(relativePath);
+    }
     final int batchSize = 1024 * 1024;
     final TReadObjectReq req = new TReadObjectReq();
     req.setRelativePath(relativePath);
+    ByteBuffer buffer = ByteBuffer.allocate(readSize);
     for (int i = 0; i < regionReplicaSet.getDataNodeLocations().size(); i++) {
       TDataNodeLocation dataNodeLocation = regionReplicaSet.getDataNodeLocations().get(i);
       int toReadSizeInCurrentDataNode = readSize;
@@ -125,7 +137,7 @@ public class ObjectTypeUtils {
       } catch (Exception e) {
         logger.error("Failed to read object from datanode: {}", dataNodeLocation, e);
         if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
-          throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+          throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
         }
         continue;
       }

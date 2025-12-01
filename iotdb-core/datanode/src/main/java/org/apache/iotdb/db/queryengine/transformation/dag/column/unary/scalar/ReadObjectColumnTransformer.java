@@ -100,9 +100,9 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private Binary readObject(Binary binary) {
-    Pair<Long, String> ObjectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
-    long fileLength = ObjectLengthPathPair.getLeft();
-    String relativePath = ObjectLengthPathPair.getRight();
+    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    long fileLength = objectLengthPathPair.getLeft();
+    String relativePath = objectLengthPathPair.getRight();
     int actualReadSize =
         ObjectTypeUtils.getActualReadSize(relativePath, fileLength, offset, length);
     fragmentInstanceContext.ifPresent(

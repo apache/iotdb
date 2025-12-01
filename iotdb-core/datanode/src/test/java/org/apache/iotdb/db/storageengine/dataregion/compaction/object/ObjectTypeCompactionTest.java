@@ -78,6 +78,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   private File objectDir;
 
   @Before
+  @Override
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     this.threadName = Thread.currentThread().getName();
@@ -93,6 +94,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   }
 
   @After
+  @Override
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     Thread.currentThread().setName(threadName);
