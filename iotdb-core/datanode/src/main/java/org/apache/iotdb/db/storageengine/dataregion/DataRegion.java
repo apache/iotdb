@@ -1993,7 +1993,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
-      File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionId);
+      File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
       try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
         paths
             .filter(Files::isRegularFile)
