@@ -105,8 +105,8 @@ public class CteMaterializerTest {
 
     Mockito.doAnswer(
             (InvocationOnMock invocation) -> {
-              Table table = invocation.getArgument(0);
-              Query query = invocation.getArgument(1);
+              Table table = invocation.getArgument(1);
+              Query query = invocation.getArgument(2);
               List<SelectItem> selectItems =
                   ((QuerySpecification) query.getQueryBody()).getSelect().getSelectItems();
               List<ColumnSchema> columnsSchemas =

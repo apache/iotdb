@@ -920,6 +920,7 @@ public class StatementAnalyzer {
 
       // analyze WITH clause
       With with = node.getWith().get();
+      analysis.setWith(with);
       Scope.Builder withScopeBuilder = scopeBuilder(scope);
 
       for (WithQuery withQuery : with.getQueries()) {
@@ -4455,11 +4456,10 @@ public class StatementAnalyzer {
 
     private Scope createAndAssignScope(
         Node node, Optional<Scope> parentScope, RelationType relationType) {
-      Scope scope =
-          scopeBuilder(parentScope)
-              .withRelationType(RelationId.of(node), relationType)
-              .withTables(parentScope.get().getTables())
-              .build();
+      Scope.Builder scopeBuilder =
+          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType);
+      parentScope.ifPresent(scope -> scopeBuilder.withTables(scope.getTables()));
+      Scope scope = scopeBuilder.build();
 
       analysis.setScope(node, scope);
       return scope;
