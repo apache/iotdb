@@ -543,7 +543,7 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  long getMemoryUsage() {
+  public long getMemoryUsage() {
     return dualKeyCache.stats().memoryUsage();
   }
 
