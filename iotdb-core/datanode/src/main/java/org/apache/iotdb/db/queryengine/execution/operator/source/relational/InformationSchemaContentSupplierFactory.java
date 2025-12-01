@@ -143,7 +143,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
         case InformationSchema.PIPE_PLUGINS:
-          return new PipePluginSupplier(dataTypes);
+          return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
           return new TopicSupplier(dataTypes, userEntity);
         case InformationSchema.SUBSCRIPTIONS:
@@ -603,8 +603,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class PipePluginSupplier extends TsBlockSupplier {
     private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) throws Exception {
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final UserEntity entity)
+        throws Exception {
       super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(entity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
