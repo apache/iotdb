@@ -20,13 +20,17 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -52,6 +56,16 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   @Override
   public InsertTabletStatement constructStatement() {
+    if (statement != null) {
+      if (Objects.isNull(dataBaseName)) {
+        new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+      } else {
+        new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+      }
+
+      return statement;
+    }
+
     if (Objects.isNull(dataBaseName)) {
       new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     } else {
@@ -86,6 +100,16 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     return tabletReq;
   }
 
+  public static PipeTransferTabletRawReqV2 toTPipeTransferRawReq(final ByteBuffer buffer) {
+    final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
+
+    tabletReq.deserializeTPipeTransferRawReq(buffer);
+    tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
+
+    return tabletReq;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReqV2 toTPipeTransferReq(
@@ -114,13 +138,10 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
-    tabletReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
+    tabletReq.deserializeTPipeTransferRawReq(transferReq.body);
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
-    tabletReq.body = transferReq.body;
 
     return tabletReq;
   }
@@ -160,5 +181,37 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), dataBaseName);
+  }
+
+  /////////////////////////////// Util ///////////////////////////////
+
+  public void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
+    final int startPosition = buffer.position();
+    try {
+      Pair<InsertTabletStatement, String> statementAndDevice =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
+      this.isAligned = statementAndDevice.getLeft().isAligned();
+      final String dataBaseName = ReadWriteIOUtils.readString(buffer);
+      final InsertTabletStatement insertTabletStatement = statementAndDevice.getLeft();
+      final String tableName = statementAndDevice.getRight();
+      this.dataBaseName = dataBaseName;
+      if (dataBaseName == null) {
+        insertTabletStatement.setDevicePath(
+            DataNodeDevicePathCache.getInstance().getPartialPath(tableName));
+        insertTabletStatement.setColumnCategories(null);
+      } else {
+        insertTabletStatement.setDevicePath(new PartialPath(tableName.toLowerCase(), false));
+        insertTabletStatement.setWriteToTable(true);
+        insertTabletStatement.setDatabaseName(dataBaseName);
+      }
+      this.statement = insertTabletStatement;
+    } catch (final Exception e) {
+      // If Statement deserialization fails, fallback to Tablet format
+      // Reset buffer position for Tablet deserialization
+      buffer.position(startPosition);
+      this.tablet = Tablet.deserialize(buffer);
+      this.isAligned = ReadWriteIOUtils.readBool(buffer);
+      this.dataBaseName = ReadWriteIOUtils.readString(buffer);
+    }
   }
 }
