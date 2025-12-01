@@ -643,7 +643,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         for (String s : statement.getPrivilegeList()) {
           PrivilegeType privilegeType = PrivilegeType.valueOf(s.toUpperCase());
           if (privilegeType.isSystemPrivilege()) {
-            if (!checkHasGlobalAuth(context, privilegeType, auditObject)) {
+            if (!checkHasGlobalAuth(context, privilegeType, auditObject, true)) {
               return AuthorityChecker.getTSStatus(
                   false,
                   "Has no permission to execute "
@@ -1932,13 +1932,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   protected boolean checkHasGlobalAuth(
       IAuditEntity context, PrivilegeType requiredPrivilege, Supplier<String> auditObject) {
+    return checkHasGlobalAuth(context, requiredPrivilege, auditObject, false);
+  }
+
+  protected boolean checkHasGlobalAuth(
+      IAuditEntity context,
+      PrivilegeType requiredPrivilege,
+      Supplier<String> auditObject,
+      boolean checkGrantOption) {
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       recordObjectAuthenticationAuditLog(
           context.setPrivilegeType(requiredPrivilege).setResult(true), auditObject);
       return true;
     }
     boolean result =
-        AuthorityChecker.checkSystemPermission(context.getUsername(), requiredPrivilege);
+        checkGrantOption
+            ? AuthorityChecker.checkSystemPermissionGrantOption(
+                context.getUsername(), requiredPrivilege)
+            : AuthorityChecker.checkSystemPermission(context.getUsername(), requiredPrivilege);
     recordObjectAuthenticationAuditLog(
         context.setPrivilegeType(requiredPrivilege).setResult(result), auditObject);
     return result;
