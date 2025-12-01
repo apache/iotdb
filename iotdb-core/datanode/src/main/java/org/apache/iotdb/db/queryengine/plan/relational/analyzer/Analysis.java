@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -122,6 +123,8 @@ public class Analysis implements IAnalysis {
   private String updateType;
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
+
+  private With with;
 
   // map expandable query to the node being the inner recursive reference
   private final Map<NodeRef<Query>, Node> expandableNamedQueries = new LinkedHashMap<>();
@@ -280,6 +283,14 @@ public class Analysis implements IAnalysis {
 
   public Map<NodeRef<Table>, Query> getNamedQueries() {
     return namedQueries;
+  }
+
+  public With getWith() {
+    return with;
+  }
+
+  public void setWith(With with) {
+    this.with = with;
   }
 
   public boolean isAnalyzed(Expression expression) {

@@ -74,7 +74,7 @@ public class CteMaterializer {
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
-  public void materializeCTE(MPPQueryContext context, Analysis analysis, Query mainQuery) {
+  public void materializeCTE(Analysis analysis, MPPQueryContext context) {
     analysis
         .getNamedQueries()
         .forEach(
@@ -82,7 +82,7 @@ public class CteMaterializer {
               Table table = tableRef.getNode();
               if (query.isMaterialized() && !query.isDone()) {
                 CteDataStore dataStore =
-                    fetchCteQueryResult(context, table, query, mainQuery.getWith().orElse(null));
+                    fetchCteQueryResult(context, table, query, analysis.getWith());
                 if (dataStore == null) {
                   // CTE query execution failed. Use inline instead of materialization
                   // in the outer query

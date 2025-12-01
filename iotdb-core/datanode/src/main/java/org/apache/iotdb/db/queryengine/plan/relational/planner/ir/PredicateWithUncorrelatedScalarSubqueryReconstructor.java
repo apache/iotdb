@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -38,17 +39,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -59,29 +65,32 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
   private static final Coordinator coordinator = Coordinator.getInstance();
 
   public void reconstructPredicateWithUncorrelatedScalarSubquery(
-      Expression expression, MPPQueryContext context) {
+      MPPQueryContext context, Analysis analysis, Expression expression) {
     if (expression instanceof LogicalExpression) {
       LogicalExpression logicalExpression = (LogicalExpression) expression;
       for (Expression term : logicalExpression.getTerms()) {
-        reconstructPredicateWithUncorrelatedScalarSubquery(term, context);
+        reconstructPredicateWithUncorrelatedScalarSubquery(context, analysis, term);
       }
     } else if (expression instanceof NotExpression) {
       NotExpression notExpression = (NotExpression) expression;
-      reconstructPredicateWithUncorrelatedScalarSubquery(notExpression.getValue(), context);
+      reconstructPredicateWithUncorrelatedScalarSubquery(
+          context, analysis, notExpression.getValue());
     } else if (expression instanceof ComparisonExpression) {
       ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
       Expression left = comparisonExpression.getLeft();
       Expression right = comparisonExpression.getRight();
       if (left instanceof Identifier && right instanceof SubqueryExpression) {
         Optional<Literal> result =
-            fetchUncorrelatedSubqueryResultForPredicate((SubqueryExpression) right, context);
+            fetchUncorrelatedSubqueryResultForPredicate(
+                context, (SubqueryExpression) right, analysis.getWith());
         // If the subquery result is not present, we cannot reconstruct the predicate.
         if (result.isPresent()) {
           right = result.get();
         }
       } else if (right instanceof Identifier && left instanceof SubqueryExpression) {
         Optional<Literal> result =
-            fetchUncorrelatedSubqueryResultForPredicate((SubqueryExpression) left, context);
+            fetchUncorrelatedSubqueryResultForPredicate(
+                context, (SubqueryExpression) left, analysis.getWith());
         if (result.isPresent()) {
           left = result.get();
         }
@@ -97,14 +106,40 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
    *     valid result.
    */
   public Optional<Literal> fetchUncorrelatedSubqueryResultForPredicate(
-      SubqueryExpression subqueryExpression, MPPQueryContext context) {
+      MPPQueryContext context, SubqueryExpression subqueryExpression, With with) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
 
     try {
+      Query query = subqueryExpression.getQuery();
+      Query q = query;
+      if (with != null) {
+        List<Identifier> tables =
+            context.getSubQueryTables().getOrDefault(query, ImmutableList.of());
+        List<WithQuery> withQueries =
+            with.getQueries().stream()
+                .filter(
+                    x ->
+                        tables.contains(x.getName())
+                            && !x.getQuery().isMaterialized()
+                            && !x.getQuery().isDone())
+                .collect(Collectors.toList());
+
+        if (!withQueries.isEmpty()) {
+          With w = new With(with.getLocation().orElse(null), with.isRecursive(), withQueries);
+          q =
+              new Query(
+                  Optional.of(w),
+                  query.getQueryBody(),
+                  query.getFill(),
+                  query.getOrderBy(),
+                  query.getOffset(),
+                  query.getLimit());
+        }
+      }
       final ExecutionResult executionResult =
           coordinator.executeForTableModel(
-              subqueryExpression.getQuery(),
+              q,
               relationSqlParser,
               SessionManager.getInstance().getCurrSession(),
               queryId,
