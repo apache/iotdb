@@ -847,10 +847,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
-          statement.getPipeLoggingString(),
-          e);
+          statement.getPipeLoggingString());
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {
