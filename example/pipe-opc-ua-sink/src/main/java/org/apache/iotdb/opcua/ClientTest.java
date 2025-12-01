@@ -20,29 +20,18 @@
 package org.apache.iotdb.opcua;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaMonitoredItem;
-import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaSubscription;
-import org.eclipse.milo.opcua.stack.core.AttributeId;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
-import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
-import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
-import org.eclipse.milo.opcua.stack.core.types.enumerated.MonitoringMode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.BrowseDirection;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
-import org.eclipse.milo.opcua.stack.core.types.structured.ContentFilter;
-import org.eclipse.milo.opcua.stack.core.types.structured.EventFilter;
-import org.eclipse.milo.opcua.stack.core.types.structured.MonitoredItemCreateRequest;
-import org.eclipse.milo.opcua.stack.core.types.structured.MonitoringParameters;
-import org.eclipse.milo.opcua.stack.core.types.structured.ReadValueId;
-import org.eclipse.milo.opcua.stack.core.types.structured.SimpleAttributeOperand;
+import org.eclipse.milo.opcua.stack.core.types.structured.BrowseDescription;
+import org.eclipse.milo.opcua.stack.core.types.structured.BrowseResult;
+import org.eclipse.milo.opcua.stack.core.types.structured.ReferenceDescription;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
 public class ClientTest implements ClientExample {
 
@@ -52,79 +41,28 @@ public class ClientTest implements ClientExample {
     new ClientExampleRunner(example).run();
   }
 
-  private final AtomicLong clientHandles = new AtomicLong(1L);
-
   @Override
   public void run(OpcUaClient client, CompletableFuture<OpcUaClient> future) throws Exception {
     // synchronous connect
     client.connect().get();
+    System.out.println("✅ 连接成功");
 
-    // create a subscription and a monitored item
-    final UaSubscription subscription =
-        client.getSubscriptionManager().createSubscription(200.0).get();
+    // 读取标签值
+    NodeId nodeId = new NodeId(2, "chan2.grass.glasia");
 
-    final ReadValueId readValueId =
-        new ReadValueId(
-            Identifiers.Server, AttributeId.EventNotifier.uid(), null, QualifiedName.NULL_VALUE);
+    // 1. 先读取当前值确认节点可访问
+    DataValue readValue = client.readValue(0, TimestampsToReturn.Both, nodeId).get();
+    System.out.println("读取当前值: " + readValue.getValue().getValue());
+    System.out.println("读取状态: " + readValue.getStatusCode());
 
-    // client handle must be unique per item
-    final UInteger clientHandle = uint(clientHandles.getAndIncrement());
+    // 2. 尝试写入新值
+    Variant newValue = new Variant(42.0);
+    DataValue writeValue = new DataValue(newValue, null, null);
 
-    final EventFilter eventFilter =
-        new EventFilter(
-            new SimpleAttributeOperand[] {
-              new SimpleAttributeOperand(
-                  Identifiers.BaseEventType,
-                  new QualifiedName[] {new QualifiedName(0, "Time")},
-                  AttributeId.Value.uid(),
-                  null),
-              new SimpleAttributeOperand(
-                  Identifiers.BaseEventType,
-                  new QualifiedName[] {new QualifiedName(0, "Message")},
-                  AttributeId.Value.uid(),
-                  null),
-              new SimpleAttributeOperand(
-                  Identifiers.BaseEventType,
-                  new QualifiedName[] {new QualifiedName(0, "SourceName")},
-                  AttributeId.Value.uid(),
-                  null),
-              new SimpleAttributeOperand(
-                  Identifiers.BaseEventType,
-                  new QualifiedName[] {new QualifiedName(0, "SourceNode")},
-                  AttributeId.Value.uid(),
-                  null)
-            },
-            new ContentFilter(null));
+    System.out.println("尝试写入值: " + newValue.getValue());
 
-    final MonitoringParameters parameters =
-        new MonitoringParameters(
-            clientHandle,
-            0.0,
-            ExtensionObject.encode(client.getStaticSerializationContext(), eventFilter),
-            uint(10000),
-            true);
-
-    final MonitoredItemCreateRequest request =
-        new MonitoredItemCreateRequest(readValueId, MonitoringMode.Reporting, parameters);
-
-    final List<UaMonitoredItem> items =
-        subscription
-            .createMonitoredItems(TimestampsToReturn.Both, Collections.singletonList(request))
-            .get();
-
-    // do something with the value updates
-    final UaMonitoredItem monitoredItem = items.get(0);
-
-    final AtomicInteger eventCount = new AtomicInteger(0);
-
-    monitoredItem.setEventConsumer(
-        (item, vs) -> {
-          eventCount.incrementAndGet();
-          System.out.println("Event Received from " + item.getReadValueId().getNodeId());
-
-          for (int i = 0; i < vs.length; i++) {
-            System.out.println(("\tvariant[" + i + "]: " + vs[i].getValue()));
-          }
-        });
+    StatusCode writeStatus = client.writeValue(nodeId, writeValue).get();
+    System.out.println("写入状态: " + writeStatus);
+    client.disconnect().get();
   }
 }
