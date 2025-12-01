@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EvaluateEmptyIntersect;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementExceptAll;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementExceptDistinctAsUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectAll;
@@ -33,7 +34,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Im
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementPatternRecognition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementTableFunctionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeExcept;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeIntersect;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
@@ -50,10 +53,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneCorrelatedJoinCorrelation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneDistinctAggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneEnforceSingleRowColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneExceptSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneExplainAnalyzeColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFillColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneGapFillColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneIntersectSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinChildrenColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
@@ -76,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pu
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushProjectionThroughUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushTopKThroughUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveEmptyExceptBranches;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveEmptyUnionBranches;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantExists;
@@ -126,7 +132,9 @@ public class LogicalOptimizeFactory {
             new PruneCorrelatedJoinColumns(),
             new PruneCorrelatedJoinCorrelation(),
             new PruneEnforceSingleRowColumns(),
+            new PruneExceptSourceColumns(),
             new PruneFilterColumns(),
+            new PruneIntersectSourceColumns(),
             new PruneGapFillColumns(),
             new PruneFillColumns(),
             new PruneLimitColumns(),
@@ -216,6 +224,8 @@ public class LogicalOptimizeFactory {
                     ImmutableSet.of(
                         new ImplementTableFunctionSource(),
                         new RemoveEmptyUnionBranches(),
+                        new EvaluateEmptyIntersect(),
+                        new RemoveEmptyExceptBranches(),
                         new MergeFilters(),
                         new InlineProjections(plannerContext),
                         new RemoveRedundantIdentityProjections(),
@@ -258,8 +268,10 @@ public class LogicalOptimizeFactory {
                 .addAll(limitPushdownRules)
                 .addAll(
                     ImmutableSet.of(
-                        new MergeUnion(),
                         new RemoveEmptyUnionBranches(),
+                        new EvaluateEmptyIntersect(),
+                        new RemoveEmptyExceptBranches(),
+                        new MergeUnion(),
                         new MergeFilters(),
                         new RemoveTrivialFilters(),
                         new MergeLimits(),
@@ -275,8 +287,8 @@ public class LogicalOptimizeFactory {
                 .addAll(
                     ImmutableSet.of(
                         new MergeUnion(),
-                        // new MergeIntersect
-                        // new MergeExcept
+                        new MergeIntersect(),
+                        new MergeExcept(),
                         new PruneDistinctAggregation()))
                 .build()),
         new IterativeOptimizer(
@@ -336,11 +348,17 @@ public class LogicalOptimizeFactory {
         // Currently, we inline symbols but do not simplify them in predicate push down.
         // So we have to add extra simplifyOptimizer here
         simplifyOptimizer,
-        // Currently, Distinct is not supported, so we cant use this rule for now.
-        //        new IterativeOptimizer(
-        //            plannerContext,
-        //            ruleStats,
-        //            ImmutableSet.of(new TransformFilteringSemiJoinToInnerJoin())),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(
+                new RemoveEmptyUnionBranches(),
+                new EvaluateEmptyIntersect(),
+                new RemoveEmptyExceptBranches()
+                // Currently, Distinct is not supported, so we cant use this rule for now.
+                // new TransformFilteringSemiJoinToInnerJoin()
+                )),
+
         // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
