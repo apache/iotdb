@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.recent;
+package org.apache.iotdb.relational.it.query.object;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -43,7 +43,7 @@ import java.time.LocalDate;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBObjectTypeQueryIT {
+public class IoTDBObjectQueryIT2 {
 
   private static final String DATABASE_NAME = "test";
 

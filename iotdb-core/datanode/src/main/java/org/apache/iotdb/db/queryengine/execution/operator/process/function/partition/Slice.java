@@ -26,6 +26,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.LocalDate;
@@ -35,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 /** Parts of partition. */
 public class Slice {
@@ -172,9 +175,15 @@ public class Slice {
 
     @Override
     public String getString(int columnIndex) {
-      return originalColumns[columnIndex]
-          .getBinary(offset)
-          .getStringValue(TSFileConfig.STRING_CHARSET);
+      Binary binary = originalColumns[columnIndex].getBinary(offset);
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        return BytesUtils.parseObjectByteArrayToString(binary.getValues());
+      } else if (type == Type.BLOB) {
+        return BytesUtils.parseBlobByteArrayToString(binary.getValues());
+      } else {
+        return binary.getStringValue(TSFileConfig.STRING_CHARSET);
+      }
     }
 
     @Override
@@ -189,9 +198,6 @@ public class Slice {
 
     @Override
     public Binary readObject(int columnIndex, long offset, int length) {
-      if (getDataType(columnIndex) == Type.OBJECT) {
-        throw new UnsupportedOperationException("current column is not object column");
-      }
       Binary binary = getBinary(columnIndex);
       return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
     }

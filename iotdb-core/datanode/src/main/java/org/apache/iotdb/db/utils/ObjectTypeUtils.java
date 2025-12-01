@@ -127,8 +127,6 @@ public class ObjectTypeUtils {
         if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
           throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }
-        buffer.clear();
-        req.setOffset(offset);
         continue;
       }
       break;
