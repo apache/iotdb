@@ -60,9 +60,9 @@ public class ObjectTypeUtils {
 
   public static ByteBuffer readObjectContent(
       Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
-    Pair<Long, String> ObjectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
-    long fileLength = ObjectLengthPathPair.getLeft();
-    String relativePath = ObjectLengthPathPair.getRight();
+    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    long fileLength = objectLengthPathPair.getLeft();
+    String relativePath = objectLengthPathPair.getRight();
     int actualReadSize =
         ObjectTypeUtils.getActualReadSize(
             relativePath, fileLength, offset, length < 0 ? fileLength : length);
@@ -96,8 +96,7 @@ public class ObjectTypeUtils {
 
   private static ByteBuffer readObjectContentFromRemoteFile(
       final String relativePath, final long offset, final int readSize) {
-    byte[] bytes = new byte[readSize];
-    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    ByteBuffer buffer = ByteBuffer.allocate(readSize);
     TConsensusGroupId consensusGroupId =
         new TConsensusGroupId(
             TConsensusGroupType.DataRegion,
@@ -124,8 +123,7 @@ public class ObjectTypeUtils {
           buffer.put(partial);
         }
       } catch (Exception e) {
-        logger.error(
-            "Failed to read object from datanode: {}" + e.getMessage(), dataNodeLocation, e);
+        logger.error("Failed to read object from datanode: {}", dataNodeLocation, e);
         if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
           throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }

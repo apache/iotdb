@@ -397,12 +397,10 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
 
   protected void castObject(ColumnBuilder columnBuilder, Binary value) {
     String stringValue = BytesUtils.parseObjectByteArrayToString(value.getValues());
-    switch (returnType.getTypeEnum()) {
-      case STRING:
-        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(stringValue)));
-        break;
-      default:
-        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
+    if (returnType.getTypeEnum() == TypeEnum.STRING) {
+      returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(stringValue)));
+    } else {
+      throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 }
