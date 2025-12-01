@@ -398,9 +398,7 @@ public abstract class AlignedTVList extends TVList {
       // Eg2: If rowCount=4 and ARRAY_SIZE=2, we need to supply 2 bitmaps for the extending column.
       // These 2 bitmaps should mark all bits to represent 4 nulls.
       if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
-        for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
-          bitMap.mark(j);
-        }
+        bitMap.markRange(0, rowCount % ARRAY_SIZE);
       } else {
         bitMap.markAll();
       }
