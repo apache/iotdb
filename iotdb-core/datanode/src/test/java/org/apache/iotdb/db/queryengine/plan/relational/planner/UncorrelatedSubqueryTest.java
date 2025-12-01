@@ -75,7 +75,7 @@ public class UncorrelatedSubqueryTest {
         Mockito.spy(new PredicateWithUncorrelatedScalarSubqueryReconstructor());
     Mockito.when(
             predicateWithUncorrelatedScalarSubquery.fetchUncorrelatedSubqueryResultForPredicate(
-                Mockito.any(), Mockito.any()))
+                Mockito.any(), Mockito.any(), Mockito.any()))
         .thenReturn(Optional.of(new LongLiteral("1")));
     PredicateWithUncorrelatedScalarSubqueryReconstructor.setInstance(
         predicateWithUncorrelatedScalarSubquery);
