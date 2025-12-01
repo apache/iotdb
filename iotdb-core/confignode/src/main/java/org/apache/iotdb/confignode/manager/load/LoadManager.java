@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
@@ -471,6 +473,24 @@ public class LoadManager {
     heartbeatSampleMap.forEach(loadCache::cacheConsensusSample);
     loadCache.updateConsensusGroupStatistics();
     eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
+  }
+
+  /**
+   * Auto balance the RegionReplicas' distribution for cluster RegionGroups.
+   *
+   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param regionGroupStatisticsMap Statistics of RegionGroups
+   * @param allocatedRegionGroups Allocated RegionGroups
+   * @param replicationFactor Replication factor of TRegionReplicaSet
+   * @return The optimal TRegionReplicaSet derived by the specified algorithm
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      int replicationFactor) {
+    return regionBalancer.autoBalanceRegionReplicasDistribution(
+        availableDataNodeMap, regionGroupStatisticsMap, allocatedRegionGroups, replicationFactor);
   }
 
   public LoadCache getLoadCache() {

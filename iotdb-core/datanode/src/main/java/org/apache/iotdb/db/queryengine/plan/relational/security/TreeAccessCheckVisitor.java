@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMul
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.BalanceRegionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -1607,6 +1608,12 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitMigrateRegion(
       MigrateRegionStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+  }
+
+  @Override
+  public TSStatus visitBalanceRegions(
+      BalanceRegionsStatement statement, TreeAccessCheckContext context) {
     return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
   }
 

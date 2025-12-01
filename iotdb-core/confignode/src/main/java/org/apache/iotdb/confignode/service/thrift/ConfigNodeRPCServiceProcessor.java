@@ -1462,4 +1462,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
     return configManager.pushHeartbeat(dataNodeId, resp);
   }
+
+  @Override
+  public TSStatus balanceRegions() {
+    return configManager.balanceRegions();
+  }
 }

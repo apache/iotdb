@@ -109,6 +109,10 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
+BALANCE
+    : B A L A N C E
+    ;
+
 BEFORE
     : B E F O R E
     ;

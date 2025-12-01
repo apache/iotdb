@@ -29,24 +29,31 @@ import java.util.Objects;
 public class RegionStatistics extends AbstractStatistics {
 
   private final RegionStatus regionStatus;
+  private final long diskUsage;
 
-  public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus) {
+  public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus, long diskUsage) {
     super(statisticsNanoTimestamp);
     this.regionStatus = regionStatus;
+    this.diskUsage = diskUsage;
   }
 
   @TestOnly
   public RegionStatistics(RegionStatus regionStatus) {
     super(System.nanoTime());
     this.regionStatus = regionStatus;
+    this.diskUsage = 0;
   }
 
   public static RegionStatistics generateDefaultRegionStatistics() {
-    return new RegionStatistics(0, RegionStatus.Unknown);
+    return new RegionStatistics(0, RegionStatus.Unknown, 0);
   }
 
   public RegionStatus getRegionStatus() {
     return regionStatus;
+  }
+
+  public long getDiskUsage() {
+    return diskUsage;
   }
 
   @Override

@@ -1304,6 +1304,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus balanceRegions() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.balanceRegions(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus reconstructRegion(TReconstructRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.reconstructRegion(req), status -> !updateConfigNodeLeader(status));
