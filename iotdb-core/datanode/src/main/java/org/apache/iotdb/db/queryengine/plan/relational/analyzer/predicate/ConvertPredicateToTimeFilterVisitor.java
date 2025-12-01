@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -299,6 +300,13 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
   }
 
   public static long getLongValue(Expression expression) {
-    return ((LongLiteral) expression).getParsedValue();
+    if (expression instanceof LongLiteral) {
+      return ((LongLiteral) expression).getParsedValue();
+    } else if (expression instanceof DoubleLiteral) {
+      return (long) ((DoubleLiteral) expression).getValue();
+    } else {
+      throw new IllegalArgumentException(
+          "Expression should be LongLiteral or DoubleLiteral, but got: " + expression.getClass());
+    }
   }
 }
