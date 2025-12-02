@@ -171,7 +171,7 @@ public class FragmentInstanceExecution {
       return false;
     }
 
-    statistics.setDataRegion(context.getDataRegion().getDataRegionId());
+    statistics.setDataRegion(context.getDataRegion().getDataRegionIdString());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());
     statistics.setEndTimeInMS(
