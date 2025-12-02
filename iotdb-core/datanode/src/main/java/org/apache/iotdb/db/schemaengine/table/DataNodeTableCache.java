@@ -107,7 +107,6 @@ public class DataNodeTableCache implements ITableCache {
                               Function.identity(),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
-
       preCreateMap.forEach(
           (key, value) ->
               preUpdateTableMap.put(
