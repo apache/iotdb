@@ -555,6 +555,10 @@ class ModelStorage:
 
     def is_model_registered(self, model_id: str) -> bool:
         """Check if model is registered (search in _models)"""
+        # Lazy registration: if it's a Transformers model and not registered, register it first
+        if self.ensure_transformers_registered(model_id) is None:
+            return False
+
         with self._lock_pool.get_lock("").read_lock():
             for category_dict in self._models.values():
                 if model_id in category_dict:
@@ -568,6 +572,3 @@ class ModelStorage:
             for category_dict in self._models.values():
                 model_ids.extend(category_dict.keys())
             return model_ids
-
-    def get_models_dir(self):
-        return self._models_dir
