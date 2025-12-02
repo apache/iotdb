@@ -17,24 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
+package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.tsfile.block.column.Column;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
+
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
-import java.util.List;
-
-public class MaskedRecordIterator extends RecordIterator {
-  private final int[] selectedPositions;
-
-  public MaskedRecordIterator(
-      List<Column> childrenColumns, List<Type> dataTypes, AggregationMask mask) {
-    super(childrenColumns, dataTypes, mask.getSelectedPositionCount());
-    this.selectedPositions = mask.getSelectedPositions();
+public class ObjectLengthColumnTransformer extends AbstractLengthColumnTransformer {
+  public ObjectLengthColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+    super(returnType, childColumnTransformer);
   }
 
   @Override
-  protected int getCurrentIndex() {
-    return selectedPositions[currentIndex++];
+  protected long transformNonNullValue(Binary binary) {
+    return ObjectTypeUtils.getObjectLength(binary);
   }
 }

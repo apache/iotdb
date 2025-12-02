@@ -528,6 +528,7 @@ public class CompactionUtils {
     }
   }
 
+  @SuppressWarnings("java:S3776")
   public static void removeDeletedObjectFiles(
       TsFileSequenceReader reader,
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList,
@@ -581,6 +582,7 @@ public class CompactionUtils {
     }
   }
 
+  @SuppressWarnings("java:S3776")
   private static void removeDeletedObjectFiles(
       TsFileSequenceReader reader,
       AbstractAlignedChunkMetadata alignedChunkMetadata,
