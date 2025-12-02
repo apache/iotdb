@@ -20,6 +20,7 @@ from typing import Dict, Optional
 
 from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates
 
+
 class ModelInfo:
     def __init__(
         self,
@@ -30,7 +31,6 @@ class ModelInfo:
         model_cls: str = "",
         pipeline_cls: str = "",
         repo_id: str = "",
-        path: str = "",
         auto_map: Optional[Dict] = None,
 
         _transformers_registered: bool = False,
@@ -42,7 +42,6 @@ class ModelInfo:
         self.model_cls = model_cls
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
-        self.path = path
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
         self._transformers_registered = _transformers_registered  # Internal flag: whether registered to Transformers
 
@@ -50,7 +49,7 @@ class ModelInfo:
         return (
             f"ModelInfo(model_id={self.model_id}, model_type={self.model_type}, "
             f"category={self.category.value}, state={self.state.value}, "
-            f"path={self.path}, has_auto_map={self.auto_map is not None})"
+            f"has_auto_map={self.auto_map is not None})"
         )
 
 

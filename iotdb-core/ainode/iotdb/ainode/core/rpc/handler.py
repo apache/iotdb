@@ -29,6 +29,7 @@ from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatResp,
     TDeleteModelReq,
     TForecastReq,
+    TForecastResp,
     TInferenceReq,
     TInferenceResp,
     TLoadModelReq,
