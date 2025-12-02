@@ -99,13 +99,13 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
   public int estimateSize() {
     // Do not need to calculate database because it is interned
     return INSTANCE_SIZE
+        + measurementMap.size() * (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
         + measurementMap.entrySet().stream()
             .mapToInt(
                 entry ->
                     Math.toIntExact(
                         RamUsageEstimator.sizeOf(entry.getKey())
-                            + SchemaCacheEntry.estimateSize(entry.getValue())
-                            + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY))
+                            + SchemaCacheEntry.estimateSize(entry.getValue())))
             .reduce(0, Integer::sum);
   }
 }

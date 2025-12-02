@@ -73,6 +73,12 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
+  public T computeCacheEntryIfPresent(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+    return cacheEntryMap.computeIfPresent(secondKey, computation.apply(memory));
+  }
+
+  @Override
   public long removeCacheEntry(final SK secondKey) {
     final T result = cacheEntryMap.remove(secondKey);
     if (Objects.nonNull(result)) {
