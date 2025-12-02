@@ -468,7 +468,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           }
         }
       }
-    } catch (final AccessDeniedException e) {
+    } catch (final AccessDeniedException | PipeRuntimeOutOfMemoryCriticalException e) {
       throw e;
     } catch (final Exception e) {
       if (e instanceof InterruptedException) {

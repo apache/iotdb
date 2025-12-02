@@ -28,6 +28,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 public class PipeInsertEventSorter {
 
@@ -115,6 +116,10 @@ public class PipeInsertEventSorter {
       final int columnIndex,
       final BitMap originalBitMap,
       final BitMap deDuplicatedBitMap) {
+    // Older version's sender may contain null values, we need to cover this case
+    if (Objects.isNull(valueList)) {
+      return null;
+    }
     switch (dataType) {
       case BOOLEAN:
         final boolean[] boolValues = (boolean[]) valueList;
