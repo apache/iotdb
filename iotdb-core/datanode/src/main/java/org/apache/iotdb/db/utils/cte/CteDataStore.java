@@ -95,11 +95,7 @@ public class CteDataStore {
     return columnIndex2TsBlockColumnIndexList;
   }
 
-  public int getRefCount() {
-    return count.get();
-  }
-
-  public void increaseRefCount() {
-    count.getAndIncrement();
+  public int increaseRefCount() {
+    return count.incrementAndGet();
   }
 }
