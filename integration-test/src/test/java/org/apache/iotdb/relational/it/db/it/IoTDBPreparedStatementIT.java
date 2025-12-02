@@ -96,38 +96,56 @@ public class IoTDBPreparedStatementIT {
       throws SQLException {
     // Execute with parameters using write connection directly
     // In cluster test, we need to use write connection to ensure same session
-    Statement writeStatement;
     if (connection instanceof ClusterTestConnection) {
       // Use write connection directly for PreparedStatement queries
-      writeStatement =
-          ((ClusterTestConnection) connection)
-              .writeConnection
-              .getUnderlyingConnection()
-              .createStatement();
-    } else {
-      writeStatement = statement;
-    }
+      try (Statement writeStatement =
+              ((ClusterTestConnection) connection)
+                  .writeConnection
+                  .getUnderlyingConnection()
+                  .createStatement();
+          ResultSet resultSet = writeStatement.executeQuery(executeSql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
 
-    try (ResultSet resultSet = writeStatement.executeQuery(executeSql)) {
-      ResultSetMetaData metaData = resultSet.getMetaData();
-
-      // Verify header
-      assertEquals(expectedHeader.length, metaData.getColumnCount());
-      for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
-      }
-
-      // Verify data
-      int cnt = 0;
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= expectedHeader.length; i++) {
-          builder.append(resultSet.getString(i)).append(",");
+        // Verify header
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
         }
-        assertEquals(expectedRetArray[cnt], builder.toString());
-        cnt++;
+
+        // Verify data
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(expectedRetArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(expectedRetArray.length, cnt);
       }
-      assertEquals(expectedRetArray.length, cnt);
+    } else {
+      try (ResultSet resultSet = statement.executeQuery(executeSql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+
+        // Verify header
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        // Verify data
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(expectedRetArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(expectedRetArray.length, cnt);
+      }
     }
   }
 

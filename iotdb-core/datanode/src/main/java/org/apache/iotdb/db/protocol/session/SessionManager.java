@@ -361,6 +361,18 @@ public class SessionManager implements SessionManagerMBean {
       }
     }
     session.removeStatementId(statementId);
+
+    // Release PreparedStatement resources when statement is closed
+    try {
+      PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to release PreparedStatement resources when closing statement {} for session {}: {}",
+          statementId,
+          session,
+          e.getMessage(),
+          e);
+    }
   }
 
   public long requestQueryId(IClientSession session, Long statementId) {

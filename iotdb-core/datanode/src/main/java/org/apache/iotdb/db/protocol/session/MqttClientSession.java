@@ -22,16 +22,11 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MqttClientSession extends IClientSession {
 
   private final String clientID;
-
-  // Map from statement name to PreparedStatementInfo
-  private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 
   public MqttClientSession(String clientID) {
     this.clientID = clientID;
@@ -84,21 +79,25 @@ public class MqttClientSession extends IClientSession {
 
   @Override
   public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
-    preparedStatements.put(statementName, info);
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
   }
 
   @Override
   public PreparedStatementInfo removePreparedStatement(String statementName) {
-    return preparedStatements.remove(statementName);
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
   }
 
   @Override
   public PreparedStatementInfo getPreparedStatement(String statementName) {
-    return preparedStatements.get(statementName);
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
   }
 
   @Override
   public Set<String> getPreparedStatementNames() {
-    return preparedStatements.keySet();
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
   }
 }
