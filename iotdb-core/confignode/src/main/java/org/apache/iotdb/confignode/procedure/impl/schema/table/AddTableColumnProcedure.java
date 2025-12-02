@@ -77,7 +77,6 @@ public class AddTableColumnProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
           preRelease(env);
-          setNextState(AddTableColumnState.ADD_COLUMN);
           break;
         case ADD_COLUMN:
           LOGGER.info("Add column to table {}.{}", database, tableName);
@@ -124,6 +123,7 @@ public class AddTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
+    setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
   private void addColumn(final ConfigNodeProcedureEnv env) {
