@@ -137,6 +137,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
     tabletReq.deserializeTPipeTransferRawReq(transferReq.body);
+    tabletReq.body = transferReq.body;
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
