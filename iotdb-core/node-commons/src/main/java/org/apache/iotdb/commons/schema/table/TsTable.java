@@ -82,7 +82,6 @@ public class TsTable {
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
-  private transient boolean needCheck4Object = false;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -276,25 +275,6 @@ public class TsTable {
     } finally {
       readWriteLock.readLock().unlock();
     }
-  }
-
-  public boolean setNeedCheck4Object() {
-    for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
-      if (schema.getDataType().equals(TSDataType.OBJECT)) {
-        this.needCheck4Object = true;
-        return true;
-      }
-    }
-    this.needCheck4Object = false;
-    return false;
-  }
-
-  public void setNeedCheck4Object(final boolean needCheck4Object) {
-    this.needCheck4Object = needCheck4Object;
-  }
-
-  public boolean isNeedCheck4Object() {
-    return needCheck4Object;
   }
 
   public boolean containsPropWithoutLock(final String propKey) {

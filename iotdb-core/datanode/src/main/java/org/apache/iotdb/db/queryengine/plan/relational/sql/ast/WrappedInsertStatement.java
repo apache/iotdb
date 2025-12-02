@@ -133,21 +133,21 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       validateTableSchema(incomingSchemaColumn, realSchemaColumn, i, innerTreeStatement);
     }
     // incoming schema should contain all id columns in real schema and have consistent order
-    final List<ColumnSchema> realIdColumns = realSchema.getTagColumns();
-    adjustIdColumns(realIdColumns, innerTreeStatement);
+    final List<ColumnSchema> realTagColumns = realSchema.getTagColumns();
+    adjustTagColumns(realTagColumns, innerTreeStatement);
   }
 
   /**
    * Adjust the order of ID columns in this insertion to be consistent with that from the schema
    * region.
    *
-   * @param realIdColumnSchemas id column order from the schema region
+   * @param realTagColumnSchemas id column order from the schema region
    */
-  public void adjustIdColumns(
-      List<ColumnSchema> realIdColumnSchemas, final InsertBaseStatement baseStatement) {
+  public void adjustTagColumns(
+      List<ColumnSchema> realTagColumnSchemas, final InsertBaseStatement baseStatement) {
     List<ColumnSchema> incomingColumnSchemas = toTableSchema(baseStatement).getColumns();
-    for (int realIdColPos = 0; realIdColPos < realIdColumnSchemas.size(); realIdColPos++) {
-      ColumnSchema realColumn = realIdColumnSchemas.get(realIdColPos);
+    for (int realIdColPos = 0; realIdColPos < realTagColumnSchemas.size(); realIdColPos++) {
+      ColumnSchema realColumn = realTagColumnSchemas.get(realIdColPos);
       int incomingIdColPos = incomingColumnSchemas.indexOf(realColumn);
       if (incomingIdColPos == -1) {
         // if the realIdColPos-th id column in the table is missing, insert an empty column in the
