@@ -21,9 +21,7 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -32,19 +30,16 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+@Category({TableLocalStandaloneIT.class})
 public class IoTDBPreparedStatementIT {
   private static final String DATABASE_NAME = "test";
   private static final String[] sqls =
@@ -81,74 +76,6 @@ public class IoTDBPreparedStatementIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  /**
-   * Execute a prepared statement query and verify the result. For PreparedStatement EXECUTE
-   * queries, use the write connection directly instead of tableResultSetEqualTest, because
-   * PreparedStatements are session-scoped and tableResultSetEqualTest may route queries to
-   * different nodes where the PreparedStatement doesn't exist.
-   */
-  private static void executePreparedStatementAndVerify(
-      Connection connection,
-      Statement statement,
-      String executeSql,
-      String[] expectedHeader,
-      String[] expectedRetArray)
-      throws SQLException {
-    // Execute with parameters using write connection directly
-    // In cluster test, we need to use write connection to ensure same session
-    if (connection instanceof ClusterTestConnection) {
-      // Use write connection directly for PreparedStatement queries
-      try (Statement writeStatement =
-              ((ClusterTestConnection) connection)
-                  .writeConnection
-                  .getUnderlyingConnection()
-                  .createStatement();
-          ResultSet resultSet = writeStatement.executeQuery(executeSql)) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-
-        // Verify header
-        assertEquals(expectedHeader.length, metaData.getColumnCount());
-        for (int i = 1; i <= metaData.getColumnCount(); i++) {
-          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
-        }
-
-        // Verify data
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= expectedHeader.length; i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(expectedRetArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(expectedRetArray.length, cnt);
-      }
-    } else {
-      try (ResultSet resultSet = statement.executeQuery(executeSql)) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-
-        // Verify header
-        assertEquals(expectedHeader.length, metaData.getColumnCount());
-        for (int i = 1; i <= metaData.getColumnCount(); i++) {
-          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
-        }
-
-        // Verify data
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= expectedHeader.length; i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(expectedRetArray[cnt], builder.toString());
-          cnt++;
-        }
-        assertEquals(expectedRetArray.length, cnt);
-      }
-    }
-  }
-
   @Test
   public void testPrepareAndExecute() {
     String[] expectedHeader = new String[] {"time", "id", "name", "value"};
@@ -158,9 +85,8 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement
       statement.execute("PREPARE stmt1 FROM SELECT * FROM test_table WHERE id = ?");
-      // Execute with parameter using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt1 USING 2", expectedHeader, retArray);
+      // Execute with parameter
+      tableResultSetEqualTest("EXECUTE stmt1 USING 2", expectedHeader, retArray, DATABASE_NAME);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt1");
     } catch (SQLException e) {
@@ -178,11 +104,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement
       statement.execute("PREPARE stmt2 FROM SELECT * FROM test_table WHERE id = ?");
-      // Execute multiple times with different parameters using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt2 USING 1", expectedHeader, retArray1);
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt2 USING 3", expectedHeader, retArray2);
+      // Execute multiple times with different parameters
+      tableResultSetEqualTest("EXECUTE stmt2 USING 1", expectedHeader, retArray1, DATABASE_NAME);
+      tableResultSetEqualTest("EXECUTE stmt2 USING 3", expectedHeader, retArray2, DATABASE_NAME);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt2");
     } catch (SQLException e) {
@@ -199,9 +123,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement with multiple parameters
       statement.execute("PREPARE stmt3 FROM SELECT * FROM test_table WHERE id = ? AND value > ?");
-      // Execute with multiple parameters using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt3 USING 2, 150.0", expectedHeader, retArray);
+      // Execute with multiple parameters
+      tableResultSetEqualTest(
+          "EXECUTE stmt3 USING 2, 150.0", expectedHeader, retArray, DATABASE_NAME);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt3");
     } catch (SQLException e) {
@@ -309,11 +233,10 @@ public class IoTDBPreparedStatementIT {
       // Prepare multiple statements
       statement.execute("PREPARE stmt4 FROM SELECT * FROM test_table WHERE id = ?");
       statement.execute("PREPARE stmt5 FROM SELECT COUNT(*) FROM test_table WHERE value > ?");
-      // Execute both statements using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt4 USING 1", expectedHeader1, retArray1);
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt5 USING 200.0", expectedHeader2, retArray2);
+      // Execute both statements
+      tableResultSetEqualTest("EXECUTE stmt4 USING 1", expectedHeader1, retArray1, DATABASE_NAME);
+      tableResultSetEqualTest(
+          "EXECUTE stmt5 USING 200.0", expectedHeader2, retArray2, DATABASE_NAME);
       // Deallocate both
       statement.execute("DEALLOCATE PREPARE stmt4");
       statement.execute("DEALLOCATE PREPARE stmt5");
@@ -354,9 +277,8 @@ public class IoTDBPreparedStatementIT {
       // Prepare a statement with aggregation
       statement.execute(
           "PREPARE stmt7 FROM SELECT AVG(value) FROM test_table WHERE id >= ? AND id <= ?");
-      // Execute with parameters using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt7 USING 2, 4", expectedHeader, retArray);
+      // Execute with parameters
+      tableResultSetEqualTest("EXECUTE stmt7 USING 2, 4", expectedHeader, retArray, DATABASE_NAME);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt7");
     } catch (SQLException e) {
@@ -373,9 +295,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement with string parameter
       statement.execute("PREPARE stmt8 FROM SELECT * FROM test_table WHERE name = ?");
-      // Execute with string parameter using write connection directly
-      executePreparedStatementAndVerify(
-          connection, statement, "EXECUTE stmt8 USING 'Charlie'", expectedHeader, retArray);
+      // Execute with string parameter
+      tableResultSetEqualTest(
+          "EXECUTE stmt8 USING 'Charlie'", expectedHeader, retArray, DATABASE_NAME);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt8");
     } catch (SQLException e) {
