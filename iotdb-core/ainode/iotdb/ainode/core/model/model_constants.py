@@ -17,7 +17,6 @@
 #
 from enum import Enum
 
-
 # Model file constants
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
 MODEL_CONFIG_FILE_IN_JSON = "config.json"

@@ -41,6 +41,7 @@ from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 logger = Logger()
 
+
 def _estimate_shared_pool_size_by_total_mem(
     device: torch.device,
     existing_model_infos: List[ModelInfo],

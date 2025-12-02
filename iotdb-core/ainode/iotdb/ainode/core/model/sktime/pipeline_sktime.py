@@ -39,7 +39,11 @@ class SktimePipeline(BasicPipeline):
             # Batch processing: convert each row to Series
             outputs = []
             for i in range(input_ids.shape[0]):
-                series = pd.Series(input_ids[i].cpu().numpy() if isinstance(input_ids, torch.Tensor) else input_ids[i])
+                series = pd.Series(
+                    input_ids[i].cpu().numpy()
+                    if isinstance(input_ids, torch.Tensor)
+                    else input_ids[i]
+                )
                 output = self.model.generate(series)
                 outputs.append(output)
             output = np.array(outputs)

@@ -36,6 +36,7 @@ from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 
+
 @singleton
 class ModelManager:
     def __init__(self):
@@ -49,14 +50,15 @@ class ModelManager:
         try:
             if self._model_storage.register_model(model_id=req.modelId, uri=req.uri):
                 return TRegisterModelResp(get_status(TSStatusCode.SUCCESS_STATUS))
-            return TRegisterModelResp(
-                get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
+            return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR))
         except ValueError as e:
             return TRegisterModelResp(
                 get_status(TSStatusCode.INVALID_URI_ERROR, str(e))
             )
         except Exception as e:
-            return TRegisterModelResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)))
+            return TRegisterModelResp(
+                get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+            )
 
     def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
         return self._model_storage.show_models(req)

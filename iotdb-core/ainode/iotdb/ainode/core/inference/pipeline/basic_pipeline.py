@@ -28,9 +28,7 @@ class BasicPipeline(ABC):
     def __init__(self, model_id, **infer_kwargs):
         self.model_id = model_id
         self.device = infer_kwargs.get("device", "cpu")
-        self.model = ModelManager().load_model(
-            model_id, device_map=self.device
-        )
+        self.model = ModelManager().load_model(model_id, device_map=self.device)
 
     def _preprocess(self, inputs):
         """

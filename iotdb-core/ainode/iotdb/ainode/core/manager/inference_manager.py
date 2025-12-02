@@ -64,7 +64,7 @@ class InferenceManager:
     )  # How often to check for requests in the result queue
 
     def __init__(self):
-        self._model_manager =  ModelManager()
+        self._model_manager = ModelManager()
         self._model_mem_usage_map: Dict[str, int] = (
             {}
         )  # store model memory usage for each model

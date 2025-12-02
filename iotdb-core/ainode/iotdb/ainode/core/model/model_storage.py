@@ -21,7 +21,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from huggingface_hub import hf_hub_download, snapshot_download
 from transformers import AutoConfig, AutoModelForCausalLM
@@ -30,14 +30,27 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import BuiltInModelDeletionError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates, UriType, \
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS, MODEL_CONFIG_FILE_IN_JSON
+from iotdb.ainode.core.model.model_constants import (
+    MODEL_CONFIG_FILE_IN_JSON,
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    ModelCategory,
+    ModelStates,
+    UriType,
+)
 from iotdb.ainode.core.model.model_info import (
     BUILTIN_HF_TRANSFORMERS_MODEL_MAP,
     BUILTIN_SKTIME_MODEL_MAP,
-    ModelInfo)
-from iotdb.ainode.core.model.utils import ensure_init_file, load_model_config_in_json, parse_uri_type, get_parsed_uri, \
-    validate_model_files, temporary_sys_path, import_class_from_path
+    ModelInfo,
+)
+from iotdb.ainode.core.model.utils import (
+    ensure_init_file,
+    get_parsed_uri,
+    import_class_from_path,
+    load_model_config_in_json,
+    parse_uri_type,
+    temporary_sys_path,
+    validate_model_files,
+)
 from iotdb.ainode.core.util.lock import ModelLockPool
 from iotdb.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
 from iotdb.thrift.common.ttypes import TSStatus
@@ -88,7 +101,9 @@ class ModelStorage:
         elif category == ModelCategory.USER_DEFINED:
             for model_id in os.listdir(category_path):
                 if os.path.isdir(os.path.join(category_path, model_id)):
-                    self._process_user_defined_model_directory(os.path.join(category_path, model_id), model_id)
+                    self._process_user_defined_model_directory(
+                        os.path.join(category_path, model_id), model_id
+                    )
 
     def _discover_builtin_models(self, category_path: str):
         # Register SKTIME models directly from map
@@ -104,14 +119,16 @@ class ModelStorage:
             os.makedirs(model_dir, exist_ok=True)
             self._process_builtin_model_directory(model_dir, model_id)
 
-    def _process_builtin_model_directory(
-        self, model_dir: str, model_id: str
-    ):
+    def _process_builtin_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a builtin model directory."""
         ensure_init_file(model_dir)
         with self._lock_pool.get_lock(model_id).write_lock():
-            self._models[ModelCategory.BUILTIN.value][model_id] = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
-            self._models[ModelCategory.BUILTIN.value][model_id].state = ModelStates.ACTIVATING
+            self._models[ModelCategory.BUILTIN.value][model_id] = (
+                BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
+            )
+            self._models[ModelCategory.BUILTIN.value][
+                model_id
+            ].state = ModelStates.ACTIVATING
 
         def _download_model_if_necessary() -> bool:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
@@ -126,7 +143,9 @@ class ModelStorage:
                         local_dir=model_dir,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to download model weights from HuggingFace: {e}")
+                    logger.error(
+                        f"Failed to download model weights from HuggingFace: {e}"
+                    )
                     return False
             if not os.path.exists(config_path):
                 try:
@@ -136,33 +155,36 @@ class ModelStorage:
                         local_dir=model_dir,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to download model config from HuggingFace: {e}")
+                    logger.error(
+                        f"Failed to download model config from HuggingFace: {e}"
+                    )
                     return False
             return True
 
         future = self._executor.submit(_download_model_if_necessary)
         future.add_done_callback(
-            lambda f, mid=model_id: self._callback_model_download_result(
-                f, mid
-            )
+            lambda f, mid=model_id: self._callback_model_download_result(f, mid)
         )
 
-    def _callback_model_download_result(
-        self, future, model_id: str
-    ):
+    def _callback_model_download_result(self, future, model_id: str):
         """Callback function for handling model download results"""
         with self._lock_pool.get_lock(model_id).write_lock():
             try:
                 if future.result():
                     model_info = self._models[ModelCategory.BUILTIN.value][model_id]
                     model_info.state = ModelStates.ACTIVE
-                    config_path = os.path.join(model_info.path, MODEL_CONFIG_FILE_IN_JSON)
+                    config_path = os.path.join(
+                        self._models_dir,
+                        ModelCategory.BUILTIN.value,
+                        model_id,
+                        MODEL_CONFIG_FILE_IN_JSON,
+                    )
                     if os.path.exists(config_path):
                         with open(config_path, "r", encoding="utf-8") as f:
                             config = json.load(f)
                         if model_info.model_type == "":
                             model_info.model_type = config.get("model_type", "")
-                        model_info.auto_map = config.get("auto_map")
+                        model_info.auto_map = config.get("auto_map", None)
                     logger.info(
                         f"Model {model_id} downloaded successfully and is ready to use."
                     )
@@ -173,19 +195,21 @@ class ModelStorage:
                     logger.warning(f"Failed to download model {model_id}.")
             except Exception as e:
                 logger.error(f"Error in download callback for model {model_id}: {e}")
-                self._models[ModelCategory.BUILTIN.value][model_id].state = ModelStates.INACTIVE
+                self._models[ModelCategory.BUILTIN.value][
+                    model_id
+                ].state = ModelStates.INACTIVE
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""
         config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
         model_type = ""
         auto_map = {}
-        pipeline_class = ""
+        pipeline_cls = ""
         if os.path.exists(config_path):
             config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
             auto_map = config.get("auto_map", None)
-            pipeline_class = config.get("pipeline_class", "")
+            pipeline_cls = config.get("pipeline_cls", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -193,8 +217,7 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
-                pipeline_cls=pipeline_class,
-                path=str(model_dir),
+                pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
                 _transformers_registered=False,  # Lazy registration
             )
@@ -211,7 +234,9 @@ class ModelStorage:
         uri_type = parse_uri_type(uri)
         parsed_uri = get_parsed_uri(uri)
 
-        model_dir = os.path.join(self._models_dir, ModelCategory.USER_DEFINED.value, model_id)
+        model_dir = os.path.join(
+            self._models_dir, ModelCategory.USER_DEFINED.value, model_id
+        )
         os.makedirs(model_dir, exist_ok=True)
         ensure_init_file(model_dir)
 
@@ -224,7 +249,7 @@ class ModelStorage:
         config = load_model_config_in_json(config_path)
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
-        pipeline_class = config.get("pipeline_class", "")
+        pipeline_cls = config.get("pipeline_cls", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -232,8 +257,7 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
-                pipeline_cls=pipeline_class,
-                path=str(model_dir),
+                pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
                 _transformers_registered=False,  # Register later
             )
@@ -286,7 +310,6 @@ class ModelStorage:
                 shutil.copy2(file, storage_dir / file.name)
         return
 
-
     def _register_transformers_model(self, model_info: ModelInfo) -> bool:
         """
         Register Transformers model to auto-loading mechanism (internal method)
@@ -299,7 +322,10 @@ class ModelStorage:
         auto_model_path = auto_map.get("AutoModelForCausalLM")
 
         try:
-            module_parent = str(Path(model_info.path).parent.absolute())
+            model_path = os.path.join(
+                self._models_dir, model_info.category.value, model_info.model_id
+            )
+            module_parent = str(Path(model_path).parent.absolute())
             with temporary_sys_path(module_parent):
                 config_class = import_class_from_path(
                     model_info.model_id, auto_config_path
@@ -455,7 +481,9 @@ class ModelStorage:
             if model_info.category == ModelCategory.BUILTIN:
                 raise BuiltInModelDeletionError(model_id)
             model_info.state = ModelStates.DROPPING
-            model_path = Path(model_info.path)
+            model_path = os.path.join(
+                self._models_dir, model_info.category.value, model_id
+            )
             if model_path.exists():
                 try:
                     shutil.rmtree(model_path)
@@ -540,3 +568,6 @@ class ModelStorage:
             for category_dict in self._models.values():
                 model_ids.extend(category_dict.keys())
             return model_ids
+
+    def get_models_dir(self):
+        return self._models_dir
