@@ -807,12 +807,12 @@ public class IoTDBConfig {
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
   /** Unit: byte */
-  private int thriftMaxFrameSize = 536870912;
+  private int thriftMaxFrameSize = getDefaultThriftMaxFrameSize();
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 30000;
+  private long slowQueryThreshold = 10000;
 
   private int patternMatchingThreshold = 1000000;
 
@@ -1116,8 +1116,6 @@ public class IoTDBConfig {
   private long loadTabletConversionThresholdBytes = -1;
 
   private boolean loadActiveListeningEnable = true;
-
-  private long loadTableSchemaCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
   private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
@@ -2572,8 +2570,14 @@ public class IoTDBConfig {
   }
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.thriftMaxFrameSize =
+        thriftMaxFrameSize <= 0 ? getDefaultThriftMaxFrameSize() : thriftMaxFrameSize;
     BaseRpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+  }
+
+  private static int getDefaultThriftMaxFrameSize() {
+    return Math.min(
+        64 * 1024 * 1024, (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   }
 
   public int getThriftDefaultBufferSize() {
@@ -4018,14 +4022,6 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
-  }
-
-  public long getLoadTableSchemaCacheSizeInBytes() {
-    return loadTableSchemaCacheSizeInBytes;
-  }
-
-  public void setLoadTableSchemaCacheSizeInBytes(long loadTableSchemaCacheSizeInBytes) {
-    this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
   }
 
   public long getLoadMeasurementIdCacheSizeInBytes() {

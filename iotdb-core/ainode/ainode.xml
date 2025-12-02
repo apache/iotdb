@@ -43,6 +43,10 @@
     </files>
     <fileSets>
         <fileSet>
+            <directory>iotdb/ainode/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
+        <fileSet>
             <directory>resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
@@ -52,19 +56,8 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>dist</directory>
+            <directory>dist/ainode</directory>
             <outputDirectory>lib</outputDirectory>
-            <includes>
-                <include>*.whl</include>
-            </includes>
-        </fileSet>
-        <fileSet>
-            <directory>${project.basedir}/../../scripts/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-            <includes>
-                <include>ainode-env.*</include>
-                <include>**/ainode-env.*</include>
-            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

@@ -17,10 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-public enum DeleteStorageGroupState {
-  PRE_DELETE_DATABASE,
-  INVALIDATE_CACHE,
-  DELETE_DATABASE_SCHEMA
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+
+public class ShowAvailableUrlsStatement extends ShowStatement implements IConfigStatement {
+
+  public ShowAvailableUrlsStatement() {
+    super();
+    this.statementType = StatementType.SHOW;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowAvailableUrls(this, context);
+  }
 }

@@ -150,6 +150,22 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      // Test unsupported, to be deleted
+      try {
+        statement.execute("alter table test1.table1 rename to tableN");
+      } catch (final SQLException e) {
+        assertEquals("701: The renaming for base table is currently unsupported", e.getMessage());
+      }
+
+      // Test unsupported, to be deleted
+      try {
+        statement.execute(
+            "alter table if exists test_db.table1 rename column if exists model to modelType");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The renaming for base table column is currently unsupported", e.getMessage());
+      }
+
       // Alter table properties
       statement.execute("alter table test1.table1 set properties ttl=1000000");
       ttls = new String[] {"1000000"};

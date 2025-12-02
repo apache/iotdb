@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeriesPlan {
 
@@ -45,6 +46,7 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets = null;
   private transient boolean withMerge;
+  private final transient AtomicBoolean aligned = new AtomicBoolean(true);
 
   public CreateAlignedTimeSeriesPlanImpl() {}
 
@@ -193,5 +195,13 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
       attributesList = Objects.nonNull(attributesList) ? new ArrayList<>(attributesList) : null;
       tagOffsets = Objects.nonNull(tagOffsets) ? new ArrayList<>(tagOffsets) : null;
     }
+  }
+
+  public void setAligned(final boolean aligned) {
+    this.aligned.set(aligned);
+  }
+
+  public AtomicBoolean getAligned() {
+    return aligned;
   }
 }

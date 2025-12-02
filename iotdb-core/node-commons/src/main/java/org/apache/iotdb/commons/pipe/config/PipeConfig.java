@@ -143,14 +143,22 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxWaitFinishTime();
   }
 
-  /////////////////////////////// Extractor ///////////////////////////////
-
-  public int getPipeExtractorAssignerDisruptorRingBufferSize() {
-    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return COMMON_CONFIG.getPipeSinkSubtaskSleepIntervalInitMs();
   }
 
-  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
-    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return COMMON_CONFIG.getPipeSinkSubtaskSleepIntervalMaxMs();
+  }
+
+  /////////////////////////////// Source ///////////////////////////////
+
+  public int getPipeSourceAssignerDisruptorRingBufferSize() {
+    return COMMON_CONFIG.getPipeSourceAssignerDisruptorRingBufferSize();
+  }
+
+  public long getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return COMMON_CONFIG.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes();
   }
 
   public long getPipeSourceMatcherCacheSize() {
@@ -183,16 +191,16 @@ public class PipeConfig {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTsFileEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTsFileEventQueueSize();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTabletEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTabletEventQueueSize();
   }
 
-  public int getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold() {
-    return COMMON_CONFIG.getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold();
+  public int getPipeAsyncSinkForcedRetryTotalEventQueueSize() {
+    return COMMON_CONFIG.getPipeAsyncSinkForcedRetryTotalEventQueueSize();
   }
 
   public long getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall() {
@@ -337,8 +345,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipePeriodicalLogMinIntervalSeconds();
   }
 
-  public long getPipeLoggerCacheMaxSizeInBytes() {
-    return COMMON_CONFIG.getPipeLoggerCacheMaxSizeInBytes();
+  public boolean isPipeRetryLocallyForParallelOrUserConflict() {
+    return COMMON_CONFIG.isPipeRetryLocallyForParallelOrUserConflict();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -357,6 +365,10 @@ public class PipeConfig {
 
   public int getPipeTsFilePinMaxLogIntervalRounds() {
     return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
+  }
+
+  public long getPipeLoggerCacheMaxSizeInBytes() {
+    return COMMON_CONFIG.getPipeLoggerCacheMaxSizeInBytes();
   }
 
   /////////////////////////////// Memory ///////////////////////////////
@@ -480,14 +492,16 @@ public class PipeConfig {
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
     LOGGER.info("PipeMaxWaitFinishTime: {}", getPipeMaxWaitFinishTime());
+    LOGGER.info("PipeSinkSubtaskSleepIntervalInitMs: {}", getPipeSinkSubtaskSleepIntervalInitMs());
+    LOGGER.info("PipeSinkSubtaskSleepIntervalMaxMs: {}", getPipeSinkSubtaskSleepIntervalMaxMs());
 
     LOGGER.info(
-        "PipeExtractorAssignerDisruptorRingBufferSize: {}",
-        getPipeExtractorAssignerDisruptorRingBufferSize());
+        "PipeSourceAssignerDisruptorRingBufferSize: {}",
+        getPipeSourceAssignerDisruptorRingBufferSize());
     LOGGER.info(
-        "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
-        getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
-    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeSourceMatcherCacheSize());
+        "PipeSourceAssignerDisruptorRingBufferEntrySizeInBytes: {}",
+        getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes());
+    LOGGER.info("PipeSourceMatcherCacheSize: {}", getPipeSourceMatcherCacheSize());
 
     LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
@@ -537,13 +551,13 @@ public class PipeConfig {
 
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTsFileEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTabletEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold: {}",
-        getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold());
+        getPipeAsyncSinkForcedRetryTotalEventQueueSize());
     LOGGER.info(
         "PipeAsyncConnectorMaxRetryExecutionTimeMsPerCall: {}",
         getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall());
@@ -592,12 +606,15 @@ public class PipeConfig {
     LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
     LOGGER.info(
         "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());
-    LOGGER.info("PipeLoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
+    LOGGER.info(
+        "PipeRetryLocallyForParallelOrUserConflict: {}",
+        isPipeRetryLocallyForParallelOrUserConflict());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
     LOGGER.info("PipeTsFilePinMaxLogNumPerRound: {}", getPipeTsFilePinMaxLogNumPerRound());
     LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
+    LOGGER.info("PipeLoggerCacheMaxSizeInBytes: {}", getPipeLoggerCacheMaxSizeInBytes());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());

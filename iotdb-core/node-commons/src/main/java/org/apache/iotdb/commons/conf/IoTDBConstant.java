@@ -285,7 +285,6 @@ public class IoTDBConstant {
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
   // thrift
-  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 

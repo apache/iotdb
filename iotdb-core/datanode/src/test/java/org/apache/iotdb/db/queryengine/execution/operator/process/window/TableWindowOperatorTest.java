@@ -192,6 +192,57 @@ public class TableWindowOperatorTest {
     }
   }
 
+  @Test
+  public void testMixedPartition2() {
+    long[][] timeArray =
+        new long[][] {
+          {1, 2, 3},
+          {4, 5},
+          {6},
+        };
+    String[][] deviceIdArray =
+        new String[][] {
+          {"d1", "d1", "d2"},
+          {"d2", "d3"},
+          {"d3"},
+        };
+    int[][] valueArray =
+        new int[][] {
+          {1, 2, 3},
+          {4, 5},
+          {6},
+        };
+
+    long[] expectColumn1 = new long[] {1, 2, 3, 4, 5, 6};
+    String[] expectColumn2 = new String[] {"d1", "d1", "d2", "d2", "d3", "d3"};
+    int[] expectColumn4 = new int[] {1, 2, 3, 4, 5, 6};
+    long[] expectColumn5 = new long[] {1, 2, 1, 2, 1, 2};
+
+    int count = 0;
+    try (TableWindowOperator windowOperator =
+        genWindowOperator(timeArray, deviceIdArray, valueArray)) {
+      ListenableFuture<?> listenableFuture = windowOperator.isBlocked();
+      listenableFuture.get();
+      while (!windowOperator.isFinished() && windowOperator.hasNext()) {
+        TsBlock tsBlock = windowOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
+            assertEquals(expectColumn1[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(
+                expectColumn2[count],
+                tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+            assertEquals(expectColumn4[count], tsBlock.getColumn(2).getInt(i));
+            assertEquals(expectColumn5[count], tsBlock.getColumn(3).getLong(i));
+          }
+        }
+      }
+      assertEquals(6, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   static class ChildOperator implements Operator {
     private int index;
 

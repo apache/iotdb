@@ -61,7 +61,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
@@ -178,7 +178,7 @@ alterClause
     ;
 
 alterEncodingCompressor
-    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET attributePair (COMMA attributePair)*
+    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET STORAGE_PROPERTIES attributePair (COMMA attributePair)*
     ;
 
 aliasClause
@@ -489,6 +489,11 @@ showRegions
 // ---- Show Data Nodes
 showDataNodes
     : SHOW DATANODES
+    ;
+
+// ---- Show Available Urls
+showAvailableUrls
+    : SHOW AVAILABLE URLS
     ;
 
 // ---- Show Config Nodes

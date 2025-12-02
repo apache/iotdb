@@ -702,7 +702,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan instanceof CreateTimeSeriesPlanImpl
                       && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
                   || plan instanceof CreateTimeSeriesNode
-                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe(),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -786,7 +789,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
@@ -874,7 +880,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override

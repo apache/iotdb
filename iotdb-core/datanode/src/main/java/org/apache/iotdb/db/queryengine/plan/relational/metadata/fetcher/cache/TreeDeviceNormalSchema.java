@@ -88,7 +88,10 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, tagMap);
     final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, putEntry);
     return Objects.isNull(cachedEntry)
-        ? (int) (RamUsageEstimator.sizeOf(measurement) + SchemaCacheEntry.estimateSize(putEntry))
+        ? (int)
+            (RamUsageEstimator.sizeOf(measurement)
+                + SchemaCacheEntry.estimateSize(putEntry)
+                + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY)
         : SchemaCacheEntry.estimateSize(putEntry) - SchemaCacheEntry.estimateSize(cachedEntry);
   }
 
@@ -101,7 +104,8 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
                 entry ->
                     Math.toIntExact(
                         RamUsageEstimator.sizeOf(entry.getKey())
-                            + SchemaCacheEntry.estimateSize(entry.getValue())))
+                            + SchemaCacheEntry.estimateSize(entry.getValue())
+                            + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY))
             .reduce(0, Integer::sum);
   }
 }

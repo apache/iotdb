@@ -162,6 +162,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     insertTabletStatementList.forEach(InsertTabletStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertTabletStatementList.forEach(InsertTabletStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePl
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAvailableUrlsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
@@ -130,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
@@ -186,6 +189,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAvailableUrls;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
@@ -481,6 +485,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowDataNodesTask();
+  }
+
+  @Override
+  protected IConfigTask visitShowAvailableUrls(
+      final ShowAvailableUrls showAvailableUrls, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    ITableAuthCheckerImpl.recordAuditLog(
+        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true), () -> "");
+    return new ShowAvailableUrlsTask();
   }
 
   @Override
@@ -1368,7 +1381,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitShowVersion(ShowVersion node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowVersionTask();
   }
 

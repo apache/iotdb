@@ -70,9 +70,9 @@ public class MetaUtils {
       throw new IllegalPathException(
           path.getFullPath(), "it does not start with " + IoTDBConstant.PATH_ROOT);
     }
-    String[] storageGroupNodes = new String[level + 1];
-    System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
-    return new PartialPath(storageGroupNodes);
+    String[] databaseNodes = new String[level + 1];
+    System.arraycopy(nodeNames, 0, databaseNodes, 0, level + 1);
+    return new PartialPath(databaseNodes);
   }
 
   /**

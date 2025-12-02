@@ -153,22 +153,22 @@ public class MTreeBelowSGMemoryImpl {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
-      final PartialPath storageGroupPath,
+      final PartialPath databasePath,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
       final MemSchemaRegionStatistics regionStatistics,
       final SchemaRegionMemMetric metric) {
-    store = new MemMTreeStore(storageGroupPath, regionStatistics, metric);
+    store = new MemMTreeStore(databasePath, regionStatistics, metric);
     this.regionStatistics = regionStatistics;
     this.databaseMNode = store.getRoot();
-    this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    this.rootNode = store.generatePrefix(databasePath);
+    levelOfSG = databasePath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
   }
 
   private MTreeBelowSGMemoryImpl(
-      final PartialPath storageGroupPath,
+      final PartialPath databasePath,
       final MemMTreeStore store,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
@@ -176,8 +176,8 @@ public class MTreeBelowSGMemoryImpl {
     this.store = store;
     this.regionStatistics = regionStatistics;
     this.databaseMNode = store.getRoot();
-    this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    this.rootNode = store.generatePrefix(databasePath);
+    levelOfSG = databasePath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
   }
@@ -193,7 +193,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
       final File snapshotDir,
-      final String storageGroupFullPath,
+      final String databaseFullPath,
       final MemSchemaRegionStatistics regionStatistics,
       final SchemaRegionMemMetric metric,
       final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
@@ -203,7 +203,7 @@ public class MTreeBelowSGMemoryImpl {
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
-        PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
+        PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
         MemMTreeStore.loadFromSnapshot(
             snapshotDir,
             measurementProcess,
@@ -238,7 +238,8 @@ public class MTreeBelowSGMemoryImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -252,6 +253,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -328,7 +335,8 @@ public class MTreeBelowSGMemoryImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -338,6 +346,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write operations on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {

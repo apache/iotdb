@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -56,7 +57,8 @@ public class DataNodeTableCache implements ITableCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTableCache.class);
 
-  private final AtomicLong version = new AtomicLong(0);
+  /** Instance-specific version counter for optimistic locking mechanisms. */
+  private final AtomicLong instanceVersion = new AtomicLong(0);
 
   // The database is without "root"
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
@@ -179,6 +181,14 @@ public class DataNodeTableCache implements ITableCache {
       if (Objects.nonNull(oldName)) {
         // Equals to commit update
         final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+        // Cannot be rolled back, consider:
+        // 1. Fetched a written CN table
+        // 2. CN rollback because of timeout
+        // 3. If we roll back here, the flag will be cleared, and it will always be the written
+        // one
+        if (oldTable instanceof NonCommittableTsTable) {
+          return;
+        }
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
             .put(tableName, oldTable);
@@ -209,6 +219,14 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      // Cannot be committed, consider:
+      // 1. Fetched a non-changed CN table
+      // 2. CN is changed
+      // 3. If we commit here, it will always be the non-changed one
+      // (And it is not committable because it's not real table)
+      if (newTable instanceof NonCommittableTsTable) {
+        return;
+      }
       final TsTable oldTable =
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
@@ -227,7 +245,7 @@ public class DataNodeTableCache implements ITableCache {
         removeTableFromPreUpdateMap(database, oldName);
         LOGGER.info("Rename old table {}.{} successfully.", database, oldName);
       }
-      version.incrementAndGet();
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -240,7 +258,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       preUpdateTableMap.remove(database);
-      version.incrementAndGet();
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -258,7 +276,7 @@ public class DataNodeTableCache implements ITableCache {
       if (preUpdateTableMap.containsKey(database)) {
         preUpdateTableMap.get(database).remove(tableName);
       }
-      version.incrementAndGet();
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -284,14 +302,14 @@ public class DataNodeTableCache implements ITableCache {
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }
-      version.incrementAndGet();
+      instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  public long getVersion() {
-    return version.get();
+  public long getInstanceVersion() {
+    return instanceVersion.get();
   }
 
   public TsTable getTableInWrite(final String database, final String tableName) {
@@ -425,7 +443,7 @@ public class DataNodeTableCache implements ITableCache {
             }
           });
       if (isUpdated.get()) {
-        version.incrementAndGet();
+        instanceVersion.incrementAndGet();
       }
     } finally {
       readWriteLock.writeLock().unlock();
