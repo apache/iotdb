@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveAINodeState;
@@ -65,13 +64,6 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
 
     try {
       switch (state) {
-        case MODEL_DELETE:
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(new DropModelInNodePlan(removedAINode.aiNodeId));
-          // Cause the AINode is removed, so we don't need to remove the model file.
-          setNextState(RemoveAINodeState.NODE_STOP);
-          break;
         case NODE_STOP:
           TSStatus resp = null;
           try (AINodeClient client =
@@ -149,7 +141,7 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
 
   @Override
   protected RemoveAINodeState getInitialState() {
-    return RemoveAINodeState.MODEL_DELETE;
+    return RemoveAINodeState.NODE_STOP;
   }
 
   @Override
