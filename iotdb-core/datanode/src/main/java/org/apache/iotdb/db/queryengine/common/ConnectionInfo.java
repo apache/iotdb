@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class ConnectionInfo {
-  private final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final long userId;
   private final String userName;
   private final long sessionId;

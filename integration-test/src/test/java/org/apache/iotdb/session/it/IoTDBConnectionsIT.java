@@ -81,11 +81,21 @@ public class IoTDBConnectionsIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Create two connections on the different datanode, validate normal test case.
   @Test
-  public void testStandardGetConnections() {
+  public void testDifferentDataNodeGetConnections() {
     Connection conn = null;
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement()) {
+    int dataNodeId = (int) allDataNodeId.toArray()[0];
+    // Create the first connection on the datanode.
+    try {
+      Connection connection =
+          EnvFactory.getEnv()
+              .getConnection(
+                  EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).get(),
+                  CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                  CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                  BaseEnv.TABLE_SQL_DIALECT);
+      Statement statement = connection.createStatement();
       statement.execute("USE information_schema");
       ResultSet resultSet = statement.executeQuery("SELECT * FROM connections");
       if (!resultSet.next()) {
@@ -101,16 +111,25 @@ public class IoTDBConnectionsIT {
             resultSet.getString(2),
             resultSet.getString(3),
             resultSet.getString(4),
-            resultSet.getTimestamp(5),
+            resultSet.getString(5),
             resultSet.getString(6));
       }
 
       conn = connection;
     } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
       fail(e.getMessage());
     }
 
-    try (Connection connection1 = EnvFactory.getEnv().getTableConnection();
+    int anotherDataNodeId = (int) allDataNodeId.toArray()[1];
+    // Create the second connection on the datanode.
+    try (Connection connection1 =
+            EnvFactory.getEnv()
+                .getConnection(
+                    EnvFactory.getEnv().dataNodeIdToWrapper(anotherDataNodeId).get(),
+                    CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                    CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                    BaseEnv.TABLE_SQL_DIALECT);
         Statement statement1 = connection1.createStatement()) {
       statement1.execute("USE information_schema");
       ResultSet resultSet1 = statement1.executeQuery("SELECT COUNT(*) FROM connections");
@@ -119,6 +138,7 @@ public class IoTDBConnectionsIT {
       }
 
       while (resultSet1.next()) {
+        // Before close the first connection, the current record count must be two.
         Assert.assertEquals(2, resultSet1.getInt(1));
       }
 
@@ -130,15 +150,19 @@ public class IoTDBConnectionsIT {
       }
 
       while (resultSet2.next()) {
+        // After close the first connection, the current record count change into one.
         Assert.assertEquals(1, resultSet2.getInt(1));
       }
     } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
       fail(e.getMessage());
     }
   }
 
+  // Create two connections on the same datanode, validate normal test case.
   @Test
-  public void testSpecifyDataNodeGetConnections() {
+  public void testSameDataNodeGetConnections() {
+    Connection conn = null;
     int dataNodeId = (int) allDataNodeId.toArray()[0];
     try (Connection connection =
             EnvFactory.getEnv()
@@ -170,11 +194,50 @@ public class IoTDBConnectionsIT {
             resultSet.getString(6));
       }
 
+      conn = connection;
     } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
+      fail(e.getMessage());
+    }
+
+    // Create the second connection on the same datanode.
+    try (Connection connection1 =
+            EnvFactory.getEnv()
+                .getConnection(
+                    EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeId).get(),
+                    CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                    CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                    BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement1 = connection1.createStatement()) {
+      statement1.execute("USE information_schema");
+      ResultSet resultSet1 = statement1.executeQuery("SELECT COUNT(*) FROM connections");
+      if (!resultSet1.next()) {
+        fail();
+      }
+
+      while (resultSet1.next()) {
+        // Before close the first connection, the current record count must be two.
+        Assert.assertEquals(2, resultSet1.getInt(1));
+      }
+
+      conn.close();
+
+      ResultSet resultSet2 = statement1.executeQuery("SELECT COUNT(*) FROM connections");
+      if (!resultSet2.next()) {
+        fail();
+      }
+
+      while (resultSet2.next()) {
+        // After close the first connection, the current record count change into one.
+        Assert.assertEquals(1, resultSet2.getInt(1));
+      }
+    } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
       fail(e.getMessage());
     }
   }
 
+  // Validate normal test case when close one datanode.
   @Test
   public void testClosedDataNodeGetConnections() throws Exception {
     if (allDataNodeId.size() <= 1) {
@@ -197,8 +260,11 @@ public class IoTDBConnectionsIT {
       if (!resultSet.next()) {
         fail();
       }
+      // All records corresponding the datanode exist Before close the datanode. Validate result
+      // larger than zero.
       Assert.assertTrue(resultSet.getInt(1) > 0);
     } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
       fail(e.getMessage());
     }
 
@@ -244,8 +310,11 @@ public class IoTDBConnectionsIT {
       if (!resultSet.next()) {
         fail();
       }
+      // All records corresponding the datanode  will be cleared After close the datanode. Validate
+      // result if it is zero.
       Assert.assertEquals(0, resultSet.getLong(1));
     } catch (Exception e) {
+      LOGGER.error("{}", e.getMessage(), e);
       fail(e.getMessage());
     }
 
@@ -285,7 +354,7 @@ public class IoTDBConnectionsIT {
         fail();
       }
       ResultSetMetaData metaData = resultSet.getMetaData();
-      Assert.assertEquals(5, metaData.getColumnCount());
+      Assert.assertEquals(COLUMN_AMOUNT, metaData.getColumnCount());
     } catch (SQLException e) {
       Assert.assertEquals(
           "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
