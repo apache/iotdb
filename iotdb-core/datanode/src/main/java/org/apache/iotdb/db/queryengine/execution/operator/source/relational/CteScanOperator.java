@@ -41,6 +41,7 @@ public class CteScanOperator extends AbstractSourceOperator {
       RamUsageEstimator.shallowSizeOfInstance(CteScanOperator.class);
 
   private final CteDataStore dataStore;
+  private final int dataStoreRefCount;
   private CteDataReader dataReader;
 
   private final long maxReturnSize =
@@ -50,8 +51,8 @@ public class CteScanOperator extends AbstractSourceOperator {
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
-    dataStore.increaseRefCount();
     this.dataStore = dataStore;
+    this.dataStoreRefCount = dataStore.increaseRefCount();
     prepareReader();
   }
 
@@ -109,7 +110,7 @@ public class CteScanOperator extends AbstractSourceOperator {
     if (dataReader != null) {
       bytes += dataReader.bytesUsed();
     }
-    if (dataStore.getRefCount() == 1) {
+    if (dataStoreRefCount == 1) {
       bytes += dataStore.getCachedBytes();
     }
 
