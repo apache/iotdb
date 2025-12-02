@@ -4473,10 +4473,9 @@ public class StatementAnalyzer {
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       DataNodeSchemaLockManager.getInstance()
-          .takeReadLock(queryContext, SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
+          .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
       // Check if the table exists
-      final TsTable table =
-          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
+      DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTable());
       return null;
     }
 

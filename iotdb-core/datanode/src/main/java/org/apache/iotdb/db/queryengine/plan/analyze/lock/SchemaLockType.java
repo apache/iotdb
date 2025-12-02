@@ -59,5 +59,5 @@ public enum SchemaLockType {
    *   <li>Release write lock after finishing invalidating schema cache.
    * </ol>
    */
-  AVOID_CONCURRENT_DEVICE_ALTER_TABLE,
+  VALIDATE_VS_DELETION_TABLE,
 }
