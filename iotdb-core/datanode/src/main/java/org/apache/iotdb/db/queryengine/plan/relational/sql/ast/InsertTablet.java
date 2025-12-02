@@ -68,8 +68,10 @@ public class InsertTablet extends WrappedInsertStatement {
     List<Object[]> deviceIdList = new ArrayList<>();
     for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
-      if (Arrays.stream(super.getInnerTreeStatement().getMeasurementSchemas())
-          .anyMatch(schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+      if (Objects.nonNull(super.getInnerTreeStatement().getMeasurementSchemas())
+          && Arrays.stream(super.getInnerTreeStatement().getMeasurementSchemas())
+              .anyMatch(
+                  schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
         TableDeviceSchemaValidator.checkObject4DeviceId(segments);
       }
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));

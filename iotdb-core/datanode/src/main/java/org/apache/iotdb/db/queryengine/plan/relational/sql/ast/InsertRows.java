@@ -137,8 +137,10 @@ public class InsertRows extends WrappedInsertStatement {
       @Override
       public List<Object[]> getDeviceIdList() {
         final Object[] tagSegments = insertRowStatement.getTableDeviceID().getSegments();
-        if (Arrays.stream(insertRowStatement.getMeasurementSchemas())
-            .anyMatch(schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+        if (Objects.nonNull(insertRowStatement.getMeasurementSchemas())
+            && Arrays.stream(insertRowStatement.getMeasurementSchemas())
+                .anyMatch(
+                    schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
           TableDeviceSchemaValidator.checkObject4DeviceId(tagSegments);
         }
         return Collections.singletonList(Arrays.copyOfRange(tagSegments, 1, tagSegments.length));

@@ -61,8 +61,9 @@ public class InsertRow extends WrappedInsertStatement {
   public List<Object[]> getDeviceIdList() {
     final InsertRowStatement insertRowStatement = getInnerTreeStatement();
     final Object[] segments = insertRowStatement.getTableDeviceID().getSegments();
-    if (Arrays.stream(getInnerTreeStatement().getMeasurementSchemas())
-        .anyMatch(schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+    if (Objects.nonNull(getInnerTreeStatement().getMeasurementSchemas())
+        && Arrays.stream(getInnerTreeStatement().getMeasurementSchemas())
+            .anyMatch(schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
       TableDeviceSchemaValidator.checkObject4DeviceId(segments);
     }
     return Collections.singletonList(Arrays.copyOfRange(segments, 1, segments.length));
