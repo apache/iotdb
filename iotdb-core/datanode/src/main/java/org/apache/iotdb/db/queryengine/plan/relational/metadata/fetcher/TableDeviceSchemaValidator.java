@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -52,8 +52,6 @@ public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaValidator.class);
-
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
@@ -247,9 +245,18 @@ public class TableDeviceSchemaValidator {
             Long.MAX_VALUE,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
+      throw new IoTDBRuntimeException(
+          executionResult.status.getMessage(), executionResult.status.getCode());
+    }
+  }
+
+  public static void checkObject4DeviceId(final Object[] deviceId) {
+    for (final Object part : deviceId) {
+      final String value = (String) part;
+      if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {
+        throw new SemanticException(
+            TsTable.getObjectStringError("deviceId", Arrays.toString(deviceId)));
+      }
     }
   }
 

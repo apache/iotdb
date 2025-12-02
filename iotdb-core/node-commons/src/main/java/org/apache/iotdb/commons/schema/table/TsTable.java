@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
@@ -69,6 +71,8 @@ public class TsTable {
 
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
+  private static final String OBJECT_STRING_ERROR =
+      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'";
   protected String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
@@ -408,6 +412,33 @@ public class TsTable {
 
   public void setProps(Map<String, String> props) {
     executeWrite(() -> this.props = props);
+  }
+
+  public void checkTableNameAndObjectNames4Object() throws MetadataException {
+    if (isInvalid4ObjectType(tableName)) {
+      throw new MetadataException(
+          getObjectStringError("tableName", tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
+    for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+      if (schema.getDataType().equals(TSDataType.OBJECT)
+          && isInvalid4ObjectType(schema.getColumnName())) {
+        throw new MetadataException(
+            getObjectStringError("objectName", schema.getColumnName()),
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+    }
+  }
+
+  public static boolean isInvalid4ObjectType(final String column) {
+    return column.equals(".")
+        || column.equals("..")
+        || column.contains("./")
+        || column.contains(".\\");
+  }
+
+  public static String getObjectStringError(final String columnType, final String columnName) {
+    return String.format(OBJECT_STRING_ERROR, columnType, columnName);
   }
 
   @Override

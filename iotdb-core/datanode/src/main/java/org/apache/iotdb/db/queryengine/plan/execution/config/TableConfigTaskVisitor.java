@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -562,10 +563,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
     final Set<String> sourceNameSet = new HashSet<>();
+    boolean hasObject = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
+      hasObject |= dataType.equals(TSDataType.OBJECT);
       final String comment = columnDefinition.getComment();
       if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
           && !hasTimeColumn) {
@@ -593,6 +596,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 TreeViewSchema.getSourceName(schema)));
       }
       table.addColumnSchema(schema);
+    }
+    if (hasObject) {
+      try {
+        table.checkTableNameAndObjectNames4Object();
+      } catch (final MetadataException e) {
+        throw new SemanticException(e.getMessage(), e.getErrorCode());
+      }
     }
     return new Pair<>(database, table);
   }
