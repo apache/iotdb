@@ -50,10 +50,6 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -571,18 +567,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UPDATE_CQ_LAST_EXEC_TIME:
           plan = new UpdateCQLastExecTimePlan();
-          break;
-        case CreateModel:
-          plan = new CreateModelPlan();
-          break;
-        case UpdateModelInfo:
-          plan = new UpdateModelInfoPlan();
-          break;
-        case DropModel:
-          plan = new DropModelPlan();
-          break;
-        case DropModelInNode:
-          plan = new DropModelInNodePlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();
