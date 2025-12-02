@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -430,6 +431,11 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowDB(ShowDB node, Optional<Scope> context) {
       throw new SemanticException("Show Database statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitCountDB(CountDB node, Optional<Scope> context) {
+      throw new SemanticException("Count Database statement is not supported yet.");
     }
 
     @Override
