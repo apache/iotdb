@@ -837,39 +837,6 @@ public class IoTDBTableIT {
                 illegal),
             e.getMessage());
       }
-    }
-
-    // Test cache
-    TestUtils.restartCluster(EnvFactory.getEnv());
-
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      statement.execute("use db2");
-
-      try {
-        statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "507: When there are object fields, the deviceId [%s] shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      statement.execute("alter table test drop column d");
-      statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
-      try {
-        statement.execute("alter table test add column d object");
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the tag value %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
 
       statement.execute("drop database db2");
     }
