@@ -30,6 +30,7 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
+import org.eclipse.milo.opcua.stack.core.types.structured.DeleteNodesItem;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +66,7 @@ public class ClientTest implements ClientExample {
     StatusCode writeStatus = client.writeValue(nodeId, writeValue).get();
     System.out.println("写入状态: " + writeStatus);
 
+    client.deleteNodes(Collections.singletonList(new DeleteNodesItem(nodeId, true)));
     AddNodesResponse addStatus =
         client
             .addNodes(
