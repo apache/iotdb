@@ -1275,11 +1275,16 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     protected void constructLine() {
       ConnectionInfo connectionInfo = sessionConnectionIterator.next();
-      columnBuilders[0].writeInt(connectionInfo.getDataNodeId());
-      columnBuilders[1].writeLong(connectionInfo.getUserId());
-      columnBuilders[2].writeLong(connectionInfo.getSessionId());
-      columnBuilders[3].writeLong(connectionInfo.getLastActiveTime());
-      columnBuilders[4].writeBinary(
+      columnBuilders[0].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getSessionId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(connectionInfo.getUserName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeLong(connectionInfo.getLastActiveTime());
+      columnBuilders[5].writeBinary(
           new Binary(connectionInfo.getClientAddress(), TSFileConfig.STRING_CHARSET));
       resultBuilder.declarePosition();
     }

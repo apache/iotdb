@@ -366,11 +366,13 @@ public class InformationSchema {
 
     final TsTable connectionsTable = new TsTable(CONNECTIONS);
     connectionsTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.INT32));
+        new TagColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.STRING));
     connectionsTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.USERID, TSDataType.INT64));
+        new TagColumnSchema(ColumnHeaderConstant.USERID, TSDataType.STRING));
     connectionsTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.SESSION_ID, TSDataType.INT64));
+        new TagColumnSchema(ColumnHeaderConstant.SESSION_ID, TSDataType.STRING));
+    connectionsTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.USER_NAME, TSDataType.STRING));
     connectionsTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.LAST_ACTIVE_TIME, TSDataType.TIMESTAMP));
     connectionsTable.addColumnSchema(

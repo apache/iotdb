@@ -58,7 +58,7 @@ import static org.junit.Assert.fail;
 public class IoTDBConnectionsIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnectionsIT.class);
   private static final String SHOW_DATANODES = "show datanodes";
-  private static final int COLUMN_AMOUNT = 5;
+  private static final int COLUMN_AMOUNT = 6;
   private static Set<Integer> allDataNodeId = new HashSet<>();
 
   @BeforeClass
@@ -93,15 +93,16 @@ public class IoTDBConnectionsIT {
       }
 
       ResultSetMetaData metaData = resultSet.getMetaData();
-      Assert.assertEquals(5, metaData.getColumnCount());
+      Assert.assertEquals(COLUMN_AMOUNT, metaData.getColumnCount());
       while (resultSet.next()) {
         LOGGER.info(
-            "{}, {}, {}, {}, {}",
-            resultSet.getInt(1),
-            resultSet.getLong(2),
-            resultSet.getLong(3),
-            resultSet.getTimestamp(4),
-            resultSet.getString(5));
+            "{}, {}, {}, {}, {}, {}",
+            resultSet.getString(1),
+            resultSet.getString(2),
+            resultSet.getString(3),
+            resultSet.getString(4),
+            resultSet.getTimestamp(5),
+            resultSet.getString(6));
       }
 
       conn = connection;
@@ -150,7 +151,8 @@ public class IoTDBConnectionsIT {
       statement.execute("USE information_schema");
 
       ResultSet resultSet =
-          statement.executeQuery("SELECT * FROM connections WHERE data_node_id = " + dataNodeId);
+          statement.executeQuery(
+              "SELECT * FROM connections WHERE data_node_id = '" + dataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }
@@ -159,12 +161,13 @@ public class IoTDBConnectionsIT {
       Assert.assertEquals(COLUMN_AMOUNT, metaData.getColumnCount());
       while (resultSet.next()) {
         LOGGER.info(
-            "{}, {}, {}, {}, {}",
-            resultSet.getInt(1),
-            resultSet.getLong(2),
-            resultSet.getLong(3),
-            resultSet.getTimestamp(4),
-            resultSet.getString(5));
+            "{}, {}, {}, {}, {}, {}",
+            resultSet.getString(1),
+            resultSet.getString(2),
+            resultSet.getString(3),
+            resultSet.getString(4),
+            resultSet.getTimestamp(5),
+            resultSet.getString(6));
       }
 
     } catch (Exception e) {
@@ -190,7 +193,7 @@ public class IoTDBConnectionsIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "SELECT COUNT(*) FROM connections WHERE data_node_id = " + closedDataNodeId);
+              "SELECT COUNT(*) FROM connections WHERE data_node_id = '" + closedDataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }
@@ -237,13 +240,13 @@ public class IoTDBConnectionsIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "SELECT COUNT(*) FROM connections WHERE data_node_id = " + closedDataNodeId);
+              "SELECT COUNT(*) FROM connections WHERE data_node_id = '" + closedDataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }
-      Assert.assertEquals(0, resultSet.getInt(1));
+      Assert.assertEquals(0, resultSet.getLong(1));
     } catch (Exception e) {
-      e.printStackTrace();
+      fail(e.getMessage());
     }
 
     // revert environment

@@ -209,6 +209,7 @@ public class ColumnHeaderConstant {
   public static final String DATANODE_ID = "data_node_id";
   public static final String USERID = "user_id";
   public static final String SESSION_ID = "session_id";
+  public static final String USER_NAME = "user_name";
   public static final String LAST_ACTIVE_TIME = "last_active_time";
   public static final String CLIENT_IP = "client_ip";
 

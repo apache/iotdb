@@ -144,7 +144,8 @@ public abstract class IClientSession {
   }
 
   public ConnectionInfo convertToConnectionInfo() {
-    return new ConnectionInfo(getUserId(), getId(), getLastActiveTime(), getClientAddress());
+    return new ConnectionInfo(
+        getUserId(), getUsername(), getId(), getLastActiveTime(), getClientAddress());
   }
 
   /**
