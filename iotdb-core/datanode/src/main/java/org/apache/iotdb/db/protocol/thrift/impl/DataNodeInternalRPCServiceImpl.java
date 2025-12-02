@@ -1974,16 +1974,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           || options.contains(CacheClearOptions.QUERY)) {
         storageEngine.clearCache();
       }
-      if (options.contains(CacheClearOptions.QUERY)
-          && options.contains(CacheClearOptions.TREE_SCHEMA)) {
+      if (options.contains(CacheClearOptions.QUERY) && options.contains(CacheClearOptions.SCHEMA)) {
         schemaCache.getDeviceSchemaCache().invalidateAll();
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       if (options.contains(CacheClearOptions.QUERY)) {
         schemaCache.getDeviceSchemaCache().invalidateLastCache();
       }
-      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
-        schemaCache.getDeviceSchemaCache().invalidateTreeSchema();
+      if (options.contains(CacheClearOptions.SCHEMA)) {
+        schemaCache.getDeviceSchemaCache().invalidateSchema();
       }
     } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
