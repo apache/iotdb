@@ -16,31 +16,34 @@
 # under the License.
 #
 
+import os
 from pathlib import Path
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_storage import ModelInfo
-from iotdb.ainode.core.model.utils import temporary_sys_path, import_class_from_path
+from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_path
 
 logger = Logger()
 
 
 def load_pipeline(model_info: ModelInfo, device: str, **kwargs):
     if model_info.category == ModelCategory.BUILTIN:
-        if model_info.model_id == "timer_xl":
-            from iotdb.ainode.core.model.timer_xl.pipeline_timer import TimerPipeline
-            pipeline_cls = TimerPipeline
-        elif model_info.model_id == "sundial":
-            from iotdb.ainode.core.model.sundial.pipeline_sundial import SundialPipeline
-            pipeline_cls = SundialPipeline
-        else:
-            logger.error(
-                f"Unsupported built-in model {model_info.model_id}."
-            )
-            return None
+        module_name = (
+            AINodeDescriptor().get_config().get_ain_models_builtin_dir()
+            + "."
+            + model_info.model_id
+        )
+        pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
     else:
-        module_parent = str(Path(model_info.path).parent.absolute())
+        model_path = os.path.join(
+            os.getcwd(),
+            AINodeDescriptor().get_config().get_ain_models_dir(),
+            model_info.category.value,
+            model_info.model_id,
+        )
+        module_parent = str(Path(model_path).parent.absolute())
         with temporary_sys_path(module_parent):
             pipeline_cls = import_class_from_path(
                 model_info.model_id, model_info.pipeline_cls

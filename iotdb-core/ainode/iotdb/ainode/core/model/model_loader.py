@@ -72,6 +72,11 @@ class ModelLoader:
         trust_remote_code = kwargs.get("trust_remote_code", True)
         train_from_scratch = kwargs.get("train_from_scratch", False)
 
+        model_path = os.path.join(
+            self.storage.get_models_dir(),
+            model_info.category.value,
+            model_info.model_id,
+        )
         if model_info.category == ModelCategory.BUILTIN:
             if model_info.model_id == "timer_xl":
                 from iotdb.ainode.core.model.timer_xl.configuration_timer import (
@@ -100,7 +105,7 @@ class ModelLoader:
                     f"Unsupported built-in Transformers model {model_info.model_id}."
                 )
         else:
-            model_config = AutoConfig.from_pretrained(model_info.path)
+            model_config = AutoConfig.from_pretrained(model_path)
             if (
                 type(model_config)
                 in AutoModelForTimeSeriesPrediction._model_mapping.keys()
@@ -132,7 +137,7 @@ class ModelLoader:
             )
         else:
             model = load_class.from_pretrained(
-                model_info.path,
+                model_path,
                 trust_remote_code=trust_remote_code,
                 device_map=device_map,
             )
@@ -142,11 +147,16 @@ class ModelLoader:
     def load_model_from_pt(self, model_info: ModelInfo, **kwargs):
         device_map = kwargs.get("device_map", "cpu")
         acceleration = kwargs.get("acceleration", False)
-        model_path = os.path.join(model_info.path, "model.pt")
-        if not os.path.exists(model_path):
-            logger.error(f"Model file not found at {model_path}.")
-            raise ModelNotExistError(model_path)
-        model = torch.jit.load(model_path)
+        model_path = os.path.join(
+            self.storage.get_models_dir(),
+            model_info.category.value,
+            model_info.model_id,
+        )
+        model_file = os.path.join(model_path, "model.pt")
+        if not os.path.exists(model_file):
+            logger.error(f"Model file not found at {model_file}.")
+            raise ModelNotExistError(model_file)
+        model = torch.jit.load(model_file)
         if (
             isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
             or not acceleration

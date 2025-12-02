@@ -36,6 +36,7 @@ from iotdb.ainode.core.constant import (
     AINODE_INFERENCE_MEMORY_USAGE_RATIO,
     AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
     AINODE_LOG_DIR,
+    AINODE_MODELS_BUILTIN_DIR,
     AINODE_MODELS_DIR,
     AINODE_RPC_ADDRESS,
     AINODE_RPC_PORT,
@@ -94,6 +95,7 @@ class AINodeConfig(object):
 
         # Directory to save models
         self._ain_models_dir = AINODE_MODELS_DIR
+        self._ain_models_builtin_dir = AINODE_MODELS_BUILTIN_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
 
         # Whether to enable compression for thrift
@@ -201,6 +203,12 @@ class AINodeConfig(object):
 
     def set_ain_models_dir(self, ain_models_dir: str) -> None:
         self._ain_models_dir = ain_models_dir
+
+    def get_ain_models_builtin_dir(self) -> str:
+        return self._ain_models_builtin_dir
+
+    def set_ain_models_builtin_dir(self, ain_models_builtin_dir: str) -> None:
+        self._ain_models_builtin_dir = ain_models_builtin_dir
 
     def get_ain_system_dir(self) -> str:
         return self._ain_system_dir
@@ -365,6 +373,11 @@ class AINodeDescriptor(object):
 
             if "ain_models_dir" in config_keys:
                 self._config.set_ain_models_dir(file_configs["ain_models_dir"])
+
+            if "ain_models_builtin_dir" in config_keys:
+                self._config.set_ain_models_builtin_dir(
+                    file_configs["ain_models_builtin_dir"]
+                )
 
             if "ain_system_dir" in config_keys:
                 self._config.set_ain_system_dir(file_configs["ain_system_dir"])

@@ -29,6 +29,7 @@ from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatResp,
     TDeleteModelReq,
     TForecastReq,
+    TForecastResp,
     TInferenceReq,
     TInferenceResp,
     TLoadModelReq,
@@ -40,7 +41,7 @@ from iotdb.thrift.ainode.ttypes import (
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
-    TUnloadModelReq, TForecastResp,
+    TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
 

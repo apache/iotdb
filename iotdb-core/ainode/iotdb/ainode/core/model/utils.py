@@ -24,10 +24,8 @@ from contextlib import contextmanager
 from typing import Dict, Tuple
 
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     MODEL_CONFIG_FILE_IN_JSON,
-)
-from iotdb.ainode.core.model.model_constants import (
+    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     UriType,
 )
 
@@ -79,7 +77,7 @@ def validate_model_files(model_dir: str) -> Tuple[str, str]:
     # Create __init__.py file to ensure model directory can be imported as a module
     init_file = os.path.join(model_dir, "__init__.py")
     if not os.path.exists(init_file):
-        with open(init_file, 'w'):
+        with open(init_file, "w"):
             pass
 
     return config_path, weights_path
@@ -96,5 +94,5 @@ def ensure_init_file(dir_path: str):
     init_file = os.path.join(dir_path, "__init__.py")
     os.makedirs(dir_path, exist_ok=True)
     if not os.path.exists(init_file):
-        with open(init_file, 'w'):
+        with open(init_file, "w"):
             pass
