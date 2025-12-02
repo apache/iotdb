@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client.ainode;
+package org.apache.iotdb.commons.client.async;
 
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -35,20 +35,20 @@ import org.apache.thrift.async.TAsyncClientManager;
 
 import java.io.IOException;
 
-public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
+public class AsyncAINodeInternalServiceClient extends IAINodeRPCService.AsyncClient
     implements ThriftClient {
 
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private final boolean printLogWhenEncounterException;
   private final TEndPoint endPoint;
-  private final ClientManager<TEndPoint, AsyncAINodeServiceClient> clientManager;
+  private final boolean printLogWhenEncounterException;
+  private final ClientManager<TEndPoint, AsyncAINodeInternalServiceClient> clientManager;
 
-  public AsyncAINodeServiceClient(
+  public AsyncAINodeInternalServiceClient(
       ThriftClientProperty property,
       TEndPoint endPoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncAINodeServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncAINodeInternalServiceClient> clientManager)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -122,10 +122,10 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncAINodeServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncAINodeInternalServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncAINodeServiceClient> clientManager,
+        ClientManager<TEndPoint, AsyncAINodeInternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
       super(clientManager, thriftClientProperty, threadName);
@@ -133,14 +133,15 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncAINodeServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncAINodeInternalServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncAINodeServiceClient> makeObject(TEndPoint endPoint) throws Exception {
+    public PooledObject<AsyncAINodeInternalServiceClient> makeObject(TEndPoint endPoint)
+        throws Exception {
       return new DefaultPooledObject<>(
-          new AsyncAINodeServiceClient(
+          new AsyncAINodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
@@ -149,7 +150,7 @@ public class AsyncAINodeServiceClient extends IAINodeRPCService.AsyncClient
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncAINodeServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncAINodeInternalServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }

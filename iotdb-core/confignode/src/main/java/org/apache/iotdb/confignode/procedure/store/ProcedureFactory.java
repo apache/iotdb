@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.procedure.store;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -263,12 +261,6 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PLUGIN_PROCEDURE:
         procedure = new DropPipePluginProcedure();
         break;
-      case CREATE_MODEL_PROCEDURE:
-        procedure = new CreateModelProcedure();
-        break;
-      case DROP_MODEL_PROCEDURE:
-        procedure = new DropModelProcedure();
-        break;
       case AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(false);
         break;
@@ -494,10 +486,6 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {
       return ProcedureType.DROP_PIPE_PLUGIN_PROCEDURE;
-    } else if (procedure instanceof CreateModelProcedure) {
-      return ProcedureType.CREATE_MODEL_PROCEDURE;
-    } else if (procedure instanceof DropModelProcedure) {
-      return ProcedureType.DROP_MODEL_PROCEDURE;
     } else if (procedure instanceof CreatePipeProcedureV2) {
       return ProcedureType.CREATE_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof StartPipeProcedureV2) {

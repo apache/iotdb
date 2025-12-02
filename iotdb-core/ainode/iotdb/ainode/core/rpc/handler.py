@@ -41,7 +41,7 @@ from iotdb.thrift.ainode.ttypes import (
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
-    TUnloadModelReq,
+    TUnloadModelReq, TForecastResp,
 )
 from iotdb.thrift.common.ttypes import TSStatus
 

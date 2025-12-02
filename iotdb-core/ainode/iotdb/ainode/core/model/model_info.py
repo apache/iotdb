@@ -32,6 +32,7 @@ class ModelInfo:
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
+
         _transformers_registered: bool = False,
     ):
         self.model_id = model_id
