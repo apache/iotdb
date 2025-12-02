@@ -20,18 +20,41 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
-public class BlobLengthColumnTransformer extends AbstractLengthColumnTransformer {
+public abstract class AbstractLengthColumnTransformer extends UnaryColumnTransformer {
 
-  public BlobLengthColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+  public AbstractLengthColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer) {
     super(returnType, childColumnTransformer);
   }
 
   @Override
-  protected long transformNonNullValue(Binary binary) {
-    return binary.getValues().length;
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
+        columnBuilder.writeLong(transformNonNullValue(column.getBinary(i)));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        columnBuilder.writeLong(transformNonNullValue(column.getBinary(i)));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
+  protected abstract long transformNonNullValue(Binary binary);
 }

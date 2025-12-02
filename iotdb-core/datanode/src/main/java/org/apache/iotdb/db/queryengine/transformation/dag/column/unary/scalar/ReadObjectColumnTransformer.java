@@ -19,25 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.utils.ObjectTypeUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 
 public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
@@ -107,35 +100,14 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private Binary readObject(Binary binary) {
-    File file = ObjectTypeUtils.getObjectPathFromBinary(binary);
-    long actualReadSize = getActualReadSize(file);
+    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    long fileLength = objectLengthPathPair.getLeft();
+    String relativePath = objectLengthPathPair.getRight();
+    int actualReadSize =
+        ObjectTypeUtils.getActualReadSize(relativePath, fileLength, offset, length);
     fragmentInstanceContext.ifPresent(
         context -> context.getMemoryReservationContext().reserveMemoryCumulatively(actualReadSize));
-    byte[] bytes = new byte[(int) actualReadSize];
-    ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
-      fileChannel.read(buffer, offset);
-    } catch (IOException e) {
-      throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-    return new Binary(bytes);
-  }
-
-  private long getActualReadSize(File file) {
-    long fileSize = file.length();
-    if (offset >= fileSize) {
-      throw new SemanticException(
-          String.format(
-              "offset %d is greater than object size %d, file path is %s",
-              offset, fileSize, file.getAbsolutePath()));
-    }
-    long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
-    if (actualReadSize > Integer.MAX_VALUE) {
-      throw new SemanticException(
-          String.format(
-              "Read object size %s is too large (size > 2G), file path is %s",
-              actualReadSize, file.getAbsolutePath()));
-    }
-    return actualReadSize;
+    return new Binary(
+        ObjectTypeUtils.readObjectContent(relativePath, offset, actualReadSize, true).array());
   }
 }
