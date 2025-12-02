@@ -773,7 +773,7 @@ public class IoTDBTableIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("create database db2");
+      statement.execute("create database if not exists db2");
       statement.execute("use db2");
       statement.execute(String.format("create table \"%s\" ()", illegal));
 
