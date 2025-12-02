@@ -73,6 +73,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
+  /**
+   * Get the instance size of InsertTabletStatement for memory calculation.
+   *
+   * @return instance size in bytes
+   */
+  public static long getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
+
   protected long[] times; // times should be sorted. It is done in the session API.
   protected BitMap[] nullBitMaps;
   protected Object[] columns;

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
@@ -51,6 +52,19 @@ import java.util.List;
  * fields needed.
  */
 public class TabletStatementConverter {
+
+  // Memory calculation constants - extracted from RamUsageEstimator for better performance
+  private static final long NUM_BYTES_ARRAY_HEADER =
+      org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+  private static final long NUM_BYTES_OBJECT_REF =
+      org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+  private static final long NUM_BYTES_OBJECT_HEADER =
+      org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+  private static final long SIZE_OF_ARRAYLIST =
+      org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance(java.util.ArrayList.class);
+  private static final long SIZE_OF_BITMAP =
+      org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance(
+          org.apache.tsfile.utils.BitMap.class);
 
   private TabletStatementConverter() {
     // Utility class, no instantiation
@@ -263,7 +277,7 @@ public class TabletStatementConverter {
       final Object columnValue, final TSDataType dataType) {
 
     if (TSDataType.DATE.equals(dataType)) {
-      int[] values = (int[]) columnValue;
+      final int[] values = (int[]) columnValue;
       final LocalDate[] localDateValue = new LocalDate[values.length];
       for (int i = 0; i < values.length; i++) {
         localDateValue[i] = DateUtils.parseIntToLocalDate(values[i]);
@@ -280,15 +294,18 @@ public class TabletStatementConverter {
    *
    * @param byteBuffer ByteBuffer containing serialized data
    * @param readDatabaseName whether to read databaseName from buffer (for V2 format)
-   * @return Pair of InsertTabletStatement and insertTargetName (device name or table name). If
-   *     readDatabaseName is true, the statement will have databaseName set if it exists in buffer.
+   * @return InsertTabletStatement with all fields set, including devicePath
    */
-  public static Pair<InsertTabletStatement, String> deserializeStatementFromTabletFormat(
-      ByteBuffer byteBuffer, boolean readDatabaseName) throws IllegalPathException {
-    InsertTabletStatement statement = new InsertTabletStatement();
+  public static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer, final boolean readDatabaseName) throws IllegalPathException {
+    final InsertTabletStatement statement = new InsertTabletStatement();
+
+    // Calculate memory size during deserialization, use INSTANCE_SIZE constant
+    long memorySize = InsertTabletStatement.getInstanceSize();
+
     final String insertTargetName = ReadWriteIOUtils.readString(byteBuffer);
 
-    int rowSize = ReadWriteIOUtils.readInt(byteBuffer);
+    final int rowSize = ReadWriteIOUtils.readInt(byteBuffer);
 
     // deserialize schemas
     final int schemaSize =
@@ -299,44 +316,120 @@ public class TabletStatementConverter {
     final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[schemaSize];
     final TSDataType[] dataTypes = new TSDataType[schemaSize];
 
+    // Calculate memory for arrays headers and references during deserialization
+    // measurements array: array header + object references
+    long measurementMemorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
+
+    // dataTypes array: shallow size (array header + references)
+    long dataTypesMemorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
+
+    // columnCategories array: shallow size (array header + references)
+    long columnCategoriesMemorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
+
+    // idColumnIndices (TAG columns): ArrayList base + array header
+    long idColumnIndicesSize = SIZE_OF_ARRAYLIST;
+    idColumnIndicesSize += NUM_BYTES_ARRAY_HEADER;
+
+    // Deserialize and calculate memory in the same loop
     for (int i = 0; i < schemaSize; i++) {
-      boolean hasSchema = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+      final boolean hasSchema = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
       if (hasSchema) {
-        Pair<String, TSDataType> pair = readMeasurement(byteBuffer);
+        final Pair<String, TSDataType> pair = readMeasurement(byteBuffer);
         measurement[i] = pair.getLeft();
         dataTypes[i] = pair.getRight();
         columnCategories[i] =
             TsTableColumnCategory.fromTsFileColumnCategory(
                 ColumnCategory.values()[byteBuffer.get()]);
+
+        // Calculate memory for each measurement string
+        if (measurement[i] != null) {
+          measurementMemorySize += org.apache.tsfile.utils.RamUsageEstimator.sizeOf(measurement[i]);
+        }
+
+        // Calculate memory for TAG column indices
+        if (columnCategories[i] != null && columnCategories[i].equals(TsTableColumnCategory.TAG)) {
+          idColumnIndicesSize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                      Integer.BYTES + NUM_BYTES_OBJECT_HEADER)
+                  + NUM_BYTES_OBJECT_REF;
+        }
       }
     }
 
-    // deserialize times
-    long[] times = new long[rowSize];
-    boolean isTimesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    // Add all calculated memory to total
+    memorySize += measurementMemorySize;
+    memorySize += dataTypesMemorySize;
+
+    // deserialize times and calculate memory during deserialization
+    final long[] times = new long[rowSize];
+    // Calculate memory: array header + long size * rowSize
+    final long timesMemorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + (long) Long.BYTES * rowSize);
+
+    final boolean isTimesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
     if (isTimesNotNull) {
       for (int i = 0; i < rowSize; i++) {
         times[i] = ReadWriteIOUtils.readLong(byteBuffer);
       }
     }
 
-    // deserialize bitmaps
-    BitMap[] bitMaps = new BitMap[schemaSize];
-    boolean isBitMapsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    // Add times memory to total
+    memorySize += timesMemorySize;
+
+    // deserialize bitmaps and calculate memory during deserialization
+    final BitMap[] bitMaps;
+    final long bitMapsMemorySize;
+
+    final boolean isBitMapsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
     if (isBitMapsNotNull) {
-      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize);
+      // Use the method that returns both BitMap array and memory size
+      final Pair<BitMap[], Long> bitMapsAndMemory =
+          readBitMapsFromBufferWithMemory(byteBuffer, schemaSize);
+      bitMaps = bitMapsAndMemory.getLeft();
+      bitMapsMemorySize = bitMapsAndMemory.getRight();
+    } else {
+      // Calculate memory for empty BitMap array: array header + references
+      bitMaps = new BitMap[schemaSize];
+      bitMapsMemorySize =
+          org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
     }
 
-    Object[] values = new Object[schemaSize];
-    boolean isValuesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    // Add bitMaps memory to total
+    memorySize += bitMapsMemorySize;
+
+    // Deserialize values and calculate memory during deserialization
+    final Object[] values;
+    final long valuesMemorySize;
+
+    final boolean isValuesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
     if (isValuesNotNull) {
-      values = readvaluesFromBuffer(byteBuffer, dataTypes, schemaSize, rowSize);
+      // Use the method that returns both values array and memory size
+      final Pair<Object[], Long> valuesAndMemory =
+          readValuesFromBufferWithMemory(byteBuffer, dataTypes, schemaSize, rowSize);
+      values = valuesAndMemory.getLeft();
+      valuesMemorySize = valuesAndMemory.getRight();
+    } else {
+      // Calculate memory for empty values array: array header + references
+      values = new Object[schemaSize];
+      valuesMemorySize =
+          org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
     }
+
+    // Add values memory to total
+    memorySize += valuesMemorySize;
 
     final boolean isAligned = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     statement.setMeasurements(measurement);
-    statement.setColumnCategories(columnCategories);
     statement.setTimes(times);
     statement.setBitMaps(bitMaps);
     statement.setDataTypes(dataTypes);
@@ -352,29 +445,47 @@ public class TabletStatementConverter {
         statement.setWriteToTable(true);
         // For table model, insertTargetName is table name, convert to lowercase
         statement.setDevicePath(new PartialPath(insertTargetName.toLowerCase(), false));
+        // Calculate memory for databaseName
+        memorySize += org.apache.tsfile.utils.RamUsageEstimator.sizeOf(databaseName);
+
+        statement.setColumnCategories(columnCategories);
+
+        memorySize += columnCategoriesMemorySize;
+        memorySize += idColumnIndicesSize;
       } else {
         // For tree model, use DataNodeDevicePathCache
         statement.setDevicePath(
             DataNodeDevicePathCache.getInstance().getPartialPath(insertTargetName));
         statement.setColumnCategories(null);
       }
+    } else {
+      // V1 format: no databaseName in buffer, always use DataNodeDevicePathCache
+      statement.setDevicePath(
+          DataNodeDevicePathCache.getInstance().getPartialPath(insertTargetName));
+      statement.setColumnCategories(null);
     }
 
-    return new Pair<>(statement, insertTargetName);
+    // Calculate memory for devicePath
+    memorySize += InsertNodeMemoryEstimator.sizeOfPartialPath(statement.getDevicePath());
+
+    // Set the pre-calculated memory size to avoid recalculation
+    statement.setRamBytesUsed(memorySize);
+
+    return statement;
   }
 
   /**
    * Deserialize InsertTabletStatement from Tablet format ByteBuffer (V1 format, no databaseName).
    *
    * @param byteBuffer ByteBuffer containing serialized data
-   * @return Pair of InsertTabletStatement and insertTargetName (device name)
+   * @return InsertTabletStatement with devicePath set using DataNodeDevicePathCache
    */
-  public static Pair<InsertTabletStatement, String> deserializeStatementFromTabletFormat(
-      ByteBuffer byteBuffer) throws IllegalPathException {
+  public static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer) throws IllegalPathException {
     return deserializeStatementFromTabletFormat(byteBuffer, false);
   }
 
-  private static Pair<String, TSDataType> readMeasurement(ByteBuffer buffer) {
+  private static Pair<String, TSDataType> readMeasurement(final ByteBuffer buffer) {
 
     final Pair<String, TSDataType> pair =
         new Pair<>(ReadWriteIOUtils.readString(buffer), TSDataType.deserializeFrom(buffer));
@@ -383,7 +494,7 @@ public class TabletStatementConverter {
 
     ReadWriteIOUtils.readByte(buffer);
 
-    int size = ReadWriteIOUtils.readInt(buffer);
+    final int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
       for (int i = 0; i < size; i++) {
         ReadWriteIOUtils.readString(buffer);
@@ -394,104 +505,172 @@ public class TabletStatementConverter {
     return pair;
   }
 
-  /** deserialize bitmaps */
-  private static BitMap[] readBitMapsFromBuffer(ByteBuffer byteBuffer, int columns) {
-    BitMap[] bitMaps = new BitMap[columns];
+  /**
+   * Deserialize bitmaps and calculate memory size during deserialization. Returns a Pair of BitMap
+   * array and the calculated memory size.
+   */
+  private static Pair<BitMap[], Long> readBitMapsFromBufferWithMemory(
+      final ByteBuffer byteBuffer, final int columns) {
+    final BitMap[] bitMaps = new BitMap[columns];
+
+    // Calculate memory: array header + object references
+    long memorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
+
     for (int i = 0; i < columns; i++) {
-      boolean hasBitMap = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+      final boolean hasBitMap = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
       if (hasBitMap) {
         final int size = ReadWriteIOUtils.readInt(byteBuffer);
         final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
-        bitMaps[i] = new BitMap(size, valueBinary.getValues());
+        final byte[] byteArray = valueBinary.getValues();
+        bitMaps[i] = new BitMap(size, byteArray);
+
+        // Calculate memory for this BitMap: BitMap object + byte array
+        // BitMap shallow size + byte array (array header + array length)
+        memorySize +=
+            SIZE_OF_BITMAP
+                + org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                    NUM_BYTES_ARRAY_HEADER + byteArray.length);
       }
     }
-    return bitMaps;
+
+    return new Pair<>(bitMaps, memorySize);
   }
 
   /**
+   * Deserialize values from buffer and calculate memory size during deserialization. Returns a Pair
+   * of values array and the calculated memory size.
+   *
    * @param byteBuffer data values
+   * @param types data types
    * @param columns column number
+   * @param rowSize row number
+   * @return Pair of values array and memory size
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static Object[] readvaluesFromBuffer(
-      ByteBuffer byteBuffer, TSDataType[] types, int columns, int rowSize) {
-    Object[] values = new Object[columns];
+  private static Pair<Object[], Long> readValuesFromBufferWithMemory(
+      final ByteBuffer byteBuffer, final TSDataType[] types, final int columns, final int rowSize) {
+    final Object[] values = new Object[columns];
+
+    // Calculate memory: array header + object references
+    long memorySize =
+        org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
+
     for (int i = 0; i < columns; i++) {
-      boolean isValueColumnsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+      final boolean isValueColumnsNotNull =
+          BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
       if (isValueColumnsNotNull && types[i] == null) {
         continue;
       }
+
       switch (types[i]) {
         case BOOLEAN:
-          boolean[] boolValues = new boolean[rowSize];
+          final boolean[] boolValues = new boolean[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
               boolValues[index] = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
             }
           }
           values[i] = boolValues;
+          // Calculate memory for boolean array: array header + 1 byte per element (aligned)
+          memorySize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + rowSize);
           break;
         case INT32:
         case DATE:
-          int[] intValues = new int[rowSize];
+          final int[] intValues = new int[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
               intValues[index] = ReadWriteIOUtils.readInt(byteBuffer);
             }
           }
           values[i] = intValues;
+          // Calculate memory for int array: array header + 4 bytes per element (aligned)
+          memorySize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + (long) Integer.BYTES * rowSize);
           break;
         case INT64:
         case TIMESTAMP:
-          long[] longValues = new long[rowSize];
+          final long[] longValues = new long[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
               longValues[index] = ReadWriteIOUtils.readLong(byteBuffer);
             }
           }
           values[i] = longValues;
+          // Calculate memory for long array: array header + 8 bytes per element (aligned)
+          memorySize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + (long) Long.BYTES * rowSize);
           break;
         case FLOAT:
-          float[] floatValues = new float[rowSize];
+          final float[] floatValues = new float[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
               floatValues[index] = ReadWriteIOUtils.readFloat(byteBuffer);
             }
           }
           values[i] = floatValues;
+          // Calculate memory for float array: array header + 4 bytes per element (aligned)
+          memorySize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + (long) Float.BYTES * rowSize);
           break;
         case DOUBLE:
-          double[] doubleValues = new double[rowSize];
+          final double[] doubleValues = new double[rowSize];
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
               doubleValues[index] = ReadWriteIOUtils.readDouble(byteBuffer);
             }
           }
           values[i] = doubleValues;
+          // Calculate memory for double array: array header + 8 bytes per element (aligned)
+          memorySize +=
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + (long) Double.BYTES * rowSize);
           break;
         case TEXT:
         case STRING:
         case BLOB:
-          Binary[] binaryValues = new Binary[rowSize];
+          final Binary[] binaryValues = new Binary[rowSize];
+          // Calculate memory for Binary array: array header + object references
+          long binaryArrayMemory =
+              org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
+                  NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * rowSize);
+
           if (isValueColumnsNotNull) {
             for (int index = 0; index < rowSize; index++) {
-              boolean isNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+              final boolean isNotNull =
+                  BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
               if (isNotNull) {
                 binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
+                // Calculate memory for each Binary object during deserialization
+                binaryArrayMemory += binaryValues[index].ramBytesUsed();
               } else {
                 binaryValues[index] = Binary.EMPTY_VALUE;
+                // EMPTY_VALUE also has memory cost
+                binaryArrayMemory += Binary.EMPTY_VALUE.ramBytesUsed();
               }
             }
           } else {
             Arrays.fill(binaryValues, Binary.EMPTY_VALUE);
+            // Calculate memory for all EMPTY_VALUE
+            binaryArrayMemory += (long) rowSize * Binary.EMPTY_VALUE.ramBytesUsed();
           }
           values[i] = binaryValues;
+          // Add calculated Binary array memory to total
+          memorySize += binaryArrayMemory;
           break;
         default:
           throw new UnSupportedDataTypeException(
               String.format("data type %s is not supported when convert data at client", types[i]));
       }
     }
-    return values;
+
+    return new Pair<>(values, memorySize);
   }
 }

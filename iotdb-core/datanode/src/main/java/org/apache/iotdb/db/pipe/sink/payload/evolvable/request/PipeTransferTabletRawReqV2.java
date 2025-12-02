@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -188,10 +187,9 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     final int startPosition = buffer.position();
     try {
       // V2: read databaseName, readDatabaseName = true
-      Pair<InsertTabletStatement, String> statementAndDevice =
+      final InsertTabletStatement insertTabletStatement =
           TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, true);
-      this.isAligned = statementAndDevice.getLeft().isAligned();
-      final InsertTabletStatement insertTabletStatement = statementAndDevice.getLeft();
+      this.isAligned = insertTabletStatement.isAligned();
       // databaseName is already set in deserializeStatementFromTabletFormat when
       // readDatabaseName=true
       this.dataBaseName = insertTabletStatement.getDatabaseName().orElse(null);

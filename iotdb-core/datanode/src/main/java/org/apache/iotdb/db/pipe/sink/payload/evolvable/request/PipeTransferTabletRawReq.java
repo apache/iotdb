@@ -24,11 +24,9 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkReques
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -142,15 +140,10 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     final int startPosition = buffer.position();
     try {
       // V1: no databaseName, readDatabaseName = false
-      Pair<InsertTabletStatement, String> statementAndDevice =
+      final InsertTabletStatement insertTabletStatement =
           TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
-      tabletReq.isAligned = statementAndDevice.getLeft().isAligned();
-      final InsertTabletStatement insertTabletStatement = statementAndDevice.getLeft();
-      final String tableName = statementAndDevice.getRight();
-      // V1: always use DataNodeDevicePathCache (no databaseName)
-      insertTabletStatement.setDevicePath(
-          DataNodeDevicePathCache.getInstance().getPartialPath(tableName));
-      insertTabletStatement.setColumnCategories(null);
+      tabletReq.isAligned = insertTabletStatement.isAligned();
+      // devicePath is already set in deserializeStatementFromTabletFormat for V1 format
       tabletReq.statement = insertTabletStatement;
     } catch (final Exception e) {
       buffer.position(startPosition);

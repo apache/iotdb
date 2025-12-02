@@ -839,6 +839,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return ramBytesUsed;
   }
 
+  /**
+   * Set the pre-calculated memory size. This is used when memory size is calculated during
+   * deserialization to avoid recalculation.
+   *
+   * @param ramBytesUsed the calculated memory size in bytes
+   */
+  public void setRamBytesUsed(long ramBytesUsed) {
+    this.ramBytesUsed = ramBytesUsed;
+  }
+
   private long shallowSizeOfList(List<?> list) {
     return Objects.nonNull(list)
         ? UpdateDetailContainer.LIST_SIZE

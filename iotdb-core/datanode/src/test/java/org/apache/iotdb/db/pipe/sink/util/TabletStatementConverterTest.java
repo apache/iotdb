@@ -20,14 +20,12 @@
 package org.apache.iotdb.db.pipe.sink.util;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -106,15 +104,11 @@ public class TabletStatementConverterTest {
         ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
     // Deserialize Statement from Tablet format
-    final Pair<InsertTabletStatement, String> result =
+    final InsertTabletStatement statement =
         TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
 
-    final InsertTabletStatement statement = result.getLeft();
-    final String deserializedDeviceName = result.getRight();
-    statement.setDevicePath(new PartialPath(deserializedDeviceName));
-
     // Verify basic information
-    Assert.assertEquals(deviceName, deserializedDeviceName);
+    Assert.assertEquals(deviceName, statement.getDevicePath().getFullPath());
     Assert.assertEquals(rowCount, statement.getRowCount());
     Assert.assertEquals(columnCount, statement.getMeasurements().length);
     Assert.assertEquals(isAligned, statement.isAligned());
@@ -143,10 +137,8 @@ public class TabletStatementConverterTest {
         ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
     // Deserialize to Statement
-    final Pair<InsertTabletStatement, String> result =
+    final InsertTabletStatement statement =
         TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
-    final InsertTabletStatement statement = result.getLeft();
-    statement.setDevicePath(new PartialPath(result.getRight()));
     // Convert Statement back to Tablet
     final Tablet convertedTablet = TabletStatementConverter.convertStatementToTablet(statement);
 
