@@ -75,7 +75,7 @@ public class BlobLengthColumnTransformerTest {
     Column result = blobLengthColumnTransformer.getColumn();
 
     int expectedLength = input.getBytes(StandardCharsets.UTF_8).length;
-    Assert.assertEquals(expectedLength, result.getInt(0));
+    Assert.assertEquals(expectedLength, result.getLong(0));
   }
 
   @Test
@@ -93,7 +93,7 @@ public class BlobLengthColumnTransformerTest {
     Column result = blobLengthColumnTransformer.getColumn();
 
     int expectedLength = inputBytes.length;
-    Assert.assertEquals(expectedLength, result.getInt(0));
+    Assert.assertEquals(expectedLength, result.getLong(0));
   }
 
   @Test
@@ -113,9 +113,9 @@ public class BlobLengthColumnTransformerTest {
     blobLengthColumnTransformer.addReferenceCount();
     blobLengthColumnTransformer.evaluate();
     Column result = blobLengthColumnTransformer.getColumn();
-    Assert.assertEquals(inputBytes1.length, result.getInt(0));
+    Assert.assertEquals(inputBytes1.length, result.getLong(0));
     Assert.assertTrue(result.isNull(1));
-    Assert.assertEquals(inputBytes2.length, result.getInt(2));
+    Assert.assertEquals(inputBytes2.length, result.getLong(2));
   }
 
   @Test
@@ -142,7 +142,7 @@ public class BlobLengthColumnTransformerTest {
     int expectedValue3 = bytes3.length;
 
     Assert.assertTrue(result.isNull(0));
-    Assert.assertEquals(expectedValue2, result.getInt(1));
-    Assert.assertEquals(expectedValue3, result.getInt(2));
+    Assert.assertEquals(expectedValue2, result.getLong(1));
+    Assert.assertEquals(expectedValue3, result.getLong(2));
   }
 }
