@@ -1040,7 +1040,7 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testStorageGroupWithHyphenInName() {
+  public void testDatabaseWithHyphenInName() {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);

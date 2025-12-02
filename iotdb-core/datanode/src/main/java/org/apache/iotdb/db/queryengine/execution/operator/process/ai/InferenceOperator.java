@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
 import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
+import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;

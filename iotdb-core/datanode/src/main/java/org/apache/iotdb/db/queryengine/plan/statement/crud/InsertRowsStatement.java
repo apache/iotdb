@@ -193,6 +193,12 @@ public class InsertRowsStatement extends InsertBaseStatement {
     insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertRowStatementList.forEach(InsertRowStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE

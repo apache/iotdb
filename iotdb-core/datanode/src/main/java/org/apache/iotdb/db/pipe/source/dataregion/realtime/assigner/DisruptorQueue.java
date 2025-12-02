@@ -49,9 +49,9 @@ public class DisruptorQueue {
       final EventHandler<PipeRealtimeEvent> eventHandler,
       final Consumer<PipeRealtimeEvent> onAssignedHook) {
     final PipeConfig config = PipeConfig.getInstance();
-    final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
+    final int ringBufferSize = config.getPipeSourceAssignerDisruptorRingBufferSize();
     final long ringBufferEntrySizeInBytes =
-        config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+        config.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes();
 
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()

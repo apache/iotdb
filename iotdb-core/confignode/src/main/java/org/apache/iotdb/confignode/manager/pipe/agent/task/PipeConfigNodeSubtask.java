@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
+import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -188,7 +190,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
         PipeConfigRegionSinkMetrics.getInstance().markConfigEvent(taskID);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
-
+      sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
+    } catch (final PipeNonReportException e) {
+      sleep4NonReportException();
     } catch (final PipeException e) {
       setLastExceptionEvent(event);
       if (!isClosed.get()) {

@@ -163,7 +163,11 @@ class AINode:
             self._rpc_handler.stop()
             if self._rpc_service:
                 self._rpc_service.stop()
-                self._rpc_service.join(1)
-                if self._rpc_service.is_alive():
-                    logger.warning("RPC service thread failed to stop in time.")
+                for retry in range(30):
+                    self._rpc_service.join(2)
+                    if not self._rpc_service.is_alive():
+                        logger.warning(
+                            "RPC service thread failed to stop in time, retrying..."
+                        )
+                        break
             logger.info("IoTDB-AINode has successfully stopped.")

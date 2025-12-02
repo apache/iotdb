@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.selectinto;
 
+import org.apache.iotdb.db.it.utils.TSDataTypeTestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -104,13 +105,11 @@ public class IoTDBSelectIntoIT {
   static {
     SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
     for (int deviceId = 0; deviceId < 6; deviceId++) {
-      for (TSDataType dataType : TSDataType.values()) {
-        if (!dataType.equals(TSDataType.VECTOR) && !dataType.equals(TSDataType.UNKNOWN)) {
-          SELECT_INTO_SQL_LIST.add(
-              String.format(
-                  "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
-                  deviceId, dataType.name().toLowerCase(), dataType));
-        }
+      for (TSDataType dataType : TSDataTypeTestUtils.getSupportedTypes()) {
+        SELECT_INTO_SQL_LIST.add(
+            String.format(
+                "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
+                deviceId, dataType.name().toLowerCase(), dataType));
       }
     }
     for (int time = 0; time < 12; time++) {

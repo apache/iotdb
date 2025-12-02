@@ -186,7 +186,7 @@ public interface CommonConfig {
 
   CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 
-  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
 

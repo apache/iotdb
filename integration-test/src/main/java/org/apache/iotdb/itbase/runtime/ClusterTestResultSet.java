@@ -781,8 +781,12 @@ public class ClusterTestResultSet implements ResultSet {
   }
 
   @Override
-  public Blob getBlob(int columnIndex) {
-    throw new UnsupportedOperationException();
+  public Blob getBlob(int columnIndex) throws SQLException {
+    RequestDelegate<Blob> delegate = createLocalRequestDelegate();
+    for (ResultSet rs : resultSets) {
+      delegate.addRequest(() -> rs.getBlob(columnIndex));
+    }
+    return delegate.requestAllAndCompare();
   }
 
   @Override
@@ -806,8 +810,12 @@ public class ClusterTestResultSet implements ResultSet {
   }
 
   @Override
-  public Blob getBlob(String columnLabel) {
-    throw new UnsupportedOperationException();
+  public Blob getBlob(String columnLabel) throws SQLException {
+    RequestDelegate<Blob> delegate = createLocalRequestDelegate();
+    for (ResultSet rs : resultSets) {
+      delegate.addRequest(() -> rs.getBlob(columnLabel));
+    }
+    return delegate.requestAllAndCompare();
   }
 
   @Override

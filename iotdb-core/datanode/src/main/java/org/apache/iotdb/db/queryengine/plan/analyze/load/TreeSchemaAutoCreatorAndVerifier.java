@@ -235,6 +235,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
     } catch (Exception e) {
+      if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
+          && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
+        throw (LoadAnalyzeTypeMismatchException) e.getCause();
+      }
       handleException(e, loadTsFileAnalyzer.getStatementString());
     }
   }

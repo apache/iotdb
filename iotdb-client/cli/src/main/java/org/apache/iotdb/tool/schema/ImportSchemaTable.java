@@ -48,7 +48,7 @@ public class ImportSchemaTable extends AbstractImportSchema {
   private static ITableSessionPool sessionPool;
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
@@ -57,8 +57,12 @@ public class ImportSchemaTable extends AbstractImportSchema {
             .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder =
+          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));

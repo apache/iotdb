@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 
@@ -27,21 +29,37 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
-public class PrefixTreePattern extends SingleTreePattern {
+public class PrefixTreePattern extends TreePattern {
+
+  private final String pattern;
 
   public PrefixTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
-    super(isTreeModelDataAllowedToBeCaptured, pattern);
+    super(isTreeModelDataAllowedToBeCaptured);
+    this.pattern = pattern != null ? pattern : getDefaultPattern();
   }
 
   public PrefixTreePattern(final String pattern) {
     this(true, pattern);
   }
 
-  @Override
-  public String getDefaultPattern() {
+  private String getDefaultPattern() {
     return PipeSourceConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
+  }
+
+  @Override
+  public String getPattern() {
+    return pattern;
+  }
+
+  @Override
+  public boolean isRoot() {
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   @Override
@@ -132,7 +150,49 @@ public class PrefixTreePattern extends SingleTreePattern {
   }
 
   @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    if (isRoot()) {
+      return Collections.singletonList(new PartialPath(new String[] {"root", "**"}));
+    }
+
+    final List<PartialPath> paths = new ArrayList<>();
+    try {
+      // 1. "root.d1"
+      paths.add(new PartialPath(pattern));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 2. "root.d1*"
+      paths.add(new PartialPath(pattern + "*"));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 3. "root.d1.**"
+      paths.add(
+          new PartialPath(
+              pattern + TsFileConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 4. "root.d1*.**"
+      paths.add(
+          new PartialPath(
+              pattern
+                  + "*"
+                  + TsFileConstant.PATH_SEPARATOR
+                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (final IllegalPathException ignored) {
+    }
+
+    return paths;
+  }
+
+  @Override
   public String toString() {
-    return "PrefixPipePattern" + super.toString();
+    return "PrefixTreePattern{pattern='"
+        + pattern
+        + "', isTreeModelDataAllowedToBeCaptured="
+        + isTreeModelDataAllowedToBeCaptured
+        + '}';
   }
 }

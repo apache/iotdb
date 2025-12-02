@@ -188,7 +188,7 @@ public class IoTDBSetConfigurationIT {
 
     // can start with an illegal value
     EnvFactory.getEnv().cleanClusterEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultStorageGroupLevel(-1);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDatabaseLevel(-1);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

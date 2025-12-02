@@ -17,24 +17,45 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.ainode;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
+import com.google.common.collect.ImmutableList;
 
-public class AINodeClientManager {
-  private AINodeClientManager() {
-    // Empty constructor
+import java.util.List;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
+
+public class ShowAvailableUrls extends Statement {
+
+  public ShowAvailableUrls() {
+    super(null);
   }
 
-  private static final class AINodeClientManagerHolder {
-    private static final IClientManager<TEndPoint, AINodeClient> INSTANCE =
-        new IClientManager.Factory<TEndPoint, AINodeClient>()
-            .createClientManager(new ClientPoolFactory.AINodeClientPoolFactory());
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowAvailableUrls(this, context);
   }
 
-  public static IClientManager<TEndPoint, AINodeClient> getInstance() {
-    return AINodeClientManagerHolder.INSTANCE;
+  @Override
+  public List<Node> getChildren() {
+    return ImmutableList.of();
+  }
+
+  @Override
+  public int hashCode() {
+    return 0;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    return (obj != null) && (getClass() == obj.getClass());
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).toString();
   }
 }

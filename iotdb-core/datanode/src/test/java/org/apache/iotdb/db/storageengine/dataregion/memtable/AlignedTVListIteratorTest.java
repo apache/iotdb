@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -41,6 +43,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.junit.AfterClass;
@@ -951,5 +954,59 @@ public class AlignedTVListIteratorTest {
       }
     }
     Assert.assertEquals(expectedTimestamps, resultTimestamps);
+  }
+
+  @Test
+  public void testEncodeBatch() {
+    testEncodeBatch(largeSingleTvListMap, 400000);
+    testEncodeBatch(largeOrderedMultiTvListMap, 400000);
+    testEncodeBatch(largeMergeSortMultiTvListMap, 400000);
+  }
+
+  private void testEncodeBatch(Map<TVList, Integer> tvListMap, long expectedCount) {
+    AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(getMeasurementSchema());
+    List<Integer> columnIdxList = Arrays.asList(0, 1, 2);
+    IMeasurementSchema measurementSchema = getMeasurementSchema();
+    AlignedReadOnlyMemChunk chunk =
+        new AlignedReadOnlyMemChunk(
+            fragmentInstanceContext,
+            columnIdxList,
+            measurementSchema,
+            tvListMap,
+            Collections.emptyList(),
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+    MemPointIterator memPointIterator = chunk.createMemPointIterator(Ordering.ASC, null);
+    BatchEncodeInfo encodeInfo =
+        new BatchEncodeInfo(
+            0, 0, 0, 10000, 100000, IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
+    long[] times = new long[10000];
+    long count = 0;
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+        encodeInfo.pointNumInPage = 0;
+      }
+
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
+        alignedChunkWriter.sealCurrentPage();
+        alignedChunkWriter.clearPageWriter();
+        count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
+        alignedChunkWriter = new AlignedChunkWriterImpl(getMeasurementSchema());
+        encodeInfo.reset();
+      }
+    }
+    // Handle remaining data in the final unsealed chunk
+    if (encodeInfo.pointNumInChunk > 0 || encodeInfo.pointNumInPage > 0) {
+      if (encodeInfo.pointNumInPage > 0) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+      }
+      alignedChunkWriter.sealCurrentPage();
+      count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
+    }
+    Assert.assertEquals(expectedCount, count);
   }
 }

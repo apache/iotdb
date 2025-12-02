@@ -520,7 +520,8 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
-    DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()));
+    DataRegionId dataRegionId =
+        new DataRegionId(Integer.parseInt(dataRegion.getDataRegionIdString()));
     MetricService.getInstance()
         .createAutoGauge(
             Metric.DATA_REGION_MEM_COST.toString(),

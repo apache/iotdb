@@ -79,7 +79,7 @@ public class PipeConsensusDeleteEventHandler
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector.statusHandler().handle(status, status.getMessage(), event.toString());
+        connector.statusHandler().handle(status, status.getMessage(), event.toString(), true);
       }
       event.decreaseReferenceCount(PipeConsensusDeleteEventHandler.class.getName(), true);
 

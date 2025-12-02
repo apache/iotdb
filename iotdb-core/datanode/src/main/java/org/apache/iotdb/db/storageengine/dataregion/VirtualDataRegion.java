@@ -117,7 +117,7 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   }
 
   @Override
-  public String getDataRegionId() {
+  public String getDataRegionIdString() {
     return VIRTUAL_DATA_REGION_ID;
   }
 

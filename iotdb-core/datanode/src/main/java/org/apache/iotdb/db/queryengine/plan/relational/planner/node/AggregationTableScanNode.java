@@ -623,4 +623,14 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
   public Map<DeviceEntry, Integer> getDeviceCountMap() {
     return deviceCountMap;
   }
+
+  @Override
+  public void setPushDownLimit(long pushDownLimit) {
+    throw new IllegalStateException("Should never push down limit to AggregationTableScanNode.");
+  }
+
+  @Override
+  public void setPushDownOffset(long pushDownOffset) {
+    throw new IllegalStateException("Should never push down offset to AggregationTableScanNode.");
+  }
 }

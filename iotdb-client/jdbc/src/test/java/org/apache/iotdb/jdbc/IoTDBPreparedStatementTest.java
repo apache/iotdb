@@ -200,7 +200,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 'abcde' and time > 2017-11-1 0:13:00",
+        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < '''abcde''' and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
   }
 
@@ -217,7 +217,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < \"abcde\" and time > 2017-11-1 0:13:00",
+        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < '\"abcde\"' and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
   }
 
@@ -233,7 +233,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "SELECT status, temperature FROM root.ln.wf01.wt01", argument.getValue().getStatement());
+        "SELECT status, 'temperature' FROM root.ln.wf01.wt01", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
@@ -325,7 +325,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(12324,false,123,123234345,123.423,-1323.0,'abc')",
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(12324,false,123,123234345,123.423,-1323.0,'''abc''')",
         argument.getValue().getStatement());
   }
 
@@ -351,7 +351,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g,h) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,\"abc\",'abc','abc')",
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g,h) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,'\"abc\"','abc','''abc''')",
         argument.getValue().getStatement());
   }
 
@@ -374,7 +374,7 @@ public class IoTDBPreparedStatementTest {
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
+        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,'\"abc\"')",
         argument.getValue().getStatement());
   }
 
@@ -399,5 +399,147 @@ public class IoTDBPreparedStatementTest {
     assertEquals(
         "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
+  }
+
+  // ========== Table Model SQL Injection Prevention Tests ==========
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelLoginInjectionWithComment() throws Exception {
+    // Login interface SQL injection attack 1: Using -- comments to bypass password checks
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "admin' --");
+    ps.setString(2, "password");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT * FROM users WHERE username = 'admin'' --' AND password = 'password'",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelLoginInjectionWithORCondition() throws Exception {
+    // Login interface SQL injection attack 2: Bypassing authentication by using 'OR '1'='1
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "admin");
+    ps.setString(2, "' OR '1'='1");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT * FROM users WHERE username = 'admin' AND password = ''' OR ''1''=''1'",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelQueryWithMultipleInjectionVectors() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE email = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "'; DROP TABLE users;");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT * FROM users WHERE email = '''; DROP TABLE users;'",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelString1() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "a'b");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals("SELECT * FROM users WHERE password = 'a''b'", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelString2() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "a\'b");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals("SELECT * FROM users WHERE password = 'a''b'", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelString3() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "a\\'b");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT * FROM users WHERE password = 'a\\''b'", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelString4() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE password = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "a\\\'b");
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT * FROM users WHERE password = 'a\\''b'", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelStringWithNull() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    String sql = "SELECT * FROM users WHERE email = ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, null);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals("SELECT * FROM users WHERE email = null", argument.getValue().getStatement());
   }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.function.Split;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -242,8 +245,16 @@ public class TestMetadata implements Metadata {
       throws OperatorNotFoundException {
 
     switch (operatorType) {
-      case ADD:
       case SUBTRACT:
+        Optional<Type> resolvedType = SubtractionResolver.checkConditions(argumentTypes);
+        return resolvedType.orElseThrow(
+            () ->
+                new OperatorNotFoundException(
+                    operatorType,
+                    argumentTypes,
+                    new IllegalArgumentException(
+                        "The combination of argument types is not supported for this operator.")));
+      case ADD:
       case MULTIPLY:
       case DIVIDE:
       case MODULUS:
@@ -480,6 +491,18 @@ public class TestMetadata implements Metadata {
       final MPPQueryContext context,
       final boolean allowCreateTable,
       final boolean isStrictIdColumn) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+
     throw new UnsupportedOperationException();
   }
 

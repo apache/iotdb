@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -27,10 +32,15 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +55,9 @@ import java.util.Optional;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 public class InsertStatementTest {
@@ -82,6 +95,11 @@ public class InsertStatementTest {
             new ColumnSchema(
                 "m3", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.FIELD));
     tableSchema = new TableSchema("table1", columnSchemas);
+
+    TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
+
     when(metadata.validateTableHeaderSchema(
             any(String.class),
             any(TableSchema.class),
@@ -89,9 +107,66 @@ public class InsertStatementTest {
             any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
+
+    doAnswer(
+            invocation -> {
+              String database = invocation.getArgument(0);
+              InsertNodeMeasurementInfo measurementInfo = invocation.getArgument(1);
+              MPPQueryContext context = invocation.getArgument(2);
+              boolean allowCreateTable = invocation.getArgument(3);
+              TableHeaderSchemaValidator.MeasurementValidator measurementValidator =
+                  invocation.getArgument(4);
+              TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler =
+                  invocation.getArgument(5);
+              TableHeaderSchemaValidator.getInstance()
+                  .validateInsertNodeMeasurements(
+                      database,
+                      measurementInfo,
+                      context,
+                      allowCreateTable,
+                      measurementValidator,
+                      tagColumnHandler);
+              return null;
+            })
+        .when(metadata)
+        .validateInsertNodeMeasurements(
+            anyString(),
+            any(InsertNodeMeasurementInfo.class),
+            any(MPPQueryContext.class),
+            anyBoolean(),
+            any(TableHeaderSchemaValidator.MeasurementValidator.class),
+            any(TableHeaderSchemaValidator.TagColumnHandler.class));
+
     when(queryContext.getSession()).thenReturn(sessionInfo);
     when(queryContext.getDatabaseName()).thenReturn(Optional.of("test"));
     when(sessionInfo.getDatabaseName()).thenReturn(Optional.of("test"));
+  }
+
+  private TsTable convertTableSchemaToTsTable(TableSchema tableSchema) {
+    TsTable tsTable = new TsTable(tableSchema.getTableName());
+    for (ColumnSchema columnSchema : tableSchema.getColumns()) {
+      TSDataType dataType = InternalTypeManager.getTSDataType(columnSchema.getType());
+      TsTableColumnCategory category = columnSchema.getColumnCategory();
+
+      switch (category) {
+        case TAG:
+          tsTable.addColumnSchema(new TagColumnSchema(columnSchema.getName(), dataType));
+          break;
+        case ATTRIBUTE:
+          tsTable.addColumnSchema(new AttributeColumnSchema(columnSchema.getName(), dataType));
+          break;
+        case FIELD:
+        default:
+          tsTable.addColumnSchema(
+              new FieldColumnSchema(
+                  columnSchema.getName(),
+                  dataType,
+                  TSEncoding.PLAIN,
+                  CompressionType.UNCOMPRESSED));
+          break;
+      }
+    }
+    return tsTable;
   }
 
   @Test
@@ -125,18 +200,18 @@ public class InsertStatementTest {
 
     // id3 should be added into the statement to generate right DeviceIds
     assertArrayEquals(
-        new String[] {"id1", "id2", "id3", "m1", null, "attr2"},
+        new String[] {"id1", "id2", "id3", "attr2", "m1", null},
         insertRowStatement.getMeasurements());
     assertArrayEquals(
-        new String[] {"id1", "id2", null, "m1", null, "attr2"}, insertRowStatement.getValues());
+        new String[] {"id1", "id2", null, "attr2", "m1", null}, insertRowStatement.getValues());
     assertArrayEquals(
         new TSDataType[] {
           TSDataType.STRING,
           TSDataType.STRING,
           TSDataType.STRING,
+          TSDataType.STRING,
           TSDataType.DOUBLE,
-          null,
-          TSDataType.STRING
+          null
         },
         insertRowStatement.getDataTypes());
     assertArrayEquals(
@@ -144,9 +219,9 @@ public class InsertStatementTest {
           TsTableColumnCategory.TAG,
           TsTableColumnCategory.TAG,
           TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
           TsTableColumnCategory.FIELD,
-          TsTableColumnCategory.FIELD,
-          TsTableColumnCategory.ATTRIBUTE
+          TsTableColumnCategory.FIELD
         },
         insertRowStatement.getColumnCategories());
   }
@@ -172,6 +247,11 @@ public class InsertStatementTest {
                 false,
                 TsTableColumnCategory.ATTRIBUTE));
     tableSchema = new TableSchema("table1", columnSchemas);
+
+    TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
+
     when(metadata.validateTableHeaderSchema(
             any(String.class),
             any(TableSchema.class),
@@ -202,6 +282,11 @@ public class InsertStatementTest {
             new ColumnSchema(
                 "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
     tableSchema = new TableSchema("table1", columnSchemas);
+
+    TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
+
     when(metadata.validateTableHeaderSchema(
             any(String.class),
             any(TableSchema.class),

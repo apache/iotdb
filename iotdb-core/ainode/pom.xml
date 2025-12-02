@@ -87,9 +87,6 @@
                         <fileset>
                             <directory>target</directory>
                         </fileset>
-                        <fileset>
-                            <directory>venv</directory>
-                        </fileset>
                     </filesets>
                 </configuration>
             </plugin>
@@ -142,6 +139,9 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
                 <executions>
+                    <!--
+                        Copy the python api of IoTDB from iotdb-client.
+                    -->
                     <execution>
                         <id>copy-python-dependencies</id>
                         <phase>generate-sources</phase>
@@ -212,55 +212,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <executions>
-                    <!-- Prepare a local installation of python -->
-                    <execution>
-                        <id>python-venv</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>venv</argument>
-                                <argument>./venv</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Update pip in our local working environment -->
-                    <execution>
-                        <id>python-upgrade-pip</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>pip</argument>
-                                <argument>install</argument>
-                                <argument>--upgrade</argument>
-                                <argument>pip</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Install poetry in our local working environment -->
-                    <execution>
-                        <id>python-install-poetry</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}pip3</executable>
-                            <arguments>
-                                <argument>install</argument>
-                                <argument>poetry</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
                     <execution>
                         <id>python-compile</id>
                         <phase>compile</phase>
@@ -268,44 +219,13 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>${python.venv.bin}poetry</executable>
+                            <executable>${python.exe.bin}</executable>
+                            <workingDirectory>${project.basedir}</workingDirectory>
                             <arguments>
-                                <argument>build</argument>
+                                <argument>build_binary.py</argument>
                             </arguments>
                         </configuration>
                     </execution>
-                    <!--execution>
-                        <id>python-test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}${python.exe.bin}</executable>
-                            <arguments>
-                                <argument>-m</argument>
-                                <argument>pytest</argument>
-                                <argument>tests</argument>
-                            </arguments>
-                        </configuration>
-                    </execution-->
-                    <!--execution>
-                        <id>python-package</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${python.venv.bin}pip3</executable>
-                            <arguments>
-                                <argument>wheel</argument>
-                                <argument>.</argument>
-                                <argument>-w</argument>
-                                <argument>dist</argument>
-                                <argument>- -no-deps</argument>
-                            </arguments>
-                        </configuration>
-                    </execution-->
                 </executions>
             </plugin>
             <plugin>

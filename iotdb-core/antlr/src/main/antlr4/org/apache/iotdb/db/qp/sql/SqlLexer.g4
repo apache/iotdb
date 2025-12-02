@@ -254,6 +254,14 @@ DATANODES
     : D A T A N O D E S
     ;
 
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
+    ;
+
 DATASET
     : D A T A S E T
     ;
@@ -610,6 +618,10 @@ PATHS
     : P A T H S
     ;
 
+PERMITTED
+    : P E R M I T T E D
+    ;
+
 PIPE
     : P I P E
     ;
@@ -840,6 +852,10 @@ STATEMENT
 
 STOP
     : S T O P
+    ;
+
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
     ;
 
 SUBSCRIPTION

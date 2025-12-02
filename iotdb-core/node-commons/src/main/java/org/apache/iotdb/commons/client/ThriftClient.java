@@ -115,7 +115,8 @@ public interface ThriftClient {
             && (hasExpectedMessage(cause, "Connection reset by peer")
                 || hasExpectedMessage(cause, "Broken pipe")))
         || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused")
-            || (cause instanceof ClosedChannelException));
+            || (cause instanceof ClosedChannelException))
+        || (cause instanceof java.util.concurrent.TimeoutException);
   }
 
   static boolean hasExpectedMessage(Throwable cause, String expectedMessage) {

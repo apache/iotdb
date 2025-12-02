@@ -163,7 +163,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-            false);
+            false,
+            skipIfNoPrivileges);
 
     transferTsFileClientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -178,7 +179,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-            isSplitTSFileBatchModeEnabled);
+            isSplitTSFileBatchModeEnabled,
+            skipIfNoPrivileges);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -537,14 +539,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if ((retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty())
         || (!forced
             && retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTabletEventQueueSize()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTsFileEventQueueSize()
             && retryEventQueue.size() + retryTsFileQueue.size()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold())) {
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTotalEventQueueSize())) {
       return;
     }
 
@@ -602,14 +601,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       if (System.currentTimeMillis() - retryStartTime
           > PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall()) {
         if (retryEventQueueEventCounter.getTabletInsertionEventCount()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTabletEventQueueSizeThreshold()
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTabletEventQueueSize()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTsFileEventQueueSizeThreshold()
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTsFileEventQueueSize()
             && retryEventQueue.size() + retryTsFileQueue.size()
-                < PipeConfig.getInstance()
-                    .getPipeAsyncConnectorForcedRetryTotalEventQueueSizeThreshold()) {
+                < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTotalEventQueueSize()) {
           return;
         }
 

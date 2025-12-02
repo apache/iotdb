@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.confignode.procedure.state;
 
-public enum DeleteStorageGroupState {
-  PRE_DELETE_DATABASE,
-  INVALIDATE_CACHE,
-  DELETE_DATABASE_SCHEMA
+public enum AlterEncodingCompressorState {
+  ALTER_SCHEMA_REGION,
+  CLEAR_CACHE
 }

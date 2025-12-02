@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConf
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAINodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAvailableUrlsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
@@ -123,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -141,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
@@ -250,20 +254,18 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitDeleteStorageGroup(
+  public IConfigTask visitDeleteDatabase(
       DeleteDatabaseStatement statement, MPPQueryContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(
-      ShowDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitShowDatabase(ShowDatabaseStatement statement, MPPQueryContext context) {
     return new ShowDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitCountStorageGroup(
-      CountDatabaseStatement statement, MPPQueryContext context) {
+  public IConfigTask visitCountDatabase(CountDatabaseStatement statement, MPPQueryContext context) {
     return new CountDatabaseTask(statement);
   }
 
@@ -551,6 +553,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitShowAvailableUrls(
+      ShowAvailableUrlsStatement showAvailableUrlsStatement, MPPQueryContext context) {
+    return new ShowAvailableUrlsTask();
+  }
+
+  @Override
   public IConfigTask visitShowConfigNodes(
       ShowConfigNodesStatement showConfigNodesStatement, MPPQueryContext context) {
     return new ShowConfigNodesTask();
@@ -701,6 +709,13 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitDropSubscription(
       DropSubscriptionStatement dropSubscriptionStatement, MPPQueryContext context) {
     return new DropSubscriptionTask(dropSubscriptionStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterEncodingCompressor(
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement, MPPQueryContext context) {
+    return new AlterEncodingCompressorTask(
+        context.getQueryId().getId(), alterEncodingCompressorStatement);
   }
 
   @Override

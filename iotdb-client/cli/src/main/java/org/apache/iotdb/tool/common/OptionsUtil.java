@@ -103,6 +103,36 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opPassword);
 
+    Option opUseSSL =
+        Option.builder(USE_SSL_ARGS)
+            .longOpt(USE_SSL_NAME)
+            .optionalArg(true)
+            .argName(USE_SSL_NAME)
+            .hasArg()
+            .desc(USE_SSL_DESC)
+            .build();
+    options.addOption(opUseSSL);
+
+    Option opTrustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_DESC)
+            .build();
+    options.addOption(opTrustStore);
+
+    Option opTrustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_PWD_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_PWD_DESC)
+            .build();
+    options.addOption(opTrustStorePwd);
+
     return options;
   }
 

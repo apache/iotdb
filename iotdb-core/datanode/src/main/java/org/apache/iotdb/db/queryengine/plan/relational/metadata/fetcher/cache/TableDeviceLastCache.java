@@ -127,7 +127,7 @@ public class TableDeviceLastCache {
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
                   (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                      + getTVPairEntrySize(newPair));
               return newPair;
             }
             return tvPair;

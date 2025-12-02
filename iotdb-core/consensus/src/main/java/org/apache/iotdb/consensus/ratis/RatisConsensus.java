@@ -157,6 +157,7 @@ class RatisConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
+    GrpcConfigKeys.Server.setHost(properties, config.getThisNodeEndPoint().getIp());
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     this.parameters = Utils.initRatisConfig(properties, config.getRatisConfig());

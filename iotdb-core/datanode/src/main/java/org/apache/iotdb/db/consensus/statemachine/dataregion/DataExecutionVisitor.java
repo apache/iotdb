@@ -302,7 +302,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.OK;
     } catch (final Exception e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getMessage());
     }
   }
 }

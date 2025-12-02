@@ -61,7 +61,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    sessionPool =
+    SessionPool.Builder sessionPoolBuilder =
         new SessionPool.Builder()
             .host(host)
             .port(Integer.parseInt(port))
@@ -70,8 +70,12 @@ public class ImportSchemaTree extends AbstractImportSchema {
             .maxSize(threadNum + 1)
             .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
-            .enableAutoFetch(false)
-            .build();
+            .enableAutoFetch(false);
+    if (useSsl) {
+      sessionPoolBuilder =
+          sessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {

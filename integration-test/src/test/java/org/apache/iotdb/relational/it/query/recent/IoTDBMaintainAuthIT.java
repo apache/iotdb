@@ -112,12 +112,8 @@ public class IoTDBMaintainAuthIT {
     tableQueryNoVerifyResultTest("SHOW CURRENT_USER", expectedHeader, USER_2, PASSWORD);
 
     // case 5: show version
-    tableAssertTestFail(
-        "SHOW VERSION",
-        TSStatusCode.NO_PERMISSION.getStatusCode()
-            + ": Access Denied: No permissions for this operation, please add privilege SYSTEM",
-        USER_2,
-        PASSWORD);
+    expectedHeader = new String[] {"Version", "BuildInfo"};
+    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_2, PASSWORD);
 
     // case 6: show current_timestamp
     expectedHeader = new String[] {"CurrentTimestamp"};
