@@ -1538,12 +1538,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void checkTableDevice4Object(String table) {
+      String table, List<Object[]> devicePathList) {
     throw new UnsupportedOperationException();
   }
 

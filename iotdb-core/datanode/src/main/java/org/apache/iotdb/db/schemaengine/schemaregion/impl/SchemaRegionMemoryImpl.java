@@ -1737,11 +1737,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void checkTableDevice4Object(final String table) throws MetadataException {
-    mTree.checkTableDevice4Object(table);
-  }
-
-  @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final AtomicInteger limit, final AtomicBoolean hasRemaining) {
     return deviceAttributeCacheUpdater.getAttributeUpdateInfo(limit, hasRemaining);

@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -43,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -53,7 +51,6 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -1832,56 +1829,6 @@ public class MTreeBelowSGMemoryImpl {
     }
     store.releaseMemory(memoryReleased.get());
     return true;
-  }
-
-  public void checkTableDevice4Object(final String tableName) throws MetadataException {
-    if (!store.hasChild(databaseMNode, tableName)) {
-      return;
-    }
-    try (final Traverser<Void, IMemMNode> checker =
-        new Traverser<Void, IMemMNode>(
-            databaseMNode,
-            new PartialPath(new String[] {databaseMNode.getName(), tableName}),
-            this.store,
-            true,
-            SchemaConstant.ALL_MATCH_SCOPE) {
-          @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(final IMemMNode node) {
-            return true;
-          }
-
-          @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(final IMemMNode node) {
-            return true;
-          }
-
-          @Override
-          protected boolean acceptInternalMatchedNode(final IMemMNode node) {
-            return true;
-          }
-
-          @Override
-          protected boolean acceptFullMatchedNode(final IMemMNode node) {
-            return true;
-          }
-
-          @Override
-          protected Void generateResult(final IMemMNode nextMatchedNode) {
-            if (TsTable.isInvalid4ObjectType(nextMatchedNode.getName())) {
-              throw new SemanticException(
-                  TsTable.getObjectStringError("tag value", nextMatchedNode.getName()),
-                  TSStatusCode.SEMANTIC_ERROR.getStatusCode());
-            }
-            return null;
-          }
-
-          @Override
-          protected boolean mayTargetNodeType(final IMemMNode node) {
-            return true;
-          }
-        }) {
-      checker.traverse();
-    }
   }
 
   // endregion

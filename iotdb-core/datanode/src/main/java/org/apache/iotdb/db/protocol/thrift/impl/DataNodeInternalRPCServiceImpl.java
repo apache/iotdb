@@ -99,7 +99,6 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -216,7 +215,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckDeviceIdForObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -1971,31 +1969,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             // the request is only sent to associated region
                             null))
                     .getStatus());
-  }
-
-  @Override
-  public TSStatus checkDeviceIdForObject(final TCheckDeviceIdForObjectReq req) {
-    // Take the lock to avoid concurrent alter
-    DataNodeSchemaLockManager.getInstance()
-        .takeWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
-    try {
-      return executeInternalSchemaTask(
-          req.getRegionIdList(),
-          consensusGroupId -> {
-            final ISchemaRegion schemaRegion =
-                schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
-            try {
-              schemaRegion.checkTableDevice4Object(req.getTableName());
-              return RpcUtils.SUCCESS_STATUS;
-            } catch (final SemanticException | MetadataException e) {
-              return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-                  .setMessage(e.getMessage());
-            }
-          });
-    } finally {
-      DataNodeSchemaLockManager.getInstance()
-          .releaseWriteLock(SchemaLockType.AVOID_CONCURRENT_DEVICE_ALTER_TABLE);
-    }
   }
 
   public TTestConnectionResp submitTestConnectionTask(final TNodeLocations nodeLocations) {
