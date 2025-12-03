@@ -685,10 +685,10 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
       throws AuthException {
     final User user = authorizer.getUser(username);
-    final PathPatternTree pPtree = new PathPatternTree();
     if (user == null) {
       return null;
     }
+    final PathPatternTree pPtree = new PathPatternTree();
 
     constructAuthorityScope(pPtree, user, type);
 

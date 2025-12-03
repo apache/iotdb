@@ -187,7 +187,7 @@ public class WriteBackSink implements PipeConnector {
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
 
-    if (SESSION_MANAGER.getCurrSession() != null) {
+    if (SESSION_MANAGER.getCurrSession() == null) {
       SESSION_MANAGER.registerSession(session);
     }
   }

@@ -226,14 +226,14 @@ public class PipeConfigTreePrivilegeParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorTreePlan revokeUserPlan, final String userName) {
-    return visitRolePlan(revokeUserPlan, userName);
+      final AuthorTreePlan grantRolePlan, final String userName) {
+    return visitRolePlan(grantRolePlan, userName);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorTreePlan revokeUserPlan, final String userName) {
-    return visitRolePlan(revokeUserPlan, userName);
+      final AuthorTreePlan revokeRolePlan, final String userName) {
+    return visitRolePlan(revokeRolePlan, userName);
   }
 
   private Optional<ConfigPhysicalPlan> visitUserPlan(
