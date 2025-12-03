@@ -273,13 +273,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public boolean isGeneratedByPipe() {
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      if (!isReleased.get()) {
-        LOGGER.warn(
-            "InsertNode is null but event is not released yet. Event: {}", coreReportMessage());
-        throw new PipeException(
-            "InsertNode is null but event is not released, this should not happen");
-      }
-      return false;
+      throw new PipeException("InsertNode has been released");
     }
     return node.isGeneratedByPipe();
   }
