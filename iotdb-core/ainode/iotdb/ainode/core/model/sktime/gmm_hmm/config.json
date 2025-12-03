@@ -1,6 +1,6 @@
 {
   "model_type": "sktime",
-  "name": "GMMHMM",
+  "model_id": "gmm_hmm",
   "n_components": 1,
   "n_mix": 1,
   "min_covar": 0.001,
@@ -9,10 +9,14 @@
   "weights_prior": 1.0,
   "means_prior": 0.0,
   "means_weight": 0.0,
+  "covars_prior": null,
+  "covars_weight": null,
   "algorithm": "viterbi",
   "covariance_type": "diag",
+  "random_state": null,
   "n_iter": 10,
   "tol": 0.01,
+  "verbose": false,
   "init_params": "stmcw",
   "params": "stmcw",
   "implementation": "log"

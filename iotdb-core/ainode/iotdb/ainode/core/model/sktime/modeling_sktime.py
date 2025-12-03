@@ -16,18 +16,15 @@
 # under the License.
 #
 
-"""
-Sktime model implementation module - simplified version
-"""
-
 from abc import abstractmethod
 from typing import Any, Dict
 
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sktime.detection.hmm_learn import GMMHMM, GaussianHMM
 from sktime.detection.stray import STRAY
-from sktime.forecasting.arima import ARIMA
+from statsforecast.models import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
@@ -51,7 +48,7 @@ class SktimeModel:
         self._model = None
 
     @abstractmethod
-    def generate(self, data):
+    def generate(self, data, **kwargs):
         """Execute generation/inference"""
         raise NotImplementedError
 
@@ -59,12 +56,15 @@ class SktimeModel:
 class ForecastingModel(SktimeModel):
     """Base class for forecasting models"""
 
-    def generate(self, data):
+    def generate(self, data, **kwargs):
         """Execute forecasting"""
         try:
-            predict_length = self._attributes["predict_length"]
+            predict_length = kwargs.get("predict_length", self._attributes["predict_length"])
             self._model.fit(data)
-            output = self._model.predict(fh=range(predict_length))
+            if isinstance(self._model, ARIMA):
+                output = self._model.predict(h=predict_length)['mean']
+            else:
+                output = self._model.predict(fh=range(predict_length))
             return np.array(output, dtype=np.float64)
         except Exception as e:
             raise InferenceModelInternalError(str(e))
@@ -73,12 +73,15 @@ class ForecastingModel(SktimeModel):
 class DetectionModel(SktimeModel):
     """Base class for detection models"""
 
-    def generate(self, data):
+    def generate(self, data, **kwargs):
         """Execute detection"""
         try:
-            self._model.fit(data)
-            output = self._model.predict(data)
-            return np.array(output, dtype=np.int32)
+            predict_length = kwargs.get("predict_length", data.size)
+            output = self._model.fit_transform(data[:predict_length])
+            if isinstance(output, pd.DataFrame):
+                return np.array(output["labels"], dtype=np.int32)
+            else:
+                return np.array(output, dtype=np.int32)
         except Exception as e:
             raise InferenceModelInternalError(str(e))
 
@@ -89,7 +92,7 @@ class ArimaModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = ARIMA(
-            **{k: v for k, v in attributes.items() if k != "predict_length"}
+            **{k: v for k, v in attributes.items() if k != "predict_length" and v is not None}
         )
 
 
@@ -144,14 +147,16 @@ class STRAYModel(DetectionModel):
 
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
-        self._model = STRAY(**attributes)
+        self._model = STRAY(
+            **{k: v for k, v in attributes.items() if v is not None}
+        )
 
-    def generate(self, data):
+    def generate(self, data, **kwargs):
         """STRAY requires special handling: normalize first"""
         try:
-            data = MinMaxScaler().fit_transform(data)
-            output = self._model.fit_transform(data)
-            return np.array(output, dtype=np.int32)
+            scaled_data = MinMaxScaler().fit_transform(data.values.reshape(-1, 1))
+            scaled_data = pd.Series(scaled_data.flatten())
+            return super().generate(scaled_data, **kwargs)
         except Exception as e:
             raise InferenceModelInternalError(str(e))
 
