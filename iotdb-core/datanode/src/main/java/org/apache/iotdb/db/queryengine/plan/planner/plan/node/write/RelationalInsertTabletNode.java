@@ -32,8 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -469,7 +469,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       long offset = buffer.getLong();
       byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
       IObjectPath relativePath =
-          IObjectPath.Factory.DEFAULT_FACTORY.create(
+          IObjectPath.Factory.FACTORY.create(
               entry.getKey().getRegionId().getId(), times[j], getDeviceID(j), measurements[column]);
       ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
       objectNode.setDataRegionReplicaSet(entry.getKey());

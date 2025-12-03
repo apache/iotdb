@@ -34,8 +34,8 @@ import java.nio.file.Paths;
 
 public class Base32ObjectPath implements IObjectPath {
 
-  Path path;
-  int serializedSize = -1;
+  private final Path path;
+  private int serializedSize = -1;
 
   private static final Deserializer DESERIALIZER =
       new Deserializer() {
@@ -52,7 +52,7 @@ public class Base32ObjectPath implements IObjectPath {
 
   private static final Factory FACTORY = Base32ObjectPath::new;
 
-  public Base32ObjectPath(String first, String... more) {
+  private Base32ObjectPath(String first, String... more) {
     path = Paths.get(first, more);
   }
 

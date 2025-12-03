@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
@@ -27,6 +30,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public interface IObjectPath {
+
+  IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   int serialize(ByteBuffer byteBuffer);
 
@@ -38,7 +43,10 @@ public interface IObjectPath {
 
     IObjectPath create(int regionId, long time, IDeviceID iDeviceID, String measurement);
 
-    Factory DEFAULT_FACTORY = Base32ObjectPath.getFACTORY();
+    Factory FACTORY =
+        CONFIG.getRestrictObjectLimit()
+            ? Base32ObjectPath.getFACTORY()
+            : PlainObjectPath.getFACTORY();
   }
 
   interface Deserializer {
@@ -47,6 +55,9 @@ public interface IObjectPath {
 
     IObjectPath deserializeFrom(InputStream inputStream) throws IOException;
 
-    Deserializer DEFAULT_DESERIALIZER = Base32ObjectPath.getDESERIALIZER();
+    Deserializer DESERIALIZER =
+        CONFIG.getRestrictObjectLimit()
+            ? Base32ObjectPath.getDESERIALIZER()
+            : PlainObjectPath.getDESERIALIZER();
   }
 }

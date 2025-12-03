@@ -211,7 +211,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
         long offset = buffer.getLong();
         byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
         IObjectPath relativePath =
-            IObjectPath.Factory.DEFAULT_FACTORY.create(
+            IObjectPath.Factory.FACTORY.create(
                 dataRegionReplicaSet.getRegionId().getId(),
                 insertRowNode.getTime(),
                 insertRowNode.getDeviceID(),
