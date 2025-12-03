@@ -31,14 +31,11 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class IoTDBTreePattern extends IoTDBTreePatternOperations {
 
@@ -71,13 +68,29 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
 
   public static <T> List<T> applyReversedIndexesOnList(
       final List<Integer> filteredIndexes, final List<T> originalList) {
-    final Set<Integer> indexes = new HashSet<>(filteredIndexes);
-    return Objects.nonNull(originalList)
-        ? IntStream.range(0, originalList.size())
-            .filter(index -> !indexes.contains(index)) // 保留不在排除列表中的下标
-            .mapToObj(originalList::get)
-            .collect(Collectors.toList())
-        : null;
+    // No need to sort, the caller guarantees that the filtered sequence == original sequence
+    final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
+    int filteredIndexPos = 0;
+    int processingIndex = 0;
+    for (; processingIndex < originalList.size(); processingIndex++) {
+      if (filteredIndexPos >= filteredIndexes.size()) {
+        // all filteredIndexes processed, add remaining to the filteredList
+        if (processingIndex < filteredIndexes.size()) {
+          filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
+        }
+        break;
+      } else {
+        int filteredIndex = filteredIndexes.get(filteredIndexPos);
+        if (filteredIndex == processingIndex) {
+          // the index is filtered, move to the next filtered pos
+          filteredIndexPos++;
+        } else {
+          // the index is not filtered, add to the filteredList
+          filteredList.add(originalList.get(processingIndex));
+        }
+      }
+    }
+    return filteredList;
   }
 
   @Override
