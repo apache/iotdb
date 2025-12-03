@@ -28,14 +28,14 @@ from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_
 logger = Logger()
 
 
-def load_pipeline(model_info: ModelInfo, device: str, **kwargs):
+def load_pipeline(model_info: ModelInfo, device: str, **model_kwargs):
     if model_info.category == ModelCategory.BUILTIN:
-        module_name = (
+        module_id = (
             AINodeDescriptor().get_config().get_ain_models_builtin_dir()
             + "."
             + model_info.model_id
         )
-        pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
+        pipeline_cls = import_class_from_path(module_id, model_info.pipeline_cls)
     else:
         model_path = os.path.join(
             os.getcwd(),
@@ -49,4 +49,4 @@ def load_pipeline(model_info: ModelInfo, device: str, **kwargs):
                 model_info.model_id, model_info.pipeline_cls
             )
 
-    return pipeline_cls(model_info, device=device)
+    return pipeline_cls(model_info, device=device, **model_kwargs)
