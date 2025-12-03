@@ -1191,7 +1191,7 @@ public class IoTDBConfig {
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
-  private boolean restrictObjectLimit = false;
+  private boolean restrictObjectLimit = true;
 
   IoTDBConfig() {}
 

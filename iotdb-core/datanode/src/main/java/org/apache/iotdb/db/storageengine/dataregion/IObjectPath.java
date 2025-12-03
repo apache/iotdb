@@ -45,8 +45,8 @@ public interface IObjectPath {
 
     Factory FACTORY =
         CONFIG.getRestrictObjectLimit()
-            ? Base32ObjectPath.getFACTORY()
-            : PlainObjectPath.getFACTORY();
+            ? PlainObjectPath.getFACTORY()
+            : Base32ObjectPath.getFACTORY();
   }
 
   interface Deserializer {
@@ -57,7 +57,7 @@ public interface IObjectPath {
 
     Deserializer DESERIALIZER =
         CONFIG.getRestrictObjectLimit()
-            ? Base32ObjectPath.getDESERIALIZER()
-            : PlainObjectPath.getDESERIALIZER();
+            ? PlainObjectPath.getDESERIALIZER()
+            : Base32ObjectPath.getDESERIALIZER();
   }
 }

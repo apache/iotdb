@@ -19,19 +19,36 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 public class ObjectTypeUtils {
@@ -41,16 +58,125 @@ public class ObjectTypeUtils {
 
   private ObjectTypeUtils() {}
 
-  public static File getObjectPathFromBinary(Binary binary) {
+  public static ByteBuffer readObjectContent(
+      Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
+    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    long fileLength = objectLengthPathPair.getLeft();
+    String relativePath = objectLengthPathPair.getRight();
+    int actualReadSize =
+        ObjectTypeUtils.getActualReadSize(
+            relativePath, fileLength, offset, length < 0 ? fileLength : length);
+    return ObjectTypeUtils.readObjectContent(
+        relativePath, offset, actualReadSize, mayNotInCurrentNode);
+  }
+
+  public static ByteBuffer readObjectContent(
+      String relativePath, long offset, int readSize, boolean mayNotInCurrentNode) {
+    Optional<File> objectFile = TIER_MANAGER.getAbsoluteObjectFilePath(relativePath, false);
+    if (objectFile.isPresent()) {
+      return readObjectContentFromLocalFile(objectFile.get(), offset, readSize);
+    }
+    if (mayNotInCurrentNode) {
+      return readObjectContentFromRemoteFile(relativePath, offset, readSize);
+    }
+    throw new ObjectFileNotExist(relativePath);
+  }
+
+  private static ByteBuffer readObjectContentFromLocalFile(File file, long offset, long readSize) {
+    byte[] bytes = new byte[(int) readSize];
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+      fileChannel.read(buffer, offset);
+    } catch (IOException e) {
+      throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+    }
+    buffer.flip();
+    return buffer;
+  }
+
+  private static ByteBuffer readObjectContentFromRemoteFile(
+      final String relativePath, final long offset, final int readSize) {
+    int regionId;
+    try {
+      regionId = Integer.parseInt(Paths.get(relativePath).getName(0).toString());
+    } catch (NumberFormatException e) {
+      throw new IoTDBRuntimeException(
+          "wrong object file path: " + relativePath,
+          TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+    }
+    TConsensusGroupId consensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
+    List<TRegionReplicaSet> regionReplicaSetList =
+        ClusterPartitionFetcher.getInstance()
+            .getRegionReplicaSet(Collections.singletonList(consensusGroupId));
+    if (regionReplicaSetList.isEmpty()) {
+      throw new ObjectFileNotExist(relativePath);
+    }
+    TRegionReplicaSet regionReplicaSet = regionReplicaSetList.iterator().next();
+    if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+      throw new ObjectFileNotExist(relativePath);
+    }
+    final int batchSize = 1024 * 1024;
+    final TReadObjectReq req = new TReadObjectReq();
+    req.setRelativePath(relativePath);
+    ByteBuffer buffer = ByteBuffer.allocate(readSize);
+    for (int i = 0; i < regionReplicaSet.getDataNodeLocations().size(); i++) {
+      TDataNodeLocation dataNodeLocation = regionReplicaSet.getDataNodeLocations().get(i);
+      int toReadSizeInCurrentDataNode = readSize;
+      try (SyncDataNodeInternalServiceClient client =
+          Coordinator.getInstance()
+              .getInternalServiceClientManager()
+              .borrowClient(dataNodeLocation.getInternalEndPoint())) {
+        while (toReadSizeInCurrentDataNode > 0) {
+          req.setOffset(offset + buffer.position());
+          req.setSize(Math.min(toReadSizeInCurrentDataNode, batchSize));
+          toReadSizeInCurrentDataNode -= req.getSize();
+          ByteBuffer partial = client.readObject(req);
+          buffer.put(partial);
+        }
+      } catch (Exception e) {
+        logger.warn("Failed to read object from datanode: {}", dataNodeLocation, e);
+        if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
+          throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+        }
+        continue;
+      }
+      break;
+    }
+    buffer.flip();
+    return buffer;
+  }
+
+  public static int getActualReadSize(String filePath, long fileSize, long offset, long length) {
+    if (offset >= fileSize) {
+      throw new SemanticException(
+          String.format(
+              "offset %d is greater than or equal to object size %d, file path is %s",
+              offset, fileSize, filePath));
+    }
+    long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
+    if (actualReadSize > Integer.MAX_VALUE) {
+      throw new SemanticException(
+          String.format(
+              "Read object size %s is too large (size > 2G), file path is %s",
+              actualReadSize, filePath));
+    }
+    return (int) actualReadSize;
+  }
+
+  public static Pair<Long, String> parseObjectBinary(Binary binary) {
     byte[] bytes = binary.getValues();
-    ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    long length = buffer.getLong();
     String relativeObjectFilePath =
         IObjectPath.Deserializer.DESERIALIZER.deserializeFrom(buffer).toString();
-    Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
-    if (!file.isPresent()) {
-      throw new ObjectFileNotExist(relativeObjectFilePath);
-    }
-    return file.get();
+    return new Pair<>(length, relativeObjectFilePath);
+  }
+
+  public static long getObjectLength(Binary binary) {
+    byte[] bytes = binary.getValues();
+    ByteBuffer wrap = ByteBuffer.wrap(bytes);
+    return wrap.getLong();
   }
 
   public static Optional<File> getNullableObjectPathFromBinary(

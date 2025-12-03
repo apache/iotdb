@@ -205,6 +205,9 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     for (int j = 0; j < insertRowNode.getDataTypes().length; j++) {
       if (insertRowNode.getDataTypes()[j] == TSDataType.OBJECT) {
         Object[] values = insertRowNode.getValues();
+        if (values[j] == null) {
+          continue;
+        }
         byte[] binary = ((Binary) values[j]).getValues();
         ByteBuffer buffer = ByteBuffer.wrap(binary);
         boolean isEoF = buffer.get() == 1;
