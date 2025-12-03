@@ -313,7 +313,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       throws IllegalPathException {
     final List<MeasurementPath> measurementList = new ArrayList<>();
     for (final String measurement : measurements) {
-      if (!treePattern.matchesMeasurement(deviceID, measurement)) {
+      if (treePattern.matchesMeasurement(deviceID, measurement)) {
         measurementList.add(new MeasurementPath(deviceID, measurement));
       }
     }
