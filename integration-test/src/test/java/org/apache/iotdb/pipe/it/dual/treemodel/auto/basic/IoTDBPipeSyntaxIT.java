@@ -794,7 +794,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1603: Failed to get executable for PipePlugin DO-NOTHING-SINK, please check the URI.",
+            "1603: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
             e.getMessage());
       }
       try {
