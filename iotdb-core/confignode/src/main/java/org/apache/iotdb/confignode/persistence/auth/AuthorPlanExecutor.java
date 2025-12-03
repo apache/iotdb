@@ -699,13 +699,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       }
     }
     pPtree.constructTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      pPtree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      return null;
-    }
     return pPtree;
   }
 
