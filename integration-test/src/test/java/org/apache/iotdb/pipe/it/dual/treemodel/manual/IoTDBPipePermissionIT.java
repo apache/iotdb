@@ -250,8 +250,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
                   + "'node-urls'='%s')",
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
       fail("When the 'user' or 'username' is specified, password must be specified too.");
-    } catch (final SQLException ignore) {
-      // Expected
+    } catch (final SQLException e) {
+      Assert.assertEquals(
+          "701: Failed to create pipe a2b, in iotdb-source, password must be set when the username is specified.",
+          e.getMessage());
     }
 
     // Shall fail if password is wrong
@@ -262,13 +264,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               "create pipe a2b"
                   + " with source ("
                   + "'user'='thulab'"
-                  + "'password'='hack')"
+                  + ", 'password'='hack')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
       fail("Shall fail if password is wrong.");
-    } catch (final SQLException ignore) {
-      // Expected
+    } catch (final SQLException e) {
+      Assert.assertEquals(
+          "1107: ProcedureId 97: Fail to CREATE_PIPE because Authentication failed.",
+          e.getMessage());
     }
 
     // Use current session, user is root
@@ -290,10 +294,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // Alter to another user, shall fail because of lack of password
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('username'='thulab')");
+      statement.execute("alter pipe a2b_realtime modify source ('username'='thulab')");
       fail("Alter pipe shall fail if only user is specified");
-    } catch (final SQLException ignore) {
-      // Expected
+    } catch (final SQLException e) {
+      Assert.assertEquals(
+          "1107: Failed to alter pipe a2b_realtime, in iotdb-source, password must be set when the username is specified.",
+          e.getMessage());
     }
 
     // Successfully alter
