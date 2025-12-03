@@ -22,8 +22,8 @@ from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
 
 class SundialPipeline(ForecastPipeline):
-    def __init__(self, model_id, **infer_kwargs):
-        super().__init__(model_id, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **infer_kwargs):
+        super().__init__(model_info, infer_kwargs=infer_kwargs)
 
     def _preprocess(self, inputs):
         return super()._preprocess(inputs)

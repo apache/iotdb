@@ -21,14 +21,14 @@ from abc import ABC
 import torch
 
 from iotdb.ainode.core.exception import InferenceModelInternalError
-from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_loader import load_model
 
 
 class BasicPipeline(ABC):
-    def __init__(self, model_id, **infer_kwargs):
-        self.model_id = model_id
+    def __init__(self, model_info, **infer_kwargs):
+        self.model_info = model_info
         self.device = infer_kwargs.get("device", "cpu")
-        self.model = ModelManager().load_model(model_id, device_map=self.device)
+        self.model = load_model(model_info, device_map=self.device)
 
     def _preprocess(self, inputs):
         """
@@ -45,8 +45,8 @@ class BasicPipeline(ABC):
 
 
 class ForecastPipeline(BasicPipeline):
-    def __init__(self, model_id, **infer_kwargs):
-        super().__init__(model_id, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **infer_kwargs):
+        super().__init__(model_info, infer_kwargs=infer_kwargs)
 
     def _preprocess(self, inputs):
         if len(inputs.shape) != 2:
@@ -63,8 +63,8 @@ class ForecastPipeline(BasicPipeline):
 
 
 class ClassificationPipeline(BasicPipeline):
-    def __init__(self, model_id, **infer_kwargs):
-        super().__init__(model_id, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **infer_kwargs):
+        super().__init__(model_info, infer_kwargs=infer_kwargs)
 
     def _preprocess(self, inputs):
         pass
@@ -80,8 +80,8 @@ class ClassificationPipeline(BasicPipeline):
 
 
 class ChatPipeline(BasicPipeline):
-    def __init__(self, model_id, **infer_kwargs):
-        super().__init__(model_id, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **infer_kwargs):
+        super().__init__(model_info, infer_kwargs=infer_kwargs)
 
     def _preprocess(self, inputs):
         pass

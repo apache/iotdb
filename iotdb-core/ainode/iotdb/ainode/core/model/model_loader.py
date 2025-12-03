@@ -17,6 +17,7 @@
 #
 
 import os
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -30,151 +31,126 @@ from transformers import (
     AutoModelForTokenClassification,
 )
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import ModelNotExistError
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_info import ModelInfo
-from iotdb.ainode.core.model.model_storage import ModelStorage
 from iotdb.ainode.core.model.sktime.modeling_sktime import create_sktime_model
+from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_path
 
 logger = Logger()
 
 
-class ModelLoader:
-    """Model loader - unified interface for loading different types of models"""
-
-    def __init__(self, storage: ModelStorage):
-        self.storage = storage
-
-    def load_model(self, model_id: str, **kwargs) -> Any:
-        # Lazy registration: if it's a Transformers model and not registered, register it first
-        model_info = self.storage.ensure_transformers_registered(model_id)
-        if not model_info:
-            logger.error(
-                f"Model {model_id} failed to register to Transformers, cannot load."
-            )
-            return None
-
-        if model_info.auto_map is not None:
-            model = self.load_model_from_transformers(model_info, **kwargs)
+def load_model(model_info: ModelInfo, **kwargs) -> Any:
+    if model_info.auto_map is not None:
+        model = load_model_from_transformers(model_info, **kwargs)
+    else:
+        if model_info.model_type == "sktime":
+            model = create_sktime_model(model_info.model_id)
         else:
-            if model_info.model_type == "sktime":
-                model = create_sktime_model(model_id)
-            else:
-                model = self.load_model_from_pt(model_info, **kwargs)
+            model = load_model_from_pt(model_info, **kwargs)
 
-        logger.info(f"Model {model_id} loaded to device {model.device} successfully.")
-        return model
+    logger.info(
+        f"Model {model_info.model_id} loaded to device {model.device} successfully."
+    )
+    return model
 
-    def load_model_from_transformers(self, model_info: ModelInfo, **kwargs):
-        model_config, load_class = None, None
-        device_map = kwargs.get("device_map", "cpu")
-        trust_remote_code = kwargs.get("trust_remote_code", True)
-        train_from_scratch = kwargs.get("train_from_scratch", False)
 
-        model_path = os.path.join(
-            self.storage.get_models_dir(),
-            model_info.category.value,
-            model_info.model_id,
+def load_model_from_transformers(model_info: ModelInfo, **kwargs):
+    device_map = kwargs.get("device_map", "cpu")
+    trust_remote_code = kwargs.get("trust_remote_code", True)
+    train_from_scratch = kwargs.get("train_from_scratch", False)
+
+    model_path = os.path.join(
+        os.getcwd(),
+        AINodeDescriptor().get_config().get_ain_models_dir(),
+        model_info.category.value,
+        model_info.model_id,
+    )
+
+    if model_info.category == ModelCategory.BUILTIN:
+        module_name = (
+            AINodeDescriptor().get_config().get_ain_models_builtin_dir()
+            + "."
+            + model_info.model_id
         )
-        if model_info.category == ModelCategory.BUILTIN:
-            if model_info.model_id == "timer_xl":
-                from iotdb.ainode.core.model.timer_xl.configuration_timer import (
-                    TimerConfig,
-                )
-
-                model_config = TimerConfig()
-                from iotdb.ainode.core.model.timer_xl.modeling_timer import (
-                    TimerForPrediction,
-                )
-
-                load_class = TimerForPrediction
-            elif model_info.model_id == "sundial":
-                from iotdb.ainode.core.model.sundial.configuration_sundial import (
-                    SundialConfig,
-                )
-
-                model_config = SundialConfig()
-                from iotdb.ainode.core.model.sundial.modeling_sundial import (
-                    SundialForPrediction,
-                )
-
-                load_class = SundialForPrediction
-            else:
-                logger.error(
-                    f"Unsupported built-in Transformers model {model_info.model_id}."
-                )
-        else:
-            model_config = AutoConfig.from_pretrained(model_path)
-            if (
-                type(model_config)
-                in AutoModelForTimeSeriesPrediction._model_mapping.keys()
-            ):
-                load_class = AutoModelForTimeSeriesPrediction
-            elif (
-                type(model_config)
-                in AutoModelForNextSentencePrediction._model_mapping.keys()
-            ):
-                load_class = AutoModelForNextSentencePrediction
-            elif type(model_config) in AutoModelForSeq2SeqLM._model_mapping.keys():
-                load_class = AutoModelForSeq2SeqLM
-            elif (
-                type(model_config)
-                in AutoModelForSequenceClassification._model_mapping.keys()
-            ):
-                load_class = AutoModelForSequenceClassification
-            elif (
-                type(model_config)
-                in AutoModelForTokenClassification._model_mapping.keys()
-            ):
-                load_class = AutoModelForTokenClassification
-            else:
-                load_class = AutoModelForCausalLM
-
-        if train_from_scratch:
-            model = load_class.from_config(
-                model_config, trust_remote_code=trust_remote_code, device_map=device_map
+        config_cls = import_class_from_path(module_name, model_info.config_cls)
+        model_cls = import_class_from_path(module_name, model_info.model_cls)
+    elif model_info.model_cls and model_info.config_cls:
+        module_parent = str(Path(model_path).parent.absolute())
+        with temporary_sys_path(module_parent):
+            config_cls = import_class_from_path(
+                model_info.model_id, model_info.config_cls
             )
-        else:
-            model = load_class.from_pretrained(
-                model_path,
-                trust_remote_code=trust_remote_code,
-                device_map=device_map,
+            model_cls = import_class_from_path(
+                model_info.model_id, model_info.model_cls
             )
-
-        return model
-
-    def load_model_from_pt(self, model_info: ModelInfo, **kwargs):
-        device_map = kwargs.get("device_map", "cpu")
-        acceleration = kwargs.get("acceleration", False)
-        model_path = os.path.join(
-            self.storage.get_models_dir(),
-            model_info.category.value,
-            model_info.model_id,
-        )
-        model_file = os.path.join(model_path, "model.pt")
-        if not os.path.exists(model_file):
-            logger.error(f"Model file not found at {model_file}.")
-            raise ModelNotExistError(model_file)
-        model = torch.jit.load(model_file)
-        if (
-            isinstance(model, torch._dynamo.eval_frame.OptimizedModule)
-            or not acceleration
+    else:
+        config_cls = AutoConfig.from_pretrained(model_path)
+        if type(config_cls) in AutoModelForTimeSeriesPrediction._model_mapping.keys():
+            model_cls = AutoModelForTimeSeriesPrediction
+        elif (
+            type(config_cls) in AutoModelForNextSentencePrediction._model_mapping.keys()
         ):
-            return model
-        try:
-            model = torch.compile(model)
-        except Exception as e:
-            logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
-        return model.to(device_map)
+            model_cls = AutoModelForNextSentencePrediction
+        elif type(config_cls) in AutoModelForSeq2SeqLM._model_mapping.keys():
+            model_cls = AutoModelForSeq2SeqLM
+        elif (
+            type(config_cls) in AutoModelForSequenceClassification._model_mapping.keys()
+        ):
+            model_cls = AutoModelForSequenceClassification
+        elif type(config_cls) in AutoModelForTokenClassification._model_mapping.keys():
+            model_cls = AutoModelForTokenClassification
+        else:
+            model_cls = AutoModelForCausalLM
 
-    def load_model_for_efficient_inference(self):
-        # TODO: An efficient model loading method for inference based on model_arguments
-        pass
+    if train_from_scratch:
+        model = model_cls.from_config(
+            config_cls, trust_remote_code=trust_remote_code, device_map=device_map
+        )
+    else:
+        model = model_cls.from_pretrained(
+            model_path,
+            trust_remote_code=trust_remote_code,
+            device_map=device_map,
+        )
 
-    def load_model_for_powerful_finetune(self):
-        # TODO: An powerful model loading method for finetune based on model_arguments
-        pass
+    return model
 
-    def unload_model(self):
-        pass
+
+def load_model_from_pt(model_info: ModelInfo, **kwargs):
+    device_map = kwargs.get("device_map", "cpu")
+    acceleration = kwargs.get("acceleration", False)
+    model_path = os.path.join(
+        os.getcwd(),
+        AINodeDescriptor().get_config().get_ain_models_dir(),
+        model_info.category.value,
+        model_info.model_id,
+    )
+    model_file = os.path.join(model_path, "model.pt")
+    if not os.path.exists(model_file):
+        logger.error(f"Model file not found at {model_file}.")
+        raise ModelNotExistError(model_file)
+    model = torch.jit.load(model_file)
+    if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
+        return model
+    try:
+        model = torch.compile(model)
+    except Exception as e:
+        logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+    return model.to(device_map)
+
+
+def load_model_for_efficient_inference(self):
+    # TODO: An efficient model loading method for inference based on model_arguments
+    pass
+
+
+def load_model_for_powerful_finetune(self):
+    # TODO: An powerful model loading method for finetune based on model_arguments
+    pass
+
+
+def unload_model(self):
+    pass

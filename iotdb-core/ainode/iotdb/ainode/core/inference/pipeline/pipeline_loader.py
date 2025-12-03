@@ -49,4 +49,4 @@ def load_pipeline(model_info: ModelInfo, device: str, **kwargs):
                 model_info.model_id, model_info.pipeline_cls
             )
 
-    return pipeline_cls(model_info.model_id, device=device)
+    return pipeline_cls(model_info, device=device)
