@@ -37,6 +37,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -753,6 +754,66 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create pipe p1('sink'='do-nothing-sink')");
     } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPipePluginValidation() {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: Untrusted uri xxx, current trusted_uri_pattern is file:.*", e.getMessage());
+      }
+      try {
+        statement.execute(
+            "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'file:.*'");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals("701: URI is not hierarchical", e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+                new File(
+                            System.getProperty("user.dir")
+                                + File.separator
+                                + "target"
+                                + File.separator
+                                + "test-classes"
+                                + File.separator)
+                        .toURI()
+                    + "PipePlugin.jar"));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1603: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
+            e.getMessage());
+      }
+      try {
+        statement.execute("drop pipePlugin test_processor");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1601: Failed to drop pipe plugin TEST_PROCESSOR. Failures: TEST_PROCESSOR does not exist.",
+            e.getMessage());
+      }
+      try {
+        statement.execute("drop pipePlugin `Do-Nothing-Sink`");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1601: Failed to drop PipePlugin [DO-NOTHING-SINK], the PipePlugin is a built-in PipePlugin",
+            e.getMessage());
+      }
+    } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
