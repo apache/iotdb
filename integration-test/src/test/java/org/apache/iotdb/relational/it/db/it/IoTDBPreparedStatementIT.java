@@ -21,7 +21,9 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,16 +32,19 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBPreparedStatementIT {
   private static final String DATABASE_NAME = "test";
   private static final String[] sqls =
@@ -74,6 +79,74 @@ public class IoTDBPreparedStatementIT {
   @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  /**
+   * Execute a prepared statement query and verify the result. For PreparedStatement EXECUTE
+   * queries, use the write connection directly instead of tableResultSetEqualTest, because
+   * PreparedStatements are session-scoped and tableResultSetEqualTest may route queries to
+   * different nodes where the PreparedStatement doesn't exist.
+   */
+  private static void executePreparedStatementAndVerify(
+      Connection connection,
+      Statement statement,
+      String executeSql,
+      String[] expectedHeader,
+      String[] expectedRetArray)
+      throws SQLException {
+    // Execute with parameters using write connection directly
+    // In cluster test, we need to use write connection to ensure same session
+    if (connection instanceof ClusterTestConnection) {
+      // Use write connection directly for PreparedStatement queries
+      try (Statement writeStatement =
+              ((ClusterTestConnection) connection)
+                  .writeConnection
+                  .getUnderlyingConnection()
+                  .createStatement();
+          ResultSet resultSet = writeStatement.executeQuery(executeSql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+
+        // Verify header
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        // Verify data
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(expectedRetArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(expectedRetArray.length, cnt);
+      }
+    } else {
+      try (ResultSet resultSet = statement.executeQuery(executeSql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+
+        // Verify header
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        // Verify data
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(expectedRetArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(expectedRetArray.length, cnt);
+      }
+    }
   }
 
   @Test
