@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -104,20 +105,28 @@ public class PlanTester {
   }
 
   public LogicalQueryPlan createPlan(String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false);
+  }
+
+  public LogicalQueryPlan createPlan(String sql, boolean explain) {
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), explain);
   }
 
   public LogicalQueryPlan createPlan(SessionInfo sessionInfo, String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false);
   }
 
   public LogicalQueryPlan createPlan(
       SessionInfo sessionInfo,
       String sql,
       WarningCollector warningCollector,
-      PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+      PlanOptimizersStatsCollector planOptimizersStatsCollector,
+      boolean explain) {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    if (explain) {
+      context.setExplainType(ExplainType.EXPLAIN);
+    }
 
     Analysis analysis = analyze(sql, metadata, context);
     this.analysis = analysis;
