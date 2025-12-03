@@ -4052,8 +4052,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
-    final String pipeName = parseIdentifier(ctx.pipeName.getText());
+    final String pipeName;
     if (ctx.pipeName != null) {
+      pipeName = parseIdentifier(ctx.pipeName.getText());
       createPipeStatement.setPipeName(pipeName);
     } else {
       throw new SemanticException(

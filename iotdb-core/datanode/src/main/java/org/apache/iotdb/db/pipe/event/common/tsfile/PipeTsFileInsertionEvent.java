@@ -99,6 +99,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+
+  // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
 
   public PipeTsFileInsertionEvent(
