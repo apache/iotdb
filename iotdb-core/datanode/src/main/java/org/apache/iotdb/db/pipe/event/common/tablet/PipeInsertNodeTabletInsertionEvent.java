@@ -159,12 +159,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public ByteBuffer getByteBuffer() throws WALPipeException {
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      if (!isReleased.get()) {
-        LOGGER.warn(
-            "InsertNode is null but event is not released yet. Event: {}", coreReportMessage());
-        throw new PipeException(
-            "InsertNode is null but event is not released, this should not happen");
-      }
       throw new PipeException("InsertNode has been released");
     }
     return node.serializeToByteBuffer();
@@ -256,13 +250,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      if (!isReleased.get()) {
-        LOGGER.warn(
-            "InsertNode is null but event is not released yet when creating shallow copy. Event: {}",
-            coreReportMessage());
-        throw new PipeException(
-            "InsertNode is null but event is not released, this should not happen");
-      }
       throw new PipeException("InsertNode has been released");
     }
     return new PipeInsertNodeTabletInsertionEvent(
@@ -304,12 +291,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     }
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
-      if (!isReleased.get()) {
-        LOGGER.warn(
-            "InsertNode is null but event is not released yet. Event: {}", coreReportMessage());
-        throw new PipeException(
-            "InsertNode is null but event is not released, this should not happen");
-      }
       // Event is released, skip privilege check
       return;
     }
@@ -349,11 +330,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     try {
       final InsertNode insertNode = getInsertNode();
       if (Objects.isNull(insertNode)) {
-        if (!isReleased.get()) {
-          LOGGER.warn(
-              "InsertNode is null but event is not released yet when checking time overlap. Event: {}",
-              coreReportMessage());
-        }
         return true;
       }
 
@@ -398,11 +374,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     try {
       final InsertNode insertNode = getInsertNode();
       if (Objects.isNull(insertNode)) {
-        if (!isReleased.get()) {
-          LOGGER.warn(
-              "InsertNode is null but event is not released yet when checking path overlap. Event: {}",
-              coreReportMessage());
-        }
         return true;
       }
 
@@ -496,12 +467,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       eventParsers = new ArrayList<>();
       final InsertNode node = getInsertNode();
       if (Objects.isNull(node)) {
-        if (!isReleased.get()) {
-          LOGGER.warn(
-              "InsertNode is null but event is not released yet. Event: {}", coreReportMessage());
-          throw new PipeException(
-              "InsertNode is null but event is not released, this should not happen");
-        }
         throw new PipeException("InsertNode has been released");
       }
       switch (node.getType()) {

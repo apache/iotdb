@@ -143,8 +143,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       } else {
         LOGGER.info(
             "{} in pipe transfer, ignored because the connector subtask is dropped.",
-            e.getClass().getSimpleName(),
-            e);
+            e.getClass().getSimpleName());
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
@@ -161,7 +160,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
             e);
       } else {
         LOGGER.info(
-            "Exception in pipe transfer, ignored because the connector subtask is dropped.", e);
+            "Exception in pipe transfer, ignored because the connector subtask is dropped.");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
