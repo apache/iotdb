@@ -85,7 +85,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void onError(final Exception e) {
     super.onError(e);
     ThriftClient.resolveException(e, this);
-    this.printLogWhenEncounterException = false;
+    setPrintLogWhenEncounterException(false);
     returnSelf(
         (i) -> i instanceof IllegalStateException && "Client has an error!".equals(i.getMessage()));
   }
@@ -105,6 +105,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   @Override
   public boolean printLogWhenEncounterException() {
     return printLogWhenEncounterException;
+  }
+
+  public void setPrintLogWhenEncounterException(final boolean printLogWhenEncounterException) {
+    this.printLogWhenEncounterException = printLogWhenEncounterException;
   }
 
   /**
