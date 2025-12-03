@@ -73,6 +73,7 @@ public class CteMaterializer {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteMaterializer.class);
 
   private static final Coordinator coordinator = Coordinator.getInstance();
+  private static final SessionManager sessionManager = SessionManager.getInstance();
 
   public void materializeCTE(Analysis analysis, MPPQueryContext context) {
     analysis
@@ -104,7 +105,7 @@ public class CteMaterializer {
 
   public CteDataStore fetchCteQueryResult(
       MPPQueryContext context, Table table, Query query, With with) {
-    final long queryId = SessionManager.getInstance().requestQueryId();
+    final long queryId = sessionManager.requestQueryId();
     Throwable t = null;
     CteDataStore cteDataStore = null;
     long startTime = System.nanoTime();
@@ -138,10 +139,9 @@ public class CteMaterializer {
           coordinator.executeForTableModel(
               q,
               new SqlParser(),
-              SessionManager.getInstance().getCurrSession(),
+              sessionManager.getCurrSession(),
               queryId,
-              SessionManager.getInstance()
-                  .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
+              sessionManager.getSessionInfoOfTableModel(sessionManager.getCurrSession()),
               String.format("Materialize query for CTE '%s'", table.getName()),
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteDataStores(),
@@ -153,6 +153,7 @@ public class CteMaterializer {
       }
       // query execution
       QueryExecution execution = (QueryExecution) coordinator.getQueryExecution(queryId);
+
       // get table schema
       DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
       TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
