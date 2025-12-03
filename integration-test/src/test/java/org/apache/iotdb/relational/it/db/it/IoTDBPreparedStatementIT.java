@@ -158,8 +158,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement
       statement.execute("PREPARE stmt1 FROM SELECT * FROM test_table WHERE id = ?");
-      // Execute with parameter
-      tableResultSetEqualTest("EXECUTE stmt1 USING 2", expectedHeader, retArray, DATABASE_NAME);
+      // Execute with parameter using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt1 USING 2", expectedHeader, retArray);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt1");
     } catch (SQLException e) {
@@ -177,9 +178,11 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement
       statement.execute("PREPARE stmt2 FROM SELECT * FROM test_table WHERE id = ?");
-      // Execute multiple times with different parameters
-      tableResultSetEqualTest("EXECUTE stmt2 USING 1", expectedHeader, retArray1, DATABASE_NAME);
-      tableResultSetEqualTest("EXECUTE stmt2 USING 3", expectedHeader, retArray2, DATABASE_NAME);
+      // Execute multiple times with different parameters using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt2 USING 1", expectedHeader, retArray1);
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt2 USING 3", expectedHeader, retArray2);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt2");
     } catch (SQLException e) {
@@ -196,9 +199,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement with multiple parameters
       statement.execute("PREPARE stmt3 FROM SELECT * FROM test_table WHERE id = ? AND value > ?");
-      // Execute with multiple parameters
-      tableResultSetEqualTest(
-          "EXECUTE stmt3 USING 2, 150.0", expectedHeader, retArray, DATABASE_NAME);
+      // Execute with multiple parameters using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt3 USING 2, 150.0", expectedHeader, retArray);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt3");
     } catch (SQLException e) {
@@ -306,10 +309,11 @@ public class IoTDBPreparedStatementIT {
       // Prepare multiple statements
       statement.execute("PREPARE stmt4 FROM SELECT * FROM test_table WHERE id = ?");
       statement.execute("PREPARE stmt5 FROM SELECT COUNT(*) FROM test_table WHERE value > ?");
-      // Execute both statements
-      tableResultSetEqualTest("EXECUTE stmt4 USING 1", expectedHeader1, retArray1, DATABASE_NAME);
-      tableResultSetEqualTest(
-          "EXECUTE stmt5 USING 200.0", expectedHeader2, retArray2, DATABASE_NAME);
+      // Execute both statements using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt4 USING 1", expectedHeader1, retArray1);
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt5 USING 200.0", expectedHeader2, retArray2);
       // Deallocate both
       statement.execute("DEALLOCATE PREPARE stmt4");
       statement.execute("DEALLOCATE PREPARE stmt5");
@@ -350,8 +354,9 @@ public class IoTDBPreparedStatementIT {
       // Prepare a statement with aggregation
       statement.execute(
           "PREPARE stmt7 FROM SELECT AVG(value) FROM test_table WHERE id >= ? AND id <= ?");
-      // Execute with parameters
-      tableResultSetEqualTest("EXECUTE stmt7 USING 2, 4", expectedHeader, retArray, DATABASE_NAME);
+      // Execute with parameters using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt7 USING 2, 4", expectedHeader, retArray);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt7");
     } catch (SQLException e) {
@@ -368,9 +373,9 @@ public class IoTDBPreparedStatementIT {
       statement.execute("USE " + DATABASE_NAME);
       // Prepare a statement with string parameter
       statement.execute("PREPARE stmt8 FROM SELECT * FROM test_table WHERE name = ?");
-      // Execute with string parameter
-      tableResultSetEqualTest(
-          "EXECUTE stmt8 USING 'Charlie'", expectedHeader, retArray, DATABASE_NAME);
+      // Execute with string parameter using write connection directly
+      executePreparedStatementAndVerify(
+          connection, statement, "EXECUTE stmt8 USING 'Charlie'", expectedHeader, retArray);
       // Deallocate
       statement.execute("DEALLOCATE PREPARE stmt8");
     } catch (SQLException e) {
