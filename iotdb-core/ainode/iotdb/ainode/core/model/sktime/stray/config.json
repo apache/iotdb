@@ -1,6 +1,6 @@
 {
   "model_type": "sktime",
-  "name": "STRAY",
+  "model_id": "stray",
   "alpha": 0.01,
   "k": 10,
   "knn_algorithm": "brute",

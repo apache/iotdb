@@ -34,13 +34,13 @@ class BasicPipeline(ABC):
         """
         Preprocess the input before inference, including shape validation and value transformation.
         """
-        pass
+        return inputs
 
     def _postprocess(self, output: torch.Tensor):
         """
         Post-process the outputs after the entire inference task.
         """
-        pass
+        return output
 
 
 class ForecastPipeline(BasicPipeline):
@@ -58,7 +58,7 @@ class ForecastPipeline(BasicPipeline):
         pass
 
     def _postprocess(self, output: torch.Tensor):
-        pass
+        return output
 
 
 class ClassificationPipeline(BasicPipeline):
@@ -66,16 +66,13 @@ class ClassificationPipeline(BasicPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
-        pass
+        return inputs
 
     def classify(self, inputs, **kwargs):
         pass
 
-    def _post_decode(self):
-        pass
-
     def _postprocess(self, output: torch.Tensor):
-        pass
+        return output
 
 
 class ChatPipeline(BasicPipeline):
@@ -83,13 +80,10 @@ class ChatPipeline(BasicPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
-        pass
+        return inputs
 
     def chat(self, inputs, **kwargs):
         pass
 
-    def _post_decode(self):
-        pass
-
     def _postprocess(self, output: torch.Tensor):
-        pass
+        return output

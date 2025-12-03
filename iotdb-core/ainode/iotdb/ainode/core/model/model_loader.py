@@ -52,7 +52,7 @@ def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
             model = load_model_from_pt(model_info, **model_kwargs)
 
     logger.info(
-        f"Model {model_info.model_id} loaded to device {model.device} successfully."
+        f"Model {model_info.model_id} loaded to device {model.device if model_info.model_type != 'sktime' else 'cpu'} successfully."
     )
     return model
 

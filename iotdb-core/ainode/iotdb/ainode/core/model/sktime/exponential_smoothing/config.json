@@ -1,6 +1,6 @@
 {
   "model_type": "sktime",
-  "name": "ExponentialSmoothing",
+  "model_id": "exponential_smoothing",
   "predict_length": 1,
   "damped_trend": false,
   "initialization_method": "estimated",
