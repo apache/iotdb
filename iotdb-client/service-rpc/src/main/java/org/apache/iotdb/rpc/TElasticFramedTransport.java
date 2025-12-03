@@ -20,10 +20,19 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.TConfiguration;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.apache.thrift.transport.layered.TFramedTransport;
+
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLHandshakeException;
+
+import java.io.EOFException;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
@@ -113,8 +122,52 @@ public class TElasticFramedTransport extends TTransport {
       return got;
     }
 
-    // Read another frame of data
-    readFrame();
+    try {
+      // Read another frame of data
+      readFrame();
+    } catch (TTransportException e) {
+      // Adding this workaround to avoid the Connection reset error log printed.
+      if (e.getCause() instanceof SocketException && e.getMessage().contains("Connection reset")) {
+        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      }
+      // There is a bug fixed in Thrift 0.15. Some unnecessary error logs may be printed.
+      // See https://issues.apache.org/jira/browse/THRIFT-5411 and
+      // https://github.com/apache/thrift/commit/be20ad7e08fab200391e3eab41acde9da2a4fd07
+      // Adding this workaround to avoid the problem.
+      if (e.getCause() instanceof SocketTimeoutException) {
+        throw new TTransportException(TTransportException.TIMED_OUT, e.getCause());
+      }
+      if (e.getCause() instanceof SSLHandshakeException) {
+        // There is an unsolved JDK bug https://bugs.openjdk.org/browse/JDK-8221218.
+        // Adding this workaround to avoid the error log printed.
+        if (e.getMessage()
+            .contains("Insufficient buffer remaining for AEAD cipher fragment (2).")) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
+        // When client with SSL shutdown due to time out. Some unnecessary error logs may be
+        // printed.
+        // Adding this workaround to avoid the problem.
+        if (e.getCause().getCause() != null && e.getCause().getCause() instanceof EOFException) {
+          throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+        }
+      }
+
+      if (e.getCause() instanceof SSLException
+          && e.getMessage().contains("Unsupported or unrecognized SSL message")) {
+        SocketAddress remoteAddress = null;
+        if (underlying instanceof TSocket) {
+          remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+        }
+        throw new TTransportException(
+            TTransportException.CORRUPTED_DATA,
+            String.format(
+                "You may be sending non-SSL requests"
+                    + "%s to the SSL-enabled Thrift-RPC port, please confirm that you are "
+                    + "using the right configuration",
+                remoteAddress == null ? "" : " from " + remoteAddress));
+      }
+      throw e;
+    }
     return readBuffer.read(buf, off, len);
   }
 

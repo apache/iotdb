@@ -20,11 +20,12 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTConsensusMemoryManager {
@@ -39,41 +40,101 @@ public class IoTConsensusMemoryManager {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
   }
 
-  public boolean reserve(long size, boolean fromQueue) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    memorySizeInByte.updateAndGet(
-        memorySize -> {
-          long remainSize =
-              (fromQueue ? maxMemorySizeForQueueInByte : maxMemorySizeInByte) - memorySize;
-          if (size > remainSize) {
-            logger.debug(
-                "consensus memory limited. required: {}, used: {}, total: {}",
-                size,
-                memorySize,
-                maxMemorySizeInByte);
-            result.set(false);
-            return memorySize;
-          } else {
-            logger.debug(
-                "{} add {} bytes, total memory size: {} bytes.",
-                Thread.currentThread().getName(),
-                size,
-                memorySize + size);
-            result.set(true);
-            return memorySize + size;
-          }
-        });
-    if (result.get()) {
+  public boolean reserve(IndexedConsensusRequest request) {
+    long prevRef = request.incRef();
+    if (prevRef == 0) {
+      boolean reserved = reserve(request.getMemorySize(), true);
+      if (reserved) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Reserving {} bytes for request {} succeeds, current total usage {}",
+              request.getMemorySize(),
+              request.getSearchIndex(),
+              memorySizeInByte.get());
+        }
+      } else {
+        request.decRef();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Reserving {} bytes for request {} fails, current total usage {}",
+              request.getMemorySize(),
+              request.getSearchIndex(),
+              memorySizeInByte.get());
+        }
+      }
+      return reserved;
+    } else if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Skip memory reservation for {} because its ref count is not 0",
+          request.getSearchIndex());
+    }
+    return true;
+  }
+
+  public boolean reserve(Batch batch) {
+    boolean reserved = reserve(batch.getMemorySize(), false);
+    if (reserved && logger.isDebugEnabled()) {
+      logger.debug(
+          "Reserving {} bytes for batch {}-{} succeeds, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          memorySizeInByte.get());
+    } else if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Reserving {} bytes for batch {}-{} fails, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          memorySizeInByte.get());
+    }
+    return reserved;
+  }
+
+  private boolean reserve(long size, boolean fromQueue) {
+    boolean result = memorySizeInByte.addAndGet(size) < maxMemorySizeInByte;
+    if (result) {
       if (fromQueue) {
-        queueMemorySizeInByte.addAndGet(size);
+        result = queueMemorySizeInByte.addAndGet(size) < maxMemorySizeForQueueInByte;
+        if (!result) {
+          queueMemorySizeInByte.addAndGet(-size);
+        }
       } else {
         syncMemorySizeInByte.addAndGet(size);
       }
+    } else {
+      memorySizeInByte.addAndGet(-size);
     }
-    return result.get();
+    return result;
   }
 
-  public void free(long size, boolean fromQueue) {
+  public void free(IndexedConsensusRequest request) {
+    long prevRef = request.decRef();
+    if (prevRef == 1) {
+      free(request.getMemorySize(), true);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Freed {} bytes for request {}, current total usage {}",
+            request.getMemorySize(),
+            request.getSearchIndex(),
+            memorySizeInByte.get());
+      }
+    }
+  }
+
+  public void free(Batch batch) {
+    free(batch.getMemorySize(), false);
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Freed {} bytes for batch {}-{}, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          getMemorySizeInByte());
+    }
+  }
+
+  private void free(long size, boolean fromQueue) {
     long currentUsedMemory = memorySizeInByte.addAndGet(-size);
     if (fromQueue) {
       queueMemorySizeInByte.addAndGet(-size);
@@ -90,6 +151,13 @@ public class IoTConsensusMemoryManager {
   public void init(long maxMemorySize, long maxMemorySizeForQueue) {
     this.maxMemorySizeInByte = maxMemorySize;
     this.maxMemorySizeForQueueInByte = maxMemorySizeForQueue;
+  }
+
+  @TestOnly
+  public void reset() {
+    this.memorySizeInByte.set(0);
+    this.queueMemorySizeInByte.set(0);
+    this.syncMemorySizeInByte.set(0);
   }
 
   long getMemorySizeInByte() {
