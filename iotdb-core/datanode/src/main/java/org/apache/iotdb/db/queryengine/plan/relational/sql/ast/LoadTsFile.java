@@ -37,7 +37,7 @@ import static java.util.Objects.requireNonNull;
 
 public class LoadTsFile extends Statement {
 
-  private final String filePath;
+  private String filePath;
 
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
@@ -50,7 +50,7 @@ public class LoadTsFile extends Statement {
 
   private boolean isGeneratedByPipe = false;
 
-  private final Map<String, String> loadAttributes;
+  private Map<String, String> loadAttributes;
 
   private List<File> tsFiles;
   private List<TsFileResource> resources;
@@ -230,6 +230,43 @@ public class LoadTsFile extends Statement {
             : Collections.emptyList();
 
     return tsFiles == null || tsFiles.isEmpty();
+  }
+
+  /**
+   * Splits the current LoadTsFile statement into multiple sub-statements, each handling one TsFile.
+   * Used to support batch execution when loading multiple files.
+   *
+   * @return the list of sub-statements
+   */
+  public List<LoadTsFile> getSubStatement() {
+    List<LoadTsFile> subStatements = new ArrayList<>(tsFiles.size());
+    for (int i = 0; i < tsFiles.size(); ++i) {
+      final String filePath = tsFiles.get(i).getAbsolutePath();
+      final Map<String, String> properties = this.loadAttributes;
+
+      LoadTsFile subStatement = new LoadTsFile(getLocation().orElse(null), filePath, properties);
+
+      // Copy all configuration properties
+      subStatement.databaseLevel = this.databaseLevel;
+      subStatement.database = this.database;
+      subStatement.verify = this.verify;
+      subStatement.deleteAfterLoad = this.deleteAfterLoad;
+      subStatement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      subStatement.autoCreateDatabase = this.autoCreateDatabase;
+      subStatement.isAsyncLoad = this.isAsyncLoad;
+      subStatement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      // Set only the file and resources corresponding to the current index
+      subStatement.tsFiles = Collections.singletonList(tsFiles.get(i));
+      subStatement.resources = new ArrayList<>(1);
+      subStatement.writePointCountList = new ArrayList<>(1);
+      subStatement.isTableModel = Collections.singletonList(true);
+
+      subStatements.add(subStatement);
+    }
+
+    return subStatements;
   }
 
   @Override
