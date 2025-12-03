@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.pipe.it.single;
 
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
@@ -33,6 +31,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -44,7 +43,7 @@ import static org.junit.Assert.fail;
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
   @Test
   public void testSinkPermission() {
-    TestUtils.executeNonQuery(env, "create user `thulab` 'passwd'", null);
+    TestUtils.executeNonQuery(env, "create user `thulab` 'StrngPsWd@623451'", null);
 
     // Shall fail if username is specified without password
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -90,7 +89,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     // Successfully alter
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify sink ('username'='thulab', 'password'='passwd')");
+      statement.execute(
+          "alter pipe a2b modify sink ('username'='thulab', 'password'='StrngPsWd@623451')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
@@ -156,14 +156,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     // A user shall only see its own pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
-      Assert.assertEquals(
-          1,
-          client
-              .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName("thulab"))
-              .pipeInfoList
-              .size());
+    try (final Connection connection =
+            env.getConnection("thulab", "StrngPsWd@623451", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      final ResultSet result = statement.executeQuery("show pipes");
+      Assert.assertTrue(result.next());
+      Assert.assertFalse(result.next());
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -181,7 +179,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         BaseEnv.TABLE_SQL_DIALECT,
         env,
         Arrays.asList(
-            "create user thulab 'passwD@123456'", "grant INSERT on test.test1 to user thulab"),
+            "create user thulab 'StrngPsWd@623451@123456'",
+            "grant INSERT on test.test1 to user thulab"),
         null);
 
     // Write some data
@@ -196,7 +195,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
           "create pipe a2b "
               + "with source ('database'='test1', 'table'='test1') "
               + "with processor('processor'='rename-database-processor', 'processor.new-db-name'='test') "
-              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='passwD@123456')");
+              + "with sink ('sink'='write-back-sink', 'username'='thulab', 'password'='StrngPsWd@623451@123456')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Create pipe without user shall succeed if use the current session");

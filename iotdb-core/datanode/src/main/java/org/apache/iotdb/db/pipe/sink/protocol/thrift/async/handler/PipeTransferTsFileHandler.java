@@ -431,12 +431,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     client.setShouldReturnSelf(true);
-    try {
-      client.returnSelf();
-    } catch (final IllegalStateException e) {
-      LOGGER.info(
-          "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
-    }
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            LOGGER.info(
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
     client = null;
   }
 
