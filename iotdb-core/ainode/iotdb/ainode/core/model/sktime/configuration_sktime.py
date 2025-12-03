@@ -16,10 +16,6 @@
 # under the License.
 #
 
-"""
-Sktime model configuration module - simplified version
-"""
-
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Union
 
@@ -50,12 +46,16 @@ class AttributeConfig:
     def validate_value(self, value):
         """Validate if the value meets the requirements"""
         if self.type == "int":
+            if value is None:
+                return True  # Allow None for optional int parameters
             if not isinstance(value, int):
                 raise WrongAttributeTypeError(self.name, "int")
             if self.low is not None and self.high is not None:
                 if not (self.low <= value <= self.high):
                     raise NumericalRangeException(self.name, value, self.low, self.high)
         elif self.type == "float":
+            if value is None:
+                return True  # Allow None for optional float parameters
             if not isinstance(value, (int, float)):
                 raise WrongAttributeTypeError(self.name, "float")
             value = float(value)
@@ -63,11 +63,15 @@ class AttributeConfig:
                 if not (self.low <= value <= self.high):
                     raise NumericalRangeException(self.name, value, self.low, self.high)
         elif self.type == "str":
+            if value is None:
+                return True  # Allow None for optional str parameters
             if not isinstance(value, str):
                 raise WrongAttributeTypeError(self.name, "str")
             if self.choices and value not in self.choices:
                 raise StringRangeException(self.name, value, self.choices)
         elif self.type == "bool":
+            if value is None:
+                return True  # Allow None for optional bool parameters
             if not isinstance(value, bool):
                 raise WrongAttributeTypeError(self.name, "bool")
         elif self.type == "list":
@@ -87,22 +91,30 @@ class AttributeConfig:
     def parse(self, string_value: str):
         """Parse string value to corresponding type"""
         if self.type == "int":
+            if string_value.lower() == "none" or string_value.strip() == "":
+                return None
             try:
                 return int(string_value)
             except:
                 raise WrongAttributeTypeError(self.name, "int")
         elif self.type == "float":
+            if string_value.lower() == "none" or string_value.strip() == "":
+                return None
             try:
                 return float(string_value)
             except:
                 raise WrongAttributeTypeError(self.name, "float")
         elif self.type == "str":
+            if string_value.lower() == "none" or string_value.strip() == "":
+                return None
             return string_value
         elif self.type == "bool":
             if string_value.lower() == "true":
                 return True
             elif string_value.lower() == "false":
                 return False
+            elif string_value.lower() == "none" or string_value.strip() == "":
+                return None
             else:
                 raise WrongAttributeTypeError(self.name, "bool")
         elif self.type == "list":
@@ -142,9 +154,10 @@ class AttributeConfig:
 MODEL_CONFIGS = {
     "NAIVE_FORECASTER": {
         "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
-        "pipeline": AttributeConfig(
-            "pipeline", "last", "str", choices=["last", "mean"]
+        "strategy": AttributeConfig(
+            "strategy", "last", "str", choices=["last", "mean", "drift"]
         ),
+        "window_length": AttributeConfig("window_length", None, "int"),
         "sp": AttributeConfig("sp", 1, "int", 1, 5000),
     },
     "EXPONENTIAL_SMOOTHING": {
@@ -163,48 +176,40 @@ MODEL_CONFIGS = {
     "ARIMA": {
         "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
         "order": AttributeConfig("order", (1, 0, 0), "tuple", value_type=int),
+        "season_length": AttributeConfig("season_length", 1, "int", 1, 5000),
         "seasonal_order": AttributeConfig(
-            "seasonal_order", (0, 0, 0, 0), "tuple", value_type=int
+            "seasonal_order", (0, 0, 0), "tuple", value_type=int
         ),
+        "include_mean": AttributeConfig("include_mean", True, "bool"),
+        "include_drift": AttributeConfig("include_drift", False, "bool"),
+        "include_constant": AttributeConfig("include_constant", None, "bool"),
+        "blambda": AttributeConfig("blambda", None, "float"),
+        "biasadj": AttributeConfig("biasadj", False, "bool"),
         "method": AttributeConfig(
             "method",
-            "lbfgs",
+            "CSS-ML",
             "str",
-            choices=["lbfgs", "bfgs", "newton", "nm", "cg", "ncg", "powell"],
+            choices=["CSS-ML", "ML", "CSS"],
         ),
-        "maxiter": AttributeConfig("maxiter", 1, "int", 1, 5000),
-        "suppress_warnings": AttributeConfig("suppress_warnings", True, "bool"),
-        "out_of_sample_size": AttributeConfig("out_of_sample_size", 0, "int", 0, 5000),
-        "scoring": AttributeConfig(
-            "scoring",
-            "mse",
-            "str",
-            choices=["mse", "mae", "rmse", "mape", "smape", "rmsle", "r2"],
-        ),
-        "with_intercept": AttributeConfig("with_intercept", True, "bool"),
-        "time_varying_regression": AttributeConfig(
-            "time_varying_regression", False, "bool"
-        ),
-        "enforce_stationarity": AttributeConfig("enforce_stationarity", True, "bool"),
-        "enforce_invertibility": AttributeConfig("enforce_invertibility", True, "bool"),
-        "simple_differencing": AttributeConfig("simple_differencing", False, "bool"),
-        "measurement_error": AttributeConfig("measurement_error", False, "bool"),
-        "mle_regression": AttributeConfig("mle_regression", True, "bool"),
-        "hamilton_representation": AttributeConfig(
-            "hamilton_representation", False, "bool"
-        ),
-        "concentrate_scale": AttributeConfig("concentrate_scale", False, "bool"),
     },
     "STL_FORECASTER": {
         "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
         "sp": AttributeConfig("sp", 2, "int", 1, 5000),
         "seasonal": AttributeConfig("seasonal", 7, "int", 1, 5000),
+        "trend": AttributeConfig("trend", None, "int"),
+        "low_pass": AttributeConfig("low_pass", None, "int"),
         "seasonal_deg": AttributeConfig("seasonal_deg", 1, "int", 0, 5000),
         "trend_deg": AttributeConfig("trend_deg", 1, "int", 0, 5000),
         "low_pass_deg": AttributeConfig("low_pass_deg", 1, "int", 0, 5000),
+        "robust": AttributeConfig("robust", False, "bool"),
         "seasonal_jump": AttributeConfig("seasonal_jump", 1, "int", 0, 5000),
         "trend_jump": AttributeConfig("trend_jump", 1, "int", 0, 5000),
         "low_pass_jump": AttributeConfig("low_pass_jump", 1, "int", 0, 5000),
+        "inner_iter": AttributeConfig("inner_iter", None, "int"),
+        "outer_iter": AttributeConfig("outer_iter", None, "int"),
+        "forecaster_trend": AttributeConfig("forecaster_trend", None, "str"),
+        "forecaster_seasonal": AttributeConfig("forecaster_seasonal", None, "str"),
+        "forecaster_resid": AttributeConfig("forecaster_resid", None, "str"),
     },
     "GAUSSIAN_HMM": {
         "n_components": AttributeConfig("n_components", 1, "int", 1, 5000),
@@ -219,15 +224,17 @@ MODEL_CONFIGS = {
             "startprob_prior", 1.0, "float", -1e10, 1e10
         ),
         "transmat_prior": AttributeConfig("transmat_prior", 1.0, "float", -1e10, 1e10),
-        "means_prior": AttributeConfig("means_prior", 0.0, "float", -1e10, 1e10),
-        "means_weight": AttributeConfig("means_weight", 0.0, "float", -1e10, 1e10),
-        "covars_prior": AttributeConfig("covars_prior", 1e-2, "float", -1e10, 1e10),
-        "covars_weight": AttributeConfig("covars_weight", 1.0, "float", -1e10, 1e10),
+        "means_prior": AttributeConfig("means_prior", 0, "float", -1e10, 1e10),
+        "means_weight": AttributeConfig("means_weight", 0, "float", -1e10, 1e10),
+        "covars_prior": AttributeConfig("covars_prior", 0.01, "float", -1e10, 1e10),
+        "covars_weight": AttributeConfig("covars_weight", 1, "float", -1e10, 1e10),
         "algorithm": AttributeConfig(
             "algorithm", "viterbi", "str", choices=["viterbi", "map"]
         ),
+        "random_state": AttributeConfig("random_state", None, "float"),
         "n_iter": AttributeConfig("n_iter", 10, "int", 1, 5000),
         "tol": AttributeConfig("tol", 1e-2, "float", -1e10, 1e10),
+        "verbose": AttributeConfig("verbose", False, "bool"),
         "params": AttributeConfig("params", "stmc", "str", choices=["stmc", "stm"]),
         "init_params": AttributeConfig(
             "init_params", "stmc", "str", choices=["stmc", "stm"]
@@ -247,6 +254,8 @@ MODEL_CONFIGS = {
         "weights_prior": AttributeConfig("weights_prior", 1.0, "float", -1e10, 1e10),
         "means_prior": AttributeConfig("means_prior", 0.0, "float", -1e10, 1e10),
         "means_weight": AttributeConfig("means_weight", 0.0, "float", -1e10, 1e10),
+        "covars_prior": AttributeConfig("covars_prior", None, "float"),
+        "covars_weight": AttributeConfig("covars_weight", None, "float"),
         "algorithm": AttributeConfig(
             "algorithm", "viterbi", "str", choices=["viterbi", "map"]
         ),
@@ -254,10 +263,12 @@ MODEL_CONFIGS = {
             "covariance_type",
             "diag",
             "str",
-            choices=["sperical", "diag", "full", "tied"],
+            choices=["spherical", "diag", "full", "tied"],
         ),
+        "random_state": AttributeConfig("random_state", None, "int"),
         "n_iter": AttributeConfig("n_iter", 10, "int", 1, 5000),
         "tol": AttributeConfig("tol", 1e-2, "float", -1e10, 1e10),
+        "verbose": AttributeConfig("verbose", False, "bool"),
         "init_params": AttributeConfig(
             "init_params",
             "stmcw",

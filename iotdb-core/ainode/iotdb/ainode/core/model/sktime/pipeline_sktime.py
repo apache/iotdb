@@ -25,12 +25,14 @@ from iotdb.ainode.core.inference.pipeline.basic_pipeline import BasicPipeline
 
 class SktimePipeline(BasicPipeline):
     def __init__(self, model_info, **infer_kwargs):
+        infer_kwargs.pop("device", None)
         super().__init__(model_info, infer_kwargs=infer_kwargs)
 
     def _preprocess(self, inputs):
         return super()._preprocess(inputs)
 
     def infer(self, inputs, **infer_kwargs):
+        predict_length = infer_kwargs.get("predict_length", 96)
         input_ids = self._preprocess(inputs)
 
         # Convert to pandas Series for sktime (sktime expects Series or DataFrame)
@@ -44,7 +46,7 @@ class SktimePipeline(BasicPipeline):
                     if isinstance(input_ids, torch.Tensor)
                     else input_ids[i]
                 )
-                output = self.model.generate(series)
+                output = self.model.generate(series, predict_length=predict_length)
                 outputs.append(output)
             output = np.array(outputs)
         else:
@@ -53,7 +55,7 @@ class SktimePipeline(BasicPipeline):
                 series = pd.Series(input_ids.squeeze().cpu().numpy())
             else:
                 series = pd.Series(input_ids.squeeze())
-            output = self.model.generate(series)
+            output = self.model.generate(series, predict_length=predict_length)
             # Add batch dimension if needed
             if len(output.shape) == 1:
                 output = output[np.newaxis, :]
