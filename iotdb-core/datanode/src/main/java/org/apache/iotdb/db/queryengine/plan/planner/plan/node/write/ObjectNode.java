@@ -33,8 +33,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath.Deserializer;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -60,7 +61,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private byte[] content;
 
-  private String filePath;
+  private IObjectPath filePath;
 
   private final int contentLength;
 
@@ -68,7 +69,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private boolean isGeneratedByRemoteConsensusLeader;
 
-  public ObjectNode(boolean isEOF, long offset, byte[] content, String filePath) {
+  public ObjectNode(boolean isEOF, long offset, byte[] content, IObjectPath filePath) {
     super(new PlanNodeId(""));
     this.isEOF = isEOF;
     this.offset = offset;
@@ -77,7 +78,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     this.contentLength = content.length;
   }
 
-  public ObjectNode(boolean isEOF, long offset, int contentLength, String filePath) {
+  public ObjectNode(boolean isEOF, long offset, int contentLength, IObjectPath filePath) {
     super(new PlanNodeId(""));
     this.isEOF = isEOF;
     this.offset = offset;
@@ -97,12 +98,12 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     return offset;
   }
 
-  public void setFilePath(String filePath) {
+  public void setFilePath(IObjectPath filePath) {
     this.filePath = filePath;
   }
 
-  public String getFilePath() {
-    return filePath;
+  public String getFilePathString() {
+    return filePath.toString();
   }
 
   @Override
@@ -111,7 +112,11 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     buffer.putLong(searchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
     buffer.putLong(offset);
-    WALWriteUtils.write(filePath, buffer);
+    try {
+      filePath.serialize(buffer);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     buffer.putInt(content.length);
   }
 
@@ -122,14 +127,14 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
         + Byte.BYTES
         + Long.BYTES
         + Integer.BYTES
-        + ReadWriteIOUtils.sizeToWrite(filePath);
+        + filePath.getSerializedSize();
   }
 
   public static ObjectNode deserializeFromWAL(DataInputStream stream) throws IOException {
     long searchIndex = stream.readLong();
     boolean isEOF = stream.readByte() == 1;
     long offset = stream.readLong();
-    String filePath = ReadWriteIOUtils.readString(stream);
+    IObjectPath filePath = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
     int contentLength = stream.readInt();
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contentLength, filePath);
     objectNode.setSearchIndex(searchIndex);
@@ -140,8 +145,9 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     long searchIndex = buffer.getLong();
     boolean isEOF = buffer.get() == 1;
     long offset = buffer.getLong();
-    String filePath = ReadWriteIOUtils.readString(buffer);
-    Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+    IObjectPath filePath = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer);
+    Optional<File> objectFile =
+        TierManager.getInstance().getAbsoluteObjectFilePath(filePath.toString());
     int contentLength = buffer.getInt();
     byte[] contents = new byte[contentLength];
     if (objectFile.isPresent()) {
@@ -152,7 +158,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
         throw new RuntimeException(e);
       }
     } else {
-      throw new ObjectFileNotExist(filePath);
+      throw new ObjectFileNotExist(filePath.toString());
     }
 
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contents, filePath);
@@ -163,7 +169,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   public static ObjectNode deserialize(ByteBuffer byteBuffer) {
     boolean isEoF = ReadWriteIOUtils.readBool(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
-    String filePath = ReadWriteIOUtils.readString(byteBuffer);
+    IObjectPath filePath = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer);
     int contentLength = ReadWriteIOUtils.readInt(byteBuffer);
     byte[] content = ReadWriteIOUtils.readBytes(byteBuffer, contentLength);
     return new ObjectNode(isEoF, offset, content, filePath);
@@ -227,7 +233,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     getType().serialize(byteBuffer);
     ReadWriteIOUtils.write(isEOF, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ReadWriteIOUtils.write(filePath, byteBuffer);
+    filePath.serialize(byteBuffer);
     ReadWriteIOUtils.write(contentLength, byteBuffer);
     byteBuffer.put(content);
   }
@@ -237,7 +243,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     getType().serialize(stream);
     ReadWriteIOUtils.write(isEOF, stream);
     ReadWriteIOUtils.write(offset, stream);
-    ReadWriteIOUtils.write(filePath, stream);
+    filePath.serialize(stream);
     ReadWriteIOUtils.write(contentLength, stream);
     stream.write(content);
   }
@@ -251,7 +257,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       byte[] contents = new byte[contentLength];
       boolean readSuccess = false;
       for (int i = 0; i < 2; i++) {
-        Optional<File> objectFile = TierManager.getInstance().getAbsoluteObjectFilePath(filePath);
+        Optional<File> objectFile =
+            TierManager.getInstance().getAbsoluteObjectFilePath(filePath.toString());
         if (objectFile.isPresent()) {
           try {
             readContentFromFile(objectFile.get(), contents);
@@ -279,7 +286,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       }
       ReadWriteIOUtils.write(readSuccess && isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);
-      ReadWriteIOUtils.write(filePath, stream);
+      filePath.serialize(stream);
       ReadWriteIOUtils.write(contentLength, stream);
       stream.write(contents);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());

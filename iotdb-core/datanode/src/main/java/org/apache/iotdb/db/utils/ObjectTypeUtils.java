@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath.Deserializer;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -42,8 +45,8 @@ public class ObjectTypeUtils {
 
   public static File getObjectPathFromBinary(Binary binary) {
     byte[] bytes = binary.getValues();
-    String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
+    String relativeObjectFilePath = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer).toString();
     Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
     if (!file.isPresent()) {
       throw new ObjectFileNotExist(relativeObjectFilePath);
@@ -54,8 +57,8 @@ public class ObjectTypeUtils {
   public static Optional<File> getNullableObjectPathFromBinary(
       Binary binary, boolean needTempFile) {
     byte[] bytes = binary.getValues();
-    String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
+    String relativeObjectFilePath = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer).toString();
     return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
   }
 
