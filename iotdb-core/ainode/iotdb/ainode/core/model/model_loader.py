@@ -142,15 +142,15 @@ def load_model_from_pt(model_info: ModelInfo, **kwargs):
     return model.to(device_map)
 
 
-def load_model_for_efficient_inference(self):
+def load_model_for_efficient_inference():
     # TODO: An efficient model loading method for inference based on model_arguments
     pass
 
 
-def load_model_for_powerful_finetune(self):
+def load_model_for_powerful_finetune():
     # TODO: An powerful model loading method for finetune based on model_arguments
     pass
 
 
-def unload_model(self):
+def unload_model():
     pass
