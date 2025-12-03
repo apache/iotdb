@@ -994,7 +994,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           // Set md5 of the jar file
           jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
-      } catch (final IOException | URISyntaxException e) {
+      } catch (final URISyntaxException | IllegalArgumentException e) {
+        future.setException(
+            new IoTDBException(e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+        return future;
+      } catch (final IOException e) {
         LOGGER.warn(
             "Failed to get executable for PipePlugin({}) using URI: {}.",
             createPipePluginStatement.getPluginName(),
@@ -1002,9 +1006,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             e);
         future.setException(
             new IoTDBException(
-                "Failed to get executable for PipePlugin"
+                "Failed to get executable for PipePlugin "
                     + createPipePluginStatement.getPluginName()
-                    + "', please check the URI.",
+                    + ", please check the URI.",
                 TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
         return future;
       }
@@ -1093,7 +1097,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus =
           client.dropPipePlugin(
               new TDropPipePluginReq()
-                  .setPluginName(dropPipePluginStatement.getPluginName())
+                  .setPluginName(dropPipePluginStatement.getPluginName().toUpperCase())
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
                   .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
