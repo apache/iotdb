@@ -108,10 +108,11 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
 
   public void calculateNextFile() {
     TsFileResource tsFileResource = iterator.next();
+    if (tsFileResource.isDeleted()) {
+      return;
+    }
+    FileReaderManager.getInstance().increaseFileReaderReference(tsFileResource, true);
     try {
-      if (tsFileResource.isDeleted()) {
-        return;
-      }
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(

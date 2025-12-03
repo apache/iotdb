@@ -1184,9 +1184,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 CollectOperator.class.getSimpleName());
-    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    CollectOperator collectOperator = new CollectOperator(operatorContext, children);
-    return collectOperator;
+    return new CollectOperator(operatorContext, dealWithConsumeChildrenOneByOneNode(node, context));
   }
 
   @Override
