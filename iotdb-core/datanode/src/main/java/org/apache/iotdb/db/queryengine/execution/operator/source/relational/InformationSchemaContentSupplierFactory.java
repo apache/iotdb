@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -143,7 +145,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
         case InformationSchema.PIPE_PLUGINS:
-          return new PipePluginSupplier(dataTypes);
+          return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
           return new TopicSupplier(dataTypes, userEntity);
         case InformationSchema.SUBSCRIPTIONS:
@@ -603,8 +605,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class PipePluginSupplier extends TsBlockSupplier {
     private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) throws Exception {
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final UserEntity entity)
+        throws ClientManagerException, TException {
       super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(entity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =

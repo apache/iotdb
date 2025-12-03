@@ -176,7 +176,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.timecho.ratis</groupId>
+            <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
     </dependencies>

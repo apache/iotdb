@@ -656,6 +656,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    * selected files to false.
    */
   protected void releaseAllLocks() {
+    if (isHoldingWriteLock == null) {
+      return;
+    }
     for (int i = 0; i < filesView.sourceFilesInLog.size(); ++i) {
       TsFileResource resource = filesView.sourceFilesInLog.get(i);
       if (isHoldingWriteLock[i]) {

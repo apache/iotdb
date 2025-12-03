@@ -529,7 +529,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           shouldParse4Privilege = true;
         }
       }
-    } catch (final AccessDeniedException e) {
+    } catch (final AccessDeniedException | PipeRuntimeOutOfMemoryCriticalException e) {
       throw e;
     } catch (final Exception e) {
       if (e instanceof InterruptedException) {

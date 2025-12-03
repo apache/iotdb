@@ -17,11 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.load.active;
+package org.apache.iotdb.db.storageengine.load.util;
 
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -40,9 +44,9 @@ import java.util.Objects;
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 
-public class ActiveLoadUtil {
+public class LoadUtil {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadUtil.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadUtil.class);
 
   private static volatile ILoadDiskSelector loadDiskSelector = updateLoadDiskSelector();
 
@@ -66,6 +70,37 @@ public class ActiveLoadUtil {
     }
 
     return true;
+  }
+
+  public static String getTsFilePath(final String filePathWithResourceOrModsTail) {
+    if (filePathWithResourceOrModsTail.endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+      return filePathWithResourceOrModsTail.substring(
+          0, filePathWithResourceOrModsTail.length() - TsFileResource.RESOURCE_SUFFIX.length());
+    }
+
+    if (filePathWithResourceOrModsTail.endsWith(ModificationFileV1.FILE_SUFFIX)) {
+      return filePathWithResourceOrModsTail.substring(
+          0, filePathWithResourceOrModsTail.length() - ModificationFileV1.FILE_SUFFIX.length());
+    }
+
+    if (filePathWithResourceOrModsTail.endsWith(ModificationFile.FILE_SUFFIX)) {
+      return filePathWithResourceOrModsTail.substring(
+          0, filePathWithResourceOrModsTail.length() - ModificationFile.FILE_SUFFIX.length());
+    }
+
+    return filePathWithResourceOrModsTail;
+  }
+
+  public static String getTsFileModsV1Path(final String tsFilePath) {
+    return tsFilePath + ModificationFileV1.FILE_SUFFIX;
+  }
+
+  public static String getTsFileModsV2Path(final String tsFilePath) {
+    return tsFilePath + ModificationFile.FILE_SUFFIX;
+  }
+
+  public static String getTsFileResourcePath(final String tsFilePath) {
+    return tsFilePath + TsFileResource.RESOURCE_SUFFIX;
   }
 
   private static boolean loadTsFilesToActiveDir(
@@ -93,9 +128,11 @@ public class ActiveLoadUtil {
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     loadTsFileAsyncToTargetDir(
-        targetDir, new File(file.getAbsolutePath() + ".resource"), isDeleteAfterLoad);
+        targetDir, new File(getTsFileResourcePath(file.getAbsolutePath())), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
-        targetDir, new File(file.getAbsolutePath() + ".mods"), isDeleteAfterLoad);
+        targetDir, new File(getTsFileModsV1Path(file.getAbsolutePath())), isDeleteAfterLoad);
+    loadTsFileAsyncToTargetDir(
+        targetDir, new File(getTsFileModsV2Path(file.getAbsolutePath())), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
     return true;
   }
@@ -182,7 +219,7 @@ public class ActiveLoadUtil {
               return new File(finalFolderManager.getNextFolder());
             });
 
-    ActiveLoadUtil.loadDiskSelector = loadDiskSelector;
+    LoadUtil.loadDiskSelector = loadDiskSelector;
     return loadDiskSelector;
   }
 }

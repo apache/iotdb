@@ -645,7 +645,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               plan.getProps(),
               plan.getAlias(),
               (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       try {
         // Should merge
@@ -756,7 +759,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       try {
         // Update statistics and schemaDataTypeNumMap

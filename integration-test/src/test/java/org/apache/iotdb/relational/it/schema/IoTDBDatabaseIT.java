@@ -575,6 +575,8 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from config_nodes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.executeQuery("select * from pipe_plugins"));
 
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
@@ -583,12 +585,6 @@ public class IoTDBDatabaseIT {
           Collections.emptySet());
 
       // No auth needed
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
-              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
-          "plugin_name,plugin_type,class_name,plugin_jar,",
-          Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(

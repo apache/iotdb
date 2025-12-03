@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.common.type.LongType;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
@@ -73,7 +74,7 @@ public class ImplementIntersectDistinctAsUnion implements Rule<IntersectNode> {
                         new ComparisonExpression(
                             GREATER_THAN_OR_EQUAL,
                             symbol.toSymbolReference(),
-                            new GenericLiteral("INT64", "1")))
+                            new GenericLiteral(LongType.INT64.getDisplayName(), "1")))
                 .collect(ImmutableList.toImmutableList()));
 
     FilterNode filterNode =
