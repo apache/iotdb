@@ -31,6 +31,7 @@ logger = Logger()
 def load_pipeline(model_info: ModelInfo, device: str, **model_kwargs):
     if model_info.model_type == "sktime":
         from iotdb.ainode.core.model.sktime.pipeline_sktime import SktimePipeline
+
         pipeline_cls = SktimePipeline
     elif model_info.category == ModelCategory.BUILTIN:
         module_name = (

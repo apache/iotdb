@@ -176,21 +176,40 @@ MODEL_CONFIGS = {
     "ARIMA": {
         "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
         "order": AttributeConfig("order", (1, 0, 0), "tuple", value_type=int),
-        "season_length": AttributeConfig("season_length", 1, "int", 1, 5000),
         "seasonal_order": AttributeConfig(
-            "seasonal_order", (0, 0, 0), "tuple", value_type=int
+            "seasonal_order", (0, 0, 0, 0), "tuple", value_type=int
         ),
-        "include_mean": AttributeConfig("include_mean", True, "bool"),
-        "include_drift": AttributeConfig("include_drift", False, "bool"),
-        "include_constant": AttributeConfig("include_constant", None, "bool"),
-        "blambda": AttributeConfig("blambda", None, "float"),
-        "biasadj": AttributeConfig("biasadj", False, "bool"),
+        "start_params": AttributeConfig("start_params", None, "str"),
         "method": AttributeConfig(
             "method",
-            "CSS-ML",
+            "lbfgs",
             "str",
-            choices=["CSS-ML", "ML", "CSS"],
+            choices=["lbfgs", "bfgs", "newton", "nm", "cg", "ncg", "powell"],
         ),
+        "maxiter": AttributeConfig("maxiter", 50, "int", 1, 5000),
+        "suppress_warnings": AttributeConfig("suppress_warnings", False, "bool"),
+        "out_of_sample_size": AttributeConfig("out_of_sample_size", 0, "int", 0, 5000),
+        "scoring": AttributeConfig(
+            "scoring",
+            "mse",
+            "str",
+            choices=["mse", "mae", "rmse", "mape", "smape", "rmsle", "r2"],
+        ),
+        "scoring_args": AttributeConfig("scoring_args", None, "str"),
+        "trend": AttributeConfig("trend", None, "str"),
+        "with_intercept": AttributeConfig("with_intercept", True, "bool"),
+        "time_varying_regression": AttributeConfig(
+            "time_varying_regression", False, "bool"
+        ),
+        "enforce_stationarity": AttributeConfig("enforce_stationarity", True, "bool"),
+        "enforce_invertibility": AttributeConfig("enforce_invertibility", True, "bool"),
+        "simple_differencing": AttributeConfig("simple_differencing", False, "bool"),
+        "measurement_error": AttributeConfig("measurement_error", False, "bool"),
+        "mle_regression": AttributeConfig("mle_regression", True, "bool"),
+        "hamilton_representation": AttributeConfig(
+            "hamilton_representation", False, "bool"
+        ),
+        "concentrate_scale": AttributeConfig("concentrate_scale", False, "bool"),
     },
     "STL_FORECASTER": {
         "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
