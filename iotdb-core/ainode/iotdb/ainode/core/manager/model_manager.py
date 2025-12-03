@@ -60,6 +60,7 @@ class ModelManager:
             )
 
     def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
+        self._refresh()
         return self._model_storage.show_models(req)
 
     def delete_model(self, req: TDeleteModelReq) -> TSStatus:
@@ -72,10 +73,6 @@ class ModelManager:
         except Exception as e:
             logger.warning(e)
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-
-    def load_model(self, model_id: str, **kwargs) -> Any:
-        model_info = self.get_model_info(model_id)
-        return load_model(model_info=model_info, **kwargs)
 
     def get_model_info(
         self,
@@ -91,7 +88,7 @@ class ModelManager:
     ) -> List[ModelInfo]:
         return self._model_storage.get_model_infos(category, model_type)
 
-    def refresh(self):
+    def _refresh(self):
         """Refresh the model list (re-scan the file system)"""
         self._model_storage.discover_all_models()
 

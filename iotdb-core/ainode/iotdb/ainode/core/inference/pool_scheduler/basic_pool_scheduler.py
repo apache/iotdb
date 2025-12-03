@@ -63,7 +63,7 @@ def _estimate_shared_pool_size_by_total_mem(
     mem_usages: Dict[str, float] = {}
     for model_info in all_models:
         mem_usages[model_info.model_id] = (
-            MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
+            MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
         )
 
     # Evaluate system resources and get TOTAL memory

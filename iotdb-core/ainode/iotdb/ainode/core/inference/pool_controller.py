@@ -22,7 +22,6 @@ import threading
 from concurrent.futures import wait
 from typing import Dict, Optional
 
-import torch
 import torch.multiprocessing as mp
 
 from iotdb.ainode.core.exception import InferenceModelInternalError
@@ -73,7 +72,7 @@ class PoolController:
             thread_name_prefix=ThreadName.INFERENCE_POOL_CONTROLLER.value
         )
 
-    # =============== Pool Management ===============
+    # =============== Automatic Pool Management (Developing) ===============
     @synchronized(threading.Lock())
     def first_req_init(self, model_id: str, device):
         """
@@ -104,33 +103,35 @@ class PoolController:
         Initialize the first pool for the given model_id.
         Ensure the pool is ready before returning.
         """
-        device = torch.device(device_str)
-        device_id = device.index
+        pass
+        # device = torch.device(device_str)
+        # device_id = device.index
+        #
+        # first_queue = mp.Queue()
+        # ready_event = mp.Event()
+        # first_pool = InferenceRequestPool(
+        #     pool_id=0,
+        #     model_id=model_id,
+        #     device=device_str,
+        #     request_queue=first_queue,
+        #     result_queue=self._result_queue,
+        #     ready_event=ready_event,
+        # )
+        # first_pool.start()
+        # self._register_pool(model_id, device_str, 0, first_pool, first_queue)
+        #
+        # if not ready_event.wait(timeout=30):
+        #     self._erase_pool(model_id, device_id, 0)
+        #     logger.error(
+        #         f"[Inference][Device-{device}][Pool-0] Pool failed to be ready in time"
+        #     )
+        # else:
+        #     self.set_state(model_id, device_id, 0, PoolState.RUNNING)
+        #     logger.info(
+        #         f"[Inference][Device-{device}][Pool-0] Pool started running for model {model_id}"
+        #     )
 
-        first_queue = mp.Queue()
-        ready_event = mp.Event()
-        first_pool = InferenceRequestPool(
-            pool_id=0,
-            model_id=model_id,
-            device=device_str,
-            request_queue=first_queue,
-            result_queue=self._result_queue,
-            ready_event=ready_event,
-        )
-        first_pool.start()
-        self._register_pool(model_id, device_str, 0, first_pool, first_queue)
-
-        if not ready_event.wait(timeout=30):
-            self._erase_pool(model_id, device_id, 0)
-            logger.error(
-                f"[Inference][Device-{device}][Pool-0] Pool failed to be ready in time"
-            )
-        else:
-            self.set_state(model_id, device_id, 0, PoolState.RUNNING)
-            logger.info(
-                f"[Inference][Device-{device}][Pool-0] Pool started running for model {model_id}"
-            )
-
+    # =============== Pool Management ===============
     def load_model(self, model_id: str, device_id_list: list[str]):
         """
         Load the model to the specified devices asynchronously.

@@ -42,14 +42,14 @@ from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_
 logger = Logger()
 
 
-def load_model(model_info: ModelInfo, **kwargs) -> Any:
+def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
     if model_info.auto_map is not None:
-        model = load_model_from_transformers(model_info, **kwargs)
+        model = load_model_from_transformers(model_info, **model_kwargs)
     else:
         if model_info.model_type == "sktime":
             model = create_sktime_model(model_info.model_id)
         else:
-            model = load_model_from_pt(model_info, **kwargs)
+            model = load_model_from_pt(model_info, **model_kwargs)
 
     logger.info(
         f"Model {model_info.model_id} loaded to device {model.device} successfully."
@@ -57,10 +57,10 @@ def load_model(model_info: ModelInfo, **kwargs) -> Any:
     return model
 
 
-def load_model_from_transformers(model_info: ModelInfo, **kwargs):
-    device_map = kwargs.get("device_map", "cpu")
-    trust_remote_code = kwargs.get("trust_remote_code", True)
-    train_from_scratch = kwargs.get("train_from_scratch", False)
+def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
+    device_map = model_kwargs.get("device_map", "cpu")
+    trust_remote_code = model_kwargs.get("trust_remote_code", True)
+    train_from_scratch = model_kwargs.get("train_from_scratch", False)
 
     model_path = os.path.join(
         os.getcwd(),

@@ -25,16 +25,15 @@ from iotdb.ainode.core.model.model_loader import load_model
 
 
 class BasicPipeline(ABC):
-    def __init__(self, model_info, **infer_kwargs):
+    def __init__(self, model_info, **model_kwargs):
         self.model_info = model_info
-        self.device = infer_kwargs.get("device", "cpu")
-        self.model = load_model(model_info, device_map=self.device)
+        self.device = model_kwargs.get("device", "cpu")
+        self.model = load_model(model_info, device_map=self.device, **model_kwargs)
 
     def _preprocess(self, inputs):
         """
         Preprocess the input before inference, including shape validation and value transformation.
         """
-        # TODO: Integrate with the data processing pipeline operators
         pass
 
     def _postprocess(self, output: torch.Tensor):
@@ -45,8 +44,8 @@ class BasicPipeline(ABC):
 
 
 class ForecastPipeline(BasicPipeline):
-    def __init__(self, model_info, **infer_kwargs):
-        super().__init__(model_info, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **model_kwargs):
+        super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
         if len(inputs.shape) != 2:
@@ -63,8 +62,8 @@ class ForecastPipeline(BasicPipeline):
 
 
 class ClassificationPipeline(BasicPipeline):
-    def __init__(self, model_info, **infer_kwargs):
-        super().__init__(model_info, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **model_kwargs):
+        super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
         pass
@@ -80,8 +79,8 @@ class ClassificationPipeline(BasicPipeline):
 
 
 class ChatPipeline(BasicPipeline):
-    def __init__(self, model_info, **infer_kwargs):
-        super().__init__(model_info, infer_kwargs=infer_kwargs)
+    def __init__(self, model_info, **model_kwargs):
+        super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
         pass
