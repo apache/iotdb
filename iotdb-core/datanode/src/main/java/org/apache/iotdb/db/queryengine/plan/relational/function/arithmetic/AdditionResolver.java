@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -87,48 +89,14 @@ public class AdditionResolver {
     addCondition(UNKNOWN, DATE, DATE);
     addCondition(UNKNOWN, TIMESTAMP, TIMESTAMP);
 
-    addConditionTS(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32);
-    addConditionTS(TSDataType.INT32, TSDataType.INT64, TSDataType.INT64);
-    addConditionTS(TSDataType.INT32, TSDataType.FLOAT, TSDataType.FLOAT);
-    addConditionTS(TSDataType.INT32, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.INT32, TSDataType.DATE, TSDataType.DATE);
-    addConditionTS(TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.TIMESTAMP);
-    addConditionTS(TSDataType.INT32, TSDataType.UNKNOWN, TSDataType.INT32);
-
-    addConditionTS(TSDataType.INT64, TSDataType.INT32, TSDataType.INT64);
-    addConditionTS(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64);
-    addConditionTS(TSDataType.INT64, TSDataType.FLOAT, TSDataType.FLOAT);
-    addConditionTS(TSDataType.INT64, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.INT64, TSDataType.DATE, TSDataType.DATE);
-    addConditionTS(TSDataType.INT64, TSDataType.TIMESTAMP, TSDataType.TIMESTAMP);
-    addConditionTS(TSDataType.INT64, TSDataType.UNKNOWN, TSDataType.INT64);
-
-    addConditionTS(TSDataType.FLOAT, TSDataType.INT32, TSDataType.FLOAT);
-    addConditionTS(TSDataType.FLOAT, TSDataType.INT64, TSDataType.FLOAT);
-    addConditionTS(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.FLOAT);
-    addConditionTS(TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.FLOAT, TSDataType.UNKNOWN, TSDataType.FLOAT);
-
-    addConditionTS(TSDataType.DOUBLE, TSDataType.INT32, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.DOUBLE, TSDataType.INT64, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.DOUBLE, TSDataType.UNKNOWN, TSDataType.DOUBLE);
-
-    addConditionTS(TSDataType.DATE, TSDataType.INT32, TSDataType.DATE);
-    addConditionTS(TSDataType.DATE, TSDataType.INT64, TSDataType.DATE);
-    addConditionTS(TSDataType.DATE, TSDataType.UNKNOWN, TSDataType.DATE);
-
-    addConditionTS(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.TIMESTAMP);
-    addConditionTS(TSDataType.TIMESTAMP, TSDataType.INT64, TSDataType.TIMESTAMP);
-    addConditionTS(TSDataType.TIMESTAMP, TSDataType.UNKNOWN, TSDataType.TIMESTAMP);
-
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.INT32, TSDataType.INT32);
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.INT64, TSDataType.INT64);
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.FLOAT, TSDataType.FLOAT);
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.DATE, TSDataType.DATE);
-    addConditionTS(TSDataType.UNKNOWN, TSDataType.TIMESTAMP, TSDataType.TIMESTAMP);
+    for (Map.Entry<Type, Map<Type, Type>> leftEntry : CONDITION_MAP.entrySet()) {
+      TSDataType leftTs = InternalTypeManager.getTSDataType(leftEntry.getKey());
+      for (Map.Entry<Type, Type> rightEntry : leftEntry.getValue().entrySet()) {
+        TSDataType rightTs = InternalTypeManager.getTSDataType(rightEntry.getKey());
+        TSDataType resultTs = InternalTypeManager.getTSDataType(rightEntry.getValue());
+        addConditionTS(leftTs, rightTs, resultTs);
+      }
+    }
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {

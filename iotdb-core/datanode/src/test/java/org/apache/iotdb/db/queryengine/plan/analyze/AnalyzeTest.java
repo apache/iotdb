@@ -116,7 +116,7 @@ public class AnalyzeTest {
               Arrays.asList(
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
                   new ColumnHeader("root.sg.d1.s2", TSDataType.DOUBLE, "root.sg.d1.status"),
-                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.DOUBLE, "t")),
+                  new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.INT64, "t")),
               false));
 
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
@@ -177,9 +177,9 @@ public class AnalyzeTest {
               Arrays.asList(
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
                   new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.INT64, null),
-                  new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.INT64, null),
                   new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.INT64, null),
-                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, null)),
+                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.INT64, null)),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
@@ -267,7 +267,7 @@ public class AnalyzeTest {
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
               Collections.singletonList(
-                  new ColumnHeader("count(root.sg.d1.s1 + 1) + 1", TSDataType.DOUBLE, "t")),
+                  new ColumnHeader("count(root.sg.d1.s1 + 1) + 1", TSDataType.INT64, "t")),
               false));
 
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
@@ -548,7 +548,7 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("Device", TSDataType.TEXT),
-                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE, null)),
+                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.INT64, null)),
               false));
 
       alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
