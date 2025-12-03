@@ -147,7 +147,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         isTableModelEvent,
         databaseNameFromDataRegion);
     this.insertNode = insertNode;
-    this.progressIndex = Objects.nonNull(insertNode) ? insertNode.getProgressIndex() : null;
+    this.progressIndex = insertNode.getProgressIndex();
 
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
