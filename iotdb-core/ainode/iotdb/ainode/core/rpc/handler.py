@@ -41,7 +41,7 @@ from iotdb.thrift.ainode.ttypes import (
     TShowModelsReq,
     TShowModelsResp,
     TTrainingReq,
-    TUnloadModelReq, TForecastResp,
+    TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
 
@@ -137,6 +137,6 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         if not self._model_manager.is_model_registered(model_id):
             return TSStatus(
                 code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
-                message=f"Model [{model_id}] is not available. You can use 'SHOW MODELS' to retrieve the available models.",
+                message=f"Model [{model_id}] is not registered yet. You can use 'SHOW MODELS' to retrieve the available models.",
             )
         return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)

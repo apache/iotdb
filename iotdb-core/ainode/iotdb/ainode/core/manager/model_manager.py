@@ -21,7 +21,7 @@ from typing import Any, List, Optional
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import BuiltInModelDeletionError
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_loader import ModelLoader
+from iotdb.ainode.core.model.model_loader import load_model
 from iotdb.ainode.core.model.model_storage import ModelCategory, ModelInfo, ModelStorage
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.decorator import singleton
@@ -41,7 +41,6 @@ logger = Logger()
 class ModelManager:
     def __init__(self):
         self._model_storage = ModelStorage()
-        self._model_loader = ModelLoader(storage=self._model_storage)
 
     def register_model(
         self,
@@ -75,7 +74,8 @@ class ModelManager:
             return get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
 
     def load_model(self, model_id: str, **kwargs) -> Any:
-        return self._model_loader.load_model(model_id=model_id, **kwargs)
+        model_info = self.get_model_info(model_id)
+        return load_model(model_info=model_info, **kwargs)
 
     def get_model_info(
         self,

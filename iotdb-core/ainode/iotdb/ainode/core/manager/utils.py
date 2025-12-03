@@ -25,6 +25,7 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import ModelNotExistError
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_loader import load_model
 
 logger = Logger()
 
@@ -46,7 +47,8 @@ def measure_model_memory(device: torch.device, model_id: str) -> int:
     torch.cuda.synchronize(device)
     start = torch.cuda.memory_reserved(device)
 
-    model = ModelManager().load_model(model_id).to(device)
+    model_info = ModelManager().get_model_info(model_id)
+    model = load_model(model_info).to(device)
     torch.cuda.synchronize(device)
     end = torch.cuda.memory_reserved(device)
     usage = end - start
