@@ -264,6 +264,35 @@ public class LoadTsFileStatement extends Statement {
     return tsFiles == null || tsFiles.isEmpty();
   }
 
+  /**
+   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling one TsFile.
+   * Used to support batch execution when loading multiple files.
+   *
+   * @return the list of sub-statements
+   */
+  public List<LoadTsFileStatement> getSubStatement() {
+    List<LoadTsFileStatement> subStatements = new ArrayList<>(tsFiles.size());
+    for (int i = 0; i < tsFiles.size(); ++i) {
+      LoadTsFileStatement statement = new LoadTsFileStatement();
+      statement.databaseLevel = this.databaseLevel;
+      statement.verifySchema = this.verifySchema;
+      statement.deleteAfterLoad = this.deleteAfterLoad;
+      statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      statement.autoCreateDatabase = this.autoCreateDatabase;
+      statement.isAsyncLoad = this.isAsyncLoad;
+      statement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      statement.tsFiles = Collections.singletonList(tsFiles.get(i));
+      statement.resources = new ArrayList<>(1);
+      statement.writePointCountList = new ArrayList<>(1);
+      statement.statementType = StatementType.MULTI_BATCH_INSERT;
+      subStatements.add(statement);
+    }
+
+    return subStatements;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
