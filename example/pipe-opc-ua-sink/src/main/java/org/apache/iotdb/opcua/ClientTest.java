@@ -24,7 +24,6 @@ import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
-import org.eclipse.milo.opcua.stack.core.serialization.OpcUaBinaryStreamEncoder;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
@@ -40,7 +39,6 @@ import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.DeleteNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
-import org.eclipse.milo.opcua.stack.core.util.BufferUtil;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
@@ -78,14 +76,6 @@ public class ClientTest implements ClientExample {
 
     client.deleteNodes(Collections.singletonList(new DeleteNodesItem(nodeId, true)));
 
-    final OpcUaBinaryStreamEncoder encoder =
-        new OpcUaBinaryStreamEncoder(client.getStaticSerializationContext());
-    final ByteBuf byteBuf = BufferUtil.pooledBuffer();
-    new VariableAttributes.Codec()
-        .encode(
-            client.getStaticSerializationContext(),
-            encoder.setBuffer(byteBuf),
-            createPressureSensorAttributes());
     AddNodesResponse addStatus =
         client
             .addNodes(
@@ -96,13 +86,12 @@ public class ClientTest implements ClientExample {
                         new NodeId(2, "root/sg/d1/s2").expanded(),
                         new QualifiedName(2, "s2"),
                         NodeClass.Variable,
-                        new ExtensionObject(
-                            convertByteBufToByteString(byteBuf),
-                            Identifiers.OPCBinarySchema_TypeSystem),
+                        ExtensionObject.encode(
+                            client.getStaticSerializationContext(),
+                            createPressureSensorAttributes()),
                         Identifiers.BaseDataVariableType.expanded())))
             .get();
     System.out.println("新增节点状态: " + addStatus);
-    byteBuf.clear();
     client.disconnect().get();
   }
 

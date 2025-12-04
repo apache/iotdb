@@ -28,7 +28,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import io.netty.buffer.ByteBuf;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -51,7 +50,6 @@ import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
-import org.eclipse.milo.opcua.stack.core.serialization.OpcUaBinaryStreamDecoder;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
@@ -63,7 +61,6 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
-import org.eclipse.milo.opcua.stack.core.util.BufferUtil;
 
 import java.nio.file.Paths;
 import java.sql.Date;
@@ -512,20 +509,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                     new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
             continue;
           }
-          final VariableAttributes variableAttributes;
-          if (attributes.getBodyType().equals(ExtensionObject.BodyType.ByteString)) {
-            final OpcUaBinaryStreamDecoder decoder =
-                new OpcUaBinaryStreamDecoder(getServer().getSerializationContext());
-            final ByteBuf byteBuf = BufferUtil.pooledBuffer();
-            variableAttributes =
-                new VariableAttributes.Codec()
-                    .decode(getServer().getSerializationContext(), decoder.setBuffer(byteBuf));
-          } else {
-            results.add(
-                new AddNodesResult(
-                    new StatusCode(StatusCodes.Bad_NodeAttributesInvalid), NodeId.NULL_VALUE));
-            continue;
-          }
+          final VariableAttributes variableAttributes =
+              (VariableAttributes)
+                  item.getNodeAttributes().decode(getServer().getSerializationContext());
           measurementNode =
               new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                   .setNodeId(nodeId.get())
