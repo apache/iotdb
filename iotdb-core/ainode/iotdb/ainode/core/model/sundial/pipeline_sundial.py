@@ -18,8 +18,8 @@
 
 import torch
 
-from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
 
 class SundialPipeline(ForecastPipeline):

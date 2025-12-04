@@ -30,7 +30,11 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
 from iotdb.ainode.core.inference.inference_request import InferenceRequest
-from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline, ClassificationPipeline, ChatPipeline
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import (
+    ChatPipeline,
+    ClassificationPipeline,
+    ForecastPipeline,
+)
 from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler import (
     BasicRequestScheduler,

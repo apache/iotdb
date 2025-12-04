@@ -34,8 +34,12 @@ from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import (
+    ChatPipeline,
+    ClassificationPipeline,
+    ForecastPipeline,
+)
 from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
-from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline, ClassificationPipeline, ChatPipeline
 from iotdb.ainode.core.inference.pool_controller import PoolController
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
