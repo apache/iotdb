@@ -537,7 +537,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           getNodeManager().addNode(measurementNode);
           parentNode.addReference(
               new Reference(
-                  measurementNode.getNodeId(),
+                  parentNode.getNodeId(),
                   item.getReferenceTypeId(),
                   measurementNode.getNodeId().expanded(),
                   true));

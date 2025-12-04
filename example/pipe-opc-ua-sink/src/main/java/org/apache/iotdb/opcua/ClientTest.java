@@ -26,6 +26,7 @@ import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -67,7 +68,7 @@ public class ClientTest implements ClientExample {
 
     // 2. 尝试写入新值
     Variant newValue = new Variant(42.0);
-    DataValue writeValue = new DataValue(newValue, null, null);
+    DataValue writeValue = new DataValue(newValue, StatusCode.GOOD, new DateTime(), new DateTime());
 
     System.out.println("尝试写入值: " + newValue.getValue());
 
