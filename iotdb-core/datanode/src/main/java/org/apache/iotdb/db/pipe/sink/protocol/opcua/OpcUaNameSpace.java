@@ -515,8 +515,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           measurementNode =
               new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                   .setNodeId(nodeId.get())
-                  .setAccessLevel(AccessLevel.READ_WRITE)
-                  .setUserAccessLevel(AccessLevel.READ_WRITE)
+                  .setAccessLevel(variableAttributes.getAccessLevel())
+                  .setUserAccessLevel(variableAttributes.getUserAccessLevel())
                   .setBrowseName(item.getBrowseName())
                   .setDisplayName(variableAttributes.getDisplayName())
                   .setDataType(variableAttributes.getDataType())
