@@ -29,6 +29,7 @@ public abstract class AbstractDatabaseTask implements IConfigTask {
   public static final String TIME_PARTITION_INTERVAL_KEY = "time_partition_interval";
   public static final String SCHEMA_REGION_GROUP_NUM_KEY = "schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_KEY = "data_region_group_num";
+  public static final String NEED_LAST_CACHE_KEY = "need_last_cache";
 
   // Deprecated
   public static final String SCHEMA_REPLICATION_FACTOR_KEY = "schema_replication_factor";
