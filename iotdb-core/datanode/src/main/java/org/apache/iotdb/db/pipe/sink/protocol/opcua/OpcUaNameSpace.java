@@ -52,6 +52,7 @@ import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
@@ -475,22 +476,26 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     UaVariableNode measurementNode;
     final List<AddNodesResult> results = new ArrayList<>(nodesToAdd.size());
     for (final AddNodesItem item : nodesToAdd) {
+      final ExtensionObject attributes = item.getNodeAttributes();
+      if (attributes.getBodyType().equals(ExtensionObject.BodyType.ByteString)) {
+
+      }
       if (item.getNodeClass().equals(NodeClass.Variable)) {
         final Optional<NodeId> nodeId =
             item.getRequestedNewNodeId().toNodeId(getServer().getNamespaceTable());
         if (!nodeId.isPresent()) {
           results.add(
-              new AddNodesResult(new StatusCode(StatusCodes.Bad_InvalidArgument), NodeId.NULL_VALUE));
+              new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdRejected), NodeId.NULL_VALUE));
           continue;
         }
         if (!getNodeManager()
             .containsNode(nodeId.get())) {
           measurementNode =
               new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                  .setNodeId(newNodeId(currentFolder + name))
+                  .setNodeId(nodeId.get())
                   .setAccessLevel(AccessLevel.READ_WRITE)
                   .setUserAccessLevel(AccessLevel.READ_WRITE)
-                  .setBrowseName(newQualifiedName(name))
+                  .setBrowseName(item.getBrowseName())
                   .setDisplayName(LocalizedText.english(name))
                   .setDataType(convertToOpcDataType(type))
                   .setTypeDefinition(Identifiers.BaseDataVariableType)
@@ -502,6 +507,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   Identifiers.Organizes,
                   measurementNode.getNodeId().expanded(),
                   true));
+        } else {
+          results.add(
+                  new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdExists), NodeId.NULL_VALUE));
+          continue;
         }
       }
     }
