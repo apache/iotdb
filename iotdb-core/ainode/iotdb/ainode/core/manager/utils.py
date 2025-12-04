@@ -91,7 +91,9 @@ def estimate_pool_size(device: torch.device, model_id: str) -> int:
     system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
-    mem_usage = MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    mem_usage = (
+        MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    )
     size = int((free_mem * INFERENCE_MEMORY_USAGE_RATIO) // mem_usage)
     if size <= 0:
         logger.error(

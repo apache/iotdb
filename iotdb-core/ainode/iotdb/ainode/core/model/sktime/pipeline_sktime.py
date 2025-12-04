@@ -20,18 +20,18 @@ import numpy as np
 import pandas as pd
 import torch
 
-from iotdb.ainode.core.inference.pipeline.basic_pipeline import BasicPipeline
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
 
-class SktimePipeline(BasicPipeline):
+class SktimePipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
+        model_kwargs.pop("device", None)  # sktime models run on CPU
         super().__init__(model_info, model_kwargs=model_kwargs)
-        model_kwargs.pop("device", None)
 
     def _preprocess(self, inputs):
-        return super()._preprocess(inputs)
+        return inputs
 
-    def infer(self, inputs, **infer_kwargs):
+    def forecast(self, inputs, **infer_kwargs):
         predict_length = infer_kwargs.get("predict_length", 96)
         input_ids = self._preprocess(inputs)
 

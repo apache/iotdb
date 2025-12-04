@@ -19,6 +19,7 @@
 import torch
 
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
+from iotdb.ainode.core.exception import InferenceModelInternalError
 
 
 class SundialPipeline(ForecastPipeline):
@@ -26,9 +27,13 @@ class SundialPipeline(ForecastPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
-        return super()._preprocess(inputs)
+        if len(inputs.shape) != 2:
+            raise InferenceModelInternalError(
+                f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
+            )
+        return inputs
 
-    def infer(self, inputs, **infer_kwargs):
+    def forecast(self, inputs, **infer_kwargs):
         predict_length = infer_kwargs.get("predict_length", 96)
         num_samples = infer_kwargs.get("num_samples", 10)
         revin = infer_kwargs.get("revin", True)
