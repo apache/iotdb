@@ -477,6 +477,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     UaVariableNode measurementNode;
     final List<AddNodesResult> results = new ArrayList<>(nodesToAdd.size());
     for (final AddNodesItem item : nodesToAdd) {
+      // Check attributes
       final ExtensionObject attributes = item.getNodeAttributes();
       if (Objects.isNull(attributes)) {
         results.add(
@@ -484,72 +485,91 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 new StatusCode(StatusCodes.Bad_NodeAttributesInvalid), NodeId.NULL_VALUE));
         continue;
       }
-      if (item.getNodeClass().equals(NodeClass.Variable)) {
-        final Optional<NodeId> nodeId =
-            item.getRequestedNewNodeId().toNodeId(getServer().getNamespaceTable());
-        if (!nodeId.isPresent()) {
-          results.add(
-              new AddNodesResult(
-                  new StatusCode(StatusCodes.Bad_NodeIdRejected), NodeId.NULL_VALUE));
-          continue;
-        }
-        if (!getNodeManager().containsNode(nodeId.get())) {
-          final Optional<NodeId> parentId =
-              item.getParentNodeId().toNodeId(getServer().getNamespaceTable());
-          if (!parentId.isPresent()) {
-            results.add(
-                new AddNodesResult(
-                    new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
-            continue;
-          }
-          final UaNode parentNode = getNodeManager().get(parentId.get());
-          if (Objects.isNull(parentNode)) {
-            results.add(
-                new AddNodesResult(
-                    new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
-            continue;
-          }
-          final Optional<NodeId> typeDefinition =
-              item.getTypeDefinition().toNodeId(getServer().getNamespaceTable());
-          if (!typeDefinition.isPresent()) {
-            results.add(
-                new AddNodesResult(
-                    new StatusCode(StatusCodes.Bad_TypeDefinitionInvalid), NodeId.NULL_VALUE));
-            continue;
-          }
-          final VariableAttributes variableAttributes =
-              (VariableAttributes)
-                  item.getNodeAttributes().decode(getServer().getSerializationContext());
-          measurementNode =
-              new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                  .setNodeId(nodeId.get())
-                  .setAccessLevel(variableAttributes.getAccessLevel())
-                  .setUserAccessLevel(variableAttributes.getUserAccessLevel())
-                  .setBrowseName(item.getBrowseName())
-                  .setDisplayName(variableAttributes.getDisplayName())
-                  .setDataType(variableAttributes.getDataType())
-                  .setTypeDefinition(typeDefinition.get())
-                  .setValueRank(variableAttributes.getValueRank())
-                  .setWriteMask(variableAttributes.getWriteMask())
-                  .setUserWriteMask(variableAttributes.getUserWriteMask())
-                  .setMinimumSamplingInterval(variableAttributes.getMinimumSamplingInterval())
-                  .build();
-          getNodeManager().addNode(measurementNode);
-          parentNode.addReference(
-              new Reference(
-                  parentNode.getNodeId(),
-                  item.getReferenceTypeId(),
-                  measurementNode.getNodeId().expanded(),
-                  true));
-          measurementNode.setValue(
-              new DataValue(
-                  variableAttributes.getValue(), StatusCode.GOOD, new DateTime(), new DateTime()));
-          results.add(new AddNodesResult(StatusCode.GOOD, measurementNode.getNodeId()));
-        } else {
-          results.add(
-              new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdExists), NodeId.NULL_VALUE));
-        }
+
+      // Check nodeId
+      final Optional<NodeId> nodeId =
+          item.getRequestedNewNodeId().toNodeId(getServer().getNamespaceTable());
+      if (!nodeId.isPresent()) {
+        results.add(
+            new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdRejected), NodeId.NULL_VALUE));
+        continue;
       }
+      if (getNodeManager().containsNode(nodeId.get())) {
+        results.add(
+            new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdExists), NodeId.NULL_VALUE));
+      }
+
+      // Check parent
+      final Optional<NodeId> parentId =
+          item.getParentNodeId().toNodeId(getServer().getNamespaceTable());
+      if (!parentId.isPresent()) {
+        results.add(
+            new AddNodesResult(
+                new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
+        continue;
+      }
+      final UaNode parentNode = getNodeManager().get(parentId.get());
+      if (Objects.isNull(parentNode)) {
+        results.add(
+            new AddNodesResult(
+                new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
+        continue;
+      }
+
+      // Check typeDefinition
+      final Optional<NodeId> typeDefinition =
+          item.getTypeDefinition().toNodeId(getServer().getNamespaceTable());
+      if (!typeDefinition.isPresent()) {
+        results.add(
+            new AddNodesResult(
+                new StatusCode(StatusCodes.Bad_TypeDefinitionInvalid), NodeId.NULL_VALUE));
+        continue;
+      }
+
+      // Construct node
+      UaNode newNode = null;
+      if (item.getNodeClass().equals(NodeClass.Variable)) {
+        final VariableAttributes variableAttributes =
+            (VariableAttributes)
+                item.getNodeAttributes().decode(getServer().getSerializationContext());
+        newNode =
+            new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                .setNodeId(nodeId.get())
+                .setAccessLevel(variableAttributes.getAccessLevel())
+                .setUserAccessLevel(variableAttributes.getUserAccessLevel())
+                .setBrowseName(item.getBrowseName())
+                .setDisplayName(variableAttributes.getDisplayName())
+                .setDataType(variableAttributes.getDataType())
+                .setTypeDefinition(typeDefinition.get())
+                .setValueRank(variableAttributes.getValueRank())
+                .setWriteMask(variableAttributes.getWriteMask())
+                .setUserWriteMask(variableAttributes.getUserWriteMask())
+                .setMinimumSamplingInterval(variableAttributes.getMinimumSamplingInterval())
+                .build();
+        ((UaVariableNode) newNode)
+            .setValue(
+                new DataValue(
+                    variableAttributes.getValue(),
+                    StatusCode.GOOD,
+                    new DateTime(),
+                    new DateTime()));
+      }
+      if (Objects.isNull(newNode)) {
+        results.add(
+            new AddNodesResult(
+                new StatusCode(StatusCodes.Bad_NodeClassInvalid), NodeId.NULL_VALUE));
+        continue;
+      }
+
+      // Link reference
+      getNodeManager().addNode(newNode);
+      parentNode.addReference(
+          new Reference(
+              parentNode.getNodeId(),
+              item.getReferenceTypeId(),
+              newNode.getNodeId().expanded(),
+              true));
+      results.add(new AddNodesResult(StatusCode.GOOD, newNode.getNodeId()));
     }
 
     context.success(results);
