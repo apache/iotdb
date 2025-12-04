@@ -3597,9 +3597,9 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
-      Optional<Scope> leftScope = scope.map(Scope::clone);
+      Optional<Scope> leftScope = scope.map(Scope::copy);
       Scope left = process(node.getLeft(), leftScope);
-      Optional<Scope> rightScope = scope.map(Scope::clone);
+      Optional<Scope> rightScope = scope.map(Scope::copy);
       Scope right = process(node.getRight(), rightScope);
 
       if (scope.isPresent()) {
