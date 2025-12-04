@@ -57,7 +57,6 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
-import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
@@ -528,37 +527,40 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       // Construct node
       UaNode newNode = null;
-      if (item.getNodeClass().equals(NodeClass.Variable)) {
-        final VariableAttributes variableAttributes =
-            (VariableAttributes)
-                item.getNodeAttributes().decode(getServer().getSerializationContext());
-        newNode =
-            new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                .setNodeId(nodeId.get())
-                .setAccessLevel(variableAttributes.getAccessLevel())
-                .setUserAccessLevel(variableAttributes.getUserAccessLevel())
-                .setBrowseName(item.getBrowseName())
-                .setDisplayName(variableAttributes.getDisplayName())
-                .setDataType(variableAttributes.getDataType())
-                .setTypeDefinition(typeDefinition.get())
-                .setValueRank(variableAttributes.getValueRank())
-                .setWriteMask(variableAttributes.getWriteMask())
-                .setUserWriteMask(variableAttributes.getUserWriteMask())
-                .setMinimumSamplingInterval(variableAttributes.getMinimumSamplingInterval())
-                .build();
-        ((UaVariableNode) newNode)
-            .setValue(
-                new DataValue(
-                    variableAttributes.getValue(),
-                    StatusCode.GOOD,
-                    new DateTime(),
-                    new DateTime()));
-      }
-      if (Objects.isNull(newNode)) {
-        results.add(
-            new AddNodesResult(
-                new StatusCode(StatusCodes.Bad_NodeClassInvalid), NodeId.NULL_VALUE));
-        continue;
+      switch (item.getNodeClass()) {
+        case Variable:
+          final VariableAttributes variableAttributes =
+              (VariableAttributes)
+                  item.getNodeAttributes().decode(getServer().getSerializationContext());
+          newNode =
+              new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                  .setNodeId(nodeId.get())
+                  .setAccessLevel(variableAttributes.getAccessLevel())
+                  .setUserAccessLevel(variableAttributes.getUserAccessLevel())
+                  .setBrowseName(item.getBrowseName())
+                  .setDisplayName(variableAttributes.getDisplayName())
+                  .setDataType(variableAttributes.getDataType())
+                  .setTypeDefinition(typeDefinition.get())
+                  .setValueRank(variableAttributes.getValueRank())
+                  .setWriteMask(variableAttributes.getWriteMask())
+                  .setUserWriteMask(variableAttributes.getUserWriteMask())
+                  .setMinimumSamplingInterval(variableAttributes.getMinimumSamplingInterval())
+                  .build();
+          ((UaVariableNode) newNode)
+              .setValue(
+                  new DataValue(
+                      variableAttributes.getValue(),
+                      StatusCode.GOOD,
+                      new DateTime(),
+                      new DateTime()));
+          break;
+        case Object:
+          break;
+        default:
+          results.add(
+              new AddNodesResult(
+                  new StatusCode(StatusCodes.Bad_NodeClassInvalid), NodeId.NULL_VALUE));
+          continue;
       }
 
       // Link reference
