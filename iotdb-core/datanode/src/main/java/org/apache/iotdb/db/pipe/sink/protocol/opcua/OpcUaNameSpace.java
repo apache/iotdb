@@ -509,6 +509,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                     new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
             continue;
           }
+          final Optional<NodeId> typeDefinition =
+              item.getTypeDefinition().toNodeId(getServer().getNamespaceTable());
+          if (!typeDefinition.isPresent()) {
+            results.add(
+                new AddNodesResult(
+                    new StatusCode(StatusCodes.Bad_TypeDefinitionInvalid), NodeId.NULL_VALUE));
+            continue;
+          }
           final VariableAttributes variableAttributes =
               (VariableAttributes)
                   item.getNodeAttributes().decode(getServer().getSerializationContext());
@@ -520,7 +528,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .setBrowseName(item.getBrowseName())
                   .setDisplayName(variableAttributes.getDisplayName())
                   .setDataType(variableAttributes.getDataType())
-                  .setTypeDefinition(Identifiers.BaseDataVariableType)
+                  .setTypeDefinition(typeDefinition.get())
                   .build();
           getNodeManager().addNode(measurementNode);
           parentNode.addReference(
