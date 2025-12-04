@@ -561,6 +561,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           final ObjectAttributes objectAttributes =
               (ObjectAttributes)
                   item.getNodeAttributes().decode(getServer().getSerializationContext());
+          if (typeDefinition.get().equals(Identifiers.FolderType)) {
+            newNode =
+                new UaFolderNode(
+                    getNodeContext(),
+                    nodeId.get(),
+                    item.getBrowseName(),
+                    objectAttributes.getDisplayName());
+            break;
+          }
           newNode =
               new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
                   .setNodeId(nodeId.get())
