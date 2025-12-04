@@ -29,7 +29,6 @@ public class ConsensusConfig {
   private final TEndPoint thisNodeEndPoint;
   private final int thisNodeId;
   private final String storageDir;
-  private final String[] storageDirs;
   private final TConsensusGroupType consensusGroupType;
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig iotConsensusConfig;
@@ -39,7 +38,6 @@ public class ConsensusConfig {
       TEndPoint thisNode,
       int thisNodeId,
       String storageDir,
-      String[] storageDirs,
       TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
       IoTConsensusConfig iotConsensusConfig,
@@ -47,7 +45,6 @@ public class ConsensusConfig {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
-    this.storageDirs = storageDirs;
     this.consensusGroupType = consensusGroupType;
     this.ratisConfig = ratisConfig;
     this.iotConsensusConfig = iotConsensusConfig;
@@ -64,10 +61,6 @@ public class ConsensusConfig {
 
   public String getStorageDir() {
     return storageDir;
-  }
-
-  public String[] getStorageDirs() {
-    return storageDirs;
   }
 
   public TConsensusGroupType getConsensusGroupType() {
@@ -95,7 +88,6 @@ public class ConsensusConfig {
     private TEndPoint thisNode;
     private int thisNodeId;
     private String storageDir;
-    private String[] storageDirs;
     private TConsensusGroupType consensusGroupType;
     private RatisConfig ratisConfig;
     private IoTConsensusConfig iotConsensusConfig;
@@ -106,7 +98,6 @@ public class ConsensusConfig {
           thisNode,
           thisNodeId,
           storageDir,
-          storageDirs,
           consensusGroupType,
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(iotConsensusConfig)
@@ -127,11 +118,6 @@ public class ConsensusConfig {
 
     public Builder setStorageDir(String storageDir) {
       this.storageDir = storageDir;
-      return this;
-    }
-
-    public Builder setStorageDirs(String[] storageDirs) {
-      this.storageDirs = storageDirs;
       return this;
     }
 

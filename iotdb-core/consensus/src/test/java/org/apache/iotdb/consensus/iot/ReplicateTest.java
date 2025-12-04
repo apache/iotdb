@@ -71,12 +71,6 @@ public class ReplicateTest {
           new File("target" + File.separator + "2"),
           new File("target" + File.separator + "3"));
 
-  private final String[][] storageDirs = {
-    {"target" + File.separator + "1"},
-    {"target" + File.separator + "2"},
-    {"target" + File.separator + "3"}
-  };
-
   private final ConsensusGroup group = new ConsensusGroup(gid, peers);
   private final List<IoTConsensus> servers = new ArrayList<>();
   private final List<TestStateMachine> stateMachines = new ArrayList<>();
@@ -110,7 +104,7 @@ public class ReplicateTest {
                         ConsensusConfig.newBuilder()
                             .setThisNodeId(peers.get(i).getNodeId())
                             .setThisNode(peers.get(i).getEndpoint())
-                            .setStorageDirs(storageDirs[i])
+                            .setStorageDir(peersStorage.get(i).getAbsolutePath())
                             .setConsensusGroupType(TConsensusGroupType.DataRegion)
                             .build(),
                         groupId -> stateMachines.get(finalI))
@@ -298,6 +292,14 @@ public class ReplicateTest {
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
+    }
+
+    String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
+    try {
+      File regionDirFile = new File(regionDir);
+      Assert.assertTrue(regionDirFile.exists());
+    } catch (Exception e) {
+      Assert.fail();
     }
   }
 
