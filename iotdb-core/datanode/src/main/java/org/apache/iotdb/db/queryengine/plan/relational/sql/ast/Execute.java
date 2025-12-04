@@ -21,9 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -36,18 +33,15 @@ public final class Execute extends Statement {
   private final Identifier statementName;
   private final List<Literal> parameters;
 
-  public Execute(@Nonnull Identifier statementName) {
+  public Execute(Identifier statementName) {
     this(null, statementName, ImmutableList.of());
   }
 
-  public Execute(@Nonnull Identifier statementName, @Nonnull List<Literal> parameters) {
+  public Execute(Identifier statementName, List<Literal> parameters) {
     this(null, statementName, parameters);
   }
 
-  public Execute(
-      @Nullable NodeLocation location,
-      @Nonnull Identifier statementName,
-      @Nonnull List<Literal> parameters) {
+  public Execute(NodeLocation location, Identifier statementName, List<Literal> parameters) {
     super(location);
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));

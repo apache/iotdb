@@ -21,9 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -36,14 +33,13 @@ public final class Prepare extends Statement {
   private final Identifier statementName;
   private final Statement sql;
 
-  public Prepare(@Nonnull Identifier statementName, @Nonnull Statement sql) {
+  public Prepare(Identifier statementName, Statement sql) {
     super(null);
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
   }
 
-  public Prepare(
-      @Nullable NodeLocation location, @Nonnull Identifier statementName, @Nonnull Statement sql) {
+  public Prepare(NodeLocation location, Identifier statementName, Statement sql) {
     super(location);
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");

@@ -21,9 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -35,11 +32,11 @@ public final class Deallocate extends Statement {
 
   private final Identifier statementName;
 
-  public Deallocate(@Nonnull Identifier statementName) {
+  public Deallocate(Identifier statementName) {
     this(null, statementName);
   }
 
-  public Deallocate(@Nullable NodeLocation location, @Nonnull Identifier statementName) {
+  public Deallocate(NodeLocation location, Identifier statementName) {
     super(location);
     this.statementName = requireNonNull(statementName, "statementName is null");
   }

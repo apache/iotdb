@@ -21,9 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -39,18 +36,15 @@ public final class ExecuteImmediate extends Statement {
   private final StringLiteral sql;
   private final List<Literal> parameters;
 
-  public ExecuteImmediate(@Nonnull StringLiteral sql) {
+  public ExecuteImmediate(StringLiteral sql) {
     this(null, sql, ImmutableList.of());
   }
 
-  public ExecuteImmediate(@Nonnull StringLiteral sql, @Nonnull List<Literal> parameters) {
+  public ExecuteImmediate(StringLiteral sql, List<Literal> parameters) {
     this(null, sql, parameters);
   }
 
-  public ExecuteImmediate(
-      @Nullable NodeLocation location,
-      @Nonnull StringLiteral sql,
-      @Nonnull List<Literal> parameters) {
+  public ExecuteImmediate(NodeLocation location, StringLiteral sql, List<Literal> parameters) {
     super(location);
     this.sql = requireNonNull(sql, "sql is null");
     this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));
