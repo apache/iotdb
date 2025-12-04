@@ -67,7 +67,7 @@ public class ClientTest implements ClientExample {
     System.out.println("读取状态: " + readValue.getStatusCode());
 
     // 2. 尝试写入新值
-    Variant newValue = new Variant(42.0);
+    Variant newValue = new Variant(42.0f);
     DataValue writeValue = new DataValue(newValue, StatusCode.GOOD, new DateTime(), new DateTime());
 
     System.out.println("尝试写入值: " + newValue.getValue());
@@ -103,7 +103,7 @@ public class ClientTest implements ClientExample {
         LocalizedText.english("反应釜压力传感器"),
         Unsigned.uint(0), // writeMask
         Unsigned.uint(0), // userWriteMask
-        new Variant(101.3), // 初始压力值 101.3 kPa
+        new Variant(101.3f), // 初始压力值 101.3 kPa
         Identifiers.Float, // 浮点数类型
         ValueRanks.Scalar, // 标量
         null, // arrayDimensions
