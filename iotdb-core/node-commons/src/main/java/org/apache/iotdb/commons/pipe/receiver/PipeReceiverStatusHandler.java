@@ -33,6 +33,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -104,7 +106,7 @@ public class PipeReceiverStatusHandler {
    */
   public void handle(
       final TSStatus status,
-      final String exceptionMessage,
+      final @Nullable String exceptionMessage,
       final String recordMessage,
       final boolean log4NoPrivileges) {
     switch (status.getCode()) {
@@ -192,7 +194,7 @@ public class PipeReceiverStatusHandler {
         break;
       default:
         // Some auth error may be wrapped in other codes
-        if (exceptionMessage.contains(NO_PERMISSION_STR)) {
+        if (Objects.nonNull(exceptionMessage) && exceptionMessage.contains(NO_PERMISSION_STR)) {
           if (skipIfNoPrivileges) {
             if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
               LOGGER.warn(
