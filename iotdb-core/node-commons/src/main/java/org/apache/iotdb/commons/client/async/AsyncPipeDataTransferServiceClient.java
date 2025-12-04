@@ -49,7 +49,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   private static final AtomicInteger idGenerator = new AtomicInteger(0);
   private final int id = idGenerator.incrementAndGet();
 
-  private final boolean printLogWhenEncounterException;
+  private boolean printLogWhenEncounterException;
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
@@ -85,6 +85,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void onError(final Exception e) {
     super.onError(e);
     ThriftClient.resolveException(e, this);
+    setPrintLogWhenEncounterException(false);
     returnSelf(
         (i) -> i instanceof IllegalStateException && "Client has an error!".equals(i.getMessage()));
   }
@@ -104,6 +105,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   @Override
   public boolean printLogWhenEncounterException() {
     return printLogWhenEncounterException;
+  }
+
+  public void setPrintLogWhenEncounterException(final boolean printLogWhenEncounterException) {
+    this.printLogWhenEncounterException = printLogWhenEncounterException;
   }
 
   /**
