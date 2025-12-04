@@ -88,4 +88,28 @@ public class InternalClientSession extends IClientSession {
   public void removeQueryId(Long statementId, Long queryId) {
     ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
   }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
 }
