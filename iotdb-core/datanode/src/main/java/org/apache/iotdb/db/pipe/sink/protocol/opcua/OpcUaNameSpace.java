@@ -529,6 +529,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .setDisplayName(variableAttributes.getDisplayName())
                   .setDataType(variableAttributes.getDataType())
                   .setTypeDefinition(typeDefinition.get())
+                  .setValueRank(variableAttributes.getValueRank())
+                  .setWriteMask(variableAttributes.getWriteMask())
+                  .setUserWriteMask(variableAttributes.getUserWriteMask())
                   .build();
           getNodeManager().addNode(measurementNode);
           parentNode.addReference(
@@ -537,6 +540,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   item.getReferenceTypeId(),
                   measurementNode.getNodeId().expanded(),
                   true));
+          measurementNode.setValue(
+              new DataValue(
+                  variableAttributes.getValue(), StatusCode.GOOD, new DateTime(), new DateTime()));
           results.add(new AddNodesResult(StatusCode.GOOD, measurementNode.getNodeId()));
         } else {
           results.add(

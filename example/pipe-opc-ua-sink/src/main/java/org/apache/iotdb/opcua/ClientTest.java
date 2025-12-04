@@ -58,7 +58,7 @@ public class ClientTest implements ClientExample {
     System.out.println("✅ 连接成功");
 
     // 读取标签值c
-    NodeId nodeId = new NodeId(2, "root/sg/d1/s1");
+    NodeId nodeId = new NodeId(2, "root/sg/d1/s2");
 
     // 1. 先读取当前值确认节点可访问
     DataValue readValue = client.readValue(0, TimestampsToReturn.Both, nodeId).get();
