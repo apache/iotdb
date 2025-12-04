@@ -48,6 +48,7 @@ import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -55,6 +56,9 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
+import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
+import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
 
 import java.nio.file.Paths;
 import java.sql.Date;
@@ -65,6 +69,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -241,7 +246,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (!getNodeManager().containsNode(nodeId)) {
         measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                .setNodeId(newNodeId(currentFolder + name))
+                .setNodeId(nodeId)
                 .setAccessLevel(AccessLevel.READ_WRITE)
                 .setUserAccessLevel(AccessLevel.READ_WRITE)
                 .setBrowseName(newQualifiedName(name))
@@ -463,6 +468,45 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       default:
         throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
     }
+  }
+
+  @Override
+  public void addNodes(final AddNodesContext context, final List<AddNodesItem> nodesToAdd) {
+    UaVariableNode measurementNode;
+    final List<AddNodesResult> results = new ArrayList<>(nodesToAdd.size());
+    for (final AddNodesItem item : nodesToAdd) {
+      if (item.getNodeClass().equals(NodeClass.Variable)) {
+        final Optional<NodeId> nodeId =
+            item.getRequestedNewNodeId().toNodeId(getServer().getNamespaceTable());
+        if (!nodeId.isPresent()) {
+          results.add(
+              new AddNodesResult(new StatusCode(StatusCodes.Bad_InvalidArgument), NodeId.NULL_VALUE));
+          continue;
+        }
+        if (!getNodeManager()
+            .containsNode(nodeId.get())) {
+          measurementNode =
+              new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                  .setNodeId(newNodeId(currentFolder + name))
+                  .setAccessLevel(AccessLevel.READ_WRITE)
+                  .setUserAccessLevel(AccessLevel.READ_WRITE)
+                  .setBrowseName(newQualifiedName(name))
+                  .setDisplayName(LocalizedText.english(name))
+                  .setDataType(convertToOpcDataType(type))
+                  .setTypeDefinition(Identifiers.BaseDataVariableType)
+                  .build();
+          getNodeManager().addNode(measurementNode);
+          folderNode.addReference(
+              new Reference(
+                  folderNode.getNodeId(),
+                  Identifiers.Organizes,
+                  measurementNode.getNodeId().expanded(),
+                  true));
+        }
+      }
+    }
+
+    context.success(results);
   }
 
   @Override
