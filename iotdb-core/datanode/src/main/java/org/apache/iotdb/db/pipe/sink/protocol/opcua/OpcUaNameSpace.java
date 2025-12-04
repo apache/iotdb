@@ -543,6 +543,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   item.getReferenceTypeId(),
                   measurementNode.getNodeId().expanded(),
                   true));
+          results.add(new AddNodesResult(StatusCode.GOOD, measurementNode.getNodeId()));
         } else {
           results.add(
               new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdExists), NodeId.NULL_VALUE));
