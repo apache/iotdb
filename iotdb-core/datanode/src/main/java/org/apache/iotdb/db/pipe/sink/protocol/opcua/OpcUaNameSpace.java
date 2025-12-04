@@ -498,6 +498,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (getNodeManager().containsNode(nodeId.get())) {
         results.add(
             new AddNodesResult(new StatusCode(StatusCodes.Bad_NodeIdExists), NodeId.NULL_VALUE));
+        continue;
       }
 
       // Check parent
