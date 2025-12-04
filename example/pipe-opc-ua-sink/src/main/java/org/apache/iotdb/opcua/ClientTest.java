@@ -88,7 +88,7 @@ public class ClientTest implements ClientExample {
                         new QualifiedName(2, "root"),
                         NodeClass.Object,
                         ExtensionObject.encode(
-                            client.getStaticSerializationContext(), createFolder1Attributes()),
+                            client.getStaticSerializationContext(), createFolder0Attributes()),
                         Identifiers.FolderType.expanded()),
                     new AddNodesItem(
                         new NodeId(2, "root").expanded(),
