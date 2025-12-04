@@ -123,6 +123,14 @@ class ModelStorage:
         """Handling the discovery logic for a builtin model directory."""
         ensure_init_file(model_dir)
         with self._lock_pool.get_lock(model_id).write_lock():
+            # Check if model already exists and is in a valid state
+            existing_model = self._models[ModelCategory.BUILTIN.value].get(model_id)
+            if existing_model:
+                # If model is already ACTIVATING or ACTIVE, skip duplicate download
+                if existing_model.state in (ModelStates.ACTIVATING, ModelStates.ACTIVE):
+                    return
+
+            # If model not exists or is INACTIVE, we'll try to update its info and download its weights
             self._models[ModelCategory.BUILTIN.value][model_id] = (
                 BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
             )
