@@ -35,6 +35,7 @@ from iotdb.ainode.core.inference.inference_request import (
     InferenceRequestProxy,
 )
 from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline, ClassificationPipeline, ChatPipeline
 from iotdb.ainode.core.inference.pool_controller import PoolController
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
@@ -210,9 +211,16 @@ class InferenceManager:
             else:
                 model_info = self._model_manager.get_model_info(model_id)
                 inference_pipeline = load_pipeline(model_info, device="cpu")
-                outputs = inference_pipeline.infer(
-                    inputs, predict_length=predict_length, **inference_attrs
-                )
+                if isinstance(inference_pipeline, ForecastPipeline):
+                    outputs = inference_pipeline.forecast(
+                        inputs, predict_length=predict_length, **inference_attrs
+                    )
+                elif isinstance(inference_pipeline, ClassificationPipeline):
+                    outputs = inference_pipeline.classify(inputs)
+                elif isinstance(inference_pipeline, ChatPipeline):
+                    outputs = inference_pipeline.chat(inputs)
+                else:
+                    logger.error("[Inference] Unsupported pipeline type.")
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
 
             # construct response

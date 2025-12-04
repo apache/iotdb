@@ -30,6 +30,7 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE
 from iotdb.ainode.core.inference.batcher.basic_batcher import BasicBatcher
 from iotdb.ainode.core.inference.inference_request import InferenceRequest
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline, ClassificationPipeline, ChatPipeline
 from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler import (
     BasicRequestScheduler,
@@ -116,11 +117,24 @@ class InferenceRequestPool(mp.Process):
 
         for requests in grouped_requests:
             batch_inputs = self._batcher.batch_request(requests).to(self.device)
-            batch_output = self._inference_pipeline.infer(
-                batch_inputs,
-                predict_length=requests[0].max_new_tokens,
-                revin=True,
-            )
+            if isinstance(self._inference_pipeline, ForecastPipeline):
+                batch_output = self._inference_pipeline.forecast(
+                    batch_inputs,
+                    predict_length=requests[0].max_new_tokens,
+                    revin=True,
+                )
+            elif isinstance(self._inference_pipeline, ClassificationPipeline):
+                batch_output = self._inference_pipeline.classify(
+                    batch_inputs,
+                    # more infer kwargs can be added here
+                )
+            elif isinstance(self._inference_pipeline, ChatPipeline):
+                batch_output = self._inference_pipeline.chat(
+                    batch_inputs,
+                    # more infer kwargs can be added here
+                )
+            else:
+                self._logger.error("[Inference] Unsupported pipeline type.")
             offset = 0
             for request in requests:
                 request.output_tensor = request.output_tensor.to(self.device)

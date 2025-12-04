@@ -24,7 +24,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sktime.detection.hmm_learn import GMMHMM, GaussianHMM
 from sktime.detection.stray import STRAY
-from statsforecast.models import ARIMA
+from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
@@ -59,12 +59,11 @@ class ForecastingModel(SktimeModel):
     def generate(self, data, **kwargs):
         """Execute forecasting"""
         try:
-            predict_length = kwargs.get("predict_length", self._attributes["predict_length"])
+            predict_length = kwargs.get(
+                "predict_length", self._attributes["predict_length"]
+            )
             self._model.fit(data)
-            if isinstance(self._model, ARIMA):
-                output = self._model.predict(h=predict_length)['mean']
-            else:
-                output = self._model.predict(fh=range(predict_length))
+            output = self._model.predict(fh=range(predict_length))
             return np.array(output, dtype=np.float64)
         except Exception as e:
             raise InferenceModelInternalError(str(e))
@@ -92,7 +91,7 @@ class ArimaModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = ARIMA(
-            **{k: v for k, v in attributes.items() if k != "predict_length" and v is not None}
+            **{k: v for k, v in attributes.items() if k != "predict_length"}
         )
 
 
@@ -147,9 +146,7 @@ class STRAYModel(DetectionModel):
 
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
-        self._model = STRAY(
-            **{k: v for k, v in attributes.items() if v is not None}
-        )
+        self._model = STRAY(**{k: v for k, v in attributes.items() if v is not None})
 
     def generate(self, data, **kwargs):
         """STRAY requires special handling: normalize first"""

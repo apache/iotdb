@@ -16,11 +16,10 @@
 # under the License.
 #
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import torch
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
 from iotdb.ainode.core.model.model_loader import load_model
 
 
@@ -48,12 +47,9 @@ class ForecastPipeline(BasicPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def _preprocess(self, inputs):
-        if len(inputs.shape) != 2:
-            raise InferenceModelInternalError(
-                f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
-            )
         return inputs
 
+    @abstractmethod
     def forecast(self, inputs, **infer_kwargs):
         pass
 
@@ -68,6 +64,7 @@ class ClassificationPipeline(BasicPipeline):
     def _preprocess(self, inputs):
         return inputs
 
+    @abstractmethod
     def classify(self, inputs, **kwargs):
         pass
 
@@ -82,6 +79,7 @@ class ChatPipeline(BasicPipeline):
     def _preprocess(self, inputs):
         return inputs
 
+    @abstractmethod
     def chat(self, inputs, **kwargs):
         pass
 
