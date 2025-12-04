@@ -21,6 +21,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSourceOperator;
@@ -121,5 +122,10 @@ public class CteScanOperator extends AbstractSourceOperator {
     if (dataStore.getCachedBytes() != 0) {
       dataReader = new MemoryReader(dataStore.getCachedData());
     }
+  }
+
+  @TestOnly
+  public int getDataStoreRefCount() {
+    return dataStoreRefCount;
   }
 }
