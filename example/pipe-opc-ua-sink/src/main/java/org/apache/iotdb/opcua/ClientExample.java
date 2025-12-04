@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 public interface ClientExample {
 
   default String getEndpointUrl() {
-    return "opc.tcp://localhost:49320";
+    return "opc.tcp://localhost:12686/iotdb";
   }
 
   default Predicate<EndpointDescription> endpointFilter() {

@@ -243,7 +243,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                 .setNodeId(newNodeId(currentFolder + name))
                 .setAccessLevel(AccessLevel.READ_WRITE)
-                .setUserAccessLevel(AccessLevel.READ_ONLY)
+                .setUserAccessLevel(AccessLevel.READ_WRITE)
                 .setBrowseName(newQualifiedName(name))
                 .setDisplayName(LocalizedText.english(name))
                 .setDataType(convertToOpcDataType(type))
