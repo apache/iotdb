@@ -57,6 +57,10 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
 
   protected IWALNode createWALNode(String identifier) {
     try {
+      if (folderManager == null) {
+          folderManager = new FolderManager(
+                  Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
+      }
       return folderManager.getNextWithRetry(
           folder -> new WALNode(identifier, folder + File.separator + identifier));
     } catch (DiskSpaceInsufficientException e) {
