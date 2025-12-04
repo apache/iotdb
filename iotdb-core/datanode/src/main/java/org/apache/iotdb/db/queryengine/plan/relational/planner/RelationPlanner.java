@@ -240,66 +240,86 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     final Scope scope = analysis.getScope(table);
+    final Query namedQuery = analysis.getNamedQuery(table);
 
     // Common Table Expression
-    final Query namedQuery = analysis.getNamedQuery(table);
     if (namedQuery != null) {
-      if (analysis.isExpandableQuery(namedQuery)) {
-        // recursive cte
-        throw new SemanticException("unexpected recursive cte");
-      }
-
-      if (namedQuery.isMaterialized() && namedQuery.isDone()) {
-        CteDataStore dataStore = queryContext.getCteDataStore(table);
-        if (dataStore != null) {
-          List<Symbol> cteSymbols =
-              dataStore.getTableSchema().getColumns().stream()
-                  .map(column -> symbolAllocator.newSymbol(column.getName(), column.getType()))
-                  .collect(Collectors.toList());
-
-          // CTE Scan Node
-          CteScanNode cteScanNode =
-              new CteScanNode(idAllocator.genPlanNodeId(), table.getName(), cteSymbols, dataStore);
-
-          List<Integer> columnIndex2TsBlockColumnIndexList =
-              dataStore.getColumnIndex2TsBlockColumnIndexList();
-          if (columnIndex2TsBlockColumnIndexList == null) {
-            return new RelationPlan(cteScanNode, scope, cteSymbols, outerContext);
-          }
-
-          List<Symbol> outputSymbols = new ArrayList<>();
-          Assignments.Builder assignments = Assignments.builder();
-          for (int index : columnIndex2TsBlockColumnIndexList) {
-            Symbol columnSymbol = cteSymbols.get(index);
-            outputSymbols.add(columnSymbol);
-            assignments.put(columnSymbol, columnSymbol.toSymbolReference());
-          }
-
-          // Project Node
-          ProjectNode projectNode =
-              new ProjectNode(
-                  queryContext.getQueryId().genPlanNodeId(), cteScanNode, assignments.build());
-
-          return new RelationPlan(projectNode, scope, outputSymbols, outerContext);
-        }
-      }
-
-      RelationPlan subPlan = process(namedQuery, null);
-      // Add implicit coercions if view query produces types that don't match the declared output
-      // types of the view (e.g., if the underlying tables referenced by the view changed)
-      List<Type> types =
-          analysis.getOutputDescriptor(table).getAllFields().stream()
-              .map(Field::getType)
-              .collect(toImmutableList());
-
-      NodeAndMappings coerced = coerce(subPlan, types, symbolAllocator, idAllocator);
-      return new RelationPlan(coerced.getNode(), scope, coerced.getFields(), outerContext);
+      return processNamedQuery(table, namedQuery, scope);
     }
 
+    return processPhysicalTable(table, scope);
+  }
+
+  private RelationPlan processNamedQuery(Table table, Query namedQuery, Scope scope) {
+    if (analysis.isExpandableQuery(namedQuery)) {
+      throw new SemanticException("unexpected recursive cte");
+    }
+
+    if (namedQuery.isMaterialized() && namedQuery.isDone()) {
+      RelationPlan materializedCtePlan = processMaterializedCte(table, scope);
+      if (materializedCtePlan != null) {
+        return materializedCtePlan;
+      }
+    }
+
+    return processRegularCte(table, namedQuery, scope);
+  }
+
+  private RelationPlan processMaterializedCte(Table table, Scope scope) {
+    CteDataStore dataStore = queryContext.getCteDataStore(table);
+    if (dataStore == null) {
+      return null;
+    }
+
+    List<Symbol> cteSymbols =
+        dataStore.getTableSchema().getColumns().stream()
+            .map(column -> symbolAllocator.newSymbol(column.getName(), column.getType()))
+            .collect(Collectors.toList());
+
+    CteScanNode cteScanNode =
+        new CteScanNode(idAllocator.genPlanNodeId(), table.getName(), cteSymbols, dataStore);
+
+    List<Integer> columnIndex2TsBlockColumnIndexList =
+        dataStore.getColumnIndex2TsBlockColumnIndexList();
+    if (columnIndex2TsBlockColumnIndexList == null) {
+      return new RelationPlan(cteScanNode, scope, cteSymbols, outerContext);
+    }
+
+    List<Symbol> outputSymbols = new ArrayList<>();
+    Assignments.Builder assignments = Assignments.builder();
+    for (int index : columnIndex2TsBlockColumnIndexList) {
+      Symbol columnSymbol = cteSymbols.get(index);
+      outputSymbols.add(columnSymbol);
+      assignments.put(columnSymbol, columnSymbol.toSymbolReference());
+    }
+
+    // Project Node
+    ProjectNode projectNode =
+        new ProjectNode(
+            queryContext.getQueryId().genPlanNodeId(), cteScanNode, assignments.build());
+
+    return new RelationPlan(projectNode, scope, outputSymbols, outerContext);
+  }
+
+  private RelationPlan processRegularCte(Table table, Query namedQuery, Scope scope) {
+    RelationPlan subPlan = process(namedQuery, null);
+    // Add implicit coercions if view query produces types that don't match the declared output
+    // types of the view (e.g., if the underlying tables referenced by the view changed)
+    List<Type> types =
+        analysis.getOutputDescriptor(table).getAllFields().stream()
+            .map(Field::getType)
+            .collect(toImmutableList());
+
+    NodeAndMappings coerced = coerce(subPlan, types, symbolAllocator, idAllocator);
+    return new RelationPlan(coerced.getNode(), scope, coerced.getFields(), outerContext);
+  }
+
+  private RelationPlan processPhysicalTable(Table table, Scope scope) {
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
     final QualifiedName qualifiedName = analysis.getRelationName(table);
+
     if (!qualifiedName.getPrefix().isPresent()) {
       throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
     }
@@ -327,7 +347,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     final List<Symbol> outputSymbols = outputSymbolsBuilder.build();
-
     final Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
 
@@ -359,12 +378,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                 tableColumnSchema,
                 tagAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
-
-    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
-    // Query namedQuery = analysis.getNamedQuery(node);
-    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
-    // plan = addRowFilters(node, plan);
-    // plan = addColumnMasks(node, plan);
   }
 
   @Override

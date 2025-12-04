@@ -82,7 +82,7 @@ public class Scope {
     tables.add(new Identifier(table.getName().getSuffix()));
   }
 
-  public Scope clone() {
+  public Scope copy() {
     return builder().like(this).build();
   }
 
