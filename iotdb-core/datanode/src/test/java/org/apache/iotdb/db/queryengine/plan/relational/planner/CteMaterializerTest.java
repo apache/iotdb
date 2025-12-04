@@ -320,14 +320,19 @@ public class CteMaterializerTest {
     assertPlan(logicalQueryPlan, output(explainAnalyze(cteScan)));
   }
 
-  /** This test primarily ensures code coverage for handleCteExplainResults method. */
+  /**
+   * This test primarily ensures code coverage: materializeCTE.handleCteExplainResults &
+   * materializeCTE.fetchCteQueryResult
+   */
   @Test
   public void testExplain() {
-    String sql = "with cte1 as materialized (SELECT time, s1 FROM table1) select * from cte1";
+    String sql =
+        "with cte1 as (select time, s1 from table1), "
+            + "cte2 as materialized (select * from cte1) select * from cte2";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql, true);
 
-    PlanMatchPattern cteScan = cteScan("cte1", ImmutableList.of("time", "s1"));
+    PlanMatchPattern cteScan = cteScan("cte2", ImmutableList.of("time", "s1"));
 
     // Verify full LogicalPlan
     /*
