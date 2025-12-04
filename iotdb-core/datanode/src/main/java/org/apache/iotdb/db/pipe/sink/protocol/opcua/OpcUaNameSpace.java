@@ -532,6 +532,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .setValueRank(variableAttributes.getValueRank())
                   .setWriteMask(variableAttributes.getWriteMask())
                   .setUserWriteMask(variableAttributes.getUserWriteMask())
+                  .setMinimumSamplingInterval(variableAttributes.getMinimumSamplingInterval())
                   .build();
           getNodeManager().addNode(measurementNode);
           parentNode.addReference(
