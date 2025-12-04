@@ -774,7 +774,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1601: Failed to drop pipe plugin TEST_PROCESSOR. Failures: TEST_PROCESSOR does not exist.",
+            "1601: Failed to drop pipe plugin [TEST_PROCESSOR]. Failures: TEST_PROCESSOR does not exist.",
             e.getMessage());
       }
       try {
