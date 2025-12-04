@@ -23,9 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.disk.FolderManager;
-import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -49,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
@@ -103,7 +101,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
-import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -580,7 +580,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             null,
             shouldMarkAsPipeRequest.get());
 
-    if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
+    if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -847,10 +847,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
-          statement.getPipeLoggingString(),
-          e);
+          statement.getPipeLoggingString());
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {

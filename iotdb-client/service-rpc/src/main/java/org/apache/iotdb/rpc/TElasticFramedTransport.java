@@ -31,6 +31,7 @@ import javax.net.ssl.SSLHandshakeException;
 
 import java.io.EOFException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
@@ -125,6 +126,10 @@ public class TElasticFramedTransport extends TTransport {
       // Read another frame of data
       readFrame();
     } catch (TTransportException e) {
+      // Adding this workaround to avoid the Connection reset error log printed.
+      if (e.getCause() instanceof SocketException && e.getMessage().contains("Connection reset")) {
+        throw new TTransportException(TTransportException.END_OF_FILE, e.getCause());
+      }
       // There is a bug fixed in Thrift 0.15. Some unnecessary error logs may be printed.
       // See https://issues.apache.org/jira/browse/THRIFT-5411 and
       // https://github.com/apache/thrift/commit/be20ad7e08fab200391e3eab41acde9da2a4fd07
