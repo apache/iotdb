@@ -115,7 +115,7 @@ class InferenceRequestPool(mp.Process):
 
         grouped_requests = defaultdict(list)
         for req in all_requests:
-            key = (req.inputs.shape[1], req.max_new_tokens)
+            key = (req.inputs.shape[1], req.output_length)
             grouped_requests[key].append(req)
         grouped_requests = list(grouped_requests.values())
 
@@ -124,7 +124,7 @@ class InferenceRequestPool(mp.Process):
             if isinstance(self._inference_pipeline, ForecastPipeline):
                 batch_output = self._inference_pipeline.forecast(
                     batch_inputs,
-                    predict_length=requests[0].max_new_tokens,
+                    predict_length=requests[0].output_length,
                     revin=True,
                 )
             elif isinstance(self._inference_pipeline, ClassificationPipeline):

@@ -245,7 +245,8 @@ public class InferenceOperator implements ProcessOperator {
                       .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
                 return client.inference(
                     new TInferenceReq(
-                        modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock)));
+                            modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
+                        .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
               } catch (Exception e) {
                 throw new ModelInferenceProcessException(e.getMessage());
               }

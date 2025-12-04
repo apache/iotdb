@@ -189,18 +189,18 @@ class InferenceManager:
             inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
 
             inference_attrs = extract_attrs(req)
-            predict_length = int(inference_attrs.pop("predict_length", 96))
+            output_length = int(inference_attrs.pop("output_length", 96))
             if (
-                predict_length
-                > AINodeDescriptor().get_config().get_ain_inference_max_predict_length()
+                output_length
+                > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
             ):
                 raise NumericalRangeException(
                     "output_length",
                     1,
                     AINodeDescriptor()
                     .get_config()
-                    .get_ain_inference_max_predict_length(),
-                    predict_length,
+                    .get_ain_inference_max_output_length(),
+                    output_length,
                 )
 
             if self._pool_controller.has_request_pools(model_id):
@@ -208,7 +208,7 @@ class InferenceManager:
                     req_id=generate_req_id(),
                     model_id=model_id,
                     inputs=inputs,
-                    max_new_tokens=predict_length,
+                    output_length=output_length,
                 )
                 outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
@@ -217,7 +217,7 @@ class InferenceManager:
                 inference_pipeline = load_pipeline(model_info, device="cpu")
                 if isinstance(inference_pipeline, ForecastPipeline):
                     outputs = inference_pipeline.forecast(
-                        inputs, predict_length=predict_length, **inference_attrs
+                        inputs, predict_length=output_length, **inference_attrs
                     )
                 elif isinstance(inference_pipeline, ClassificationPipeline):
                     outputs = inference_pipeline.classify(inputs)
@@ -246,7 +246,7 @@ class InferenceManager:
             data_getter=lambda r: r.inputData,
             deserializer=deserialize,
             extract_attrs=lambda r: {
-                "predict_length": r.outputLength,
+                "output_length": r.outputLength,
                 **(r.options or {}),
             },
             resp_cls=TForecastResp,
@@ -259,8 +259,7 @@ class InferenceManager:
             data_getter=lambda r: r.dataset,
             deserializer=deserialize,
             extract_attrs=lambda r: {
-                "window_interval": getattr(r.windowParams, "windowInterval", None),
-                "window_step": getattr(r.windowParams, "windowStep", None),
+                "output_length": int(r.inferenceAttributes.pop("outputLength", 96)),
                 **(r.inferenceAttributes or {}),
             },
             resp_cls=TInferenceResp,
