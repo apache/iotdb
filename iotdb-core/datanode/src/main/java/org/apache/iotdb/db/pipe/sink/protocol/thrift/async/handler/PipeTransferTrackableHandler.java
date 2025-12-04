@@ -64,6 +64,7 @@ public abstract class PipeTransferTrackableHandler
   public void onError(final Exception exception) {
     if (client != null) {
       ThriftClient.resolveException(exception, client);
+      client.setPrintLogWhenEncounterException(false);
     }
 
     if (connector.isClosed()) {
