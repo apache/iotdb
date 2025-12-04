@@ -91,6 +91,7 @@ public class ActiveLoadAgent {
         // Add failed dir
         dirsToClean.add(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir());
       } catch (Exception e) {
+        LOGGER.warn("Failed to get active load listening directories configuration", e);
         return;
       }
 
@@ -105,6 +106,9 @@ public class ActiveLoadAgent {
             continue;
           }
 
+          // Convert to absolute path for comparison
+          final String absoluteDirPath = dir.getAbsolutePath();
+
           final long[] fileCount = {0};
           final long[] subdirCount = {0};
 
@@ -117,19 +121,26 @@ public class ActiveLoadAgent {
                     Files.delete(file);
                     fileCount[0]++;
                   } catch (Exception e) {
-                    // Ignore
+                    LOGGER.debug("Failed to delete file: {}", file.toAbsolutePath(), e);
                   }
                   return FileVisitResult.CONTINUE;
                 }
 
                 @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-                  if (exc == null && !dir.toFile().getAbsolutePath().equals(dirPath)) {
+                public FileVisitResult postVisitDirectory(Path subDir, IOException exc) {
+                  if (exc != null) {
+                    LOGGER.debug(
+                        "Error occurred while visiting directory: {}",
+                        subDir.toAbsolutePath(),
+                        exc);
+                    return FileVisitResult.CONTINUE;
+                  }
+                  if (!subDir.toFile().getAbsolutePath().equals(absoluteDirPath)) {
                     try {
-                      Files.delete(dir);
+                      Files.delete(subDir);
                       subdirCount[0]++;
                     } catch (Exception e) {
-                      // Ignore
+                      LOGGER.debug("Failed to delete directory: {}", subDir.toAbsolutePath(), e);
                     }
                   }
                   return FileVisitResult.CONTINUE;
@@ -137,6 +148,7 @@ public class ActiveLoadAgent {
 
                 @Override
                 public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                  LOGGER.debug("Failed to visit file: {}", file.toAbsolutePath(), exc);
                   return FileVisitResult.CONTINUE;
                 }
               });
@@ -144,7 +156,7 @@ public class ActiveLoadAgent {
           totalFilesDeleted += fileCount[0];
           totalSubDirsDeleted += subdirCount[0];
         } catch (Exception e) {
-          // Ignore
+          LOGGER.warn("Failed to cleanup directory: {}", dirPath, e);
         }
       }
 
@@ -155,7 +167,7 @@ public class ActiveLoadAgent {
             totalSubDirsDeleted);
       }
     } catch (Throwable t) {
-      // Ignore all errors to prevent any unexpected behavior
+      LOGGER.warn("Unexpected error during cleanup of active load listening directories", t);
     }
   }
 }
