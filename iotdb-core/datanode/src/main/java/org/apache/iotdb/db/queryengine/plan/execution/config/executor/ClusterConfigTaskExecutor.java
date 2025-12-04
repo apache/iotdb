@@ -821,85 +821,89 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    try (final ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final String libRoot;
-      final ByteBuffer jarFile;
-      final String jarMd5;
+    final String libRoot;
+    final ByteBuffer jarFile;
+    final String jarMd5;
 
-      final String jarFileName = new File(uriString).getName();
-      try {
-        final URI uri = new URI(uriString);
-        if (uri.getScheme() == null) {
-          future.setException(
-              new IoTDBException(
-                  "The scheme of URI is not set, please specify the scheme of URI.",
-                  TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
-        }
-        if (!uri.getScheme().equals("file")) {
-          // Download executable
-          final ExecutableResource resource =
-              PipePluginExecutableManager.getInstance()
-                  .request(Collections.singletonList(uriString));
-          final String jarFilePathUnderTempDir =
-              PipePluginExecutableManager.getInstance()
-                      .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                  + jarFileName;
-          // libRoot should be the path of the specified jar
-          libRoot = jarFilePathUnderTempDir;
-          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
-        } else {
-          // libRoot should be the path of the specified jar
-          libRoot = new File(new URI(uriString)).getAbsolutePath();
-          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
-          // ConfigNode.
-          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
-          // Set md5 of the jar file
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
-        }
-      } catch (final IOException | URISyntaxException e) {
-        LOGGER.warn(
-            "Failed to get executable for PipePlugin({}) using URI: {}.",
-            createPipePluginStatement.getPluginName(),
-            createPipePluginStatement.getUriString(),
-            e);
+    final String jarFileName = new File(uriString).getName();
+    try {
+      final URI uri = new URI(uriString);
+      if (uri.getScheme() == null) {
         future.setException(
             new IoTDBException(
-                "Failed to get executable for PipePlugin"
-                    + createPipePluginStatement.getPluginName()
-                    + "', please check the URI.",
+                "The scheme of URI is not set, please specify the scheme of URI.",
                 TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
         return future;
       }
-
-      // try to create instance, this request will fail if creation is not successful
-      try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
-        // ensure that jar file contains the class and the class is a pipe plugin
-        final Class<?> clazz =
-            Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
-        final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
-      } catch (final ClassNotFoundException
-          | NoSuchMethodException
-          | InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | ClassCastException e) {
-        LOGGER.warn(
-            "Failed to create function when try to create PipePlugin({}) instance first.",
-            createPipePluginStatement.getPluginName(),
-            e);
-        future.setException(
-            new IoTDBException(
-                "Failed to load class '"
-                    + createPipePluginStatement.getClassName()
-                    + "', because it's not found in jar file or is invalid: "
-                    + createPipePluginStatement.getUriString(),
-                TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
-        return future;
+      if (!uri.getScheme().equals("file")) {
+        // Download executable
+        final ExecutableResource resource =
+            PipePluginExecutableManager.getInstance().request(Collections.singletonList(uriString));
+        final String jarFilePathUnderTempDir =
+            PipePluginExecutableManager.getInstance()
+                    .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                + jarFileName;
+        // libRoot should be the path of the specified jar
+        libRoot = jarFilePathUnderTempDir;
+        jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+        jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
+      } else {
+        // libRoot should be the path of the specified jar
+        libRoot = new File(new URI(uriString)).getAbsolutePath();
+        // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+        // ConfigNode.
+        jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+        // Set md5 of the jar file
+        jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
       }
+    } catch (final URISyntaxException | IllegalArgumentException e) {
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to get executable for PipePlugin({}) using URI: {}.",
+          createPipePluginStatement.getPluginName(),
+          createPipePluginStatement.getUriString(),
+          e);
+      future.setException(
+          new IoTDBException(
+              "Failed to get executable for PipePlugin "
+                  + createPipePluginStatement.getPluginName()
+                  + ", please check the URI.",
+              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+      return future;
+    }
 
+    // try to create instance, this request will fail if creation is not successful
+    try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
+      // ensure that jar file contains the class and the class is a pipe plugin
+      final Class<?> clazz =
+          Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+      final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
+    } catch (final ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | ClassCastException
+        | IOException e) {
+      LOGGER.warn(
+          "Failed to create pipePlugin when try to create PipePlugin({}) instance first.",
+          createPipePluginStatement.getPluginName(),
+          e);
+      future.setException(
+          new IoTDBException(
+              "Failed to load class '"
+                  + createPipePluginStatement.getClassName()
+                  + "', because it's not found in jar file or is invalid: "
+                  + createPipePluginStatement.getUriString(),
+              TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
+      return future;
+    }
+
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus =
           client.createPipePlugin(
               new TCreatePipePluginReq()
@@ -924,7 +928,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final ClientManagerException | TException | IOException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -939,7 +943,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus =
           client.dropPipePlugin(
               new TDropPipePluginReq()
-                  .setPluginName(dropPipePluginStatement.getPluginName())
+                  .setPluginName(dropPipePluginStatement.getPluginName().toUpperCase())
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
