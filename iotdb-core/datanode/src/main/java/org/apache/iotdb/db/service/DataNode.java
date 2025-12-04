@@ -321,8 +321,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
 
     } catch (Throwable e) {
-      int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
+      int exitStatusCode = retrieveExitStatusCode(e);
       stop();
       System.exit(exitStatusCode);
     }
