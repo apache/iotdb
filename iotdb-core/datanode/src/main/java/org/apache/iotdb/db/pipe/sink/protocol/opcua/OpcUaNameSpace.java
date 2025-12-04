@@ -45,6 +45,7 @@ import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -59,6 +60,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
+import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 
 import java.nio.file.Paths;
@@ -526,7 +528,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       // Construct node
-      UaNode newNode = null;
+      final UaNode newNode;
       switch (item.getNodeClass()) {
         case Variable:
           final VariableAttributes variableAttributes =
@@ -555,6 +557,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                       new DateTime()));
           break;
         case Object:
+          final ObjectAttributes objectAttributes =
+              (ObjectAttributes)
+                  item.getNodeAttributes().decode(getServer().getSerializationContext());
+          newNode =
+              new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
+                  .setNodeId(nodeId.get())
+                  .setBrowseName(item.getBrowseName())
+                  .setDisplayName(objectAttributes.getDisplayName())
+                  .setTypeDefinition(typeDefinition.get())
+                  .setWriteMask(objectAttributes.getWriteMask())
+                  .setUserWriteMask(objectAttributes.getUserWriteMask())
+                  .build();
           break;
         default:
           results.add(

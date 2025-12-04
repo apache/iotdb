@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.opcua;
 
-import io.netty.buffer.ByteBuf;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
@@ -39,8 +37,10 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.DeleteNodesItem;
+import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
@@ -80,7 +80,16 @@ public class ClientTest implements ClientExample {
     AddNodesResponse addStatus =
         client
             .addNodes(
-                Collections.singletonList(
+                Arrays.asList(
+                    new AddNodesItem(
+                        new NodeId(2, "root/sg").expanded(),
+                        Identifiers.Organizes,
+                        new NodeId(2, "root/sg/d2").expanded(),
+                        new QualifiedName(2, "d2"),
+                        NodeClass.Object,
+                        ExtensionObject.encode(
+                            client.getStaticSerializationContext(), createFolderAttributes()),
+                        Identifiers.ObjectsFolder.expanded()),
                     new AddNodesItem(
                         new NodeId(2, "root/sg/d1").expanded(),
                         Identifiers.Organizes,
@@ -114,20 +123,14 @@ public class ClientTest implements ClientExample {
         );
   }
 
-  // 方法1：将 ByteBuf 转换为 ByteString
-  public static ByteString convertByteBufToByteString(ByteBuf byteBuf) {
-    // 确保 ByteBuf 可读
-    if (byteBuf == null || byteBuf.readableBytes() == 0) {
-      return ByteString.NULL_VALUE; // 返回空 ByteString
-    }
-
-    // 创建与 ByteBuf 可读字节数相同的字节数组
-    byte[] bytes = new byte[byteBuf.readableBytes()];
-
-    // 将 ByteBuf 数据读取到字节数组
-    byteBuf.readBytes(bytes);
-
-    // 使用 ByteString.of() 创建 ByteString
-    return ByteString.of(bytes);
+  public static ObjectAttributes createFolderAttributes() {
+    return new ObjectAttributes(
+        Unsigned.uint(0xFFFF), // specifiedAttributes
+        LocalizedText.english("d2"),
+        LocalizedText.english("反应釜压力传感器"),
+        Unsigned.uint(0), // writeMask
+        Unsigned.uint(0), // userWriteMask
+        null // 启用历史记录
+        );
   }
 }
