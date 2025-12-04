@@ -58,6 +58,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -345,6 +347,60 @@ public class IoTDBCteIT {
   }
 
   @Test
+  public void testNestExplain1() throws SQLException {
+    String sql =
+        "explain with cte1 as (select * from testtb), "
+            + "cte2 as materialized (select time, voltage from cte1) "
+            + "select * from cte2";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE testdb");
+
+      // explain
+      ResultSet resultSet = statement.executeQuery(sql);
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 1);
+      assertEquals(metaData.getColumnName(1), "distribution plan");
+
+      StringBuilder sb = new StringBuilder();
+      while (resultSet.next()) {
+        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+      }
+      String result = sb.toString();
+      assertFalse(result.contains("CTE Query : 'cte1'"));
+      assertTrue(result.contains("CTE Query : 'cte2'"));
+      assertTrue(result.contains("Main Query"));
+    }
+  }
+
+  @Test
+  public void testNestExplain2() throws SQLException {
+    String sql =
+        "explain with cte1 as materialized (select * from testtb), "
+            + "cte2 as materialized (select time, voltage from cte1) "
+            + "select * from cte2";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE testdb");
+
+      // explain
+      ResultSet resultSet = statement.executeQuery(sql);
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 1);
+      assertEquals(metaData.getColumnName(1), "distribution plan");
+
+      StringBuilder sb = new StringBuilder();
+      while (resultSet.next()) {
+        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+      }
+      String result = sb.toString();
+      assertTrue(result.contains("CTE Query : 'cte1'"));
+      assertTrue(result.contains("CTE Query : 'cte2'"));
+      assertTrue(result.contains("Main Query"));
+    }
+  }
+
+  @Test
   public void testRecursive() {
     String sqlTemplate =
         "WITH RECURSIVE t(n) AS %s ("
@@ -395,7 +451,7 @@ public class IoTDBCteIT {
         }
         fail("No exception!");
       } catch (Exception e) {
-        Assert.assertTrue(
+        assertTrue(
             e.getMessage(),
             e.getMessage()
                 .contains(
