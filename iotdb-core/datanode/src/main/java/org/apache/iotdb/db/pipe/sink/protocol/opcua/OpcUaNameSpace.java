@@ -475,7 +475,6 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
   @Override
   public void addNodes(final AddNodesContext context, final List<AddNodesItem> nodesToAdd) {
-    UaVariableNode measurementNode;
     final List<AddNodesResult> results = new ArrayList<>(nodesToAdd.size());
     for (final AddNodesItem item : nodesToAdd) {
       // Check attributes
@@ -510,8 +509,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
         continue;
       }
-      final UaNode parentNode = getNodeManager().get(parentId.get());
-      if (Objects.isNull(parentNode)) {
+      final Optional<UaNode> parentNode =
+          getServer().getAddressSpaceManager().getManagedNode(parentId.get());
+      if (!parentNode.isPresent()) {
         results.add(
             new AddNodesResult(
                 new StatusCode(StatusCodes.Bad_ParentNodeIdInvalid), NodeId.NULL_VALUE));
@@ -589,12 +589,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       // Link reference
       getNodeManager().addNode(newNode);
-      parentNode.addReference(
-          new Reference(
-              parentNode.getNodeId(),
-              item.getReferenceTypeId(),
-              newNode.getNodeId().expanded(),
-              true));
+      parentNode
+          .get()
+          .addReference(
+              new Reference(
+                  parentNode.get().getNodeId(),
+                  item.getReferenceTypeId(),
+                  newNode.getNodeId().expanded(),
+                  true));
       results.add(new AddNodesResult(StatusCode.GOOD, newNode.getNodeId()));
     }
 

@@ -82,10 +82,19 @@ public class ClientTest implements ClientExample {
             .addNodes(
                 Arrays.asList(
                     new AddNodesItem(
+                        Identifiers.ObjectsFolder.expanded(),
+                        Identifiers.Organizes,
+                        new NodeId(2, "root").expanded(),
+                        new QualifiedName(2, "root"),
+                        NodeClass.Object,
+                        ExtensionObject.encode(
+                            client.getStaticSerializationContext(), createFolder1Attributes()),
+                        Identifiers.FolderType.expanded()),
+                    new AddNodesItem(
                         new NodeId(2, "root").expanded(),
                         Identifiers.Organizes,
-                        new NodeId(2, "root/db").expanded(),
-                        new QualifiedName(2, "db"),
+                        new NodeId(2, "root/sg").expanded(),
+                        new QualifiedName(2, "sg"),
                         NodeClass.Object,
                         ExtensionObject.encode(
                             client.getStaticSerializationContext(), createFolder1Attributes()),
@@ -93,7 +102,7 @@ public class ClientTest implements ClientExample {
                     new AddNodesItem(
                         new NodeId(2, "root/sg").expanded(),
                         Identifiers.Organizes,
-                        new NodeId(2, "root/sg/d2").expanded(),
+                        new NodeId(2, "root/sg/d1").expanded(),
                         new QualifiedName(2, "d2"),
                         NodeClass.Object,
                         ExtensionObject.encode(
@@ -132,10 +141,21 @@ public class ClientTest implements ClientExample {
         );
   }
 
+  public static ObjectAttributes createFolder0Attributes() {
+    return new ObjectAttributes(
+        Unsigned.uint(0xFFFF), // specifiedAttributes
+        LocalizedText.english("root"),
+        LocalizedText.english("反应釜压力传感器"),
+        Unsigned.uint(0), // writeMask
+        Unsigned.uint(0), // userWriteMask
+        null // 启用历史记录
+        );
+  }
+
   public static ObjectAttributes createFolder1Attributes() {
     return new ObjectAttributes(
         Unsigned.uint(0xFFFF), // specifiedAttributes
-        LocalizedText.english("db"),
+        LocalizedText.english("sg"),
         LocalizedText.english("反应釜压力传感器"),
         Unsigned.uint(0), // writeMask
         Unsigned.uint(0), // userWriteMask
@@ -146,7 +166,7 @@ public class ClientTest implements ClientExample {
   public static ObjectAttributes createFolder2Attributes() {
     return new ObjectAttributes(
         Unsigned.uint(0xFFFF), // specifiedAttributes
-        LocalizedText.english("d2"),
+        LocalizedText.english("d1"),
         LocalizedText.english("反应釜压力传感器"),
         Unsigned.uint(0), // writeMask
         Unsigned.uint(0), // userWriteMask
