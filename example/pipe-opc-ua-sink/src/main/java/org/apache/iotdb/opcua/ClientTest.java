@@ -82,13 +82,22 @@ public class ClientTest implements ClientExample {
             .addNodes(
                 Arrays.asList(
                     new AddNodesItem(
+                        new NodeId(2, "root").expanded(),
+                        Identifiers.Organizes,
+                        new NodeId(2, "root/db").expanded(),
+                        new QualifiedName(2, "db"),
+                        NodeClass.Object,
+                        ExtensionObject.encode(
+                            client.getStaticSerializationContext(), createFolder1Attributes()),
+                        Identifiers.FolderType.expanded()),
+                    new AddNodesItem(
                         new NodeId(2, "root/sg").expanded(),
                         Identifiers.Organizes,
                         new NodeId(2, "root/sg/d2").expanded(),
                         new QualifiedName(2, "d2"),
                         NodeClass.Object,
                         ExtensionObject.encode(
-                            client.getStaticSerializationContext(), createFolderAttributes()),
+                            client.getStaticSerializationContext(), createFolder2Attributes()),
                         Identifiers.FolderType.expanded()),
                     new AddNodesItem(
                         new NodeId(2, "root/sg/d1").expanded(),
@@ -123,7 +132,18 @@ public class ClientTest implements ClientExample {
         );
   }
 
-  public static ObjectAttributes createFolderAttributes() {
+  public static ObjectAttributes createFolder1Attributes() {
+    return new ObjectAttributes(
+        Unsigned.uint(0xFFFF), // specifiedAttributes
+        LocalizedText.english("db"),
+        LocalizedText.english("反应釜压力传感器"),
+        Unsigned.uint(0), // writeMask
+        Unsigned.uint(0), // userWriteMask
+        null // 启用历史记录
+        );
+  }
+
+  public static ObjectAttributes createFolder2Attributes() {
     return new ObjectAttributes(
         Unsigned.uint(0xFFFF), // specifiedAttributes
         LocalizedText.english("d2"),
