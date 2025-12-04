@@ -32,7 +32,7 @@ from iotdb.ainode.core.constant import (
     AINODE_CONF_POM_FILE_NAME,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_EXTRA_MEMORY_RATIO,
-    AINODE_INFERENCE_MAX_PREDICT_LENGTH,
+    AINODE_INFERENCE_MAX_OUTPUT_LENGTH,
     AINODE_INFERENCE_MEMORY_USAGE_RATIO,
     AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
     AINODE_LOG_DIR,
@@ -75,9 +75,7 @@ class AINodeConfig(object):
         self._ain_inference_batch_interval_in_ms: int = (
             AINODE_INFERENCE_BATCH_INTERVAL_IN_MS
         )
-        self._ain_inference_max_predict_length: int = (
-            AINODE_INFERENCE_MAX_PREDICT_LENGTH
-        )
+        self._ain_inference_max_output_length: int = AINODE_INFERENCE_MAX_OUTPUT_LENGTH
         self._ain_inference_model_mem_usage_map: dict[str, int] = (
             AINODE_INFERENCE_MODEL_MEM_USAGE_MAP
         )
@@ -160,13 +158,13 @@ class AINodeConfig(object):
     ) -> None:
         self._ain_inference_batch_interval_in_ms = ain_inference_batch_interval_in_ms
 
-    def get_ain_inference_max_predict_length(self) -> int:
-        return self._ain_inference_max_predict_length
+    def get_ain_inference_max_output_length(self) -> int:
+        return self._ain_inference_max_output_length
 
-    def set_ain_inference_max_predict_length(
-        self, ain_inference_max_predict_length: int
+    def set_ain_inference_max_output_length(
+        self, ain_inference_max_output_length: int
     ) -> None:
-        self._ain_inference_max_predict_length = ain_inference_max_predict_length
+        self._ain_inference_max_output_length = ain_inference_max_output_length
 
     def get_ain_inference_model_mem_usage_map(self) -> dict[str, int]:
         return self._ain_inference_model_mem_usage_map

@@ -34,10 +34,12 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 
@@ -55,7 +57,8 @@ public class AINodeCallInferenceIT {
       };
 
   private static final String CALL_INFERENCE_SQL_TEMPLATE =
-      "CALL INFERENCE(%s, \"select s%d from root.AI\")";
+      "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT %d\", generateTime=true, outputLength=%d)";
+  private static final int DEFAULT_OUTPUT_LENGTH = 48;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -93,14 +96,21 @@ public class AINodeCallInferenceIT {
     // Invoke call inference for specified models, there should exist result.
     for (int i = 0; i < 4; i++) {
       String callInferenceSQL =
-          String.format(CALL_INFERENCE_SQL_TEMPLATE, modelInfo.getModelId(), i);
+          String.format(
+              CALL_INFERENCE_SQL_TEMPLATE,
+              modelInfo.getModelId(),
+              i,
+              DEFAULT_OUTPUT_LENGTH,
+              DEFAULT_OUTPUT_LENGTH);
       try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,output");
         int count = 0;
         while (resultSet.next()) {
           count++;
         }
         // Ensure the call inference return results
-        Assert.assertTrue(count > 0);
+        Assert.assertEquals(DEFAULT_OUTPUT_LENGTH, count);
       }
     }
   }

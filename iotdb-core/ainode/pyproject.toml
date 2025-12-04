@@ -79,7 +79,7 @@ exclude = [
 python = ">=3.11.0,<3.14.0"
 
 # ---- DL / HF stack ----
-torch = ">=2.7.0"
+torch = "^2.7.1"
 torchmetrics = "^1.8.0"
 transformers = "==4.56.2"
 tokenizers = ">=0.22.0,<=0.23.0"
