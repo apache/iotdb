@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -492,11 +493,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public String toString() {
+    final int size = CommonDescriptor.getInstance().getConfig().getPathLogMaxSize();
     return "InsertTabletStatement{"
         + "devicePath="
         + devicePath
         + ", measurements="
-        + Arrays.toString(measurements)
+        + Arrays.toString(
+            Objects.nonNull(measurements) && measurements.length > size
+                ? Arrays.copyOf(measurements, size)
+                : measurements)
         + ", rowCount="
         + rowCount
         + ", timeRange=["
