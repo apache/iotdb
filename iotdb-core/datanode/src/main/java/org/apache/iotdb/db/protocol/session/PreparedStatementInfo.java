@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.session;
 
-import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import java.util.Objects;
@@ -28,28 +27,28 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Information about a prepared statement stored in a session. The AST is cached here to avoid
- * re-parsing on EXECUTE.
+ * reparsing on EXECUTE.
  */
 public class PreparedStatementInfo {
 
   private final String statementName;
   private final Statement sql; // Cached AST (contains Parameter nodes)
   private final long createTime;
-  private final IMemoryBlock memoryBlock; // Memory block allocated for this PreparedStatement
+  private final long memorySizeInBytes; // Memory size allocated for this PreparedStatement
 
-  public PreparedStatementInfo(String statementName, Statement sql, IMemoryBlock memoryBlock) {
+  public PreparedStatementInfo(String statementName, Statement sql, long memorySizeInBytes) {
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
     this.createTime = System.currentTimeMillis();
-    this.memoryBlock = memoryBlock;
+    this.memorySizeInBytes = memorySizeInBytes;
   }
 
   public PreparedStatementInfo(
-      String statementName, Statement sql, long createTime, IMemoryBlock memoryBlock) {
+      String statementName, Statement sql, long createTime, long memorySizeInBytes) {
     this.statementName = requireNonNull(statementName, "statementName is null");
     this.sql = requireNonNull(sql, "sql is null");
     this.createTime = createTime;
-    this.memoryBlock = memoryBlock;
+    this.memorySizeInBytes = memorySizeInBytes;
   }
 
   public String getStatementName() {
@@ -64,8 +63,8 @@ public class PreparedStatementInfo {
     return createTime;
   }
 
-  public IMemoryBlock getMemoryBlock() {
-    return memoryBlock;
+  public long getMemorySizeInBytes() {
+    return memorySizeInBytes;
   }
 
   @Override

@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -195,12 +197,25 @@ public class Coordinator {
 
   private static final Coordinator INSTANCE = new Coordinator();
 
+  private static final IMemoryBlock coordinatorMemoryBlock;
+
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
   private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
+  static {
+    coordinatorMemoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getCoordinatorMemoryManager()
+            .exactAllocate("Coordinator", MemoryBlockType.DYNAMIC);
+    LOGGER.debug(
+        "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
+        coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+  }
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -663,6 +678,10 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public static IMemoryBlock getCoordinatorMemoryBlock() {
+    return coordinatorMemoryBlock;
   }
 
   public void recordExecutionTime(long queryId, long executionTime) {

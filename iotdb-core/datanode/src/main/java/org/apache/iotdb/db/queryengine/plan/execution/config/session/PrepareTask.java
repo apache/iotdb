@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
@@ -36,7 +35,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 /**
  * Task for executing PREPARE statement. Stores the prepared statement AST in the session. The AST
- * is cached to avoid re-parsing on EXECUTE (skipping Parser phase). Memory is allocated from
+ * is cached to avoid reparsing on EXECUTE (skipping Parser phase). Memory is allocated from
  * CoordinatorMemoryManager and shared across all sessions.
  */
 public class PrepareTask implements IConfigTask {
@@ -53,42 +52,34 @@ public class PrepareTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    IMemoryBlock memoryBlock = null;
-    try {
-      IClientSession session = SessionManager.getInstance().getCurrSession();
-      if (session == null) {
-        future.setException(
-            new IllegalStateException("No current session available for PREPARE statement"));
-        return future;
-      }
-
-      // Check if prepared statement with the same name already exists
-      PreparedStatementInfo existingInfo = session.getPreparedStatement(statementName);
-      if (existingInfo != null) {
-        throw new SemanticException(
-            String.format("Prepared statement '%s' already exists.", statementName));
-      }
-
-      // Estimate memory size of the AST
-      long memorySizeInBytes = AstMemoryEstimator.estimateMemorySize(sql);
-
-      // Allocate memory from CoordinatorMemoryManager
-      // This memory is shared across all sessions
-      memoryBlock =
-          PreparedStatementMemoryManager.getInstance().allocate(statementName, memorySizeInBytes);
-
-      // Create and store the prepared statement info (AST is cached)
-      PreparedStatementInfo info = new PreparedStatementInfo(statementName, sql, memoryBlock);
-      session.addPreparedStatement(statementName, info);
-
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Exception e) {
-      // If memory allocation succeeded but something else failed, release the memory
-      if (memoryBlock != null) {
-        PreparedStatementMemoryManager.getInstance().release(memoryBlock);
-      }
-      future.setException(e);
+    IClientSession session = SessionManager.getInstance().getCurrSession();
+    if (session == null) {
+      future.setException(
+          new IllegalStateException("No current session available for PREPARE statement"));
+      return future;
     }
+
+    // Check if prepared statement with the same name already exists
+    PreparedStatementInfo existingInfo = session.getPreparedStatement(statementName);
+    if (existingInfo != null) {
+      future.setException(
+          new SemanticException(
+              String.format("Prepared statement '%s' already exists.", statementName)));
+      return future;
+    }
+
+    // Estimate memory size of the AST
+    long memorySizeInBytes = AstMemoryEstimator.estimateMemorySize(sql);
+
+    // Allocate memory from CoordinatorMemoryManager
+    // This memory is shared across all sessions using a single MemoryBlock
+    PreparedStatementMemoryManager.getInstance().allocate(statementName, memorySizeInBytes);
+
+    // Create and store the prepared statement info (AST is cached)
+    PreparedStatementInfo info = new PreparedStatementInfo(statementName, sql, memorySizeInBytes);
+    session.addPreparedStatement(statementName, info);
+
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 }

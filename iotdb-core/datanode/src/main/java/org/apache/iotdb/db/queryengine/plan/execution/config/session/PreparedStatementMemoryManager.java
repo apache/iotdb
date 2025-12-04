@@ -20,23 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
-import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Memory manager for PreparedStatement. All PreparedStatements from all sessions share the memory
- * pool allocated from CoordinatorMemoryManager. When memory is full, new PREPARE statements will
- * fail until some PreparedStatements are deallocated.
+ * Memory manager for PreparedStatement. All PreparedStatements from all sessions share a single
+ * MemoryBlock named "Coordinator" allocated from CoordinatorMemoryManager. The MemoryBlock is
+ * initialized in Coordinator with all available memory.
  */
 public class PreparedStatementMemoryManager {
   private static final Logger LOGGER =
@@ -44,6 +41,8 @@ public class PreparedStatementMemoryManager {
 
   private static final PreparedStatementMemoryManager INSTANCE =
       new PreparedStatementMemoryManager();
+
+  private static final String SHARED_MEMORY_BLOCK_NAME = "Coordinator";
 
   private PreparedStatementMemoryManager() {
     // singleton
@@ -53,60 +52,62 @@ public class PreparedStatementMemoryManager {
     return INSTANCE;
   }
 
+  private IMemoryBlock getSharedMemoryBlock() {
+    return Coordinator.getCoordinatorMemoryBlock();
+  }
+
   /**
    * Allocate memory for a PreparedStatement.
    *
-   * @param statementName the name of the prepared statement (used as memory block name)
+   * @param statementName the name of the prepared statement
    * @param memorySizeInBytes the memory size in bytes to allocate
-   * @return the allocated memory block
    * @throws SemanticException if memory allocation fails
    */
-  public IMemoryBlock allocate(String statementName, long memorySizeInBytes) {
-    try {
-      IMemoryBlock memoryBlock =
-          IoTDBDescriptor.getInstance()
-              .getMemoryConfig()
-              .getCoordinatorMemoryManager()
-              .exactAllocate(
-                  "PreparedStatement-" + statementName, memorySizeInBytes, MemoryBlockType.DYNAMIC);
-
-      LOGGER.debug(
-          "Allocated {} bytes for PreparedStatement '{}'", memorySizeInBytes, statementName);
-      return memoryBlock;
-    } catch (MemoryException e) {
+  public void allocate(String statementName, long memorySizeInBytes) {
+    IMemoryBlock sharedMemoryBlock = getSharedMemoryBlock();
+    // Allocate memory from the shared block
+    boolean allocated = sharedMemoryBlock.allocate(memorySizeInBytes);
+    if (!allocated) {
       LOGGER.warn(
-          "Failed to allocate {} bytes for PreparedStatement '{}': {}",
+          "Failed to allocate {} bytes from shared MemoryBlock '{}' for PreparedStatement '{}'",
           memorySizeInBytes,
-          statementName,
-          e.getMessage());
+          SHARED_MEMORY_BLOCK_NAME,
+          statementName);
       throw new SemanticException(
           String.format(
               "Insufficient memory for PreparedStatement '%s'. "
                   + "Please deallocate some PreparedStatements and try again.",
               statementName));
     }
+
+    LOGGER.debug(
+        "Allocated {} bytes for PreparedStatement '{}' from shared MemoryBlock '{}'. ",
+        memorySizeInBytes,
+        statementName,
+        SHARED_MEMORY_BLOCK_NAME);
   }
 
   /**
    * Release memory for a PreparedStatement.
    *
-   * @param memoryBlock the memory block to release
+   * @param memorySizeInBytes the memory size in bytes to release
    */
-  public void release(IMemoryBlock memoryBlock) {
-    if (memoryBlock != null) {
-      try {
-        memoryBlock.close();
-        LOGGER.debug(
-            "Released memory block '{}' ({} bytes) for PreparedStatement",
-            memoryBlock.getName(),
-            memoryBlock.getTotalMemorySizeInBytes());
-      } catch (Exception e) {
-        LOGGER.error(
-            "Failed to release memory block '{}' for PreparedStatement: {}",
-            memoryBlock.getName(),
-            e.getMessage(),
-            e);
-      }
+  public void release(long memorySizeInBytes) {
+    if (memorySizeInBytes <= 0) {
+      return;
+    }
+
+    IMemoryBlock sharedMemoryBlock = getSharedMemoryBlock();
+    if (!sharedMemoryBlock.isReleased()) {
+      long releasedSize = sharedMemoryBlock.release(memorySizeInBytes);
+      LOGGER.debug(
+          "Released {} bytes from shared MemoryBlock '{}' for PreparedStatement. ",
+          releasedSize,
+          SHARED_MEMORY_BLOCK_NAME);
+    } else {
+      LOGGER.warn(
+          "Attempted to release memory from shared MemoryBlock '{}' but it is released",
+          SHARED_MEMORY_BLOCK_NAME);
     }
   }
 
@@ -121,52 +122,32 @@ public class PreparedStatementMemoryManager {
       return;
     }
 
-    try {
-      Set<String> preparedStatementNames = session.getPreparedStatementNames();
-      if (preparedStatementNames == null || preparedStatementNames.isEmpty()) {
-        return;
-      }
+    Set<String> preparedStatementNames = session.getPreparedStatementNames();
+    if (preparedStatementNames == null || preparedStatementNames.isEmpty()) {
+      return;
+    }
 
-      int releasedCount = 0;
-      long totalReleasedBytes = 0;
+    int releasedCount = 0;
+    long totalReleasedBytes = 0;
 
-      // Create a copy of the set to avoid concurrent modification
-      Set<String> statementNamesCopy = new HashSet<>(preparedStatementNames);
-
-      for (String statementName : statementNamesCopy) {
-        try {
-          PreparedStatementInfo info = session.getPreparedStatement(statementName);
-          if (info != null && info.getMemoryBlock() != null) {
-            IMemoryBlock memoryBlock = info.getMemoryBlock();
-            if (!memoryBlock.isReleased()) {
-              long memorySize = memoryBlock.getTotalMemorySizeInBytes();
-              release(memoryBlock);
-              releasedCount++;
-              totalReleasedBytes += memorySize;
-            }
-          }
-        } catch (Exception e) {
-          LOGGER.warn(
-              "Failed to release PreparedStatement '{}' during session cleanup: {}",
-              statementName,
-              e.getMessage(),
-              e);
+    for (String statementName : preparedStatementNames) {
+      PreparedStatementInfo info = session.getPreparedStatement(statementName);
+      if (info != null) {
+        long memorySize = info.getMemorySizeInBytes();
+        if (memorySize > 0) {
+          release(memorySize);
+          releasedCount++;
+          totalReleasedBytes += memorySize;
         }
       }
+    }
 
-      if (releasedCount > 0) {
-        LOGGER.debug(
-            "Released {} PreparedStatement(s) ({} bytes total) for session {}",
-            releasedCount,
-            totalReleasedBytes,
-            session);
-      }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to release PreparedStatement resources for session {}: {}",
-          session,
-          e.getMessage(),
-          e);
+    if (releasedCount > 0) {
+      LOGGER.debug(
+          "Released {} PreparedStatement(s) ({} bytes total) for session {}",
+          releasedCount,
+          totalReleasedBytes,
+          session);
     }
   }
 }

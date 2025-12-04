@@ -194,7 +194,6 @@ public abstract class IClientSession {
    * @param statementName the name of the prepared statement
    * @return the removed prepared statement info, or null if not found
    */
-  @Nullable
   public abstract PreparedStatementInfo removePreparedStatement(String statementName);
 
   /**
@@ -203,7 +202,6 @@ public abstract class IClientSession {
    * @param statementName the name of the prepared statement
    * @return the prepared statement info, or null if not found
    */
-  @Nullable
   public abstract PreparedStatementInfo getPreparedStatement(String statementName);
 
   /**

@@ -47,28 +47,26 @@ public class DeallocateTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try {
-      IClientSession session = SessionManager.getInstance().getCurrSession();
-      if (session == null) {
-        future.setException(
-            new IllegalStateException("No current session available for DEALLOCATE statement"));
-        return future;
-      }
-
-      // Remove the prepared statement
-      PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
-      if (removedInfo == null) {
-        throw new SemanticException(
-            String.format("Prepared statement '%s' does not exist", statementName));
-      } else {
-        // Release the memory allocated for this PreparedStatement
-        PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemoryBlock());
-      }
-
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Exception e) {
-      future.setException(e);
+    IClientSession session = SessionManager.getInstance().getCurrSession();
+    if (session == null) {
+      future.setException(
+          new IllegalStateException("No current session available for DEALLOCATE statement"));
+      return future;
     }
+
+    // Remove the prepared statement
+    PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
+    if (removedInfo == null) {
+      future.setException(
+          new SemanticException(
+              String.format("Prepared statement '%s' does not exist", statementName)));
+      return future;
+    }
+
+    // Release the memory allocated for this PreparedStatement from the shared MemoryBlock
+    PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
+
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 }
