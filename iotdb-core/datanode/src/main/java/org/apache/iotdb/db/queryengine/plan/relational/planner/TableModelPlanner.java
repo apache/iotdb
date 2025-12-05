@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -87,6 +88,8 @@ public class TableModelPlanner implements IPlanner {
 
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
+  private final TypeManager typeManager;
+
   public TableModelPlanner(
       final Statement statement,
       final SqlParser sqlParser,
@@ -100,7 +103,8 @@ public class TableModelPlanner implements IPlanner {
       final List<PlanOptimizer> logicalPlanOptimizers,
       final List<PlanOptimizer> distributionPlanOptimizers,
       final AccessControl accessControl,
-      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier,
+      final TypeManager typeManager) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -112,6 +116,7 @@ public class TableModelPlanner implements IPlanner {
     this.distributionPlanOptimizers = distributionPlanOptimizers;
     this.accessControl = accessControl;
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
+    this.typeManager = typeManager;
   }
 
   @Override
@@ -119,7 +124,7 @@ public class TableModelPlanner implements IPlanner {
     return new Analyzer(
             context,
             context.getSession(),
-            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl, typeManager),
             Collections.emptyList(),
             Collections.emptyMap(),
             statementRewrite,

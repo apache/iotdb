@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessCo
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import org.mockito.Mockito;
@@ -170,7 +171,8 @@ public class PlanTester {
       SessionInfo session) {
     try {
       StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, new AllowAllAccessControl());
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, new AllowAllAccessControl(), new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
