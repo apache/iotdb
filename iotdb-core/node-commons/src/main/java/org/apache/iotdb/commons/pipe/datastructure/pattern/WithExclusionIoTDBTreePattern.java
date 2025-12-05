@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -54,6 +55,16 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
       final IoTDBTreePatternOperations inclusionPattern,
       final IoTDBTreePatternOperations exclusionPattern) {
     this(true, inclusionPattern, exclusionPattern);
+  }
+
+  @TestOnly
+  public IoTDBTreePatternOperations getInclusionPattern() {
+    return inclusionPattern;
+  }
+
+  @TestOnly
+  public IoTDBTreePatternOperations getExclusionPattern() {
+    return exclusionPattern;
   }
 
   //////////////////////////// Tree Pattern Operations ////////////////////////////
