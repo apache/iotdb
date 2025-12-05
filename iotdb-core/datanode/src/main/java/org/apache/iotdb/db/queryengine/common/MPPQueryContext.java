@@ -47,6 +47,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -121,7 +122,7 @@ public class MPPQueryContext implements IAuditEntity {
   // Max line length of each CTE should be remembered because we need to standardize
   // the output format of main query and CTE query.
   private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
-      new HashMap<>();
+      new LinkedHashMap<>();
   // Do not release CTE query result if it is a subquery.
   private boolean subquery = false;
 
