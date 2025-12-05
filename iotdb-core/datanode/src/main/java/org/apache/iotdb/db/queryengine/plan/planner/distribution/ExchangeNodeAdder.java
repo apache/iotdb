@@ -567,10 +567,12 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     PlanNode newNode = node.clone();
     PlanNode child = visit(node.getChildren().get(0), context);
     newNode.addChild(child);
-    TRegionReplicaSet dataRegion = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
+    NodeDistribution nodeDistribution = context.getNodeDistribution(child.getPlanNodeId());
     context.putNodeDistribution(
         newNode.getPlanNodeId(),
-        new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+            nodeDistribution == null ? null : nodeDistribution.getRegion()));
     return newNode;
   }
 
