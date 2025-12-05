@@ -293,7 +293,7 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 
-  private final static TypeManager TYPE_MANAGER = new InternalTypeManager();
+  private static final TypeManager TYPE_MANAGER = new InternalTypeManager();
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
