@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -77,10 +79,13 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   private String threadName;
   private File objectDir;
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   @Before
   @Override
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    config.setRestrictObjectLimit(true);
     this.threadName = Thread.currentThread().getName();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
     DataNodeTableCache.getInstance().invalid(this.COMPACTION_TEST_SG);
@@ -105,6 +110,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
         Files.delete(file.toPath());
       }
     }
+    config.setRestrictObjectLimit(false);
   }
 
   public void createTable(String tableName, long ttl) {

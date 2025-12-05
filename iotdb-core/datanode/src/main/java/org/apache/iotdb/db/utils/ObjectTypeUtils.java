@@ -30,11 +30,11 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -169,7 +169,7 @@ public class ObjectTypeUtils {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     long length = buffer.getLong();
     String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
     return new Pair<>(length, relativeObjectFilePath);
   }
 
@@ -179,22 +179,12 @@ public class ObjectTypeUtils {
     return wrap.getLong();
   }
 
-  public static File getObjectPathFromBinary(Binary binary) {
-    byte[] bytes = binary.getValues();
-    String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
-    Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
-    if (!file.isPresent()) {
-      throw new ObjectFileNotExist(relativeObjectFilePath);
-    }
-    return file.get();
-  }
-
   public static Optional<File> getNullableObjectPathFromBinary(
       Binary binary, boolean needTempFile) {
     byte[] bytes = binary.getValues();
+    ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
     String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
     return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
   }
 

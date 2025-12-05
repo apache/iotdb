@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.function;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
@@ -50,10 +52,13 @@ import java.util.Iterator;
 
 public class RecordObjectTypeTest {
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private File objectDir;
 
   @Before
   public void setup() {
+    config.setRestrictObjectLimit(true);
     try {
       objectDir = new File(TierManager.getInstance().getNextFolderForObjectFile());
     } catch (DiskSpaceInsufficientException e) {
@@ -69,6 +74,7 @@ public class RecordObjectTypeTest {
         Files.delete(file.toPath());
       }
     }
+    config.setRestrictObjectLimit(true);
   }
 
   @Test
