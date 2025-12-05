@@ -117,8 +117,8 @@
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
-        <logback.version>1.3.15</logback.version>
-        <lz4-java.version>1.8.0</lz4-java.version>
+        <logback.version>1.3.16</logback.version>
+        <lz4-java.version>1.10.0</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -319,6 +319,18 @@
                 <version>${commons-io.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.tsfile</groupId>
+                <artifactId>tsfile</artifactId>
+                <version>${tsfile.version}</version>
+                <!-- Once tsfile switch to at.yawk.lz4:lz4-java, remove the following part -->
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.lz4</groupId>
+                        <artifactId>lz4-java</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
@@ -509,7 +521,7 @@
                 <version>${zstd-jni.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.lz4</groupId>
+                <groupId>at.yawk.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>${lz4-java.version}</version>
             </dependency>
