@@ -388,7 +388,10 @@ public class SessionManager implements SessionManagerMBean {
   /** update connection idle time after execution. */
   public void updateIdleTime() {
     currSessionIdleTime.set(System.nanoTime());
-    currSession.get().setLastActiveTime(CommonDateTimeUtils.currentTime());
+    IClientSession session = currSession.get();
+    if (session != null) {
+      session.setLastActiveTime(CommonDateTimeUtils.currentTime());
+    }
   }
 
   public TimeZone getSessionTimeZone() {
