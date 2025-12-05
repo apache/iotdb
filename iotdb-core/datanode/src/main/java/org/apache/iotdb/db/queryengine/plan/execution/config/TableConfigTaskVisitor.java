@@ -220,6 +220,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
@@ -282,13 +283,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   private final AccessControl accessControl;
 
+  private final TypeManager typeManager;
+
   public TableConfigTaskVisitor(
       final IClientSession clientSession,
       final Metadata metadata,
-      final AccessControl accessControl) {
+      final AccessControl accessControl,
+      final TypeManager typeManager) {
     this.clientSession = clientSession;
     this.metadata = metadata;
     this.accessControl = accessControl;
+    this.typeManager = typeManager;
   }
 
   @Override
@@ -878,7 +883,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     new Analyzer(
             context,
             context.getSession(),
-            new StatementAnalyzerFactory(metadata, null, accessControl),
+            new StatementAnalyzerFactory(metadata, null, accessControl, typeManager),
             Collections.emptyList(),
             Collections.emptyMap(),
             StatementRewrite.NOOP,

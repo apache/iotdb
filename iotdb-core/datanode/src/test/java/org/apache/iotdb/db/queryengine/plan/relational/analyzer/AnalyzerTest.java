@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -1261,7 +1262,8 @@ public class AnalyzerTest {
       final SessionInfo session) {
     try {
       final StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, nopAccessControl, new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
@@ -1285,7 +1287,8 @@ public class AnalyzerTest {
       final SqlParser sqlParser,
       final SessionInfo session) {
     final StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+        new StatementAnalyzerFactory(
+            metadata, sqlParser, nopAccessControl, new InternalTypeManager());
     Analyzer analyzer =
         new Analyzer(
             context,
