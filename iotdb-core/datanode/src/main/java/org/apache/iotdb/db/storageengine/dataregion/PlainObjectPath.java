@@ -103,9 +103,7 @@ public class PlainObjectPath implements IObjectPath {
   }
 
   public static PlainObjectPath deserializeObjectValue(ByteBuffer byteBuffer) {
-    byte[] bytes = new byte[byteBuffer.remaining()];
-    byteBuffer.get(bytes);
-    return new PlainObjectPath(new String(bytes, StandardCharsets.UTF_8));
+    return new PlainObjectPath(StandardCharsets.UTF_8.decode(byteBuffer).toString());
   }
 
   @Override
