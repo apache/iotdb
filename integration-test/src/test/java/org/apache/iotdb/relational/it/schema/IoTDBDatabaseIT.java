@@ -398,6 +398,7 @@ public class IoTDBDatabaseIT {
               "columns,INF,",
               "config_nodes,INF,",
               "configurations,INF,",
+              "connections,INF,",
               "data_nodes,INF,",
               "databases,INF,",
               "functions,INF,",
@@ -644,12 +645,13 @@ public class IoTDBDatabaseIT {
                   "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("19,"));
+          Collections.singleton("20,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
