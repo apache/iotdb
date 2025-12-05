@@ -293,6 +293,8 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 
+  private final static TypeManager TYPE_MANAGER = new InternalTypeManager();
+
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
   private final Analysis analysis;
@@ -305,8 +307,6 @@ public class StatementAnalyzer {
   private final WarningCollector warningCollector;
 
   private final SessionInfo sessionContext;
-
-  private final TypeManager typeManager = new InternalTypeManager();
 
   private final Metadata metadata;
 
@@ -5186,7 +5186,7 @@ public class StatementAnalyzer {
       // currently, only constant arguments are supported
       Object constantValue =
           IrExpressionInterpreter.evaluateConstantExpression(
-              expression, new PlannerContext(metadata, typeManager), sessionContext);
+              expression, new PlannerContext(metadata, TYPE_MANAGER), sessionContext);
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
                 || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
