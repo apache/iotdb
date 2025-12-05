@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
@@ -55,6 +56,8 @@ public abstract class IClientSession {
   private SqlDialect sqlDialect = SqlDialect.TREE;
 
   @Nullable private String databaseName;
+
+  private long lastActiveTime;
 
   public abstract String getClientAddress();
 
@@ -140,6 +143,11 @@ public abstract class IClientSession {
         getUsername(), getLogInTime(), getConnectionId(), getConnectionType());
   }
 
+  public ConnectionInfo convertToConnectionInfo() {
+    return new ConnectionInfo(
+        getUserId(), getUsername(), getId(), getLastActiveTime(), getClientAddress());
+  }
+
   /**
    * statementIds that this client opens.<br>
    * For JDBC clients, each Statement instance has a statement id.<br>
@@ -178,6 +186,14 @@ public abstract class IClientSession {
 
   public void setDatabaseName(@Nullable String databaseName) {
     this.databaseName = databaseName;
+  }
+
+  public long getLastActiveTime() {
+    return lastActiveTime;
+  }
+
+  public void setLastActiveTime(long lastActiveTime) {
+    this.lastActiveTime = lastActiveTime;
   }
 
   public enum SqlDialect {
