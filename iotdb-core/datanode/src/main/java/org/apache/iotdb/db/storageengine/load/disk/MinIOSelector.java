@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.disk;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
