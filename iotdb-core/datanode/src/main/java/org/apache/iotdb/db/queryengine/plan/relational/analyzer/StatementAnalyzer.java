@@ -192,7 +192,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -293,8 +292,6 @@ import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 
-  private static final TypeManager TYPE_MANAGER = new InternalTypeManager();
-
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
   private final Analysis analysis;
@@ -312,6 +309,8 @@ public class StatementAnalyzer {
 
   private final CorrelationSupport correlationSupport;
 
+  private final TypeManager typeManager;
+
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
       Analysis analysis,
@@ -320,7 +319,8 @@ public class StatementAnalyzer {
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
-      CorrelationSupport correlationSupport) {
+      CorrelationSupport correlationSupport,
+      TypeManager typeManager) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -329,6 +329,7 @@ public class StatementAnalyzer {
     this.sessionContext = sessionContext;
     this.metadata = metadata;
     this.correlationSupport = correlationSupport;
+    this.typeManager = typeManager;
   }
 
   public Scope analyze(Node node) {
@@ -5186,7 +5187,7 @@ public class StatementAnalyzer {
       // currently, only constant arguments are supported
       Object constantValue =
           IrExpressionInterpreter.evaluateConstantExpression(
-              expression, new PlannerContext(metadata, TYPE_MANAGER), sessionContext);
+              expression, new PlannerContext(metadata, typeManager), sessionContext);
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
                 || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
