@@ -169,7 +169,7 @@ public class ObjectTypeUtils {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     long length = buffer.getLong();
     String relativeObjectFilePath =
-        IObjectPath.Deserializer.DESERIALIZER.deserializeFrom(buffer).toString();
+        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
     return new Pair<>(length, relativeObjectFilePath);
   }
 
@@ -184,7 +184,7 @@ public class ObjectTypeUtils {
     byte[] bytes = binary.getValues();
     ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
     String relativeObjectFilePath =
-        IObjectPath.Deserializer.DESERIALIZER.deserializeFrom(buffer).toString();
+        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
     return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
   }
 

@@ -48,6 +48,11 @@ public class Base32ObjectPath implements IObjectPath {
         public IObjectPath deserializeFrom(InputStream inputStream) throws IOException {
           return deserialize(inputStream);
         }
+
+        @Override
+        public IObjectPath deserializeFromObjectValue(ByteBuffer byteBuffer) {
+          return deserialize(byteBuffer);
+        }
       };
 
   private static final Factory FACTORY = Base32ObjectPath::new;
@@ -106,6 +111,11 @@ public class Base32ObjectPath implements IObjectPath {
     }
     serializedSize = cnt;
     return cnt;
+  }
+
+  @Override
+  public void serializeToObjectValue(ByteBuffer byteBuffer) {
+    serialize(byteBuffer);
   }
 
   public static Base32ObjectPath deserialize(ByteBuffer byteBuffer) {

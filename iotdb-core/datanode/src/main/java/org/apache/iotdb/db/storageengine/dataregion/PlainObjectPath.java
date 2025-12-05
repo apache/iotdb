@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class PlainObjectPath implements IObjectPath {
 
@@ -42,6 +43,11 @@ public class PlainObjectPath implements IObjectPath {
         @Override
         public IObjectPath deserializeFrom(InputStream inputStream) throws IOException {
           return deserialize(inputStream);
+        }
+
+        @Override
+        public IObjectPath deserializeFromObjectValue(ByteBuffer byteBuffer) {
+          return deserializeObjectValue(byteBuffer);
         }
       };
 
@@ -81,6 +87,11 @@ public class PlainObjectPath implements IObjectPath {
     return ReadWriteIOUtils.sizeToWrite(filePath);
   }
 
+  @Override
+  public void serializeToObjectValue(ByteBuffer byteBuffer) {
+    byteBuffer.put(filePath.getBytes(StandardCharsets.UTF_8));
+  }
+
   public static PlainObjectPath deserialize(ByteBuffer byteBuffer) {
     String filePath = ReadWriteIOUtils.readString(byteBuffer);
     return new PlainObjectPath(filePath);
@@ -89,6 +100,12 @@ public class PlainObjectPath implements IObjectPath {
   public static PlainObjectPath deserialize(InputStream stream) throws IOException {
     String filePath = ReadWriteIOUtils.readString(stream);
     return new PlainObjectPath(filePath);
+  }
+
+  public static PlainObjectPath deserializeObjectValue(ByteBuffer byteBuffer) {
+    byte[] bytes = new byte[byteBuffer.remaining()];
+    byteBuffer.get(bytes);
+    return new PlainObjectPath(new String(bytes, StandardCharsets.UTF_8));
   }
 
   @Override

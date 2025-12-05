@@ -226,7 +226,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
           ByteBuffer valueBytes =
               ByteBuffer.allocate(relativePath.getSerializedSize() + Long.BYTES);
           valueBytes.putLong(offset + content.length);
-          relativePath.serialize(valueBytes);
+          relativePath.serializeToObjectValue(valueBytes);
           ((Binary) values[j]).setValues(valueBytes.array());
           insertRowNode.setValues(values);
         } else {

@@ -39,6 +39,8 @@ public interface IObjectPath {
 
   int getSerializedSize();
 
+  void serializeToObjectValue(ByteBuffer byteBuffer);
+
   interface Factory {
 
     IObjectPath create(int regionId, long time, IDeviceID iDeviceID, String measurement);
@@ -54,6 +56,8 @@ public interface IObjectPath {
     IObjectPath deserializeFrom(ByteBuffer byteBuffer);
 
     IObjectPath deserializeFrom(InputStream inputStream) throws IOException;
+
+    IObjectPath deserializeFromObjectValue(ByteBuffer byteBuffer);
 
     Deserializer DESERIALIZER =
         CONFIG.getRestrictObjectLimit()

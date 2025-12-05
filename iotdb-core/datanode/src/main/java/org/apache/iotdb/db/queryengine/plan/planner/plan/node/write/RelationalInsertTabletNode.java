@@ -477,7 +477,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       if (isEoF) {
         ByteBuffer valueBytes = ByteBuffer.allocate(relativePath.getSerializedSize() + Long.BYTES);
         valueBytes.putLong(offset + content.length);
-        relativePath.serialize(valueBytes);
+        relativePath.serializeToObjectValue(valueBytes);
         ((Binary[]) columns[column])[j] = new Binary(valueBytes.array());
       } else {
         ((Binary[]) columns[column])[j] = null;
