@@ -1117,8 +1117,6 @@ public class IoTDBConfig {
 
   private boolean loadActiveListeningEnable = true;
 
-  private long loadTableSchemaCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
-
   private long loadMeasurementIdCacheSizeInBytes = 2 * 1024 * 1024L; // 2MB
 
   private int loadTsFileSpiltPartitionMaxSize = 10;
@@ -4023,14 +4021,6 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningEnable(boolean loadActiveListeningEnable) {
     this.loadActiveListeningEnable = loadActiveListeningEnable;
-  }
-
-  public long getLoadTableSchemaCacheSizeInBytes() {
-    return loadTableSchemaCacheSizeInBytes;
-  }
-
-  public void setLoadTableSchemaCacheSizeInBytes(long loadTableSchemaCacheSizeInBytes) {
-    this.loadTableSchemaCacheSizeInBytes = loadTableSchemaCacheSizeInBytes;
   }
 
   public long getLoadMeasurementIdCacheSizeInBytes() {

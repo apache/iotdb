@@ -517,7 +517,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   }
 
   public R visitAlterColumnDataType(
-          final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
     return visitPlan(alterColumnDataTypePlan, context);
   }
 }

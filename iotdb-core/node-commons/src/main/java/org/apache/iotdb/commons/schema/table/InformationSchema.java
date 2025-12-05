@@ -50,6 +50,7 @@ public class InformationSchema {
   public static final String NODES = "nodes";
   public static final String CONFIG_NODES = "config_nodes";
   public static final String DATA_NODES = "data_nodes";
+  public static final String CONNECTIONS = "connections";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -362,6 +363,22 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     dataNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATA_NODES, dataNodesTable);
+
+    final TsTable connectionsTable = new TsTable(CONNECTIONS);
+    connectionsTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.STRING));
+    connectionsTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.USERID, TSDataType.STRING));
+    connectionsTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SESSION_ID, TSDataType.STRING));
+    connectionsTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.USER_NAME, TSDataType.STRING));
+    connectionsTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.LAST_ACTIVE_TIME, TSDataType.TIMESTAMP));
+    connectionsTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
+    connectionsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(CONNECTIONS, connectionsTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {

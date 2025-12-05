@@ -85,6 +85,7 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     return compressor;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return new MeasurementSchema(columnName, dataType, encoding, compressor, props);
   }
