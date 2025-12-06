@@ -19,18 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
+import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
-import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.BottomInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -75,7 +72,6 @@ public class InferenceOperator implements ProcessOperator {
   private int resultIndex = 0;
   private List<ByteBuffer> results;
   private final TsBlockSerde serde = new TsBlockSerde();
-  private InferenceWindowType windowType = null;
 
   private final boolean generateTimeColumn;
   private long maxTimestamp;
@@ -108,10 +104,6 @@ public class InferenceOperator implements ProcessOperator {
     this.maxRetainedSize = maxRetainedSize;
     this.maxReturnSize = maxReturnSize;
     this.totalRow = 0;
-
-    if (modelInferenceDescriptor.getInferenceWindowParameter() != null) {
-      windowType = modelInferenceDescriptor.getInferenceWindowParameter().getWindowType();
-    }
 
     if (generateTimeColumn) {
       this.interval = 0;
@@ -237,62 +229,6 @@ public class InferenceOperator implements ProcessOperator {
     }
   }
 
-  private TWindowParams getWindowParams() {
-    TWindowParams windowParams;
-    if (windowType == null) {
-      return null;
-    }
-    if (windowType == InferenceWindowType.COUNT) {
-      CountInferenceWindowParameter countInferenceWindowParameter =
-          (CountInferenceWindowParameter) modelInferenceDescriptor.getInferenceWindowParameter();
-      windowParams = new TWindowParams();
-      windowParams.setWindowInterval((int) countInferenceWindowParameter.getInterval());
-      windowParams.setWindowStep((int) countInferenceWindowParameter.getStep());
-    } else {
-      windowParams = null;
-    }
-    return windowParams;
-  }
-
-  private TsBlock preProcess(TsBlock inputTsBlock) {
-    //    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
-    boolean notBuiltIn = false;
-    if (windowType == null || windowType == InferenceWindowType.HEAD) {
-      if (notBuiltIn
-          && totalRow != modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data does not match the model input %s. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      return inputTsBlock;
-    } else if (windowType == InferenceWindowType.COUNT) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-    } else if (windowType == InferenceWindowType.TAIL) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      // Tail window logic: get the latest data for inference
-      long windowSize =
-          (int)
-              ((BottomInferenceWindowParameter)
-                      modelInferenceDescriptor.getInferenceWindowParameter())
-                  .getWindowSize();
-      return inputTsBlock.subTsBlock((int) (totalRow - windowSize));
-    }
-    return inputTsBlock;
-  }
-
   private void submitInferenceTask() {
 
     if (generateTimeColumn) {
@@ -301,20 +237,16 @@ public class InferenceOperator implements ProcessOperator {
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
 
-    TsBlock finalInputTsBlock = preProcess(inputTsBlock);
-    TWindowParams windowParams = getWindowParams();
-
     inferenceExecutionFuture =
         Futures.submit(
             () -> {
               try (AINodeClient client =
                   AINodeClientManager.getInstance()
-                      .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
+                      .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
                 return client.inference(
-                    modelInferenceDescriptor.getModelName(),
-                    finalInputTsBlock,
-                    modelInferenceDescriptor.getInferenceAttributes(),
-                    windowParams);
+                    new TInferenceReq(
+                            modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
+                        .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
               } catch (Exception e) {
                 throw new ModelInferenceProcessException(e.getMessage());
               }

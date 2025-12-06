@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
@@ -378,7 +377,6 @@ public class TableFunctionTest {
                         96,
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
-                        new TEndPoint("127.0.0.1", 10810),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
@@ -439,7 +437,6 @@ public class TableFunctionTest {
                         96,
                         DEFAULT_OUTPUT_START_TIME,
                         DEFAULT_OUTPUT_INTERVAL,
-                        new TEndPoint("127.0.0.1", 10810),
                         Collections.singletonList(DOUBLE)));
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan

@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -70,12 +70,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
 import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
   public static class ForecastTableFunctionHandle implements TableFunctionHandle {
-    TEndPoint targetAINode;
     String modelId;
     int maxInputLength;
     int outputLength;
@@ -95,7 +95,6 @@ public class ForecastTableFunction implements TableFunction {
         int outputLength,
         long outputStartTime,
         long outputInterval,
-        TEndPoint targetAINode,
         List<Type> types) {
       this.keepInput = keepInput;
       this.maxInputLength = maxInputLength;
@@ -104,7 +103,6 @@ public class ForecastTableFunction implements TableFunction {
       this.outputLength = outputLength;
       this.outputStartTime = outputStartTime;
       this.outputInterval = outputInterval;
-      this.targetAINode = targetAINode;
       this.types = types;
     }
 
@@ -112,8 +110,6 @@ public class ForecastTableFunction implements TableFunction {
     public byte[] serialize() {
       try (PublicBAOS publicBAOS = new PublicBAOS();
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-        ReadWriteIOUtils.write(targetAINode.getIp(), outputStream);
-        ReadWriteIOUtils.write(targetAINode.getPort(), outputStream);
         ReadWriteIOUtils.write(modelId, outputStream);
         ReadWriteIOUtils.write(maxInputLength, outputStream);
         ReadWriteIOUtils.write(outputLength, outputStream);
@@ -138,8 +134,6 @@ public class ForecastTableFunction implements TableFunction {
     @Override
     public void deserialize(byte[] bytes) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      this.targetAINode =
-          new TEndPoint(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
       this.modelId = ReadWriteIOUtils.readString(buffer);
       this.maxInputLength = ReadWriteIOUtils.readInt(buffer);
       this.outputLength = ReadWriteIOUtils.readInt(buffer);
@@ -168,7 +162,6 @@ public class ForecastTableFunction implements TableFunction {
           && outputStartTime == that.outputStartTime
           && outputInterval == that.outputInterval
           && keepInput == that.keepInput
-          && Objects.equals(targetAINode, that.targetAINode)
           && Objects.equals(modelId, that.modelId)
           && Objects.equals(options, that.options)
           && Objects.equals(types, that.types);
@@ -177,7 +170,6 @@ public class ForecastTableFunction implements TableFunction {
     @Override
     public int hashCode() {
       return Objects.hash(
-          targetAINode,
           modelId,
           maxInputLength,
           outputLength,
@@ -217,16 +209,6 @@ public class ForecastTableFunction implements TableFunction {
     ALLOWED_INPUT_TYPES.add(Type.INT64);
     ALLOWED_INPUT_TYPES.add(Type.FLOAT);
     ALLOWED_INPUT_TYPES.add(Type.DOUBLE);
-  }
-
-  // need to set before analyze method is called
-  // should only be used in fe scope, never be used in TableFunctionProcessorProvider
-  // The reason we don't directly set modelFetcher=ModelFetcher.getInstance() is that we need to
-  // mock IModelFetcher in UT
-  private IModelFetcher modelFetcher = null;
-
-  public void setModelFetcher(IModelFetcher modelFetcher) {
-    this.modelFetcher = modelFetcher;
   }
 
   @Override
@@ -283,8 +265,6 @@ public class ForecastTableFunction implements TableFunction {
       throw new SemanticException(
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
-
-    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
@@ -390,7 +370,6 @@ public class ForecastTableFunction implements TableFunction {
             outputLength,
             outputStartTime,
             outputInterval,
-            targetAINode,
             predicatedColumnTypes);
 
     // outputColumnSchema
@@ -415,10 +394,6 @@ public class ForecastTableFunction implements TableFunction {
         return new ForecastDataProcessor((ForecastTableFunctionHandle) tableFunctionHandle);
       }
     };
-  }
-
-  private ModelInferenceDescriptor getModelInfo(String modelId) {
-    return modelFetcher.fetchModel(modelId);
   }
 
   // only allow for INT32, INT64, FLOAT, DOUBLE
@@ -456,9 +431,9 @@ public class ForecastTableFunction implements TableFunction {
   private static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
+    private static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
+        AINodeClientManager.getInstance();
 
-    private final TEndPoint targetAINode;
     private final String modelId;
     private final int maxInputLength;
     private final int outputLength;
@@ -471,7 +446,6 @@ public class ForecastTableFunction implements TableFunction {
     private final TsBlockBuilder inputTsBlockBuilder;
 
     public ForecastDataProcessor(ForecastTableFunctionHandle functionHandle) {
-      this.targetAINode = functionHandle.targetAINode;
       this.modelId = functionHandle.modelId;
       this.maxInputLength = functionHandle.maxInputLength;
       this.outputLength = functionHandle.outputLength;
@@ -488,21 +462,6 @@ public class ForecastTableFunction implements TableFunction {
         tsDataTypeList.add(TSDataType.DOUBLE);
       }
       this.inputTsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
-    }
-
-    private static ResultColumnAppender createResultColumnAppender(Type type) {
-      switch (type) {
-        case INT32:
-          return new Int32Appender();
-        case INT64:
-          return new Int64Appender();
-        case FLOAT:
-          return new FloatAppender();
-        case DOUBLE:
-          return new DoubleAppender();
-        default:
-          throw new IllegalArgumentException("Unsupported column type: " + type);
-      }
     }
 
     @Override
@@ -619,8 +578,12 @@ public class ForecastTableFunction implements TableFunction {
       TsBlock inputData = inputTsBlockBuilder.build();
 
       TForecastResp resp;
-      try (AINodeClient client = CLIENT_MANAGER.borrowClient(targetAINode)) {
-        resp = client.forecast(modelId, inputData, outputLength, options);
+      try (AINodeClient client =
+          CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
+        resp =
+            client.forecast(
+                new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
+                    .setOptions(options));
       } catch (Exception e) {
         throw new IoTDBRuntimeException(e.getMessage(), CAN_NOT_CONNECT_AINODE.getStatusCode());
       }
@@ -641,102 +604,6 @@ public class ForecastTableFunction implements TableFunction {
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
       return res;
-    }
-  }
-
-  private interface ResultColumnAppender {
-    void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder);
-
-    double getDouble(Record row, int columnIndex);
-
-    void writeDouble(double value, ColumnBuilder columnBuilder);
-  }
-
-  private static class Int32Appender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeInt(row.getInt(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getInt(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeInt((int) value);
-    }
-  }
-
-  private static class Int64Appender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeLong(row.getLong(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getLong(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeLong((long) value);
-    }
-  }
-
-  private static class FloatAppender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeFloat(row.getFloat(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getFloat(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeFloat((float) value);
-    }
-  }
-
-  private static class DoubleAppender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeDouble(row.getDouble(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getDouble(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeDouble(value);
     }
   }
 }

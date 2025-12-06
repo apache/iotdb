@@ -15,140 +15,118 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import glob
-import os
 
-from iotdb.ainode.core.constant import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_CONFIG_FILE_IN_YAML,
-    MODEL_WEIGHTS_FILE_IN_PT,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
-)
-from iotdb.ainode.core.model.model_enums import (
-    BuiltInModelType,
-    ModelCategory,
-    ModelFileType,
-    ModelStates,
-)
+from typing import Dict, Optional
 
-
-def get_model_file_type(model_path: str) -> ModelFileType:
-    """
-    Determine the file type of the specified model directory.
-    """
-    if _has_safetensors_format(model_path):
-        return ModelFileType.SAFETENSORS
-    elif _has_pytorch_format(model_path):
-        return ModelFileType.PYTORCH
-    else:
-        return ModelFileType.UNKNOWN
-
-
-def _has_safetensors_format(path: str) -> bool:
-    """Check if directory contains safetensors files."""
-    safetensors_files = glob.glob(os.path.join(path, MODEL_WEIGHTS_FILE_IN_SAFETENSORS))
-    json_files = glob.glob(os.path.join(path, MODEL_CONFIG_FILE_IN_JSON))
-    return len(safetensors_files) > 0 and len(json_files) > 0
-
-
-def _has_pytorch_format(path: str) -> bool:
-    """Check if directory contains pytorch files."""
-    pt_files = glob.glob(os.path.join(path, MODEL_WEIGHTS_FILE_IN_PT))
-    yaml_files = glob.glob(os.path.join(path, MODEL_CONFIG_FILE_IN_YAML))
-    return len(pt_files) > 0 and len(yaml_files) > 0
-
-
-def get_built_in_model_type(model_type: str) -> BuiltInModelType:
-    if not BuiltInModelType.is_built_in_model(model_type):
-        raise ValueError(f"Invalid built-in model type: {model_type}")
-    return BuiltInModelType(model_type)
+from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates
 
 
 class ModelInfo:
     def __init__(
         self,
         model_id: str,
-        model_type: str,
         category: ModelCategory,
         state: ModelStates,
+        model_type: str = "",
+        config_cls: str = "",
+        model_cls: str = "",
+        pipeline_cls: str = "",
+        repo_id: str = "",
+        auto_map: Optional[Dict] = None,
+        _transformers_registered: bool = False,
     ):
         self.model_id = model_id
         self.model_type = model_type
         self.category = category
         self.state = state
+        self.config_cls = config_cls
+        self.model_cls = model_cls
+        self.pipeline_cls = pipeline_cls
+        self.repo_id = repo_id
+        self.auto_map = auto_map  # If exists, indicates it's a Transformers model
+        self._transformers_registered = _transformers_registered  # Internal flag: whether registered to Transformers
+
+    def __repr__(self):
+        return (
+            f"ModelInfo(model_id={self.model_id}, model_type={self.model_type}, "
+            f"category={self.category.value}, state={self.state.value}, "
+            f"has_auto_map={self.auto_map is not None})"
+        )
 
 
-TIMER_REPO_ID = {
-    BuiltInModelType.TIMER_XL: "thuml/timer-base-84m",
-    BuiltInModelType.SUNDIAL: "thuml/sundial-base-128m",
-}
-
-# Built-in machine learning models, they can be employed directly
-BUILT_IN_MACHINE_LEARNING_MODEL_MAP = {
+BUILTIN_SKTIME_MODEL_MAP = {
     # forecast models
     "arima": ModelInfo(
         model_id="arima",
-        model_type=BuiltInModelType.ARIMA.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "holtwinters": ModelInfo(
         model_id="holtwinters",
-        model_type=BuiltInModelType.HOLTWINTERS.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "exponential_smoothing": ModelInfo(
         model_id="exponential_smoothing",
-        model_type=BuiltInModelType.EXPONENTIAL_SMOOTHING.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "naive_forecaster": ModelInfo(
         model_id="naive_forecaster",
-        model_type=BuiltInModelType.NAIVE_FORECASTER.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "stl_forecaster": ModelInfo(
         model_id="stl_forecaster",
-        model_type=BuiltInModelType.STL_FORECASTER.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     # anomaly detection models
     "gaussian_hmm": ModelInfo(
         model_id="gaussian_hmm",
-        model_type=BuiltInModelType.GAUSSIAN_HMM.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "gmm_hmm": ModelInfo(
         model_id="gmm_hmm",
-        model_type=BuiltInModelType.GMM_HMM.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
     "stray": ModelInfo(
         model_id="stray",
-        model_type=BuiltInModelType.STRAY.value,
-        category=ModelCategory.BUILT_IN,
+        category=ModelCategory.BUILTIN,
         state=ModelStates.ACTIVE,
+        model_type="sktime",
     ),
 }
 
-# Built-in large time series models (LTSM), their weights are not included in AINode by default
-BUILT_IN_LTSM_MAP = {
+# Built-in huggingface transformers models, their weights are not included in AINode by default
+BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
     "timer_xl": ModelInfo(
         model_id="timer_xl",
-        model_type=BuiltInModelType.TIMER_XL.value,
-        category=ModelCategory.BUILT_IN,
-        state=ModelStates.LOADING,
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="timer",
+        config_cls="configuration_timer.TimerConfig",
+        model_cls="modeling_timer.TimerForPrediction",
+        pipeline_cls="pipeline_timer.TimerPipeline",
+        repo_id="thuml/timer-base-84m",
     ),
     "sundial": ModelInfo(
         model_id="sundial",
-        model_type=BuiltInModelType.SUNDIAL.value,
-        category=ModelCategory.BUILT_IN,
-        state=ModelStates.LOADING,
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="sundial",
+        config_cls="configuration_sundial.SundialConfig",
+        model_cls="modeling_sundial.SundialForPrediction",
+        pipeline_cls="pipeline_sundial.SundialPipeline",
+        repo_id="thuml/sundial-base-128m",
     ),
 }

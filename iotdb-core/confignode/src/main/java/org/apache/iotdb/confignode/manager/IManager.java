@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.ainode.rpc.thrift.TLoadModelReq;
-import org.apache.iotdb.ainode.rpc.thrift.TShowAIDevicesResp;
-import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsReq;
-import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsResp;
-import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
-import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
-import org.apache.iotdb.ainode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -82,7 +75,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -103,7 +95,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
@@ -120,8 +111,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -254,13 +243,6 @@ public interface IManager {
    * @return {@link CQManager} instance
    */
   CQManager getCQManager();
-
-  /**
-   * Get {@link ModelManager}.
-   *
-   * @return {@link ModelManager} instance
-   */
-  ModelManager getModelManager();
 
   /**
    * Get {@link PipeManager}.
@@ -879,30 +861,6 @@ public interface IManager {
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
   TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
-
-  /** Create a model. */
-  TSStatus createModel(TCreateModelReq req);
-
-  /** Drop a model. */
-  TSStatus dropModel(TDropModelReq req);
-
-  /** Load the specific model to the specific devices. */
-  TSStatus loadModel(TLoadModelReq req);
-
-  /** Unload the specific model from the specific devices. */
-  TSStatus unloadModel(TUnloadModelReq req);
-
-  /** Return the model table. */
-  TShowModelsResp showModel(TShowModelsReq req);
-
-  /** Return the loaded model instances. */
-  TShowLoadedModelsResp showLoadedModel(TShowLoadedModelsReq req);
-
-  /** Return all available AI devices. */
-  TShowAIDevicesResp showAIDevices();
-
-  /** Update the model state */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req);
 
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);

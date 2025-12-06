@@ -1471,11 +1471,6 @@ public class TableMetadataImpl implements Metadata {
     }
   }
 
-  @Override
-  public IModelFetcher getModelFetcher() {
-    return modelFetcher;
-  }
-
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
