@@ -91,7 +91,7 @@ public class AuthorityChecker {
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
 
-  private static final String NO_PERMISSION_PROMOTION =
+  public static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
   private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
