@@ -272,6 +272,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionTask migrateRegionTask);
 
+  SettableFuture<ConfigTaskResult> balanceRegions();
+
   SettableFuture<ConfigTaskResult> reconstructRegion(ReconstructRegionTask reconstructRegionTask);
 
   SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionTask extendRegionTask);

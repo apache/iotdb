@@ -927,4 +927,6 @@ public interface IManager {
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
   TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp);
+
+  TSStatus balanceRegions();
 }

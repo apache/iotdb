@@ -1764,6 +1764,9 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
+  /** Auto balance regions */
+  common.TSStatus balanceRegions()
+
   common.TSStatus reconstructRegion(TReconstructRegionReq req)
 
   common.TSStatus extendRegion(TExtendRegionReq req)

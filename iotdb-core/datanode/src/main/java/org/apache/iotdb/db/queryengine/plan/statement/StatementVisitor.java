@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.BalanceRegionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -633,6 +634,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitMigrateRegion(MigrateRegionStatement migrateRegionStatement, C context) {
     return visitStatement(migrateRegionStatement, context);
+  }
+
+  public R visitBalanceRegions(BalanceRegionsStatement balanceRegionsStatement, C context) {
+    return visitStatement(balanceRegionsStatement, context);
   }
 
   public R visitReconstructRegion(
