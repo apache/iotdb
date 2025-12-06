@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.pipe.sink.util.sorter;
 
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.LocalDate;
 import java.util.Objects;
 
-public class PipeTabletEventSorter {
+public class PipeInsertEventSorter {
 
-  protected final Tablet tablet;
+  protected final InsertEventDataAdapter dataAdapter;
 
   protected Integer[] index;
   protected boolean isSorted = true;
@@ -39,8 +40,31 @@ public class PipeTabletEventSorter {
   protected int[] deDuplicatedIndex;
   protected int deDuplicatedSize;
 
-  public PipeTabletEventSorter(final Tablet tablet) {
-    this.tablet = tablet;
+  /**
+   * Constructor for Tablet.
+   *
+   * @param tablet the tablet to sort
+   */
+  public PipeInsertEventSorter(final Tablet tablet) {
+    this.dataAdapter = new TabletAdapter(tablet);
+  }
+
+  /**
+   * Constructor for InsertTabletStatement.
+   *
+   * @param statement the insert tablet statement to sort
+   */
+  public PipeInsertEventSorter(final InsertTabletStatement statement) {
+    this.dataAdapter = new InsertTabletStatementAdapter(statement);
+  }
+
+  /**
+   * Constructor with adapter (for internal use or advanced scenarios).
+   *
+   * @param adapter the data adapter
+   */
+  protected PipeInsertEventSorter(final InsertEventDataAdapter adapter) {
+    this.dataAdapter = adapter;
   }
 
   // Input:
@@ -54,35 +78,42 @@ public class PipeTabletEventSorter {
   // (Used index: [2(3), 4(0)])
   // Col: [6, 1]
   protected void sortAndMayDeduplicateValuesAndBitMaps() {
-    int columnIndex = 0;
-    for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
-      final IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
+    final int columnCount = dataAdapter.getColumnCount();
+    BitMap[] bitMaps = dataAdapter.getBitMaps();
+    boolean bitMapsModified = false;
+
+    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+      final TSDataType dataType = dataAdapter.getDataType(columnIndex);
+      if (dataType != null) {
         BitMap deDuplicatedBitMap = null;
         BitMap originalBitMap = null;
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          originalBitMap = tablet.getBitMaps()[columnIndex];
+        if (bitMaps != null && columnIndex < bitMaps.length && bitMaps[columnIndex] != null) {
+          originalBitMap = bitMaps[columnIndex];
           deDuplicatedBitMap = new BitMap(originalBitMap.getSize());
         }
 
-        tablet.getValues()[columnIndex] =
+        final Object[] values = dataAdapter.getValues();
+        final Object reorderedValue =
             reorderValueListAndBitMap(
-                tablet.getValues()[columnIndex],
-                schema.getType(),
-                originalBitMap,
-                deDuplicatedBitMap);
+                values[columnIndex], dataType, columnIndex, originalBitMap, deDuplicatedBitMap);
+        dataAdapter.setValue(columnIndex, reorderedValue);
 
-        if (tablet.getBitMaps() != null && tablet.getBitMaps()[columnIndex] != null) {
-          tablet.getBitMaps()[columnIndex] = deDuplicatedBitMap;
+        if (bitMaps != null && columnIndex < bitMaps.length && bitMaps[columnIndex] != null) {
+          bitMaps[columnIndex] = deDuplicatedBitMap;
+          bitMapsModified = true;
         }
-        columnIndex++;
       }
+    }
+
+    if (bitMapsModified) {
+      dataAdapter.setBitMaps(bitMaps);
     }
   }
 
   protected Object reorderValueListAndBitMap(
       final Object valueList,
       final TSDataType dataType,
+      final int columnIndex,
       final BitMap originalBitMap,
       final BitMap deDuplicatedBitMap) {
     // Older version's sender may contain null values, we need to cover this case
@@ -107,13 +138,26 @@ public class PipeTabletEventSorter {
         }
         return deDuplicatedIntValues;
       case DATE:
-        final LocalDate[] dateValues = (LocalDate[]) valueList;
-        final LocalDate[] deDuplicatedDateValues = new LocalDate[dateValues.length];
-        for (int i = 0; i < deDuplicatedSize; i++) {
-          deDuplicatedDateValues[i] =
-              dateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
+        // DATE type: Tablet uses LocalDate[], InsertTabletStatement uses int[]
+        if (dataAdapter.isDateStoredAsLocalDate(columnIndex)) {
+          // Tablet: LocalDate[]
+          final LocalDate[] dateValues = (LocalDate[]) valueList;
+          final LocalDate[] deDuplicatedDateValues = new LocalDate[dateValues.length];
+          for (int i = 0; i < deDuplicatedSize; i++) {
+            deDuplicatedDateValues[i] =
+                dateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
+          }
+          return deDuplicatedDateValues;
+        } else {
+          // InsertTabletStatement: int[]
+          final int[] intDateValues = (int[]) valueList;
+          final int[] deDuplicatedIntDateValues = new int[intDateValues.length];
+          for (int i = 0; i < deDuplicatedSize; i++) {
+            deDuplicatedIntDateValues[i] =
+                intDateValues[getLastNonnullIndex(i, originalBitMap, deDuplicatedBitMap)];
+          }
+          return deDuplicatedIntDateValues;
         }
-        return deDuplicatedDateValues;
       case INT64:
       case TIMESTAMP:
         final long[] longValues = (long[]) valueList;

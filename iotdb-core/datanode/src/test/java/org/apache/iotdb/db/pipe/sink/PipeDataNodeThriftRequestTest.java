@@ -437,7 +437,7 @@ public class PipeDataNodeThriftRequestTest {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       t.serialize(outputStream);
-      ReadWriteIOUtils.write(false, outputStream);
+      ReadWriteIOUtils.write(true, outputStream);
       tabletBuffers.add(
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
       tabletDataBase.add("test");
@@ -459,7 +459,7 @@ public class PipeDataNodeThriftRequestTest {
         new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getByteBuffer().array());
     Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
     Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
-    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+    Assert.assertTrue(deserializedReq.getTabletReqs().get(0).getIsAligned());
 
     Assert.assertEquals("test", deserializedReq.getBinaryReqs().get(0).getDataBaseName());
     Assert.assertEquals("test", deserializedReq.getTabletReqs().get(0).getDataBaseName());
