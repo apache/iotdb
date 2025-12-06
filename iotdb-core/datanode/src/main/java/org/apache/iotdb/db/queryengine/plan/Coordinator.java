@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -115,6 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -126,6 +129,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.thrift.TBase;
 import org.slf4j.Logger;
@@ -133,6 +137,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -325,6 +330,50 @@ public class Coordinator {
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
     return new QueryExecution(treeModelPlanner, queryContext, executor);
+  }
+
+  /**
+   * This method is specifically used following subquery:
+   *
+   * <p>1. When uncorrelated scalar subquery is handled
+   * (fetchUncorrelatedSubqueryResultForPredicate), we try to fold it and get constant value. Since
+   * CTE might be referenced, we need to add CTE materialization result into subquery's
+   * MPPQueryContext.
+   *
+   * <p>2. When CTE subquery is handled (fetchCteQueryResult), the main query, however, might be
+   * 'Explain' or 'Explain Analyze' statement. So we need to keep explain/explain analyze results
+   * along with CTE query dataset.
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, CteDataStore> cteDataStoreMap,
+      ExplainType explainType,
+      long timeOut,
+      boolean userQuery) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        ((queryContext, startTime) -> {
+          queryContext.setSubquery(true);
+          queryContext.setCteDataStores(cteDataStoreMap);
+          queryContext.setExplainType(explainType);
+          return createQueryExecutionForTableModel(
+              statement,
+              sqlParser,
+              clientSession,
+              queryContext,
+              metadata,
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+              startTime);
+        }));
   }
 
   public ExecutionResult executeForTableModel(

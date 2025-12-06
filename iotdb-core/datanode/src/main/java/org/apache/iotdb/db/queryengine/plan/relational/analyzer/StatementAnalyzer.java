@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.ExplainType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
@@ -197,6 +198,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -829,13 +831,15 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplain(Explain node, Optional<Scope> context) {
+      queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      queryContext.setExplainAnalyze(true);
+      queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
+      queryContext.setVerbose(node.isVerbose());
       return visitQuery((Query) node.getStatement(), context);
     }
 
@@ -889,6 +893,7 @@ public class StatementAnalyzer {
           Scope.builder()
               .withParent(withScope)
               .withRelationType(RelationId.of(node), queryBodyScope.getRelationType())
+              .withTables(queryBodyScope.getTables())
               .build();
 
       analysis.setScope(node, queryScope);
@@ -914,6 +919,7 @@ public class StatementAnalyzer {
 
       // analyze WITH clause
       With with = node.getWith().get();
+      analysis.setWith(with);
       Scope.Builder withScopeBuilder = scopeBuilder(scope);
 
       for (WithQuery withQuery : with.getQueries()) {
@@ -930,7 +936,7 @@ public class StatementAnalyzer {
 
         if (!isRecursive) {
           Query query = withQuery.getQuery();
-          analyze(query, withScopeBuilder.build());
+          Scope queryScope = analyze(query, withScopeBuilder.build());
 
           // check if all or none of the columns are explicitly alias
           if (withQuery.getColumnNames().isPresent()) {
@@ -940,6 +946,7 @@ public class StatementAnalyzer {
           }
 
           withScopeBuilder.withNamedQuery(name, withQuery);
+          queryContext.getSubQueryTables().put(withQuery.getQuery(), queryScope.getTables());
         }
       }
       Scope withScope = withScopeBuilder.build();
@@ -3059,6 +3066,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitTable(Table table, Optional<Scope> scope) {
       if (!table.getName().getPrefix().isPresent()) {
+        scope.ifPresent(s -> s.addTable(table));
         // is this a reference to a WITH query?
         Optional<WithQuery> withQuery =
             createScope(scope).getNamedQuery(table.getName().getSuffix());
@@ -3090,7 +3098,15 @@ public class StatementAnalyzer {
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      // check if table schema is found in CTE data stores
+      CteDataStore dataStore = queryContext.getCteDataStore(table);
+      Optional<TableSchema> tableSchema =
+          dataStore != null ? Optional.of(dataStore.getTableSchema()) : Optional.empty();
+      // If table schema is not found, check if it is in metadata
+      if (!tableSchema.isPresent()) {
+        tableSchema = metadata.getTableSchema(sessionContext, name);
+      }
+
       // This can only be a table
       if (!tableSchema.isPresent()) {
         TableMetadataImpl.throwTableNotExistsException(
@@ -3112,6 +3128,7 @@ public class StatementAnalyzer {
     private Scope createScopeForCommonTableExpression(
         Table table, Optional<Scope> scope, WithQuery withQuery) {
       Query query = withQuery.getQuery();
+      query.setMaterialized(withQuery.isMaterialized());
       analysis.registerNamedQuery(table, query);
 
       // re-alias the fields with the name assigned to the query in the WITH declaration
@@ -3579,8 +3596,15 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
-      Scope left = process(node.getLeft(), scope);
-      Scope right = process(node.getRight(), scope);
+      Optional<Scope> leftScope = scope.map(Scope::copy);
+      Scope left = process(node.getLeft(), leftScope);
+      Optional<Scope> rightScope = scope.map(Scope::copy);
+      Scope right = process(node.getRight(), rightScope);
+
+      if (scope.isPresent()) {
+        leftScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
+        rightScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
+      }
 
       if (criteria instanceof JoinUsing) {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
@@ -4443,8 +4467,10 @@ public class StatementAnalyzer {
 
     private Scope createAndAssignScope(
         Node node, Optional<Scope> parentScope, RelationType relationType) {
-      Scope scope =
-          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType).build();
+      Scope.Builder scopeBuilder =
+          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType);
+      parentScope.ifPresent(scope -> scopeBuilder.withTables(scope.getTables()));
+      Scope scope = scopeBuilder.build();
 
       analysis.setScope(node, scope);
       return scope;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -53,6 +55,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.junit.Assert.assertEquals;
 
 public class PushAggregationThroughUnionTest {
+  @Before
+  public void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   @Test
   public void UnionAggregationTest() {
