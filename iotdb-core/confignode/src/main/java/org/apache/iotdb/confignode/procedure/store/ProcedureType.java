@@ -85,7 +85,9 @@ public enum ProcedureType {
   RENAME_VIEW_PROCEDURE((short) 764),
 
   /** AI Model */
+  @Deprecated // Since 2.0.6, all models are managed by AINode
   CREATE_MODEL_PROCEDURE((short) 800),
+  @Deprecated // Since 2.0.6, all models are managed by AINode
   DROP_MODEL_PROCEDURE((short) 801),
   REMOVE_AI_NODE_PROCEDURE((short) 802),
 

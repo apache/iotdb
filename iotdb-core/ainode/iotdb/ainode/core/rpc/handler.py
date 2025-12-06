@@ -29,6 +29,7 @@ from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatResp,
     TDeleteModelReq,
     TForecastReq,
+    TForecastResp,
     TInferenceReq,
     TInferenceResp,
     TLoadModelReq,
@@ -78,8 +79,14 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
 
+    def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
+        return self._model_manager.delete_model(req)
+
+    def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
+        return self._model_manager.show_models(req)
+
     def loadModel(self, req: TLoadModelReq) -> TSStatus:
-        status = self._ensure_model_is_built_in_or_fine_tuned(req.existingModelId)
+        status = self._ensure_model_is_registered(req.existingModelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
         status = _ensure_device_id_is_available(req.deviceIdList)
@@ -88,28 +95,13 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         return self._inference_manager.load_model(req)
 
     def unloadModel(self, req: TUnloadModelReq) -> TSStatus:
-        status = self._ensure_model_is_built_in_or_fine_tuned(req.modelId)
+        status = self._ensure_model_is_registered(req.modelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
         status = _ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
         return self._inference_manager.unload_model(req)
-
-    def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
-        return self._model_manager.delete_model(req)
-
-    def inference(self, req: TInferenceReq) -> TInferenceResp:
-        return self._inference_manager.inference(req)
-
-    def forecast(self, req: TForecastReq) -> TSStatus:
-        return self._inference_manager.forecast(req)
-
-    def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-        return ClusterManager.get_heart_beat(req)
-
-    def showModels(self, req: TShowModelsReq) -> TShowModelsResp:
-        return self._model_manager.show_models(req)
 
     def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
         status = _ensure_device_id_is_available(req.deviceIdList)
@@ -123,13 +115,28 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             deviceIdList=get_available_devices(),
         )
 
+    def inference(self, req: TInferenceReq) -> TInferenceResp:
+        status = self._ensure_model_is_registered(req.modelId)
+        if status.code != TSStatusCode.SUCCESS_STATUS.value:
+            return TInferenceResp(status, [])
+        return self._inference_manager.inference(req)
+
+    def forecast(self, req: TForecastReq) -> TForecastResp:
+        status = self._ensure_model_is_registered(req.modelId)
+        if status.code != TSStatusCode.SUCCESS_STATUS.value:
+            return TForecastResp(status, [])
+        return self._inference_manager.forecast(req)
+
+    def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
+        return ClusterManager.get_heart_beat(req)
+
     def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
         pass
 
-    def _ensure_model_is_built_in_or_fine_tuned(self, model_id: str) -> TSStatus:
-        if not self._model_manager.is_built_in_or_fine_tuned(model_id):
+    def _ensure_model_is_registered(self, model_id: str) -> TSStatus:
+        if not self._model_manager.is_model_registered(model_id):
             return TSStatus(
                 code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
-                message=f"Model [{model_id}] is not a built-in or fine-tuned model. You can use 'SHOW MODELS' to retrieve the available models.",
+                message=f"Model [{model_id}] is not registered yet. You can use 'SHOW MODELS' to retrieve the available models.",
             )
         return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)

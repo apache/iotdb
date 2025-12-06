@@ -16,13 +16,10 @@
 # under the License.
 #
 
-import os
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-from huggingface_hub import hf_hub_download
-from safetensors.torch import load_file as load_safetensors
 from torch import nn
 from transformers import Cache, DynamicCache, PreTrainedModel
 from transformers.activations import ACT2FN
@@ -32,12 +29,9 @@ from transformers.modeling_outputs import (
     MoeModelOutputWithPast,
 )
 
-from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.sundial.flow_loss import FlowLoss
 from iotdb.ainode.core.model.sundial.ts_generation_mixin import TSGenerationMixin
-
-logger = Logger()
 
 
 def rotate_half(x):
@@ -616,11 +610,7 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             if attention_mask is not None and attention_mask.shape[1] > (
                 input_ids.shape[1] // self.config.input_token_len
             ):
-                input_ids = input_ids[
-                    :,
-                    -(attention_mask.shape[1] - past_length)
-                    * self.config.input_token_len :,
-                ]
+                input_ids = input_ids[:, -(attention_mask.shape[1] - past_length) :]
             # 2 - If the past_length is smaller than input_ids', then input_ids holds all input tokens. We can discard
             # input_ids based on the past_length.
             elif past_length < (input_ids.shape[1] // self.config.input_token_len):
@@ -633,10 +623,9 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
-                token_num = (
-                    input_ids.shape[1] + self.config.input_token_len - 1
-                ) // self.config.input_token_len
-                position_ids = position_ids[:, -token_num:]
+                position_ids = position_ids[
+                    :, -(input_ids.shape[1] // self.config.input_token_len) :
+                ]
 
         # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
         if inputs_embeds is not None and past_key_values is None:

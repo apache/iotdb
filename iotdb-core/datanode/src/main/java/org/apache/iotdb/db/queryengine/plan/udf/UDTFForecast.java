@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.udf;
 
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -54,8 +52,8 @@ import java.util.stream.Collectors;
 
 public class UDTFForecast implements UDTF {
   private static final TsBlockSerde serde = new TsBlockSerde();
-  private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
-  private TEndPoint targetAINode = new TEndPoint("127.0.0.1", 10810);
+  private static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
+      AINodeClientManager.getInstance();
   private String model_id;
   private int maxInputLength;
   private int outputLength;
@@ -66,7 +64,6 @@ public class UDTFForecast implements UDTF {
   List<Type> types;
   private LinkedList<Row> inputRows;
   private TsBlockBuilder inputTsBlockBuilder;
-  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   private static final Set<Type> ALLOWED_INPUT_TYPES = new HashSet<>();
 
@@ -112,8 +109,6 @@ public class UDTFForecast implements UDTF {
       throw new IllegalArgumentException(
           "MODEL_ID parameter must be provided and cannot be empty.");
     }
-    ModelInferenceDescriptor descriptor = modelFetcher.fetchModel(this.model_id);
-    this.targetAINode = descriptor.getTargetAINode();
 
     this.outputInterval = parameters.getLongOrDefault(OUTPUT_INTERVAL, DEFAULT_OUTPUT_INTERVAL);
     this.outputLength =
@@ -211,8 +206,12 @@ public class UDTFForecast implements UDTF {
     TsBlock inputData = inputTsBlockBuilder.build();
 
     TForecastResp resp;
-    try (AINodeClient client = CLIENT_MANAGER.borrowClient(targetAINode)) {
-      resp = client.forecast(model_id, inputData, outputLength, options);
+    try (AINodeClient client =
+        CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
+      resp =
+          client.forecast(
+              new TForecastReq(model_id, serde.serialize(inputData), outputLength)
+                  .setOptions(options));
     } catch (Exception e) {
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.CAN_NOT_CONNECT_AINODE.getStatusCode());

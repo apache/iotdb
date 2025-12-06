@@ -36,7 +36,7 @@ from iotdb.ainode.core.manager.utils import (
     estimate_pool_size,
     evaluate_system_resources,
 )
-from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP, ModelInfo
+from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 logger = Logger()

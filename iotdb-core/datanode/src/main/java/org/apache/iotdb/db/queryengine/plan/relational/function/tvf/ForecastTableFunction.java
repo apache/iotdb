@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -74,8 +74,9 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
+  private static final TsBlockSerde SERDE = new TsBlockSerde();
+
   public static class ForecastTableFunctionHandle implements TableFunctionHandle {
-    TEndPoint targetAINode;
     String modelId;
     int maxInputLength;
     int outputLength;
@@ -95,7 +96,6 @@ public class ForecastTableFunction implements TableFunction {
         int outputLength,
         long outputStartTime,
         long outputInterval,
-        TEndPoint targetAINode,
         List<Type> types) {
       this.keepInput = keepInput;
       this.maxInputLength = maxInputLength;
@@ -104,7 +104,6 @@ public class ForecastTableFunction implements TableFunction {
       this.outputLength = outputLength;
       this.outputStartTime = outputStartTime;
       this.outputInterval = outputInterval;
-      this.targetAINode = targetAINode;
       this.types = types;
     }
 
@@ -112,8 +111,6 @@ public class ForecastTableFunction implements TableFunction {
     public byte[] serialize() {
       try (PublicBAOS publicBAOS = new PublicBAOS();
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-        ReadWriteIOUtils.write(targetAINode.getIp(), outputStream);
-        ReadWriteIOUtils.write(targetAINode.getPort(), outputStream);
         ReadWriteIOUtils.write(modelId, outputStream);
         ReadWriteIOUtils.write(maxInputLength, outputStream);
         ReadWriteIOUtils.write(outputLength, outputStream);
@@ -138,8 +135,6 @@ public class ForecastTableFunction implements TableFunction {
     @Override
     public void deserialize(byte[] bytes) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      this.targetAINode =
-          new TEndPoint(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
       this.modelId = ReadWriteIOUtils.readString(buffer);
       this.maxInputLength = ReadWriteIOUtils.readInt(buffer);
       this.outputLength = ReadWriteIOUtils.readInt(buffer);
@@ -168,7 +163,6 @@ public class ForecastTableFunction implements TableFunction {
           && outputStartTime == that.outputStartTime
           && outputInterval == that.outputInterval
           && keepInput == that.keepInput
-          && Objects.equals(targetAINode, that.targetAINode)
           && Objects.equals(modelId, that.modelId)
           && Objects.equals(options, that.options)
           && Objects.equals(types, that.types);
@@ -177,7 +171,6 @@ public class ForecastTableFunction implements TableFunction {
     @Override
     public int hashCode() {
       return Objects.hash(
-          targetAINode,
           modelId,
           maxInputLength,
           outputLength,
@@ -284,8 +277,6 @@ public class ForecastTableFunction implements TableFunction {
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
 
-    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
-
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
     if (outputLength <= 0) {
@@ -390,7 +381,6 @@ public class ForecastTableFunction implements TableFunction {
             outputLength,
             outputStartTime,
             outputInterval,
-            targetAINode,
             predicatedColumnTypes);
 
     // outputColumnSchema
@@ -415,10 +405,6 @@ public class ForecastTableFunction implements TableFunction {
         return new ForecastDataProcessor((ForecastTableFunctionHandle) tableFunctionHandle);
       }
     };
-  }
-
-  private ModelInferenceDescriptor getModelInfo(String modelId) {
-    return modelFetcher.fetchModel(modelId);
   }
 
   // only allow for INT32, INT64, FLOAT, DOUBLE
@@ -456,9 +442,9 @@ public class ForecastTableFunction implements TableFunction {
   private static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
+    private static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
+        AINodeClientManager.getInstance();
 
-    private final TEndPoint targetAINode;
     private final String modelId;
     private final int maxInputLength;
     private final int outputLength;
@@ -471,7 +457,6 @@ public class ForecastTableFunction implements TableFunction {
     private final TsBlockBuilder inputTsBlockBuilder;
 
     public ForecastDataProcessor(ForecastTableFunctionHandle functionHandle) {
-      this.targetAINode = functionHandle.targetAINode;
       this.modelId = functionHandle.modelId;
       this.maxInputLength = functionHandle.maxInputLength;
       this.outputLength = functionHandle.outputLength;
@@ -619,8 +604,12 @@ public class ForecastTableFunction implements TableFunction {
       TsBlock inputData = inputTsBlockBuilder.build();
 
       TForecastResp resp;
-      try (AINodeClient client = CLIENT_MANAGER.borrowClient(targetAINode)) {
-        resp = client.forecast(modelId, inputData, outputLength, options);
+      try (AINodeClient client =
+          CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
+        resp =
+            client.forecast(
+                new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
+                    .setOptions(options));
       } catch (Exception e) {
         throw new IoTDBRuntimeException(e.getMessage(), CAN_NOT_CONNECT_AINODE.getStatusCode());
       }

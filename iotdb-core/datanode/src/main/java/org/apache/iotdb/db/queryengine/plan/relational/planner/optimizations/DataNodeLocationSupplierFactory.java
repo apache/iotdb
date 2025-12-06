@@ -96,7 +96,6 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.TOPICS:
         case InformationSchema.SUBSCRIPTIONS:
         case InformationSchema.VIEWS:
-        case InformationSchema.MODELS:
         case InformationSchema.FUNCTIONS:
         case InformationSchema.CONFIGURATIONS:
         case InformationSchema.KEYWORDS:

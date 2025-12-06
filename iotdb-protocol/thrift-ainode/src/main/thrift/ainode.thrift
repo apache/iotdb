@@ -60,13 +60,7 @@ struct TRegisterModelResp {
 struct TInferenceReq {
   1: required string modelId
   2: required binary dataset
-  3: optional TWindowParams windowParams
-  4: optional map<string, string> inferenceAttributes
-}
-
-struct TWindowParams {
-  1: required i32 windowInterval
-  2: required i32 windowStep
+  3: optional map<string, string> inferenceAttributes
 }
 
 struct TInferenceResp {

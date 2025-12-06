@@ -61,8 +61,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -1412,24 +1410,6 @@ public class ProcedureManager {
     CreateCQProcedure procedure = new CreateCQProcedure(req, scheduledExecutor);
     executor.submitProcedure(procedure);
     return waitingProcedureFinished(procedure);
-  }
-
-  public TSStatus createModel(String modelName, String uri) {
-    long procedureId = executor.submitProcedure(new CreateModelProcedure(modelName, uri));
-    LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
-    return RpcUtils.SUCCESS_STATUS;
-  }
-
-  public TSStatus dropModel(String modelId) {
-    DropModelProcedure procedure = new DropModelProcedure(modelId);
-    executor.submitProcedure(procedure);
-    TSStatus status = waitingProcedureFinished(procedure);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
-    } else {
-      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
-          .setMessage(status.getMessage());
-    }
   }
 
   public TSStatus createPipePlugin(
