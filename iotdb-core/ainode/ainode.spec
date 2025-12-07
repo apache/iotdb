@@ -44,10 +44,16 @@ essential_libraries = {
     'torch': True,  # Keep collect_all for torch as it has many dynamic imports
     'transformers': True,  # Keep collect_all for transformers
     'safetensors': True,  # Keep collect_all for safetensors
+    'numpy': True,
+    'scipy': True,
+    'pandas': True,
+    'scikit-learn': True,
+    'statsmodels': True,
+    'sktime': True,
+    'pmdarima': True,
+    'hmmlearn': True,
+    'accelerate': True
 }
-
-# For other libraries, use selective collection to speed up startup
-other_libraries = ['sktime', 'scipy', 'pandas', 'sklearn', 'statsmodels', 'optuna']
 
 for lib in essential_libraries:
     try:
@@ -55,28 +61,6 @@ for lib in essential_libraries:
         all_datas.extend(lib_datas)
         all_binaries.extend(lib_binaries)
         all_hiddenimports.extend(lib_hiddenimports)
-    except Exception:
-        pass
-
-# For other libraries, only collect submodules (lighter weight)
-# This relies on PyInstaller's dependency analysis to include what's actually used
-for lib in other_libraries:
-    try:
-        submodules = collect_submodules(lib)
-        all_hiddenimports.extend(submodules)
-        # Only collect essential data files and binaries, not all submodules
-        # This significantly reduces startup time
-        try:
-            lib_datas, lib_binaries, _ = collect_all(lib)
-            all_datas.extend(lib_datas)
-            all_binaries.extend(lib_binaries)
-        except Exception:
-            # If collect_all fails, try collect_data_files for essential data only
-            try:
-                lib_datas = collect_data_files(lib)
-                all_datas.extend(lib_datas)
-            except Exception:
-                pass
     except Exception:
         pass
 
