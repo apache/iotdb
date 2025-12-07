@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -32,7 +34,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -331,6 +335,19 @@ public abstract class TreePattern {
   /**
    * Removes patterns from the list that are covered by other patterns in the same list. For
    * example, if "root.**" and "root.db.**" are present, "root.db.**" is removed.
+   *
+   * <p><b>Optimization Strategy:</b>
+   *
+   * <ol>
+   *   <li><b>Sort First:</b> Patterns are sorted by "broadness" (shortest length and most wildcards
+   *       first). This ensures that dominating patterns (like {@code root.**}) are processed first.
+   *   <li><b>Filter with Trie:</b> Instead of comparing every pattern against every other pattern
+   *       (O(N^2)), we build a Trie to check for coverage. For each pattern, we check if it is
+   *       already "covered" by the Trie. If it is, we discard it; if not, we add it to the Trie.
+   * </ol>
+   *
+   * <p><b>Time Complexity:</b> O(N * L), where N is the number of patterns and L is the average
+   * path length.
    */
   private static List<TreePattern> optimizePatterns(final List<TreePattern> patterns) {
     if (patterns == null || patterns.isEmpty()) {
@@ -340,40 +357,54 @@ public abstract class TreePattern {
       return patterns;
     }
 
+    // 1. Sort patterns by "Broadness"
+    // Heuristic: Shorter paths and paths with wildcards should come first.
+    // This allows us to insert 'root.**' first, so we can quickly skip 'root.sg.d1' later.
+    final List<TreePattern> sortedPatterns = new ArrayList<>(patterns);
+    sortedPatterns.sort(
+        (o1, o2) -> {
+          // We can only approximate comparison here since TreePattern represents multiple paths.
+          // We use the first inclusion path as a representative.
+          final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
+          final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
+
+          // 1. Length: Shorter is generally broader (e.g., root.** vs root.sg.d1)
+          final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
+          if (lenCompare != 0) return lenCompare;
+
+          // 2. Wildcards: Pattern with wildcards is broader (e.g., root.sg.* vs root.sg.d1)
+          final boolean w1 = p1.hasWildcard();
+          final boolean w2 = p2.hasWildcard();
+          if (w1 && !w2) return -1;
+          if (!w1 && w2) return 1;
+
+          // 3. Deterministic tie-breaker
+          return p1.compareTo(p2);
+        });
+
+    // 2. Filter using Trie
+    final PatternTrie trie = new PatternTrie();
     final List<TreePattern> optimized = new ArrayList<>();
-    // Determine coverage using base paths
-    for (int i = 0; i < patterns.size(); i++) {
-      final TreePattern current = patterns.get(i);
-      boolean isCoveredByOther = false;
 
-      for (int j = 0; j < patterns.size(); j++) {
-        if (i == j) {
-          continue;
-        }
-        final TreePattern other = patterns.get(j);
-
-        // If 'other' covers 'current', 'current' is redundant.
-        // Note: if they mutually cover each other (duplicates), we must ensure we keep one.
-        // We use index comparison to break ties for exact duplicates.
-        if (covers(other, current)) {
-          if (covers(current, other)) {
-            // Both cover each other (likely identical). Keep the one with smaller index.
-            if (j < i) {
-              isCoveredByOther = true;
-              break;
-            }
-          } else {
-            // Strict coverage
-            isCoveredByOther = true;
-            break;
-          }
+    for (final TreePattern pattern : sortedPatterns) {
+      boolean isCovered = true;
+      // A pattern is redundant only if ALL its base paths are covered by the Trie
+      for (final PartialPath path : pattern.getBaseInclusionPaths()) {
+        if (!trie.isCovered(path)) {
+          isCovered = false;
+          break;
         }
       }
 
-      if (!isCoveredByOther) {
-        optimized.add(current);
+      if (!isCovered) {
+        optimized.add(pattern);
+        // Add all its paths to the Trie to cover future patterns
+        for (final PartialPath path : pattern.getBaseInclusionPaths()) {
+          trie.add(path);
+        }
       }
     }
+
     return optimized;
   }
 
@@ -663,6 +694,7 @@ public abstract class TreePattern {
    * @return An int array `[coveredCount, totalInclusionPaths]` for testing non-failing scenarios.
    * @throws PipeException If the inclusion pattern is fully covered by the exclusion pattern.
    */
+  @TestOnly
   public static int[] checkAndLogPatternCoverage(
       final TreePattern inclusion, final TreePattern exclusion) throws PipeException {
     if (inclusion == null || exclusion == null) {
@@ -725,5 +757,87 @@ public abstract class TreePattern {
     }
 
     return new int[] {coveredCount, inclusionPaths.size()};
+  }
+
+  /** A specialized Trie to efficiently check path coverage. */
+  private static class PatternTrie {
+    private final TrieNode root = new TrieNode();
+
+    private static class TrieNode {
+      // Children nodes mapped by path segment
+      Map<String, TrieNode> children = new HashMap<>();
+      // Marks if a pattern ends here (e.g., "root.sg" is a set path)
+      boolean isLeaf = false;
+      // Special flags for optimization
+      boolean isMultiLevelWildcard = false; // Ends with **
+    }
+
+    /** Adds a path to the Trie. */
+    public void add(final PartialPath path) {
+      TrieNode node = root;
+      final String[] nodes = path.getNodes();
+
+      for (final String segment : nodes) {
+        // If we are at a node that is already a MultiLevelWildcard (**),
+        // everything below is already covered. We can stop adding.
+        if (node.isMultiLevelWildcard) {
+          return;
+        }
+
+        node = node.children.computeIfAbsent(segment, k -> new TrieNode());
+
+        // If this segment is **, mark it.
+        // Note: In IoTDB PartialPath, ** is usually the last node or specific wildcard.
+        if (segment.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+          node.isMultiLevelWildcard = true;
+          // Optimization: clear children as ** covers everything
+          node.children.clear();
+          node.isLeaf = true;
+          return;
+        }
+      }
+      node.isLeaf = true;
+    }
+
+    /**
+     * Checks if the given path is covered by any existing pattern in the Trie. e.g., if Trie has
+     * "root.sg.**", then "root.sg.d1.s1" returns true.
+     */
+    public boolean isCovered(final PartialPath path) {
+      return checkCoverage(root, path.getNodes(), 0);
+    }
+
+    private boolean checkCoverage(final TrieNode node, final String[] pathNodes, final int index) {
+      // 1. If the Trie node is a Multi-Level Wildcard (**), it covers everything remainder
+      if (node.isMultiLevelWildcard) {
+        return true;
+      }
+
+      // 2. If we reached the end of the query path
+      if (index >= pathNodes.length) {
+        // The path is covered if the Trie also ends here (isLeaf)
+        // Example: Trie="root.sg", Path="root.sg" -> Covered
+        // Example: Trie="root.sg.d1", Path="root.sg" -> Not Covered (Trie is more specific)
+        return node.isLeaf;
+      }
+
+      final String currentSegment = pathNodes[index];
+
+      // 3. Direct Match or Single Level Wildcard (*) in Trie
+      // Check exact match child
+      final TrieNode child = node.children.get(currentSegment);
+      if (child != null && checkCoverage(child, pathNodes, index + 1)) {
+        return true;
+      }
+
+      // Check if Trie has a '*' child (One Level Wildcard)
+      // '*' in Trie covers any single level in Path
+      final TrieNode wildcardChild = node.children.get(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+      if (wildcardChild != null) {
+        return checkCoverage(wildcardChild, pathNodes, index + 1);
+      }
+
+      return false;
+    }
   }
 }

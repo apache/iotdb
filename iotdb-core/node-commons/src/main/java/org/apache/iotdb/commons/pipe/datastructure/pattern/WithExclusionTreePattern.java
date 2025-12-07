@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -45,18 +44,6 @@ public class WithExclusionTreePattern extends TreePattern {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
-
-    TreePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
-  }
-
-  @TestOnly
-  public TreePattern getInclusionPattern() {
-    return inclusionPattern;
-  }
-
-  @TestOnly
-  public TreePattern getExclusionPattern() {
-    return exclusionPattern;
   }
 
   @Override
