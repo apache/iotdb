@@ -47,7 +47,7 @@ essential_libraries = {
     'numpy': True,
     'scipy': True,
     'pandas': True,
-    'scikit-learn': True,
+    'sklearn': True,
     'statsmodels': True,
     'sktime': True,
     'pmdarima': True,
