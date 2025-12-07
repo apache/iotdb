@@ -179,12 +179,23 @@ public abstract class TreePattern {
 
     // 5. Check if the resulting inclusion pattern is empty
     if (inclusionPatterns.isEmpty()) {
-      throw new PipeException(
-          "Pipe: The inclusion pattern is empty after pruning by the exclusion pattern. "
-              + "This pipe pattern will match nothing.");
+      final String msg =
+          String.format(
+              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
+                  + "This pipe pattern will match nothing. "
+                  + "Inclusion: %s, Exclusion: %s",
+              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+      LOGGER.warn(msg);
+      throw new PipeException(msg);
     }
 
-    // 6. Build final patterns
+    // 6. Prune exclusion patterns: if an exclusion pattern does not overlap with
+    // ANY of the remaining inclusion patterns, it is useless and should be removed.
+    exclusionPatterns = pruneIrrelevantExclusions(inclusionPatterns, exclusionPatterns);
+
+    // 7. Build final patterns
     final TreePattern finalInclusionPattern =
         buildUnionPattern(isTreeModelDataAllowedToBeCaptured, inclusionPatterns);
 
@@ -195,7 +206,7 @@ public abstract class TreePattern {
     final TreePattern finalExclusionPattern =
         buildUnionPattern(isTreeModelDataAllowedToBeCaptured, exclusionPatterns);
 
-    // 7. Combine inclusion and exclusion
+    // 8. Combine inclusion and exclusion
     if (finalInclusionPattern instanceof IoTDBTreePatternOperations
         && finalExclusionPattern instanceof IoTDBTreePatternOperations) {
       return new WithExclusionIoTDBTreePattern(
@@ -395,6 +406,37 @@ public abstract class TreePattern {
     return prunedInclusion;
   }
 
+  /**
+   * Prunes patterns from the exclusion list that do NOT overlap with any of the remaining inclusion
+   * patterns.
+   */
+  private static List<TreePattern> pruneIrrelevantExclusions(
+      final List<TreePattern> inclusion, final List<TreePattern> exclusion) {
+    if (exclusion == null || exclusion.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (inclusion == null || inclusion.isEmpty()) {
+      // If inclusion is empty, exclusion is irrelevant anyway, but usually this case
+      // throws exception earlier.
+      return new ArrayList<>();
+    }
+
+    final List<TreePattern> relevantExclusion = new ArrayList<>();
+    for (final TreePattern exc : exclusion) {
+      boolean overlapsWithAnyInclusion = false;
+      for (final TreePattern inc : inclusion) {
+        if (overlaps(exc, inc)) {
+          overlapsWithAnyInclusion = true;
+          break;
+        }
+      }
+      if (overlapsWithAnyInclusion) {
+        relevantExclusion.add(exc);
+      }
+    }
+    return relevantExclusion;
+  }
+
   /** Checks if 'coverer' pattern fully covers 'coveree' pattern. */
   private static boolean covers(final TreePattern coverer, final TreePattern coveree) {
     try {
@@ -423,6 +465,41 @@ public abstract class TreePattern {
     } catch (final Exception e) {
       // In case of path parsing errors or unsupported operations, assume no coverage
       // to be safe and avoid aggressive pruning.
+      LOGGER.warn(
+          "Pipe: Failed to check if pattern [{}] covers [{}]. Assuming false.",
+          coverer.getPattern(),
+          coveree.getPattern(),
+          e);
+      return false;
+    }
+  }
+
+  /** Checks if 'patternA' overlaps with 'patternB'. */
+  private static boolean overlaps(final TreePattern patternA, final TreePattern patternB) {
+    try {
+      final List<PartialPath> pathsA = patternA.getBaseInclusionPaths();
+      final List<PartialPath> pathsB = patternB.getBaseInclusionPaths();
+
+      if (pathsA.isEmpty() || pathsB.isEmpty()) {
+        return false;
+      }
+
+      // Logic: Check if ANY path in A overlaps with ANY path in B.
+      for (final PartialPath pathA : pathsA) {
+        for (final PartialPath pathB : pathsB) {
+          if (pathA.overlapWith(pathB)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (final Exception e) {
+      // Best effort check
+      LOGGER.warn(
+          "Pipe: Failed to check if pattern [{}] overlaps with [{}]. Assuming false.",
+          patternA.getPattern(),
+          patternB.getPattern(),
+          e);
       return false;
     }
   }

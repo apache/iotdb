@@ -21,10 +21,9 @@ package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionTreePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -80,11 +79,8 @@ public class TreePatternPruningTest {
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
-    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
-    final WithExclusionIoTDBTreePattern exclusionPattern = (WithExclusionIoTDBTreePattern) result;
-
-    Assert.assertEquals("root.sg.d2", exclusionPattern.getInclusionPattern().getPattern());
-    Assert.assertEquals("root.sg.d1", exclusionPattern.getExclusionPattern().getPattern());
+    Assert.assertTrue(result instanceof IoTDBTreePattern);
+    Assert.assertEquals("root.sg.d2", result.getPattern());
   }
 
   @Test
@@ -119,10 +115,8 @@ public class TreePatternPruningTest {
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
-    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
-    final WithExclusionIoTDBTreePattern excPattern = (WithExclusionIoTDBTreePattern) result;
-
-    Assert.assertEquals("root.sg.B", excPattern.getInclusionPattern().getPattern());
+    Assert.assertTrue(result instanceof IoTDBTreePattern);
+    Assert.assertEquals("root.sg.B", result.getPattern());
   }
 
   @Test
@@ -139,10 +133,8 @@ public class TreePatternPruningTest {
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
-    Assert.assertTrue(result instanceof WithExclusionTreePattern);
-    final WithExclusionTreePattern excPattern = (WithExclusionTreePattern) result;
-
-    Assert.assertEquals("root.sg.B", excPattern.getInclusionPattern().getPattern());
+    Assert.assertTrue(result instanceof PrefixTreePattern);
+    Assert.assertEquals("root.sg.B", result.getPattern());
   }
 
   @Test
@@ -158,11 +150,7 @@ public class TreePatternPruningTest {
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
-    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
-    final WithExclusionIoTDBTreePattern excResult = (WithExclusionIoTDBTreePattern) result;
-
-    Assert.assertTrue(excResult.getInclusionPattern() instanceof UnionIoTDBTreePattern);
-    final UnionIoTDBTreePattern unionInc = (UnionIoTDBTreePattern) excResult.getInclusionPattern();
-    Assert.assertEquals(2, unionInc.getPatterns().size());
+    Assert.assertTrue(result instanceof UnionIoTDBTreePattern);
+    Assert.assertEquals("root.sg.d1,root.sg.d2", result.getPattern());
   }
 }
