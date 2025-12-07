@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -70,6 +71,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
 import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
@@ -82,6 +85,7 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -124,6 +128,9 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
 public class InformationSchemaContentSupplierFactory {
+
+  private static final SessionManager sessionManager = SessionManager.getInstance();
+
   private InformationSchemaContentSupplierFactory() {}
 
   public static Iterator<TsBlock> getSupplier(
@@ -143,7 +150,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
         case InformationSchema.PIPE_PLUGINS:
-          return new PipePluginSupplier(dataTypes);
+          return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
           return new TopicSupplier(dataTypes, userEntity);
         case InformationSchema.SUBSCRIPTIONS:
@@ -164,6 +171,8 @@ public class InformationSchemaContentSupplierFactory {
           return new ConfigNodesSupplier(dataTypes, userEntity);
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
+        case InformationSchema.CONNECTIONS:
+          return new ConnectionsSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -603,8 +612,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class PipePluginSupplier extends TsBlockSupplier {
     private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) throws Exception {
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final UserEntity entity)
+        throws ClientManagerException, TException {
       super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(entity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -1250,5 +1261,37 @@ public class InformationSchemaContentSupplierFactory {
     }
 
     protected abstract void constructLine();
+  }
+
+  private static class ConnectionsSupplier extends TsBlockSupplier {
+    private Iterator<ConnectionInfo> sessionConnectionIterator;
+
+    private ConnectionsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      sessionConnectionIterator = sessionManager.getAllSessionConnectionInfo().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      ConnectionInfo connectionInfo = sessionConnectionIterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getSessionId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(connectionInfo.getUserName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeLong(connectionInfo.getLastActiveTime());
+      columnBuilders[5].writeBinary(
+          new Binary(connectionInfo.getClientAddress(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return sessionConnectionIterator.hasNext();
+    }
   }
 }
