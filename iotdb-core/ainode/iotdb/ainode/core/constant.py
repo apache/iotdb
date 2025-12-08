@@ -63,7 +63,7 @@ AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
 
 AINODE_MODELS_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/models")
 AINODE_MODELS_BUILTIN_DIR = "iotdb.ainode.core.model"
-AINODE_SYSTEM_DIR = "data/ainode/system"
+AINODE_SYSTEM_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/system")
 AINODE_LOG_DIR = "logs"
 
 # AINode log
