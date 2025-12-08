@@ -306,16 +306,31 @@ public class LoadTsFileStatement extends Statement {
     return tsFiles == null || tsFiles.isEmpty();
   }
 
+  @Override
+  public boolean shouldSplit(final boolean requireAsync) {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && isAsyncLoad == requireAsync;
+  }
+
   /**
-   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling one TsFile.
-   * Used to support batch execution when loading multiple files.
+   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
    *
    * @return the list of sub-statements
    */
-  public List<LoadTsFileStatement> getSubStatement() {
-    List<LoadTsFileStatement> subStatements = new ArrayList<>(tsFiles.size());
-    for (int i = 0; i < tsFiles.size(); ++i) {
-      LoadTsFileStatement statement = new LoadTsFileStatement();
+  @Override
+  public List<LoadTsFileStatement> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFileStatement> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement();
       statement.databaseLevel = this.databaseLevel;
       statement.verifySchema = this.verifySchema;
       statement.deleteAfterLoad = this.deleteAfterLoad;
@@ -325,11 +340,13 @@ public class LoadTsFileStatement extends Statement {
       statement.isAsyncLoad = this.isAsyncLoad;
       statement.isGeneratedByPipe = this.isGeneratedByPipe;
 
-      statement.tsFiles = Collections.singletonList(tsFiles.get(i));
-      statement.resources = new ArrayList<>(1);
-      statement.writePointCountList = new ArrayList<>(1);
-      statement.isTableModel = new ArrayList<>(1);
-      statement.isTableModel.add(false);
+      statement.tsFiles = new ArrayList<>(batchFiles);
+      statement.resources = new ArrayList<>(batchFiles.size());
+      statement.writePointCountList = new ArrayList<>(batchFiles.size());
+      statement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        statement.isTableModel.add(false);
+      }
       statement.statementType = StatementType.MULTI_BATCH_INSERT;
       subStatements.add(statement);
     }

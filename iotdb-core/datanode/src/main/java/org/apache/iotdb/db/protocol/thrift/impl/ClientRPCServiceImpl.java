@@ -102,7 +102,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -366,11 +365,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-          // For synchronous multi-file loading, split into sub-statements for batch execution
-          if (shouldSplitLoadTsFileStatement(s, false)) {
+          // Split statement if needed to limit resource consumption during statement analysis
+          if (s.shouldSplit(false)) {
             result =
-                executeBatchLoadTsFile(
-                    (LoadTsFileStatement) s,
+                executeBatchStatement(
+                    s,
                     queryId,
                     SESSION_MANAGER.getSessionInfo(clientSession),
                     statement,
@@ -410,11 +409,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-        // For synchronous multi-file loading, split into sub-statements for batch execution
-        if (shouldSplitTableLoadTsFile(s, false)) {
+        // Split statement if needed to limit resource consumption during statement analysis
+        if (s.shouldSplit(false)) {
           result =
-              executeBatchTableLoadTsFile(
-                  (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile) s,
+              executeBatchTableStatement(
+                  s,
                   relationSqlParser,
                   clientSession,
                   queryId,
@@ -1874,11 +1873,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               type = s.getType() == null ? null : s.getType().name();
               // create and cache dataset
 
-              // For asynchronous multi-file loading, split into sub-statements for batch execution
-              if (shouldSplitLoadTsFileStatement(s, true)) {
+              // Split statement if needed to limit resource consumption during statement analysis
+              if (s.shouldSplit(true)) {
                 result =
-                    executeBatchLoadTsFile(
-                        (LoadTsFileStatement) s,
+                    executeBatchStatement(
+                        s,
                         queryId,
                         SESSION_MANAGER.getSessionInfo(clientSession),
                         statement,
@@ -1917,11 +1916,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             queryId = SESSION_MANAGER.requestQueryId();
 
-            // For asynchronous multi-file loading, split into sub-statements for batch execution
-            if (shouldSplitTableLoadTsFile(s, true)) {
+            // Split statement if needed to limit resource consumption during statement analysis
+            if (s.shouldSplit(true)) {
               result =
-                  executeBatchTableLoadTsFile(
-                      (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile) s,
+                  executeBatchTableStatement(
+                      s,
                       relationSqlParser,
                       clientSession,
                       queryId,
@@ -3248,83 +3247,61 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /**
-   * Determines whether a tree-model LoadTsFileStatement should be split into multiple
-   * sub-statements for execution.
+   * Executes tree-model Statement sub-statements in batch.
    *
    * @param statement the Statement to be executed
-   * @param requireAsync whether async loading is required
-   * @return true if the statement should be split for execution, false otherwise
-   */
-  private boolean shouldSplitLoadTsFileStatement(Statement statement, boolean requireAsync) {
-    if (!(statement instanceof LoadTsFileStatement)) {
-      return false;
-    }
-    LoadTsFileStatement loadStmt = (LoadTsFileStatement) statement;
-    return loadStmt.getTsFiles().size() > 1 && loadStmt.isAsyncLoad() == requireAsync;
-  }
-
-  /**
-   * Determines whether a table-model LoadTsFile should be split into multiple sub-statements for
-   * execution.
-   *
-   * @param statement the Statement to be executed
-   * @param requireAsync whether async loading is required
-   * @return true if the statement should be split for execution, false otherwise
-   */
-  private boolean shouldSplitTableLoadTsFile(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
-      boolean requireAsync) {
-    if (!(statement
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile)) {
-      return false;
-    }
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile loadStmt =
-        (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile) statement;
-    return loadStmt.getTsFiles().size() > 1 && loadStmt.isAsyncLoad() == requireAsync;
-  }
-
-  /**
-   * Executes tree-model LoadTsFileStatement sub-statements in batch.
-   *
-   * @param loadTsFileStatement the LoadTsFileStatement to be executed
    * @param queryId the query ID
    * @param sessionInfo the session information
-   * @param statement the SQL statement string
+   * @param statementStr the SQL statement string
    * @param partitionFetcher the partition fetcher
    * @param schemaFetcher the schema fetcher
    * @param timeoutMs the timeout in milliseconds
    * @return the execution result
    */
-  private ExecutionResult executeBatchLoadTsFile(
-      LoadTsFileStatement loadTsFileStatement,
+  private ExecutionResult executeBatchStatement(
+      Statement statement,
       long queryId,
       SessionInfo sessionInfo,
-      String statement,
+      String statementStr,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeoutMs) {
 
     ExecutionResult result = null;
-    List<LoadTsFileStatement> subStatements = loadTsFileStatement.getSubStatement();
-    int totalFiles = subStatements.size();
+    final List<? extends Statement> subStatements = statement.getSubStatements();
+    final int totalSubStatements = subStatements.size();
 
-    LOGGER.info("Start batch loading {} TsFile(s) in tree model, queryId: {}", totalFiles, queryId);
+    LOGGER.info(
+        "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
+        totalSubStatements,
+        queryId);
 
-    for (int i = 0; i < totalFiles; i++) {
-      LoadTsFileStatement subStatement = subStatements.get(i);
-      LOGGER.info(
-          "Loading TsFile {}/{} in tree model, file: {}, queryId: {}",
-          i + 1,
-          totalFiles,
-          subStatement.getTsFiles().get(0).getName(),
-          queryId);
+    for (int i = 0; i < totalSubStatements; i++) {
+      final Statement subStatement = subStatements.get(i);
+      final List<? extends Statement> subSubStatements = subStatement.getSubStatements();
+      final int batchSize = subSubStatements.isEmpty() ? 1 : subSubStatements.size();
+
+      if (batchSize == 1) {
+        LOGGER.info(
+            "Executing sub-statement {}/{} in tree model, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            queryId);
+      } else {
+        LOGGER.info(
+            "Executing sub-statement {}/{} in tree model, batch size: {}, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            batchSize,
+            queryId);
+      }
 
       result =
           COORDINATOR.executeForTreeModel(
               subStatement,
               queryId,
               sessionInfo,
-              statement,
+              statementStr,
               partitionFetcher,
               schemaFetcher,
               timeoutMs,
@@ -3333,28 +3310,46 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Exit early if any sub-statement execution fails
       if (result != null
           && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to load TsFile {}/{} in tree model, file: {}, queryId: {}, error: {}",
-            i + 1,
-            totalFiles,
-            subStatement.getTsFiles().get(0).getName(),
-            queryId,
-            result.status.getMessage());
+        if (batchSize == 1) {
+          LOGGER.warn(
+              "Failed to execute sub-statement {}/{} in tree model, queryId: {}, error: {}",
+              i + 1,
+              totalSubStatements,
+              queryId,
+              result.status.getMessage());
+        } else {
+          LOGGER.warn(
+              "Failed to execute sub-statement {}/{} in tree model, batch size: {}, queryId: {}, error: {}",
+              i + 1,
+              totalSubStatements,
+              batchSize,
+              queryId,
+              result.status.getMessage());
+        }
         break;
       }
 
-      LOGGER.info(
-          "Successfully loaded TsFile {}/{} in tree model, file: {}, queryId: {}",
-          i + 1,
-          totalFiles,
-          subStatement.getTsFiles().get(0).getName(),
-          queryId);
+      processedCount += batchSize;
+      if (batchSize == 1) {
+        LOGGER.info(
+            "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            queryId);
+      } else {
+        LOGGER.info(
+            "Successfully executed sub-statement {}/{} in tree model, batch size: {}, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            batchSize,
+            queryId);
+      }
     }
 
     if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
-          "Completed batch loading all {} TsFile(s) in tree model, queryId: {}",
-          totalFiles,
+          "Completed batch executing all {} sub-statement(s) in tree model, queryId: {}",
+          totalSubStatements,
           queryId);
     }
 
@@ -3362,45 +3357,60 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /**
-   * Executes table-model LoadTsFile sub-statements in batch.
+   * Executes table-model Statement sub-statements in batch.
    *
-   * @param loadTsFile the LoadTsFile to be executed
+   * @param statement the Statement to be executed
    * @param relationSqlParser the relational SQL parser
    * @param clientSession the client session
    * @param queryId the query ID
    * @param sessionInfo the session information
-   * @param statement the SQL statement string
+   * @param statementStr the SQL statement string
    * @param metadata the metadata
    * @param timeoutMs the timeout in milliseconds
    * @return the execution result
    */
-  private ExecutionResult executeBatchTableLoadTsFile(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile loadTsFile,
+  private ExecutionResult executeBatchTableStatement(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser relationSqlParser,
       IClientSession clientSession,
       long queryId,
       SessionInfo sessionInfo,
-      String statement,
+      String statementStr,
       Metadata metadata,
       long timeoutMs) {
 
     ExecutionResult result = null;
-    List<org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile> subStatements =
-        loadTsFile.getSubStatement();
-    int totalFiles = subStatements.size();
+    List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
+        subStatements = statement.getSubStatements();
+    int totalSubStatements = subStatements.size();
+    int processedCount = 0;
 
     LOGGER.info(
-        "Start batch loading {} TsFile(s) in table model, queryId: {}", totalFiles, queryId);
+        "Start batch executing {} sub-statement(s) in table model, queryId: {}",
+        totalSubStatements,
+        queryId);
 
-    for (int i = 0; i < totalFiles; i++) {
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile subStatement =
+    for (int i = 0; i < totalSubStatements; i++) {
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement subStatement =
           subStatements.get(i);
-      LOGGER.info(
-          "Loading TsFile {}/{} in table model, file: {}, queryId: {}",
-          i + 1,
-          totalFiles,
-          subStatement.getTsFiles().get(0).getName(),
-          queryId);
+      final List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
+          subSubStatements = subStatement.getSubStatements();
+      final int batchSize = subSubStatements.isEmpty() ? 1 : subSubStatements.size();
+
+      if (batchSize == 1) {
+        LOGGER.info(
+            "Executing sub-statement {}/{} in table model, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            queryId);
+      } else {
+        LOGGER.info(
+            "Executing sub-statement {}/{} in table model, batch size: {}, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            batchSize,
+            queryId);
+      }
 
       result =
           COORDINATOR.executeForTableModel(
@@ -3409,7 +3419,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               clientSession,
               queryId,
               sessionInfo,
-              statement,
+              statementStr,
               metadata,
               timeoutMs,
               false);
@@ -3417,28 +3427,46 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Exit early if any sub-statement execution fails
       if (result != null
           && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to load TsFile {}/{} in table model, file: {}, queryId: {}, error: {}",
-            i + 1,
-            totalFiles,
-            subStatement.getTsFiles().get(0).getName(),
-            queryId,
-            result.status.getMessage());
+        if (batchSize == 1) {
+          LOGGER.warn(
+              "Failed to execute sub-statement {}/{} in table model, queryId: {}, error: {}",
+              i + 1,
+              totalSubStatements,
+              queryId,
+              result.status.getMessage());
+        } else {
+          LOGGER.warn(
+              "Failed to execute sub-statement {}/{} in table model, batch size: {}, queryId: {}, error: {}",
+              i + 1,
+              totalSubStatements,
+              batchSize,
+              queryId,
+              result.status.getMessage());
+        }
         break;
       }
 
-      LOGGER.info(
-          "Successfully loaded TsFile {}/{} in table model, file: {}, queryId: {}",
-          i + 1,
-          totalFiles,
-          subStatement.getTsFiles().get(0).getName(),
-          queryId);
+      processedCount += batchSize;
+      if (batchSize == 1) {
+        LOGGER.info(
+            "Successfully executed sub-statement {}/{} in table model, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            queryId);
+      } else {
+        LOGGER.info(
+            "Successfully executed sub-statement {}/{} in table model, batch size: {}, queryId: {}",
+            i + 1,
+            totalSubStatements,
+            batchSize,
+            queryId);
+      }
     }
 
     if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
-          "Completed batch loading all {} TsFile(s) in table model, queryId: {}",
-          totalFiles,
+          "Completed batch executing all {} sub-statement(s) in table model, queryId: {}",
+          totalSubStatements,
           queryId);
     }
 
