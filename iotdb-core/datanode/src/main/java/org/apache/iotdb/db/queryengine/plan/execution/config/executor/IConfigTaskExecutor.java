@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
@@ -180,6 +181,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showRegion(
       final ShowRegionStatement showRegionStatement, final boolean isTableModel);
+
+  SettableFuture<ConfigTaskResult> showMigrations(
+      final ShowMigrationsStatement showMigrationsStatement, final boolean isTableModel);
 
   SettableFuture<ConfigTaskResult> showDataNodes();
 

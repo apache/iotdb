@@ -222,6 +222,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrationInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
@@ -241,6 +242,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -1956,6 +1959,19 @@ public class ConfigManager implements IManager {
       regionResp.setStatus(status);
       return regionResp;
     }
+  }
+
+  public TShowMigrationsResp showMigrations(TShowMigrationsReq showMigrationsReq) {
+    TSStatus status = confirmLeader();
+    TShowMigrationsResp showMigrationsResp = new TShowMigrationsResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TMigrationInfo> migrationInfoList = procedureManager.getRunningMigrations();
+      showMigrationsResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      showMigrationsResp.setMigrationInfoList(migrationInfoList);
+    } else {
+      showMigrationsResp.setStatus(status);
+    }
+    return showMigrationsResp;
   }
 
   @Override

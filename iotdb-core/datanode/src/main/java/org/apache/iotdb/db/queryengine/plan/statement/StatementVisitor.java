@@ -74,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -502,6 +503,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
     return visitStatement(showRegionStatement, context);
+  }
+
+  public R visitShowMigrations(ShowMigrationsStatement showMigrationsStatement, C context) {
+    return visitStatement(showMigrationsStatement, context);
   }
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {

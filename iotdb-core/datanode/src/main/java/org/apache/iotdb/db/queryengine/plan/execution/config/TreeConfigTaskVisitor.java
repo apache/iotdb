@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContin
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowMigrationsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
@@ -154,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQue
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
@@ -490,6 +492,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowRegion(
       ShowRegionStatement showRegionStatement, MPPQueryContext context) {
     return new ShowRegionTask(showRegionStatement, false);
+  }
+
+  @Override
+  public IConfigTask visitShowMigrations(
+      ShowMigrationsStatement showMigrationsStatement, MPPQueryContext context) {
+    return new ShowMigrationsTask(showMigrationsStatement, false);
   }
 
   @Override

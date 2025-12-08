@@ -764,6 +764,29 @@ struct TShowRegionResp {
   2: optional list<TRegionInfo> regionInfoList;
 }
 
+// Show migrations
+struct TShowMigrationsReq {
+  1: optional bool isTableModel
+}
+
+struct TMigrationInfo {
+  1: required i64 procedureId
+  2: required i32 regionId
+  3: required common.TConsensusGroupType regionType
+  4: required i32 fromNodeId
+  5: required i32 toNodeId
+  6: required string currentState
+  7: required string procedureStatus
+  8: required i64 submittedTime
+  9: required i64 lastUpdateTime
+  10: required string duration
+}
+
+struct TShowMigrationsResp {
+  1: required common.TSStatus status
+  2: optional list<TMigrationInfo> migrationInfoList;
+}
+
 // Routing
 struct TRegionRouteMapResp {
   1: required common.TSStatus status
@@ -1817,6 +1840,11 @@ service IConfigNodeRPCService {
    * See https://apache-iotdb.feishu.cn/docx/doxcnOzmIlaE2MX5tKjmYWuMSRg for detailed matching rules
    */
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /**
+   * Show all running region migration tasks
+   */
+  TShowMigrationsResp showMigrations(TShowMigrationsReq req)
 
   // ======================================================
   // Routing

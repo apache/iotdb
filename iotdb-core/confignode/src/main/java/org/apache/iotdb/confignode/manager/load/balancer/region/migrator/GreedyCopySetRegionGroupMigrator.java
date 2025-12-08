@@ -168,16 +168,49 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
     }
 
     List<Integer> dataNodeIdList = new ArrayList<>(availableDataNodeMap.keySet());
-    dataNodeIdList.sort(Comparator.comparingLong(node -> diskCounter[node]));
+    // Print disk usage for all nodes before sorting
+    LOGGER.info("[LoadBalance] Disk usage for all nodes before sorting:");
+    for (Integer nodeId : dataNodeIdList) {
+      LOGGER.info(
+          "[LoadBalance] Node {}: diskUsage={}, regionCount={}",
+          nodeId,
+          diskCounter[nodeId],
+          regionCounter[nodeId]);
+    }
+    // Sort by disk usage first, then by region count if disk usage is equal
+    dataNodeIdList.sort(
+        Comparator.comparingLong((Integer node) -> diskCounter[node])
+            .thenComparingInt(node -> regionCounter[node]));
+    // Print disk usage for all nodes after sorting
+    LOGGER.info("[LoadBalance] Node order after sorting by disk usage (ascending):");
+    for (int i = 0; i < dataNodeIdList.size(); i++) {
+      Integer nodeId = dataNodeIdList.get(i);
+      LOGGER.info(
+          "[LoadBalance] Rank {}: Node {} (diskUsage={}, regionCount={})",
+          i,
+          nodeId,
+          diskCounter[nodeId],
+          regionCounter[nodeId]);
+    }
     availableToDataNodeSet = new HashSet<>();
     for (int i = 0; i < 1; i++) {
       availableToDataNodeSet.add(dataNodeIdList.get(i));
       System.out.println("Available To Node: " + dataNodeIdList.get(i));
+      LOGGER.info(
+          "[LoadBalance] Selected as target node: Node {} (diskUsage={}, regionCount={})",
+          dataNodeIdList.get(i),
+          diskCounter[dataNodeIdList.get(i)],
+          regionCounter[dataNodeIdList.get(i)]);
     }
     availableFromDataNodeSet = new HashSet<>();
     for (int i = 1; i < dataNodeIdList.size(); i++) {
       availableFromDataNodeSet.add(dataNodeIdList.get(i));
       System.out.println("Available From Node: " + dataNodeIdList.get(i));
+      LOGGER.info(
+          "[LoadBalance] Selected as source node: Node {} (diskUsage={}, regionCount={})",
+          dataNodeIdList.get(i),
+          diskCounter[dataNodeIdList.get(i)],
+          regionCounter[dataNodeIdList.get(i)]);
     }
   }
 

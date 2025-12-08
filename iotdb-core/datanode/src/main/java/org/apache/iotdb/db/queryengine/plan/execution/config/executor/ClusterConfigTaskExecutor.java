@@ -146,6 +146,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -204,6 +206,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfig
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowMigrationsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
@@ -264,6 +267,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
@@ -1703,6 +1707,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // build TSBlock
     ShowRegionTask.buildTSBlock(showRegionResp, future, isTableModel);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showMigrations(
+      final ShowMigrationsStatement showMigrationsStatement, final boolean isTableModel) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowMigrationsResp showMigrationsResp = new TShowMigrationsResp();
+    final TShowMigrationsReq showMigrationsReq =
+        new TShowMigrationsReq().setIsTableModel(isTableModel);
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      showMigrationsResp = client.showMigrations(showMigrationsReq);
+      if (showMigrationsResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showMigrationsResp.getStatus().message, showMigrationsResp.getStatus().code));
+        return future;
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
+    // build TSBlock
+    ShowMigrationsTask.buildTSBlock(showMigrationsResp, future, isTableModel);
     return future;
   }
 

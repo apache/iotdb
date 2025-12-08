@@ -522,6 +522,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+MIGRATIONS
+    : M I G R A T I O N S
+    ;
+
 AINODE
     : A I N O D E
     ;

@@ -61,7 +61,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
+    | showVariables | showCluster | showMigrations | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection | balanceRegions
@@ -484,6 +484,11 @@ showCluster
 showRegions
     : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
         (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
+    ;
+
+// ---- Show Migrations
+showMigrations
+    : SHOW MIGRATIONS
     ;
 
 // ---- Show Data Nodes

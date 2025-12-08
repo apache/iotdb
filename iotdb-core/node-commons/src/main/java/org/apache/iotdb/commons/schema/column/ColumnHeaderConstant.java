@@ -169,6 +169,16 @@ public class ColumnHeaderConstant {
   public static final String TSFILE_SIZE = "TsFileSize";
   public static final String COMPRESSION_RATIO = "CompressionRatio";
 
+  // column names for show migrations statement
+  public static final String PROCEDURE_ID = "ProcedureId";
+  public static final String FROM_NODE_ID = "FromNodeId";
+  public static final String TO_NODE_ID = "ToNodeId";
+  public static final String CURRENT_STATE = "CurrentState";
+  public static final String PROCEDURE_STATUS = "ProcedureStatus";
+  public static final String SUBMITTED_TIME = "SubmittedTime";
+  public static final String LAST_UPDATE_TIME = "LastUpdateTime";
+  public static final String DURATION = "Duration";
+
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
   public static final String DATA_REGION_NUM = "DataRegionNum";
@@ -444,6 +454,19 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
           new ColumnHeader(TSFILE_SIZE, TSDataType.TEXT),
           new ColumnHeader(COMPRESSION_RATIO, TSDataType.DOUBLE));
+
+  public static final List<ColumnHeader> showMigrationsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PROCEDURE_ID, TSDataType.INT64),
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TYPE, TSDataType.TEXT),
+          new ColumnHeader(FROM_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(TO_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(CURRENT_STATE, TSDataType.TEXT),
+          new ColumnHeader(PROCEDURE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_UPDATE_TIME, TSDataType.TEXT),
+          new ColumnHeader(DURATION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showAINodesColumnHeaders =
       ImmutableList.of(
