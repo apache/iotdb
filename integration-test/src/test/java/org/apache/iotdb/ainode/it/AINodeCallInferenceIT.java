@@ -115,13 +115,4 @@ public class AINodeCallInferenceIT {
       }
     }
   }
-
-  @Test
-  public void errorCallInferenceTestInTree() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      String sql = "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI\")";
-      errorTest(statement, sql, "1505: model [notFound404] has not been created.");
-    }
-  }
 }

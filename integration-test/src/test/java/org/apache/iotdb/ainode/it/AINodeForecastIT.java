@@ -38,17 +38,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
 public class AINodeForecastIT {
-
-  private static final String[] WRITE_SQL_IN_TABLE =
-      new String[] {
-        "CREATE DATABASE db",
-        "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)",
-      };
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
       "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time, s%d FROM db.AI) ORDER BY time)";
@@ -57,13 +50,15 @@ public class AINodeForecastIT {
   public static void setUp() throws Exception {
     // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
-    prepareData(WRITE_SQL_IN_TABLE);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE db");
+      statement.execute(
+          "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)");
       for (int i = 0; i < 2880; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
+                "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
                 i, (float) i, (double) i, i, i));
       }
     }
