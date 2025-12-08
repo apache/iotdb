@@ -33,17 +33,17 @@ import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
-  private final ICacheEntryGroup<SK, V, T> cacheEntryGroup;
+class CacheImpl<SK, V> implements ICache<SK, V> {
+  private final ICacheEntryGroup<SK, V> cacheEntryGroup;
 
-  private final ICacheEntryManager<SK, V, T> cacheEntryManager;
+  private final ICacheEntryManager<SK, V> cacheEntryManager;
 
   private final ICacheSizeComputer<SK, V> sizeComputer;
 
   private final CacheStats cacheStats;
 
   CacheImpl(
-      final ICacheEntryManager<SK, V, T> cacheEntryManager,
+      final ICacheEntryManager<SK, V> cacheEntryManager,
       final ICacheSizeComputer<SK, V> sizeComputer,
       final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
@@ -54,7 +54,7 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
 
   @Override
   public V get(final SK secondKey) {
-    final T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
+    final CacheEntry<SK, V> cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
     if (cacheEntry == null) {
       cacheStats.recordMiss(1);
       return null;
@@ -69,7 +69,7 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
   public <R> boolean batchApply(
       final Map<SK, R> inputMap, final BiFunction<V, R, Boolean> mappingFunction) {
     for (final Map.Entry<SK, R> skrEntry : inputMap.entrySet()) {
-      final T cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
+      final CacheEntry<SK, V> cacheEntry = cacheEntryGroup.getCacheEntry(skrEntry.getKey());
       if (cacheEntry == null) {
         return false;
       }
@@ -87,7 +87,7 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
 
-    final ICacheEntryGroup<SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+    final ICacheEntryGroup<SK, V> finalCacheEntryGroup = cacheEntryGroup;
     cacheEntryGroup.computeCacheEntry(
         secondKey,
         memory ->
@@ -118,7 +118,7 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
   }
 
   public void clearSecondEntry(
-      final ICacheEntryGroup<SK, V, T> entryGroup,
+      final ICacheEntryGroup<SK, V> entryGroup,
       final Predicate<SK> secondKeyChecker,
       final ToIntFunction<V> updater) {
     if (Objects.nonNull(entryGroup)) {
@@ -152,12 +152,12 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
   // The returned delta may have some error, but it's OK
   // Because the delta is only for loop round estimation
   private long evictOneCacheEntry() {
-    final ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
+    final CacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
     if (evictCacheEntry == null) {
       return 0;
     }
 
-    final ICacheEntryGroup<SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
+    final ICacheEntryGroup<SK, V> belongedGroup = evictCacheEntry.getBelongedGroup();
     evictCacheEntry.setBelongedGroup(null);
 
     return belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
@@ -175,8 +175,7 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
 
   @Override
   public void invalidate(final SK secondKey) {
-
-    final T entry = cacheEntryGroup.getCacheEntry(secondKey);
+    final CacheEntry<SK, V> entry = cacheEntryGroup.getCacheEntry(secondKey);
     if (Objects.nonNull(entry) && cacheEntryManager.invalidate(entry)) {
       cacheEntryGroup.removeCacheEntry(entry.getSecondKey());
     }
@@ -184,9 +183,9 @@ class CacheImpl<SK, V, T extends ICacheEntry<SK, V>> implements ICache<SK, V> {
 
   @Override
   public void invalidate(final Predicate<SK> secondKeyChecker) {
-    for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+    for (final Iterator<Map.Entry<SK, CacheEntry<SK, V>>> it = cacheEntryGroup.getAllCacheEntries();
         it.hasNext(); ) {
-      final Map.Entry<SK, T> entry = it.next();
+      final Map.Entry<SK, CacheEntry<SK, V>> entry = it.next();
       if (secondKeyChecker.test(entry.getKey()) && cacheEntryManager.invalidate(entry.getValue())) {
         cacheEntryGroup.removeCacheEntry(entry.getKey());
       }

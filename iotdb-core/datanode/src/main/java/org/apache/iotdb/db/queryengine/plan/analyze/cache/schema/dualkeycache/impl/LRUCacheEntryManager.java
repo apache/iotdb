@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class implements the cache entry manager with LRU policy.
@@ -29,8 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @param <SK> The second key of cache value.
  * @param <V> The cache value.
  */
-class LRUCacheEntryManager<SK, V>
-    implements ICacheEntryManager<SK, V, LRUCacheEntryManager.LRUCacheEntry<SK, V>> {
+class LRUCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
 
   private static final int SLOT_NUM = 128;
 
@@ -39,25 +36,17 @@ class LRUCacheEntryManager<SK, V>
   private final Random idxGenerator = new Random();
 
   @Override
-  public LRUCacheEntry<SK, V> createCacheEntry(
-      final SK secondKey,
-      final V value,
-      final ICacheEntryGroup<SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
-    return new LRUCacheEntry<>(secondKey, value, cacheEntryGroup);
-  }
-
-  @Override
-  public void access(final LRUCacheEntry<SK, V> cacheEntry) {
+  public void access(final CacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).moveToHead(cacheEntry);
   }
 
   @Override
-  public void put(final LRUCacheEntry<SK, V> cacheEntry) {
+  public void put(final CacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).add(cacheEntry);
   }
 
   @Override
-  public boolean invalidate(final LRUCacheEntry<SK, V> cacheEntry) {
+  public boolean invalidate(final CacheEntry<SK, V> cacheEntry) {
     if (cacheEntry.isInvalidated.getAndSet(true)) {
       return false;
     }
@@ -70,10 +59,10 @@ class LRUCacheEntryManager<SK, V>
   }
 
   @Override
-  public LRUCacheEntry<SK, V> evict() {
+  public CacheEntry<SK, V> evict() {
     int startIndex = idxGenerator.nextInt(SLOT_NUM);
     LRULinkedList<SK, V> lruLinkedList;
-    LRUCacheEntry<SK, V> cacheEntry;
+    CacheEntry<SK, V> cacheEntry;
     for (int i = 0; i < SLOT_NUM; i++) {
       if (startIndex == SLOT_NUM) {
         startIndex = 0;
@@ -99,7 +88,7 @@ class LRUCacheEntryManager<SK, V>
     }
   }
 
-  private LRULinkedList getBelongedList(LRUCacheEntry<SK, V> cacheEntry) {
+  private LRULinkedList getBelongedList(CacheEntry<SK, V> cacheEntry) {
     int slotIndex = cacheEntry.hashCode() % SLOT_NUM;
     slotIndex = slotIndex < 0 ? slotIndex + SLOT_NUM : slotIndex;
     LRULinkedList lruLinkedList = lruLinkedLists[slotIndex];
@@ -115,80 +104,21 @@ class LRUCacheEntryManager<SK, V>
     return lruLinkedList;
   }
 
-  static class LRUCacheEntry<SK, V> implements ICacheEntry<SK, V> {
-
-    private final SK secondKey;
-
-    @SuppressWarnings("java:S3077")
-    private volatile ICacheEntryGroup cacheEntryGroup;
-
-    private V value;
-
-    private LRUCacheEntry<SK, V> pre;
-    private LRUCacheEntry<SK, V> next;
-    private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
-
-    private LRUCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
-      this.secondKey = secondKey;
-      this.value = value;
-      this.cacheEntryGroup = cacheEntryGroup;
-    }
-
-    @Override
-    public SK getSecondKey() {
-      return secondKey;
-    }
-
-    @Override
-    public V getValue() {
-      return value;
-    }
-
-    @Override
-    public ICacheEntryGroup getBelongedGroup() {
-      return cacheEntryGroup;
-    }
-
-    @Override
-    public void setBelongedGroup(ICacheEntryGroup belongedGroup) {
-      this.cacheEntryGroup = belongedGroup;
-    }
-
-    @Override
-    public void replaceValue(V newValue) {
-      this.value = newValue;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      LRUCacheEntry<?, ?> that = (LRUCacheEntry<?, ?>) o;
-      return Objects.equals(secondKey, that.secondKey)
-          && Objects.equals(cacheEntryGroup, that.cacheEntryGroup);
-    }
-
-    @Override
-    public int hashCode() {
-      return cacheEntryGroup.hashCode() * 31 + secondKey.hashCode();
-    }
-  }
-
   private static class LRULinkedList<SK, V> {
 
     // head.next is the most recently used entry
-    private final LRUCacheEntry<SK, V> head;
-    private final LRUCacheEntry<SK, V> tail;
+    private final CacheEntry<SK, V> head;
+    private final CacheEntry<SK, V> tail;
 
     public LRULinkedList() {
-      head = new LRUCacheEntry<>(null, null, null);
-      tail = new LRUCacheEntry<>(null, null, null);
+      head = new CacheEntry<>(null, null, null);
+      tail = new CacheEntry<>(null, null, null);
       head.next = tail;
       tail.pre = head;
     }
 
-    synchronized void add(final LRUCacheEntry<SK, V> cacheEntry) {
-      LRUCacheEntry<SK, V> nextEntry;
+    synchronized void add(final CacheEntry<SK, V> cacheEntry) {
+      CacheEntry<SK, V> nextEntry;
 
       do {
         nextEntry = head.next;
@@ -200,8 +130,8 @@ class LRUCacheEntryManager<SK, V>
       head.next = cacheEntry;
     }
 
-    synchronized LRUCacheEntry<SK, V> evict() {
-      LRUCacheEntry<SK, V> cacheEntry;
+    synchronized CacheEntry<SK, V> evict() {
+      CacheEntry<SK, V> cacheEntry;
 
       do {
         cacheEntry = tail.pre;
@@ -218,7 +148,7 @@ class LRUCacheEntryManager<SK, V>
       return cacheEntry;
     }
 
-    synchronized void moveToHead(final LRUCacheEntry<SK, V> cacheEntry) {
+    synchronized void moveToHead(final CacheEntry<SK, V> cacheEntry) {
       if (cacheEntry.isInvalidated.get()) {
         // this cache entry has been evicted
         return;

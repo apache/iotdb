@@ -28,22 +28,24 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
  * @param <V> The cache value.
  * @param <T> The cache entry holding cache value.
  */
-interface ICacheEntryManager<SK, V, T extends ICacheEntry<SK, V>> {
+interface ICacheEntryManager<SK, V> {
 
-  T createCacheEntry(
-      final SK secondKey, final V value, final ICacheEntryGroup<SK, V, T> cacheEntryGroup);
+  default CacheEntry<SK, V> createCacheEntry(
+      final SK secondKey, final V value, final ICacheEntryGroup<SK, V> cacheEntryGroup) {
+    return new CacheEntry<>(secondKey, value, cacheEntryGroup);
+  }
 
-  void access(final T cacheEntry);
+  void access(final CacheEntry<SK, V> cacheEntry);
 
-  void put(final T cacheEntry);
+  void put(final CacheEntry<SK, V> cacheEntry);
 
   // A cacheEntry is removed iff the caller has called "invalidate" and it returns "true"
   // Shall never remove a cacheEntry directly or when the "invalidate" returns false
-  boolean invalidate(final T cacheEntry);
+  boolean invalidate(final CacheEntry<SK, V> cacheEntry);
 
   // The "evict" is allowed to be concurrently called
   // Inner implementation guarantees that an entry won't be concurrently evicted
-  T evict();
+  CacheEntry<SK, V> evict();
 
   void cleanUp();
 }

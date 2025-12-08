@@ -29,8 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class CacheEntryGroupImpl<SK, V, T extends ICacheEntry<SK, V>>
-    implements ICacheEntryGroup<SK, V, T> {
+public class CacheEntryGroupImpl<SK, V> implements ICacheEntryGroup<SK, V> {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
@@ -39,7 +38,7 @@ public class CacheEntryGroupImpl<SK, V, T extends ICacheEntry<SK, V>>
           // Calculate the outer entry of the "firstKeyMap" here
           + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 
-  private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
+  private final Map<SK, CacheEntry<SK, V>> cacheEntryMap = new ConcurrentHashMap<>();
   private final ICacheSizeComputer<SK, V> sizeComputer;
   private final AtomicLong memory;
 
@@ -49,30 +48,34 @@ public class CacheEntryGroupImpl<SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public T getCacheEntry(final SK secondKey) {
+  public CacheEntry<SK, V> getCacheEntry(final SK secondKey) {
     return secondKey == null ? null : cacheEntryMap.get(secondKey);
   }
 
   @Override
-  public Iterator<Map.Entry<SK, T>> getAllCacheEntries() {
+  public Iterator<Map.Entry<SK, CacheEntry<SK, V>>> getAllCacheEntries() {
     return cacheEntryMap.entrySet().iterator();
   }
 
   @Override
-  public T computeCacheEntry(
-      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+  public CacheEntry<SK, V> computeCacheEntry(
+      final SK secondKey,
+      final Function<AtomicLong, BiFunction<SK, CacheEntry<SK, V>, CacheEntry<SK, V>>>
+          computation) {
     return cacheEntryMap.compute(secondKey, computation.apply(memory));
   }
 
   @Override
-  public T computeCacheEntryIfPresent(
-      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation) {
+  public CacheEntry<SK, V> computeCacheEntryIfPresent(
+      final SK secondKey,
+      final Function<AtomicLong, BiFunction<SK, CacheEntry<SK, V>, CacheEntry<SK, V>>>
+          computation) {
     return cacheEntryMap.computeIfPresent(secondKey, computation.apply(memory));
   }
 
   @Override
   public long removeCacheEntry(final SK secondKey) {
-    final T result = cacheEntryMap.remove(secondKey);
+    final CacheEntry<SK, V> result = cacheEntryMap.remove(secondKey);
     if (Objects.nonNull(result)) {
       final long delta =
           sizeComputer.computeSecondKeySize(result.getSecondKey())
@@ -107,7 +110,7 @@ public class CacheEntryGroupImpl<SK, V, T extends ICacheEntry<SK, V>>
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final CacheEntryGroupImpl<?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?>) o;
+    final CacheEntryGroupImpl<?, ?> that = (CacheEntryGroupImpl<?, ?>) o;
     return Objects.equals(cacheEntryMap, that.cacheEntryMap);
   }
 

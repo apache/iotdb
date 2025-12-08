@@ -42,7 +42,7 @@ public class CacheBuilder<SK, V> {
 
   /** Initiate and return a dual key cache instance. */
   public ICache<SK, V> build() {
-    ICacheEntryManager<SK, V, ?> cacheEntryManager = null;
+    ICacheEntryManager<SK, V> cacheEntryManager = null;
     switch (policy) {
       case LRU:
         cacheEntryManager = new LRUCacheEntryManager<>();
