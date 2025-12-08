@@ -512,7 +512,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         if (Objects.nonNull(devices)) {
           final List<MeasurementPath> measurementList = new ArrayList<>();
           for (final IDeviceID device : devices) {
-            measurementList.add(new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+            if (treePattern.mayOverlapWithDevice(device)) {
+              measurementList.add(
+                  new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+            }
           }
           final TSStatus status =
               AuthorityChecker.getAccessControl()
@@ -521,11 +524,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                       measurementList,
                       PrivilegeType.READ_DATA);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-            if (skipIfNoPrivileges) {
-              shouldParse4Privilege = true;
-            } else {
-              throw new AccessDeniedException(status.getMessage());
-            }
+            // Note that this is only coarse filter, thus the exception cannot be thrown here.
+            // The actual process is in the event parser
+            shouldParse4Privilege = true;
           }
         } else {
           shouldParse4Privilege = true;
