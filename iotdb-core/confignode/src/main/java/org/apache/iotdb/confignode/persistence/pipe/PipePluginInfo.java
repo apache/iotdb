@@ -228,17 +228,13 @@ public class PipePluginInfo implements SnapshotProcessor {
       } else {
         final String existed = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         if (Objects.nonNull(existed)) {
-          if (pipePluginMetaKeeper
-                  .getPipePluginMeta(existed)
-                  .getClassName()
-                  .equals(pipePluginMeta.getClassName())
-              && pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().containsKey(existed)) {
-            pipePluginMetaKeeper.addPipePluginVisibility(
-                pluginName, pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().get(existed));
-          } else {
-            pipePluginExecutableManager.linkExistedPlugin(existed, pluginName, jarName);
-            computeFromPluginClass(pluginName, className);
-          }
+          pipePluginExecutableManager.linkExistedPlugin(existed, pluginName, jarName);
+          computeFromPluginClass(pluginName, className);
+        } else {
+          throw new PipeException(
+              String.format(
+                  "The %s's creation has not passed in jarName, which does not exists in other pipePlugins. Please check",
+                  pluginName));
         }
       }
 
