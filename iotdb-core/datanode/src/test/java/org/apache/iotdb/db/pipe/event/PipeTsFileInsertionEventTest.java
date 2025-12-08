@@ -128,7 +128,7 @@ public class PipeTsFileInsertionEventTest {
               true,
               false,
               false,
-              Collections.singleton("table"),
+              null,
               null,
               0,
               null,
@@ -140,7 +140,9 @@ public class PipeTsFileInsertionEventTest {
               false,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
-      Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
+      // Shall not throw any exceptions for historical files
+      treeEvent.throwIfNoPrivilege();
+      Assert.assertTrue(treeEvent.shouldParse4Privilege());
 
       treeEvent.setTreeSchemaMap(Collections.singletonMap(deviceID, new String[] {"s0", "s1"}));
       Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);
