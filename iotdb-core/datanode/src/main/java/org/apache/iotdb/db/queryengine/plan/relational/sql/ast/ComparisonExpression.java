@@ -101,7 +101,9 @@ public class ComparisonExpression extends Expression {
 
   private final Operator operator;
   private Expression left;
+  private Expression shadowLeft;
   private Expression right;
+  private Expression shadowRight;
 
   public ComparisonExpression(Operator operator, Expression left, Expression right) {
     super(null);
@@ -131,11 +133,11 @@ public class ComparisonExpression extends Expression {
   }
 
   public Expression getLeft() {
-    return left;
+    return shadowLeft != null ? shadowLeft : left;
   }
 
   public Expression getRight() {
-    return right;
+    return shadowRight != null ? shadowRight : right;
   }
 
   public void setLeft(Expression left) {
@@ -154,6 +156,22 @@ public class ComparisonExpression extends Expression {
   @Override
   public List<Node> getChildren() {
     return ImmutableList.of(left, right);
+  }
+
+  // set by unfold of subquery
+  public void setShadowLeft(Expression shadowLeft) {
+    this.shadowLeft = shadowLeft;
+  }
+
+  // set by unfold of subquery
+  public void setShadowRight(Expression shadowRight) {
+    this.shadowRight = shadowRight;
+  }
+
+  // called after the stage is finished
+  public void clearShadow() {
+    this.shadowLeft = null;
+    this.shadowRight = null;
   }
 
   @Override

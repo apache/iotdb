@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -763,9 +764,13 @@ public class QueryPlanner {
     }
 
     subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
-    return subPlan.withNewRoot(
-        new FilterNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    PlanBuilder planBuilder =
+        subPlan.withNewRoot(
+            new FilterNode(
+                queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    PredicateWithUncorrelatedScalarSubqueryReconstructor.getInstance()
+        .clearShadowExpression(predicate);
+    return planBuilder;
   }
 
   private PlanBuilder aggregate(PlanBuilder subPlan, QuerySpecification node) {
