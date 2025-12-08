@@ -154,6 +154,19 @@ for package in project_packages:
 # Add parent packages to ensure they are included
 all_hiddenimports.extend(['iotdb', 'iotdb.ainode'])
 
+# Fix circular import issues in scipy.stats
+# scipy.stats has circular imports that can cause issues in PyInstaller
+# We need to ensure _stats is imported before scipy.stats tries to import it
+# This helps resolve the "partially initialized module" error
+scipy_stats_critical_modules = [
+    'scipy.stats._stats',           # Core stats module, must be imported first
+    'scipy.stats._stats_py',         # Python implementation
+    'scipy.stats._continuous_distns', # Continuous distributions
+    'scipy.stats._discrete_distns',   # Discrete distributions
+    'scipy.stats.distributions',      # Distribution base classes
+]
+all_hiddenimports.extend(scipy_stats_critical_modules)
+
 # Multiprocessing support for PyInstaller
 # When using multiprocessing with PyInstaller, we need to ensure proper handling
 multiprocessing_modules = [
@@ -212,7 +225,9 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=True,  # Set to True to speed up startup - files are not archived into PYZ
+    noarchive=False,  # Set to False to avoid circular import issues with scipy.stats
+    # When noarchive=True, modules are loaded as separate files which can cause
+    # circular import issues. Using PYZ archive helps PyInstaller handle module loading order better.
 )
 
 # Package all PYZ files
