@@ -58,6 +58,7 @@ public class AINodeCallInferenceIT {
 
   private static final String CALL_INFERENCE_SQL_TEMPLATE =
       "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT %d\", generateTime=true, outputLength=%d)";
+  private static final int DEFAULT_INPUT_LENGTH = 256;
   private static final int DEFAULT_OUTPUT_LENGTH = 48;
 
   @BeforeClass
@@ -100,7 +101,7 @@ public class AINodeCallInferenceIT {
               CALL_INFERENCE_SQL_TEMPLATE,
               modelInfo.getModelId(),
               i,
-              DEFAULT_OUTPUT_LENGTH,
+              DEFAULT_INPUT_LENGTH,
               DEFAULT_OUTPUT_LENGTH);
       try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -119,7 +120,7 @@ public class AINodeCallInferenceIT {
   public void errorCallInferenceTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      String sql = "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI\", window=head(5))";
+      String sql = "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI\")";
       errorTest(statement, sql, "1505: model [notFound404] has not been created.");
     }
   }

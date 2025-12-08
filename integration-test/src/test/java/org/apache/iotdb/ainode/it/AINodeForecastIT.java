@@ -46,12 +46,12 @@ public class AINodeForecastIT {
 
   private static final String[] WRITE_SQL_IN_TABLE =
       new String[] {
-        "CREATE DATABASE root",
-        "CREATE TABLE root.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)",
+        "CREATE DATABASE db",
+        "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)",
       };
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
-      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time, s%d FROM root.AI) ORDER BY time)";
+      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time, s%d FROM db.AI) ORDER BY time)";
 
   @BeforeClass
   public static void setUp() throws Exception {

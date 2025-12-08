@@ -64,7 +64,7 @@ AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
 AINODE_MODELS_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/models")
 AINODE_MODELS_BUILTIN_DIR = "iotdb.ainode.core.model"
 AINODE_SYSTEM_DIR = os.path.join(IOTDB_AINODE_HOME, "data/ainode/system")
-AINODE_LOG_DIR = "logs"
+AINODE_LOG_DIR = os.path.join(IOTDB_AINODE_HOME, "logs")
 
 # AINode log
 LOG_FILE_TYPE = ["all", "info", "warn", "error"]
@@ -93,27 +93,6 @@ class TSStatusCode(Enum):
         return self.value
 
 
-class TaskType(Enum):
-    FORECAST = "forecast"
-
-
-class OptionsKey(Enum):
-    # common
-    TASK_TYPE = "task_type"
-    MODEL_TYPE = "model_type"
-    AUTO_TUNING = "auto_tuning"
-    INPUT_VARS = "input_vars"
-
-    # forecast
-    INPUT_LENGTH = "input_length"
-    PREDICT_LENGTH = "predict_length"
-    PREDICT_INDEX_LIST = "predict_index_list"
-    INPUT_TYPE_LIST = "input_type_list"
-
-    def name(self) -> str:
-        return self.value
-
-
 class HyperparameterName(Enum):
     # Training hyperparameter
     LEARNING_RATE = "learning_rate"
@@ -132,10 +111,3 @@ class HyperparameterName(Enum):
 
     def name(self):
         return self.value
-
-
-class ModelInputName(Enum):
-    DATA_X = "data_x"
-    TIME_STAMP_X = "time_stamp_x"
-    TIME_STAMP_Y = "time_stamp_y"
-    DEC_INP = "dec_inp"

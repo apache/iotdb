@@ -45,9 +45,9 @@ public class AINodeTestUtils {
   public static final Map<String, FakeModelInfo> BUILTIN_LTSM_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
-                  "sundial", new FakeModelInfo("sundial", "sundial", "BUILT-IN", "ACTIVE")),
+                  "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
-                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "BUILT-IN", "ACTIVE")))
+                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
@@ -56,27 +56,25 @@ public class AINodeTestUtils {
     Map<String, FakeModelInfo> tmp =
         Stream.of(
                 new AbstractMap.SimpleEntry<>(
-                    "arima", new FakeModelInfo("arima", "Arima", "BUILT-IN", "ACTIVE")),
+                    "arima", new FakeModelInfo("arima", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
-                    "holtwinters",
-                    new FakeModelInfo("holtwinters", "HoltWinters", "BUILT-IN", "ACTIVE")),
+                    "holtwinters", new FakeModelInfo("holtwinters", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
                     "exponential_smoothing",
-                    new FakeModelInfo(
-                        "exponential_smoothing", "ExponentialSmoothing", "BUILT-IN", "ACTIVE")),
+                    new FakeModelInfo("exponential_smoothing", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
                     "naive_forecaster",
-                    new FakeModelInfo("naive_forecaster", "NaiveForecaster", "BUILT-IN", "ACTIVE")),
+                    new FakeModelInfo("naive_forecaster", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
                     "stl_forecaster",
-                    new FakeModelInfo("stl_forecaster", "StlForecaster", "BUILT-IN", "ACTIVE")),
+                    new FakeModelInfo("stl_forecaster", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
                     "gaussian_hmm",
-                    new FakeModelInfo("gaussian_hmm", "GaussianHmm", "BUILT-IN", "ACTIVE")),
+                    new FakeModelInfo("gaussian_hmm", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
-                    "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT-IN", "ACTIVE")),
+                    "gmm_hmm", new FakeModelInfo("gmm_hmm", "sktime", "builtin", "active")),
                 new AbstractMap.SimpleEntry<>(
-                    "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")))
+                    "stray", new FakeModelInfo("stray", "sktime", "builtin", "active")))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     tmp.putAll(BUILTIN_LTSM_MAP);
     BUILTIN_MODEL_MAP = Collections.unmodifiableMap(tmp);
@@ -134,8 +132,7 @@ public class AINodeTestUtils {
     }
   }
 
-  public static void checkModelOnSpecifiedDevice(
-      Statement statement, String modelId, String modelType, String device)
+  public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
       throws SQLException, InterruptedException {
     Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
     LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
@@ -146,13 +143,9 @@ public class AINodeTestUtils {
         while (resultSet.next()) {
           String deviceId = resultSet.getString("DeviceId");
           String loadedModelId = resultSet.getString("ModelId");
-          String loadedModelType = resultSet.getString("ModelType");
           int count = resultSet.getInt("Count(instances)");
           LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
-          if (loadedModelId.equals(modelId)
-              && loadedModelType.equals(modelType)
-              && targetDevices.contains(deviceId)
-              && count > 0) {
+          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
             foundDevices.add(deviceId);
             LOGGER.info("Model {} is loaded to device {}", modelId, device);
           }

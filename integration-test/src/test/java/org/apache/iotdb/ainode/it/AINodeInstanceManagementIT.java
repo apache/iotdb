@@ -86,11 +86,11 @@ public class AINodeInstanceManagementIT {
 
     // Load sundial to each device
     statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES));
-    checkModelOnSpecifiedDevice(statement, "sundial", "sundial", TARGET_DEVICES.toString());
+    checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
 
     // Load timer_xl to each device
     statement.execute(String.format("LOAD MODEL timer_xl TO DEVICES '%s'", TARGET_DEVICES));
-    checkModelOnSpecifiedDevice(statement, "timer_xl", "timer_xl", TARGET_DEVICES.toString());
+    checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
 
     // Clean every device
     statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES));
@@ -107,7 +107,7 @@ public class AINodeInstanceManagementIT {
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < LOOP_CNT; i++) {
         statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
-        checkModelOnSpecifiedDevice(statement, "sundial", "sundial", TARGET_DEVICES.toString());
+        checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
         statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
         checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
       }

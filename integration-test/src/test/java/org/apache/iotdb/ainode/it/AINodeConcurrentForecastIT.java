@@ -97,8 +97,7 @@ public class AINodeConcurrentForecastIT {
       final String devices = "0,1";
       statement.execute(
           String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
-      checkModelOnSpecifiedDevice(
-          statement, modelInfo.getModelId(), modelInfo.getModelType(), devices);
+      checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
       long startTime = System.currentTimeMillis();
       concurrentInference(statement, forecastSQL, threadCnt, loop, forecastLength);
       long endTime = System.currentTimeMillis();
