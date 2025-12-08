@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build AINode
         shell: bash
-        run: mvn clean package -DskipTests -P with-ainode
+        run: mvn clean package -pl iotdb-core/ainode -P with-ainode -am -DskipTests
       - name: IT Test
         shell: bash
         run: |
