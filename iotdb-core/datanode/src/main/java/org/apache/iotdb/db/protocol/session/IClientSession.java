@@ -188,6 +188,37 @@ public abstract class IClientSession {
     this.databaseName = databaseName;
   }
 
+  /**
+   * Add a prepared statement to this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @param info the prepared statement information
+   */
+  public abstract void addPreparedStatement(String statementName, PreparedStatementInfo info);
+
+  /**
+   * Remove a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the removed prepared statement info, or null if not found
+   */
+  public abstract PreparedStatementInfo removePreparedStatement(String statementName);
+
+  /**
+   * Get a prepared statement from this session.
+   *
+   * @param statementName the name of the prepared statement
+   * @return the prepared statement info, or null if not found
+   */
+  public abstract PreparedStatementInfo getPreparedStatement(String statementName);
+
+  /**
+   * Get all prepared statement names in this session.
+   *
+   * @return set of prepared statement names
+   */
+  public abstract Set<String> getPreparedStatementNames();
+
   public long getLastActiveTime() {
     return lastActiveTime;
   }

@@ -22,11 +22,16 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RestClientSession extends IClientSession {
 
   private final String clientID;
+
+  // Map from statement name to PreparedStatementInfo
+  private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 
   public RestClientSession(String clientID) {
     this.clientID = clientID;
@@ -75,5 +80,25 @@ public class RestClientSession extends IClientSession {
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    preparedStatements.put(statementName, info);
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    return preparedStatements.remove(statementName);
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    return preparedStatements.get(statementName);
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return preparedStatements.keySet();
   }
 }
