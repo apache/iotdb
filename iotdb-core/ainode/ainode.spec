@@ -58,6 +58,7 @@ essential_libraries = {
     'accelerate': True
 }
 
+# Collect all libraries using collect_all (includes data files and binaries)
 for lib in essential_libraries:
     try:
         lib_datas, lib_binaries, lib_hiddenimports = collect_all(lib)
@@ -66,6 +67,25 @@ for lib in essential_libraries:
         all_hiddenimports.extend(lib_hiddenimports)
     except Exception:
         pass
+
+# Additionally collect ALL submodules for libraries that commonly have dynamic imports
+# This is a more aggressive approach but ensures we don't miss any modules
+# Libraries that are known to have many dynamic imports and submodules
+libraries_with_dynamic_imports = [
+    'scipy',        # Has many subpackages: stats, interpolate, optimize, linalg, sparse, signal, etc.
+    'sklearn',      # Has many submodules that may be dynamically imported
+    'transformers', # Has dynamic model loading
+    'torch',        # Has many submodules, especially _dynamo.polyfills
+]
+
+# Collect all submodules for these libraries to ensure comprehensive coverage
+for lib in libraries_with_dynamic_imports:
+    try:
+        submodules = collect_submodules(lib)
+        all_hiddenimports.extend(submodules)
+        print(f"Collected {len(submodules)} submodules from {lib}")
+    except Exception as e:
+        print(f"Warning: Failed to collect submodules from {lib}: {e}")
 
 
 # Helper function to collect submodules with fallback
@@ -91,10 +111,13 @@ def collect_submodules_with_fallback(package, fallback_modules=None, package_nam
             print(f"Using fallback modules for {package_name}")
 
 
-# Packages that need submodule collection due to dynamic imports
+# Additional specific packages that need submodule collection
+# Note: scipy, sklearn, transformers, torch are already collected above via libraries_with_dynamic_imports
+# This section is for more specific sub-packages that need special handling
 # Format: (package_name, fallback_modules_list, display_name)
 submodule_collection_configs = [
     # torch._dynamo.polyfills - critical for torch dynamo functionality
+    # (torch is already collected above, but this ensures polyfills are included)
     (
         'torch._dynamo.polyfills',
         [
@@ -105,22 +128,10 @@ submodule_collection_configs = [
         ],
         'torch._dynamo.polyfills'
     ),
-    # transformers packages with dynamic imports
+    # transformers sub-packages with dynamic imports
+    # (transformers is already collected above, but these specific sub-packages may need extra attention)
     ('transformers.generation', None, 'transformers.generation'),
     ('transformers.models.auto', None, 'transformers.models.auto'),
-    # scipy.stats - contains many private modules (starting with _)
-    (
-        'scipy.stats',
-        [
-            'scipy.stats._variation',
-            'scipy.stats._morestats',
-            'scipy.stats._stats',
-            'scipy.stats._distn_infrastructure',
-        ],
-        'scipy.stats'
-    ),
-    # sklearn - has many submodules that may be dynamically imported
-    ('sklearn', None, 'sklearn'),
 ]
 
 # Collect submodules for all configured packages
