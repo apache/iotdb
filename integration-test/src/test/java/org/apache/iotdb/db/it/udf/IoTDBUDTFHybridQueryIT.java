@@ -19,29 +19,27 @@
 
 package org.apache.iotdb.db.it.udf;
 
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.UDFTestConstant;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -164,9 +162,9 @@ public class IoTDBUDTFHybridQueryIT {
           "2,0.9092974268256817,3,2.0",
           "3,0.1411200080598672,4,3.0",
           "4,-0.7568024953079282,5,3.14",
-          "7,3.14,3.14,7.0",
-          "8,3.14,3.14,8.0",
-          "9,3.14,3.14,9.0"
+          "7,3.14,null,7.0",
+          "8,3.14,null,8.0",
+          "9,3.14,null,9.0"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
