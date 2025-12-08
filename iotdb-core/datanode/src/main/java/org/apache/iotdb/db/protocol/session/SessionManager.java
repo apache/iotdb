@@ -306,6 +306,7 @@ public class SessionManager implements SessionManagerMBean {
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId,
+      String preparedStatementName,
       LongConsumer releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
@@ -318,7 +319,7 @@ public class SessionManager implements SessionManagerMBean {
         if (haveSetQueryId) {
           this.closeDataset(session, statementId, queryId, releaseByQueryId);
         } else {
-          this.closeStatement(session, statementId, releaseByQueryId);
+          this.closeStatement(session, statementId, preparedStatementName, releaseByQueryId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -353,25 +354,34 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public void closeStatement(
-      IClientSession session, long statementId, LongConsumer releaseByQueryId) {
+      IClientSession session,
+      long statementId,
+      String preparedStatementName,
+      LongConsumer releaseByQueryId) {
     Set<Long> queryIdSet = session.removeStatementId(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
         releaseByQueryId.accept(queryId);
       }
     }
-    session.removeStatementId(statementId);
 
-    // Release PreparedStatement resources when statement is closed
-    try {
-      PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to release PreparedStatement resources when closing statement {} for session {}: {}",
-          statementId,
-          session,
-          e.getMessage(),
-          e);
+    // If preparedStatementName is provided, release the prepared statement resources
+    if (preparedStatementName != null && !preparedStatementName.isEmpty()) {
+      try {
+        PreparedStatementInfo removedInfo = session.removePreparedStatement(preparedStatementName);
+        if (removedInfo != null) {
+          // Release the memory allocated for this PreparedStatement
+          PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to release PreparedStatement '{}' resources when closing statement {} for session {}: {}",
+            preparedStatementName,
+            statementId,
+            session,
+            e.getMessage(),
+            e);
+      }
     }
   }
 

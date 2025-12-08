@@ -80,11 +80,13 @@ public class PreparedStatementMemoryManager {
               statementName));
     }
 
-    LOGGER.debug(
-        "Allocated {} bytes for PreparedStatement '{}' from shared MemoryBlock '{}'. ",
-        memorySizeInBytes,
-        statementName,
-        SHARED_MEMORY_BLOCK_NAME);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Allocated {} bytes for PreparedStatement '{}' from shared MemoryBlock '{}'. ",
+          memorySizeInBytes,
+          statementName,
+          SHARED_MEMORY_BLOCK_NAME);
+    }
   }
 
   /**
@@ -100,12 +102,14 @@ public class PreparedStatementMemoryManager {
     IMemoryBlock sharedMemoryBlock = getSharedMemoryBlock();
     if (!sharedMemoryBlock.isReleased()) {
       long releasedSize = sharedMemoryBlock.release(memorySizeInBytes);
-      LOGGER.debug(
-          "Released {} bytes from shared MemoryBlock '{}' for PreparedStatement. ",
-          releasedSize,
-          SHARED_MEMORY_BLOCK_NAME);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Released {} bytes from shared MemoryBlock '{}' for PreparedStatement. ",
+            releasedSize,
+            SHARED_MEMORY_BLOCK_NAME);
+      }
     } else {
-      LOGGER.warn(
+      LOGGER.error(
           "Attempted to release memory from shared MemoryBlock '{}' but it is released",
           SHARED_MEMORY_BLOCK_NAME);
     }
@@ -142,7 +146,7 @@ public class PreparedStatementMemoryManager {
       }
     }
 
-    if (releasedCount > 0) {
+    if (releasedCount > 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "Released {} PreparedStatement(s) ({} bytes total) for session {}",
           releasedCount,

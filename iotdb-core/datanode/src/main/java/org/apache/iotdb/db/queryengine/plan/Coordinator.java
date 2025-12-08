@@ -212,9 +212,12 @@ public class Coordinator {
             .getMemoryConfig()
             .getCoordinatorMemoryManager()
             .exactAllocate("Coordinator", MemoryBlockType.DYNAMIC);
-    LOGGER.debug(
-        "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
-        coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
+          coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+    }
   }
 
   private Coordinator() {
