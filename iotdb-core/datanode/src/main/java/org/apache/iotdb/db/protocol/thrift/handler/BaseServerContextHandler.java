@@ -71,6 +71,7 @@ public class BaseServerContextHandler {
 
   public void deleteContext(ServerContext context, TProtocol in, TProtocol out) {
     getSessionManager().removeCurrSession();
+
     if (context != null && factory != null) {
       ((JudgableServerContext) context).whenDisconnect();
     }

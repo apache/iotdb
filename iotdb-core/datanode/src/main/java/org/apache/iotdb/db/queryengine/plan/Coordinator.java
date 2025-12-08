@@ -29,10 +29,14 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -49,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -56,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
@@ -64,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
@@ -71,13 +78,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -132,7 +145,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -184,6 +199,8 @@ public class Coordinator {
 
   private static final Coordinator INSTANCE = new Coordinator();
 
+  private static final IMemoryBlock coordinatorMemoryBlock;
+
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
   private final StatementRewrite statementRewrite;
@@ -191,6 +208,20 @@ public class Coordinator {
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
   private final TypeManager typeManager;
+
+  static {
+    coordinatorMemoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getCoordinatorMemoryManager()
+            .exactAllocate("Coordinator", MemoryBlockType.DYNAMIC);
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
+          coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+    }
+  }
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -401,6 +432,8 @@ public class Coordinator {
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
             dataNodeLocationSupplier,
+            Collections.emptyList(),
+            Collections.emptyMap(),
             typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
@@ -475,7 +508,9 @@ public class Coordinator {
         || statement instanceof LoadModel
         || statement instanceof UnloadModel
         || statement instanceof ShowLoadedModels
-        || statement instanceof RemoveRegion) {
+        || statement instanceof RemoveRegion
+        || statement instanceof Prepare
+        || statement instanceof Deallocate) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -485,12 +520,54 @@ public class Coordinator {
                   clientSession, metadata, AuthorityChecker.getAccessControl(), typeManager),
               queryContext));
     }
+    // Initialize variables for TableModelPlanner
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statementToUse = statement;
+    List<Expression> parameters = Collections.emptyList();
+    Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
+
+    if (statement instanceof Execute) {
+      Execute executeStatement = (Execute) statement;
+      String statementName = executeStatement.getStatementName().getValue();
+
+      // Get prepared statement from session (contains cached AST)
+      PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
+      if (preparedInfo == null) {
+        throw new SemanticException(
+            String.format("Prepared statement '%s' does not exist", statementName));
+      }
+
+      // Use cached AST
+      statementToUse = preparedInfo.getSql();
+
+      // Bind parameters: create parameterLookup map
+      // Note: bindParameters() internally validates parameter count
+      parameterLookup =
+          ParameterExtractor.bindParameters(statementToUse, executeStatement.getParameters());
+      parameters = new ArrayList<>(executeStatement.getParameters());
+
+    } else if (statement instanceof ExecuteImmediate) {
+      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
+
+      // EXECUTE IMMEDIATE needs to parse SQL first
+      String sql = executeImmediateStatement.getSqlString();
+      List<Literal> literalParameters = executeImmediateStatement.getParameters();
+
+      statementToUse = sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+
+      if (!literalParameters.isEmpty()) {
+        parameterLookup = ParameterExtractor.bindParameters(statementToUse, literalParameters);
+        parameters = new ArrayList<>(literalParameters);
+      }
+    }
+
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    final TableModelPlanner tableModelPlanner =
+
+    // Create QueryExecution with TableModelPlanner
+    TableModelPlanner tableModelPlanner =
         new TableModelPlanner(
-            statement,
+            statementToUse,
             sqlParser,
             metadata,
             scheduledExecutor,
@@ -501,6 +578,8 @@ public class Coordinator {
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
             dataNodeLocationSupplier,
+            parameters,
+            parameterLookup,
             typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
@@ -607,6 +686,10 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public static IMemoryBlock getCoordinatorMemoryBlock() {
+    return coordinatorMemoryBlock;
   }
 
   public void recordExecutionTime(long queryId, long executionTime) {
