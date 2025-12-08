@@ -75,9 +75,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
     for (; processingIndex < originalList.size(); processingIndex++) {
       if (filteredIndexPos >= filteredIndexes.size()) {
         // all filteredIndexes processed, add remaining to the filteredList
-        if (processingIndex < filteredIndexes.size()) {
-          filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
-        }
+        filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
         break;
       } else {
         int filteredIndex = filteredIndexes.get(filteredIndexPos);
