@@ -213,35 +213,32 @@ public class PipePluginInfo implements SnapshotProcessor {
       final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
       final String pluginName = pipePluginMeta.getPluginName();
       final String className = pipePluginMeta.getClassName();
+      final String jarName = pipePluginMeta.getJarName();
 
       // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
       dropPipePlugin(new DropPipePluginPlan(pluginName));
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
-      pipePluginMetaKeeper.addJarNameAndMd5(
-          pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
+      pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
 
       if (createPipePluginPlan.getJarFile() != null) {
         pipePluginExecutableManager.savePluginToInstallDir(
-            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
-            pluginName,
-            pipePluginMeta.getJarName());
-        computeFromPluginClass(
-            pipePluginExecutableManager.getPluginsDirPath(pluginName), pluginName, className);
+            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
+        computeFromPluginClass(pluginName, className);
       } else {
-        final String existed =
-            pipePluginMetaKeeper.getPluginNameByJarName(pipePluginMeta.getJarName());
-        if (Objects.nonNull(existed)
-            && pipePluginMetaKeeper
-                .getPipePluginMeta(existed)
-                .getClassName()
-                .equals(pipePluginMeta.getClassName())
-            && pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().containsKey(existed)) {
-          pipePluginMetaKeeper.addPipePluginVisibility(
-              pluginName, pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().get(existed));
-        } else {
-          computeFromPluginClass(
-              pipePluginExecutableManager.getPluginsDirPath(existed), pluginName, className);
+        final String existed = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
+        if (Objects.nonNull(existed)) {
+          if (pipePluginMetaKeeper
+                  .getPipePluginMeta(existed)
+                  .getClassName()
+                  .equals(pipePluginMeta.getClassName())
+              && pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().containsKey(existed)) {
+            pipePluginMetaKeeper.addPipePluginVisibility(
+                pluginName, pipePluginMetaKeeper.getPipePluginNameToVisibilityMap().get(existed));
+          } else {
+            pipePluginExecutableManager.linkExistedPlugin(existed, pluginName, jarName);
+            computeFromPluginClass(pluginName, className);
+          }
         }
       }
 
@@ -257,9 +254,9 @@ public class PipePluginInfo implements SnapshotProcessor {
     }
   }
 
-  private void computeFromPluginClass(
-      final String pluginDirPath, final String pluginName, final String className)
+  private void computeFromPluginClass(final String pluginName, final String className)
       throws Exception {
+    final String pluginDirPath = pipePluginExecutableManager.getPluginsDirPath(pluginName);
     final PipePluginClassLoader pipePluginClassLoader =
         classLoaderManager.createPipePluginClassLoader(pluginDirPath);
     try {
