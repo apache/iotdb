@@ -34,7 +34,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 class CacheImpl<SK, V> implements ICache<SK, V> {
-  private final ICacheEntryGroup<SK, V> cacheEntryGroup;
+  private ICacheEntryGroup<SK, V> cacheEntryGroup;
 
   private final ICacheEntryManager<SK, V> cacheEntryManager;
 
@@ -166,6 +166,7 @@ class CacheImpl<SK, V> implements ICache<SK, V> {
   @Override
   public void invalidateAll() {
     cacheEntryManager.cleanUp();
+    cacheEntryGroup = new CacheEntryGroupImpl<>(sizeComputer);
   }
 
   @Override

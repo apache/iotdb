@@ -31,20 +31,13 @@ import java.util.function.Function;
 
 public class CacheEntryGroupImpl<SK, V> implements ICacheEntryGroup<SK, V> {
 
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
-          + RamUsageEstimator.shallowSizeOfInstance(AtomicLong.class)
-          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class)
-          // Calculate the outer entry of the "firstKeyMap" here
-          + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-
   private final Map<SK, CacheEntry<SK, V>> cacheEntryMap = new ConcurrentHashMap<>();
   private final ICacheSizeComputer<SK, V> sizeComputer;
   private final AtomicLong memory;
 
   CacheEntryGroupImpl(final ICacheSizeComputer<SK, V> sizeComputer) {
     this.sizeComputer = sizeComputer;
-    this.memory = new AtomicLong(INSTANCE_SIZE);
+    this.memory = new AtomicLong(0L);
   }
 
   @Override
