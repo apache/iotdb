@@ -118,6 +118,11 @@ public class Base32ObjectPath implements IObjectPath {
     serialize(byteBuffer);
   }
 
+  @Override
+  public int getSerializeSizeToObjectValue() {
+    return getSerializedSize();
+  }
+
   public static Base32ObjectPath deserialize(ByteBuffer byteBuffer) {
     int cnt = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
     String first = ReadWriteIOUtils.readVarIntString(byteBuffer);

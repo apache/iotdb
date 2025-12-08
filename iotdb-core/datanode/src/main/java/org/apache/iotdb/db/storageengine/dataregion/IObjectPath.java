@@ -41,6 +41,8 @@ public interface IObjectPath {
 
   void serializeToObjectValue(ByteBuffer byteBuffer);
 
+  int getSerializeSizeToObjectValue();
+
   interface Factory {
 
     IObjectPath create(int regionId, long time, IDeviceID iDeviceID, String measurement);

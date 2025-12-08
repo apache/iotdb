@@ -92,6 +92,11 @@ public class PlainObjectPath implements IObjectPath {
     byteBuffer.put(filePath.getBytes(StandardCharsets.UTF_8));
   }
 
+  @Override
+  public int getSerializeSizeToObjectValue() {
+    return filePath.getBytes(StandardCharsets.UTF_8).length;
+  }
+
   public static PlainObjectPath deserialize(ByteBuffer byteBuffer) {
     String filePath = ReadWriteIOUtils.readString(byteBuffer);
     return new PlainObjectPath(filePath);

@@ -463,6 +463,9 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       Map.Entry<TRegionReplicaSet, List<Integer>> entry,
       List<WritePlanNode> result) {
     for (int j = startRow; j < endRow; j++) {
+      if (((Binary[]) columns[column])[j] == null) {
+        continue;
+      }
       byte[] binary = ((Binary[]) columns[column])[j].getValues();
       ByteBuffer buffer = ByteBuffer.wrap(binary);
       boolean isEoF = buffer.get() == 1;
@@ -475,7 +478,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       objectNode.setDataRegionReplicaSet(entry.getKey());
       result.add(objectNode);
       if (isEoF) {
-        ByteBuffer valueBytes = ByteBuffer.allocate(relativePath.getSerializedSize() + Long.BYTES);
+        ByteBuffer valueBytes =
+            ByteBuffer.allocate(relativePath.getSerializeSizeToObjectValue() + Long.BYTES);
         valueBytes.putLong(offset + content.length);
         relativePath.serializeToObjectValue(valueBytes);
         ((Binary[]) columns[column])[j] = new Binary(valueBytes.array());
