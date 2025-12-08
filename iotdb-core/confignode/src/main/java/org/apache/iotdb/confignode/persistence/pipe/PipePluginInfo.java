@@ -233,7 +233,7 @@ public class PipePluginInfo implements SnapshotProcessor {
         } else {
           throw new PipeException(
               String.format(
-                  "The %s's creation has not passed in jarName, which does not exists in other pipePlugins. Please check",
+                  "The %s's creation has not passed in jarName, which does not exist in other pipePlugins. Please check",
                   pluginName));
         }
       }
