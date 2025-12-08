@@ -67,69 +67,78 @@ for lib in essential_libraries:
     except Exception:
         pass
 
-# Some dependencies might still miss in specified operation systems, manually import them in this case
-# Use collect_submodules for packages with dynamic imports to ensure all submodules are included
-extra_hidden = [
-    # torch flex attention
-    'torch.nn.attention.flex_attention',
 
-    # transformers
-    'transformers.masking_utils',
-    'transformers.generation.utils',
-    'transformers.models.auto.modeling_auto',
-    'transformers.models.auto.auto_factory',
-]
-
-all_hiddenimports.extend(extra_hidden)
-
-# Collect all submodules for torch._dynamo.polyfills recursively
-# This is critical because torch._dynamo.polyfills contains multiple submodules that are dynamically imported
-# and may not be detected by collect_all or static analysis
-try:
-    torch_polyfills_submodules = collect_submodules('torch._dynamo.polyfills')
-    all_hiddenimports.extend(torch_polyfills_submodules)
-    print(f"Collected {len(torch_polyfills_submodules)} submodules from torch._dynamo.polyfills")
-except Exception as e:
-    # If collection fails, add the known modules manually as fallback
-    print(f"Warning: Failed to collect torch._dynamo.polyfills submodules: {e}")
-    all_hiddenimports.extend([
-        'torch._dynamo.polyfills',
-        'torch._dynamo.polyfills.functools',
-        'torch._dynamo.polyfills.operator',
-        'torch._dynamo.polyfills.collections',
-    ])
-
-# Collect submodules for transformers packages that use dynamic imports
-# These packages may have submodules that are not detected by collect_all
-transformers_dynamic_packages = [
-    'transformers.generation',
-    'transformers.models.auto',
-]
-for package in transformers_dynamic_packages:
+# Helper function to collect submodules with fallback
+def collect_submodules_with_fallback(package, fallback_modules=None, package_name=None):
+    """
+    Collect all submodules for a package, with fallback to manual module list if collection fails.
+    
+    Args:
+        package: Package name to collect submodules from
+        fallback_modules: List of module names to add if collection fails (optional)
+        package_name: Display name for logging (defaults to package)
+    """
+    if package_name is None:
+        package_name = package
     try:
         submodules = collect_submodules(package)
         all_hiddenimports.extend(submodules)
-        print(f"Collected {len(submodules)} submodules from {package}")
+        print(f"Collected {len(submodules)} submodules from {package_name}")
     except Exception as e:
-        print(f"Warning: Failed to collect submodules from {package}: {e}")
-        # Continue - the modules in extra_hidden should still work
+        print(f"Warning: Failed to collect {package_name} submodules: {e}")
+        if fallback_modules:
+            all_hiddenimports.extend(fallback_modules)
+            print(f"Using fallback modules for {package_name}")
+
+
+# Packages that need submodule collection due to dynamic imports
+# Format: (package_name, fallback_modules_list, display_name)
+submodule_collection_configs = [
+    # torch._dynamo.polyfills - critical for torch dynamo functionality
+    (
+        'torch._dynamo.polyfills',
+        [
+            'torch._dynamo.polyfills',
+            'torch._dynamo.polyfills.functools',
+            'torch._dynamo.polyfills.operator',
+            'torch._dynamo.polyfills.collections',
+        ],
+        'torch._dynamo.polyfills'
+    ),
+    # transformers packages with dynamic imports
+    ('transformers.generation', None, 'transformers.generation'),
+    ('transformers.models.auto', None, 'transformers.models.auto'),
+    # scipy.stats - contains many private modules (starting with _)
+    (
+        'scipy.stats',
+        [
+            'scipy.stats._variation',
+            'scipy.stats._morestats',
+            'scipy.stats._stats',
+            'scipy.stats._distn_infrastructure',
+        ],
+        'scipy.stats'
+    ),
+    # sklearn - has many submodules that may be dynamically imported
+    ('sklearn', None, 'sklearn'),
+]
+
+# Collect submodules for all configured packages
+for package, fallback_modules, display_name in submodule_collection_configs:
+    collect_submodules_with_fallback(package, fallback_modules, display_name)
 
 # Project-specific packages that need their submodules collected
 # Only list top-level packages - collect_submodules will recursively collect all submodules
-TOP_LEVEL_PACKAGES = [
+project_packages = [
     'iotdb.ainode.core',  # This will include all sub-packages: manager, model, inference, etc.
     'iotdb.thrift',        # This will include all thrift sub-packages
 ]
 
 # Collect all submodules for project packages automatically
 # Using top-level packages avoids duplicate collection
-for package in TOP_LEVEL_PACKAGES:
-    try:
-        submodules = collect_submodules(package)
-        all_hiddenimports.extend(submodules)
-    except Exception:
-        # If package doesn't exist or collection fails, add the package itself
-        all_hiddenimports.append(package)
+# If collection fails, add the package itself as fallback
+for package in project_packages:
+    collect_submodules_with_fallback(package, fallback_modules=[package], package_name=package)
 
 # Add parent packages to ensure they are included
 all_hiddenimports.extend(['iotdb', 'iotdb.ainode'])
