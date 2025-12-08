@@ -25,7 +25,7 @@ public class FIFOCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
 
   private static final int SLOT_NUM = 128;
 
-  private final FIFOLinkedList[] fifoLinkedLists = new FIFOLinkedList[SLOT_NUM];
+  private final CacheLinkedList[] CacheLinkedLists = new CacheLinkedList[SLOT_NUM];
 
   private final AtomicInteger cachePutRoundRobinIndex = new AtomicInteger(0);
 
@@ -42,30 +42,17 @@ public class FIFOCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
   }
 
   @Override
-  public boolean invalidate(final CacheEntry<SK, V> cacheEntry) {
-    if (cacheEntry.isInvalidated.getAndSet(true)) {
-      return false;
-    }
-
-    cacheEntry.next.pre = cacheEntry.pre;
-    cacheEntry.pre.next = cacheEntry.next;
-    cacheEntry.next = null;
-    cacheEntry.pre = null;
-    return true;
-  }
-
-  @Override
   public CacheEntry<SK, V> evict() {
     int startIndex = getNextIndex(cacheEvictRoundRobinIndex);
-    FIFOLinkedList fifoLinkedList;
+    CacheLinkedList CacheLinkedList;
     CacheEntry<SK, V> cacheEntry;
     for (int i = 0; i < SLOT_NUM; i++) {
       if (startIndex == SLOT_NUM) {
         startIndex = 0;
       }
-      fifoLinkedList = fifoLinkedLists[startIndex];
-      if (fifoLinkedList != null) {
-        cacheEntry = fifoLinkedList.evict();
+      CacheLinkedList = CacheLinkedLists[startIndex];
+      if (CacheLinkedList != null) {
+        cacheEntry = CacheLinkedList.evict();
         if (cacheEntry != null) {
           return cacheEntry;
         }
@@ -77,26 +64,26 @@ public class FIFOCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
 
   @Override
   public void cleanUp() {
-    synchronized (fifoLinkedLists) {
+    synchronized (CacheLinkedLists) {
       for (int i = 0; i < SLOT_NUM; i++) {
-        fifoLinkedLists[i] = null;
+        CacheLinkedLists[i] = null;
       }
     }
   }
 
-  private FIFOLinkedList getNextList(final AtomicInteger roundRobinIndex) {
+  private CacheLinkedList getNextList(final AtomicInteger roundRobinIndex) {
     int listIndex = getNextIndex(roundRobinIndex);
-    FIFOLinkedList fifoLinkedList = fifoLinkedLists[listIndex];
-    if (fifoLinkedList == null) {
-      synchronized (fifoLinkedLists) {
-        fifoLinkedList = fifoLinkedLists[listIndex];
-        if (fifoLinkedList == null) {
-          fifoLinkedList = new FIFOLinkedList();
-          fifoLinkedLists[listIndex] = fifoLinkedList;
+    CacheLinkedList CacheLinkedList = CacheLinkedLists[listIndex];
+    if (CacheLinkedList == null) {
+      synchronized (CacheLinkedLists) {
+        CacheLinkedList = CacheLinkedLists[listIndex];
+        if (CacheLinkedList == null) {
+          CacheLinkedList = new CacheLinkedList();
+          CacheLinkedLists[listIndex] = CacheLinkedList;
         }
       }
     }
-    return fifoLinkedList;
+    return CacheLinkedList;
   }
 
   private int getNextIndex(final AtomicInteger roundRobinIndex) {
@@ -105,50 +92,5 @@ public class FIFOCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
           currentValue = currentValue + 1;
           return currentValue >= SLOT_NUM ? 0 : currentValue;
         });
-  }
-
-  private static class FIFOLinkedList<SK, V> {
-
-    // head.next is the newest
-    private final CacheEntry<SK, V> head;
-    private final CacheEntry<SK, V> tail;
-
-    public FIFOLinkedList() {
-      head = new CacheEntry<>(null, null, null);
-      tail = new CacheEntry<>(null, null, null);
-      head.next = tail;
-      tail.pre = head;
-    }
-
-    synchronized void add(final CacheEntry<SK, V> cacheEntry) {
-      CacheEntry<SK, V> nextEntry;
-
-      do {
-        nextEntry = head.next;
-      } while (nextEntry.isInvalidated.get());
-
-      cacheEntry.next = nextEntry;
-      cacheEntry.pre = head;
-      nextEntry.pre = cacheEntry;
-      head.next = cacheEntry;
-    }
-
-    synchronized CacheEntry<SK, V> evict() {
-      CacheEntry<SK, V> cacheEntry;
-
-      do {
-        cacheEntry = tail.pre;
-        if (cacheEntry == head) {
-          return null;
-        }
-
-      } while (cacheEntry.isInvalidated.compareAndSet(false, true));
-
-      cacheEntry.pre.next = cacheEntry.next;
-      cacheEntry.next.pre = cacheEntry.pre;
-      cacheEntry.next = null;
-      cacheEntry.pre = null;
-      return cacheEntry;
-    }
   }
 }

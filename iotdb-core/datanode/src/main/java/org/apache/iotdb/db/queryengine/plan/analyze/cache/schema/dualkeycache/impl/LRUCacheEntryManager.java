@@ -46,19 +46,6 @@ class LRUCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
   }
 
   @Override
-  public boolean invalidate(final CacheEntry<SK, V> cacheEntry) {
-    if (cacheEntry.isInvalidated.getAndSet(true)) {
-      return false;
-    }
-
-    cacheEntry.next.pre = cacheEntry.pre;
-    cacheEntry.pre.next = cacheEntry.next;
-    cacheEntry.next = null;
-    cacheEntry.pre = null;
-    return true;
-  }
-
-  @Override
   public CacheEntry<SK, V> evict() {
     int startIndex = idxGenerator.nextInt(SLOT_NUM);
     LRULinkedList<SK, V> lruLinkedList;
@@ -104,50 +91,7 @@ class LRUCacheEntryManager<SK, V> implements ICacheEntryManager<SK, V> {
     return lruLinkedList;
   }
 
-  private static class LRULinkedList<SK, V> {
-
-    // head.next is the most recently used entry
-    private final CacheEntry<SK, V> head;
-    private final CacheEntry<SK, V> tail;
-
-    public LRULinkedList() {
-      head = new CacheEntry<>(null, null, null);
-      tail = new CacheEntry<>(null, null, null);
-      head.next = tail;
-      tail.pre = head;
-    }
-
-    synchronized void add(final CacheEntry<SK, V> cacheEntry) {
-      CacheEntry<SK, V> nextEntry;
-
-      do {
-        nextEntry = head.next;
-      } while (nextEntry.isInvalidated.get());
-
-      cacheEntry.next = head.next;
-      cacheEntry.pre = head;
-      head.next.pre = cacheEntry;
-      head.next = cacheEntry;
-    }
-
-    synchronized CacheEntry<SK, V> evict() {
-      CacheEntry<SK, V> cacheEntry;
-
-      do {
-        cacheEntry = tail.pre;
-        if (cacheEntry == head) {
-          return null;
-        }
-
-      } while (cacheEntry.isInvalidated.compareAndSet(false, true));
-
-      cacheEntry.pre.next = cacheEntry.next;
-      cacheEntry.next.pre = cacheEntry.pre;
-      cacheEntry.next = null;
-      cacheEntry.pre = null;
-      return cacheEntry;
-    }
-
+  private static class LRULinkedList<SK, V> extends CacheLinkedList<SK, V> {
     synchronized void moveToHead(final CacheEntry<SK, V> cacheEntry) {
       if (cacheEntry.isInvalidated.get()) {
         // this cache entry has been evicted
