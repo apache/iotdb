@@ -41,9 +41,12 @@ all_hiddenimports = []
 # Only collect essential data files and binaries for critical libraries
 # This reduces startup time by avoiding unnecessary module imports
 essential_libraries = {
-    'torch': True,  # Keep collect_all for torch as it has many dynamic imports
-    'transformers': True,  # Keep collect_all for transformers
-    'safetensors': True,  # Keep collect_all for safetensors
+    'torch': True,
+    'transformers': True,
+    'tokenizers': True,
+    'huggingface_hub': True,
+    'safetensors': True,
+    'hf_xet': True,
     'numpy': True,
     'scipy': True,
     'pandas': True,
