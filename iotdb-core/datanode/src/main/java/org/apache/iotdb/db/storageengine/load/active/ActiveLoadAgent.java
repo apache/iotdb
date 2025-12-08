@@ -19,21 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 public class ActiveLoadAgent {
 
@@ -72,101 +67,74 @@ public class ActiveLoadAgent {
    * clean up all files and subdirectories in the listening directories, including: 1. Pending
    * directories (configured by load_active_listening_dirs) 2. Pipe directory (for pipe data sync)
    * 3. Failed directory (for failed files)
+   *
+   * <p>This method is called during DataNode startup and must not throw any exceptions to ensure
+   * startup can proceed normally. All exceptions are caught and logged internally.
    */
   public static void cleanupListeningDirectories() {
     try {
-      final Set<String> dirsToClean = new HashSet<>();
+      final List<String> dirsToClean = new ArrayList<>();
 
-      try {
-        // Add configured listening dirs
-        if (IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningEnable()) {
-          dirsToClean.addAll(
-              Arrays.asList(
-                  IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs()));
-        }
+      dirsToClean.addAll(
+          Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs()));
 
-        // Add pipe dir
-        dirsToClean.add(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningPipeDir());
+      // Add pipe dir
+      dirsToClean.add(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningPipeDir());
 
-        // Add failed dir
-        dirsToClean.add(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir());
-      } catch (Exception e) {
-        LOGGER.warn("Failed to get active load listening directories configuration", e);
-        return;
-      }
+      // Add failed dir
+      dirsToClean.add(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir());
 
-      int totalFilesDeleted = 0;
-      int totalSubDirsDeleted = 0;
-
+      // Clean up each directory
       for (final String dirPath : dirsToClean) {
         try {
-          final File dir = new File(dirPath);
-
-          if (!dir.exists() || !dir.isDirectory()) {
+          if (dirPath == null || dirPath.isEmpty()) {
             continue;
           }
 
-          // Convert to absolute path for comparison
-          final String absoluteDirPath = dir.getAbsolutePath();
+          final File dir = new File(dirPath);
 
-          final long[] fileCount = {0};
-          final long[] subdirCount = {0};
+          // Check if directory exists and is a directory
+          // These methods may throw SecurityException if access is denied
+          try {
+            if (!dir.exists() || !dir.isDirectory()) {
+              continue;
+            }
+          } catch (Exception e) {
+            LOGGER.debug("Failed to check directory: {}", dirPath, e);
+            continue;
+          }
 
-          Files.walkFileTree(
-              dir.toPath(),
-              new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                  try {
-                    Files.delete(file);
-                    fileCount[0]++;
-                  } catch (Exception e) {
-                    LOGGER.debug("Failed to delete file: {}", file.toAbsolutePath(), e);
-                  }
-                  return FileVisitResult.CONTINUE;
-                }
+          // Only delete contents inside the directory, not the directory itself
+          // listFiles() may throw SecurityException if access is denied
+          File[] files = null;
+          try {
+            files = dir.listFiles();
+          } catch (Exception e) {
+            LOGGER.warn("Failed to list files in directory: {}", dirPath, e);
+            continue;
+          }
 
-                @Override
-                public FileVisitResult postVisitDirectory(Path subDir, IOException exc) {
-                  if (exc != null) {
-                    LOGGER.debug(
-                        "Error occurred while visiting directory: {}",
-                        subDir.toAbsolutePath(),
-                        exc);
-                    return FileVisitResult.CONTINUE;
-                  }
-                  if (!subDir.toFile().getAbsolutePath().equals(absoluteDirPath)) {
-                    try {
-                      Files.delete(subDir);
-                      subdirCount[0]++;
-                    } catch (Exception e) {
-                      LOGGER.debug("Failed to delete directory: {}", subDir.toAbsolutePath(), e);
-                    }
-                  }
-                  return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                  LOGGER.debug("Failed to visit file: {}", file.toAbsolutePath(), exc);
-                  return FileVisitResult.CONTINUE;
-                }
-              });
-
-          totalFilesDeleted += fileCount[0];
-          totalSubDirsDeleted += subdirCount[0];
+          if (files != null) {
+            for (final File file : files) {
+              // FileUtils.deleteFileOrDirectory internally calls file.isDirectory() and
+              // file.listFiles() without try-catch, so exceptions may propagate here.
+              // We need to catch it to prevent one file failure from stopping the cleanup.
+              try {
+                FileUtils.deleteFileOrDirectory(file, true);
+              } catch (Exception e) {
+                LOGGER.debug("Failed to delete file or directory: {}", file.getAbsolutePath(), e);
+              }
+            }
+          }
         } catch (Exception e) {
           LOGGER.warn("Failed to cleanup directory: {}", dirPath, e);
         }
       }
 
-      if (totalFilesDeleted > 0 || totalSubDirsDeleted > 0) {
-        LOGGER.info(
-            "Cleaned up active load listening directories, deleted {} files and {} subdirectories",
-            totalFilesDeleted,
-            totalSubDirsDeleted);
-      }
+      LOGGER.info("Cleaned up active load listening directories");
     } catch (Throwable t) {
+      // Catch all exceptions and errors (including OutOfMemoryError, etc.)
+      // to ensure startup process is not affected
       LOGGER.warn("Unexpected error during cleanup of active load listening directories", t);
     }
   }
