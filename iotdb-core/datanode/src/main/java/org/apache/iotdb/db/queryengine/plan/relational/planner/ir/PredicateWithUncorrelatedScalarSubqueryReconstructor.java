@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
@@ -79,21 +80,19 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
       Expression left = comparisonExpression.getLeft();
       Expression right = comparisonExpression.getRight();
-      if (left instanceof Identifier && right instanceof SubqueryExpression) {
+      if ((left instanceof Identifier || left instanceof FunctionCall)
+          && right instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
                 context, (SubqueryExpression) right, analysis.getWith());
         // If the subquery result is not present, we cannot reconstruct the predicate.
-        if (result.isPresent()) {
-          right = result.get();
-        }
-      } else if (right instanceof Identifier && left instanceof SubqueryExpression) {
+        result.ifPresent(comparisonExpression::setShadowRight);
+      } else if ((right instanceof Identifier || right instanceof FunctionCall)
+          && left instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
                 context, (SubqueryExpression) left, analysis.getWith());
-        if (result.isPresent()) {
-          left = result.get();
-        }
+        result.ifPresent(comparisonExpression::setShadowLeft);
       }
       comparisonExpression.setLeft(left);
       comparisonExpression.setRight(right);
@@ -213,6 +212,23 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
     return Optional.empty();
+  }
+
+  public void clearShadowExpression(Expression expression) {
+    if (expression instanceof LogicalExpression) {
+      LogicalExpression logicalExpression = (LogicalExpression) expression;
+      for (Expression term : logicalExpression.getTerms()) {
+        clearShadowExpression(term);
+      }
+    } else if (expression instanceof NotExpression) {
+      NotExpression notExpression = (NotExpression) expression;
+      clearShadowExpression(notExpression.getValue());
+    } else if (expression instanceof ComparisonExpression) {
+      ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+      comparisonExpression.clearShadow();
+      clearShadowExpression(comparisonExpression.getLeft());
+      clearShadowExpression(comparisonExpression.getRight());
+    }
   }
 
   private static class PredicateWithUncorrelatedScalarSubqueryReconstructorHolder {
