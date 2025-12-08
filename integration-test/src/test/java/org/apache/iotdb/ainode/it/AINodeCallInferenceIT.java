@@ -40,7 +40,6 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 
 @RunWith(IoTDBTestRunner.class)
