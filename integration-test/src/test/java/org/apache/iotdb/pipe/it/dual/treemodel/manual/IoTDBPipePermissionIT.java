@@ -293,11 +293,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // Alter to another user, shall fail because of lack of password
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b_realtime modify source ('username'='thulab')");
+      statement.execute("alter pipe a2b modify source ('username'='thulab')");
       fail("Alter pipe shall fail if only user is specified");
     } catch (final SQLException e) {
       Assert.assertEquals(
-          "1107: Failed to alter pipe a2b_realtime, in iotdb-source, password must be set when the username is specified.",
+          "1107: Failed to alter pipe a2b, in iotdb-source, password must be set when the username is specified.",
           e.getMessage());
     }
 
