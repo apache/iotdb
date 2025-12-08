@@ -68,11 +68,8 @@ for lib in essential_libraries:
         pass
 
 # Some dependencies might still miss in specified operation systems, manually import them in this case
+# Use collect_submodules for packages with dynamic imports to ensure all submodules are included
 extra_hidden = [
-    # torch dynamo polyfills
-    'torch._dynamo.polyfills',
-    'torch._dynamo.polyfills.functools',
-
     # torch flex attention
     'torch.nn.attention.flex_attention',
 
@@ -84,6 +81,38 @@ extra_hidden = [
 ]
 
 all_hiddenimports.extend(extra_hidden)
+
+# Collect all submodules for torch._dynamo.polyfills recursively
+# This is critical because torch._dynamo.polyfills contains multiple submodules that are dynamically imported
+# and may not be detected by collect_all or static analysis
+try:
+    torch_polyfills_submodules = collect_submodules('torch._dynamo.polyfills')
+    all_hiddenimports.extend(torch_polyfills_submodules)
+    print(f"Collected {len(torch_polyfills_submodules)} submodules from torch._dynamo.polyfills")
+except Exception as e:
+    # If collection fails, add the known modules manually as fallback
+    print(f"Warning: Failed to collect torch._dynamo.polyfills submodules: {e}")
+    all_hiddenimports.extend([
+        'torch._dynamo.polyfills',
+        'torch._dynamo.polyfills.functools',
+        'torch._dynamo.polyfills.operator',
+        'torch._dynamo.polyfills.collections',
+    ])
+
+# Collect submodules for transformers packages that use dynamic imports
+# These packages may have submodules that are not detected by collect_all
+transformers_dynamic_packages = [
+    'transformers.generation',
+    'transformers.models.auto',
+]
+for package in transformers_dynamic_packages:
+    try:
+        submodules = collect_submodules(package)
+        all_hiddenimports.extend(submodules)
+        print(f"Collected {len(submodules)} submodules from {package}")
+    except Exception as e:
+        print(f"Warning: Failed to collect submodules from {package}: {e}")
+        # Continue - the modules in extra_hidden should still work
 
 # Project-specific packages that need their submodules collected
 # Only list top-level packages - collect_submodules will recursively collect all submodules
