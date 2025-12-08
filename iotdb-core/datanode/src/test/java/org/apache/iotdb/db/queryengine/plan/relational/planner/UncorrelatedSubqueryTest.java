@@ -500,4 +500,37 @@ public class UncorrelatedSubqueryTest {
                                         SINGLE,
                                         tableScan2)))))));
   }
+
+  @Test
+  public void testUncorrelatedHavingSubquery() {
+    String sql =
+        "SELECT min(time) as min FROM table1 group by s1 having min(time) > (select max(time) from table2)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("time", "s1"), ImmutableSet.of("time", "s1"));
+    PlanMatchPattern agg =
+        aggregation(
+            singleGroupingSet("s1"),
+            ImmutableMap.of(
+                Optional.of("min"), aggregationFunction("min", ImmutableList.of("time"))),
+            ImmutableList.of(),
+            Optional.empty(),
+            SINGLE,
+            tableScan);
+
+    Expression filterPredicate =
+        new ComparisonExpression(GREATER_THAN, new SymbolReference("min"), new LongLiteral("1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *      └──FilterNode
+     *         ├──ProjectNode
+     *            └──Aggregation
+     *               └──TableScanNode
+     */
+
+    assertPlan(logicalQueryPlan, output(filter(filterPredicate, project(agg))));
+  }
 }
