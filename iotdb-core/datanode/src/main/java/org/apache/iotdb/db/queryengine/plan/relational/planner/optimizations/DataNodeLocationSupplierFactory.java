@@ -85,6 +85,7 @@ public class DataNodeLocationSupplierFactory {
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
       switch (tableName) {
         case InformationSchema.QUERIES:
+        case InformationSchema.CONNECTIONS:
           return getReadableDataNodeLocations();
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:

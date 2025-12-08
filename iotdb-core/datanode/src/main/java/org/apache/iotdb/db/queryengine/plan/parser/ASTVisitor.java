@@ -170,6 +170,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -343,6 +344,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
       "Limit configuration is not enabled, please enable it first.";
+
+  public static final String DELETE_RANGE_COMPARISON_ERROR_MSG =
+      "For delete statement, where clause use a range comparison on the same field, the left value of the range cannot be greater than the right value of the range, it must be written like this : time > 5 and time < 10";
 
   private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
   private static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
@@ -2993,9 +2997,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseDeleteTimeRange(((LogicAndExpression) predicate).getLeftExpression());
       TimeRange rightTimeRange =
           parseDeleteTimeRange(((LogicAndExpression) predicate).getRightExpression());
-      return new TimeRange(
-          Math.max(leftTimeRange.getMin(), rightTimeRange.getMin()),
-          Math.min(leftTimeRange.getMax(), rightTimeRange.getMax()));
+      long min = Math.max(leftTimeRange.getMin(), rightTimeRange.getMin());
+      long max = Math.min(leftTimeRange.getMax(), rightTimeRange.getMax());
+      if (min > max) {
+        throw new SemanticException(DELETE_RANGE_COMPARISON_ERROR_MSG);
+      }
+      return new TimeRange(min, max);
     } else if (predicate instanceof CompareBinaryExpression) {
       if (((CompareBinaryExpression) predicate).getLeftExpression() instanceof TimestampOperand) {
         return parseTimeRangeForDeleteTimeRange(
@@ -3773,6 +3780,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowDataNodes(IoTDBSqlParser.ShowDataNodesContext ctx) {
     return new ShowDataNodesStatement();
+  }
+
+  @Override
+  public Statement visitShowAvailableUrls(IoTDBSqlParser.ShowAvailableUrlsContext ctx) {
+    return new ShowAvailableUrlsStatement();
   }
 
   // show confignodes

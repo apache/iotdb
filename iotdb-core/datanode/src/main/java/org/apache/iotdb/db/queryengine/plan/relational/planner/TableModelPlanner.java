@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -93,6 +94,7 @@ public class TableModelPlanner implements IPlanner {
   // Parameters for prepared statements (optional)
   private final List<Expression> parameters;
   private final Map<NodeRef<Parameter>, Expression> parameterLookup;
+  private final TypeManager typeManager;
 
   public TableModelPlanner(
       final Statement statement,
@@ -109,7 +111,8 @@ public class TableModelPlanner implements IPlanner {
       final AccessControl accessControl,
       final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier,
       final List<Expression> parameters,
-      final Map<NodeRef<Parameter>, Expression> parameterLookup) {
+      final Map<NodeRef<Parameter>, Expression> parameterLookup,
+      final TypeManager typeManager) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -123,6 +126,7 @@ public class TableModelPlanner implements IPlanner {
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
     this.parameters = parameters;
     this.parameterLookup = parameterLookup;
+    this.typeManager = typeManager;
   }
 
   @Override
@@ -130,7 +134,7 @@ public class TableModelPlanner implements IPlanner {
     return new Analyzer(
             context,
             context.getSession(),
-            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl, typeManager),
             parameters,
             parameterLookup,
             statementRewrite,

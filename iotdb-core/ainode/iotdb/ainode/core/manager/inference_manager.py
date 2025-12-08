@@ -366,9 +366,9 @@ class InferenceManager:
             single_output=False,
         )
 
-    def shutdown(self):
+    def stop(self):
         self._stop_event.set()
-        self._pool_controller.shutdown()
+        self._pool_controller.stop()
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()

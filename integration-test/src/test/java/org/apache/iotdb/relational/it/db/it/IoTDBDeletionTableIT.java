@@ -117,6 +117,8 @@ public class IoTDBDeletionTableIT {
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(5000);
+    // avoid inconsistency caused by leader migration
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -1739,7 +1741,11 @@ public class IoTDBDeletionTableIT {
     List<TimeRange> ranges = new ArrayList<>();
     try (ResultSet set =
         statement.executeQuery(
-            "select time from table" + testNum + " where time <= " + timeUpperBound)) {
+            "select time from table"
+                + testNum
+                + " where time <= "
+                + timeUpperBound
+                + " order by time")) {
       while (set.next()) {
         long time = set.getLong(1);
         if (ranges.isEmpty()) {

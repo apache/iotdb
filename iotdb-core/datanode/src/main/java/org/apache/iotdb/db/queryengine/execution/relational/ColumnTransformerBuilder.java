@@ -128,6 +128,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Bi
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseRightShiftColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXor2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BitwiseXorColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BlobLengthColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToDoubleColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToFloatColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.BytesToIntColumnTransformer;
@@ -775,7 +776,12 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new LengthColumnTransformer(INT32, first);
+        Type argumentType = first.getType();
+        if (isCharType(argumentType)) {
+          return new LengthColumnTransformer(INT32, first);
+        } else {
+          return new BlobLengthColumnTransformer(INT32, first);
+        }
       }
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);

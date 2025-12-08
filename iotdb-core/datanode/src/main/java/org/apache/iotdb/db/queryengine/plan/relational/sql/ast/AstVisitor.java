@@ -409,6 +409,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowAvailableUrls(ShowAvailableUrls node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowConfigNodes(ShowConfigNodes node, C context) {
     return visitStatement(node, context);
   }

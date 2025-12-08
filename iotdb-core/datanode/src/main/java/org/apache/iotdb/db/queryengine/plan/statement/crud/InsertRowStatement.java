@@ -534,6 +534,48 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     CommonUtils.swapArray(values, src, target);
   }
 
+  @TableModel
+  @Override
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Call parent to rebuild base arrays
+    super.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
+
+    // Save old arrays
+    final Object[] oldValues = values;
+    final boolean[] oldMeasurementIsAligned = measurementIsAligned;
+
+    // Create new arrays
+    values = new Object[newLength];
+    final boolean[] newMeasurementIsAligned =
+        oldMeasurementIsAligned != null ? new boolean[newLength] : null;
+
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Missing TAG column, fill with default values
+        values[newIdx] = null; // TAG column values remain null by default
+        if (newMeasurementIsAligned != null) {
+          // Default to false for missing TAG columns
+          newMeasurementIsAligned[newIdx] = false;
+        }
+      } else {
+        // Copy from old array
+        values[newIdx] = oldValues[oldIdx];
+        if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
+          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+        }
+      }
+    }
+
+    // Replace old array with new array
+    measurementIsAligned = newMeasurementIsAligned;
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE

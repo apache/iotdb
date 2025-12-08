@@ -779,7 +779,7 @@ public class FragmentInstanceContext extends QueryContext {
     if (initQueryDataSourceRetryCount % 10 == 0) {
       LOGGER.warn(
           "Failed to acquire the read lock of DataRegion-{} for {} times",
-          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionId(),
+          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
           initQueryDataSourceRetryCount);
     }
     return UNFINISHED_QUERY_DATA_SOURCE;

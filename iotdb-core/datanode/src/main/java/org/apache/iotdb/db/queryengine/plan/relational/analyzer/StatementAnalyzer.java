@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -191,7 +192,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -307,11 +307,11 @@ public class StatementAnalyzer {
 
   private final SessionInfo sessionContext;
 
-  private final TypeManager typeManager = new InternalTypeManager();
-
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
+
+  private final TypeManager typeManager;
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -321,7 +321,8 @@ public class StatementAnalyzer {
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
-      CorrelationSupport correlationSupport) {
+      CorrelationSupport correlationSupport,
+      TypeManager typeManager) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -330,6 +331,7 @@ public class StatementAnalyzer {
     this.sessionContext = sessionContext;
     this.metadata = metadata;
     this.correlationSupport = correlationSupport;
+    this.typeManager = typeManager;
   }
 
   public Scope analyze(Node node) {
@@ -552,9 +554,24 @@ public class StatementAnalyzer {
                       }
                       attributeNames.add((SymbolReference) parsedColumn);
 
-                      final Pair<Type, Expression> expressionPair =
-                          analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue());
+                      final Pair<Type, Expression> expressionPair;
+                      try {
+                        expressionPair =
+                            analyzeAndRewriteExpression(
+                                translationMap, translationMap.getScope(), assignment.getValue());
+                      } catch (final Exception e) {
+                        if (e.getMessage().contains("cannot be resolved")) {
+                          throw new SemanticException(
+                              new IoTDBException(
+                                  e.getCause()
+                                      .getMessage()
+                                      .replace(
+                                          "cannot be resolved",
+                                          "is not an attribute or tag column"),
+                                  TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+                        }
+                        throw e;
+                      }
                       if (!expressionPair.getLeft().equals(StringType.STRING)
                           && !expressionPair.getLeft().equals(BinaryType.TEXT)
                           && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
@@ -746,9 +763,7 @@ public class StatementAnalyzer {
 
       final MPPQueryContext context = insert.getContext();
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
-
-      innerInsert.semanticCheck();
-      innerInsert.toLowerCase();
+      innerInsert.toLowerCaseForDevicePath();
 
       innerInsert =
           AnalyzeUtils.analyzeInsert(
@@ -4535,11 +4550,24 @@ public class StatementAnalyzer {
 
         final TableSchema originalSchema = tableSchema.get();
         final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        // We only leave attribute & tag here because the others are not allowed in device related
+        // SQLs
         fields.addAll(
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
+                new TableSchema(
+                    originalSchema.getTableName(),
+                    originalSchema.getColumns().stream()
+                        .filter(
+                            columnSchema ->
+                                columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.ATTRIBUTE)
+                                    || columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.TAG))
+                        .collect(Collectors.toList()))));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
@@ -4553,7 +4581,19 @@ public class StatementAnalyzer {
                 new PlannerContext(metadata, null));
 
         if (node.getWhere().isPresent()) {
-          analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          try {
+            analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          } catch (final Throwable e) {
+            if (e instanceof SemanticException && e.getMessage().contains("cannot be resolved")) {
+              throw new SemanticException(
+                  new IoTDBException(
+                      e.getCause()
+                          .getMessage()
+                          .replace("cannot be resolved", "is not an attribute or tag column"),
+                      TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+            }
+            throw e;
+          }
           node.setWhere(translationMap.rewrite(analysis.getWhere(node)));
         }
       }
