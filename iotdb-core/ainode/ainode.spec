@@ -64,6 +64,24 @@ for lib in essential_libraries:
     except Exception:
         pass
 
+# Some dependencies might still miss in specified operation systems, manually import them in this case
+extra_hidden = [
+    # torch dynamo polyfills
+    'torch._dynamo.polyfills',
+    'torch._dynamo.polyfills.functools',
+
+    # torch flex attention
+    'torch.nn.attention.flex_attention',
+
+    # transformers
+    'transformers.masking_utils',
+    'transformers.generation.utils',
+    'transformers.models.auto.modeling_auto',
+    'transformers.models.auto.auto_factory',
+]
+
+all_hiddenimports.extend(extra_hidden)
+
 # Project-specific packages that need their submodules collected
 # Only list top-level packages - collect_submodules will recursively collect all submodules
 TOP_LEVEL_PACKAGES = [
