@@ -124,9 +124,6 @@ multiprocessing_modules = [
 # Additional dependencies that may need explicit import
 # These are external libraries that might use dynamic imports
 external_dependencies = [
-    'huggingface_hub',
-    'tokenizers',
-    'hf_xet',
     'einops',
     'dynaconf',
     'tzlocal',
