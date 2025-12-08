@@ -26,12 +26,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * This class implements the cache entry manager with LRU policy.
  *
- * @param <FK> The first key of cache value.
  * @param <SK> The second key of cache value.
  * @param <V> The cache value.
  */
-class LRUCacheEntryManager<FK, SK, V>
-    implements ICacheEntryManager<FK, SK, V, LRUCacheEntryManager.LRUCacheEntry<SK, V>> {
+class LRUCacheEntryManager<SK, V>
+    implements ICacheEntryManager<SK, V, LRUCacheEntryManager.LRUCacheEntry<SK, V>> {
 
   private static final int SLOT_NUM = 128;
 
@@ -43,7 +42,7 @@ class LRUCacheEntryManager<FK, SK, V>
   public LRUCacheEntry<SK, V> createCacheEntry(
       final SK secondKey,
       final V value,
-      final ICacheEntryGroup<FK, SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
+      final ICacheEntryGroup<SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
     return new LRUCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 

@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1074,8 +1073,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public int fillLastQueryMap(
-      final PartialPath prefixPath,
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill)
+      final PartialPath prefixPath, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
@@ -1091,9 +1089,7 @@ public class MTreeBelowSGMemoryImpl {
               }
             }
             final PartialPath path = node.getPartialPath();
-            mapToFill
-                .computeIfAbsent(DeviceSchemaCache.getLeadingSegment(path), o -> new HashMap<>())
-                .put(path, measurementMap);
+            mapToFill.put(path, measurementMap);
             sensorNum[0] += measurementMap.size();
           }
         }) {

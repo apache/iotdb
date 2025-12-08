@@ -28,10 +28,10 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
  * @param <V> The cache value.
  * @param <T> The cache entry holding cache value.
  */
-interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
+interface ICacheEntryManager<SK, V, T extends ICacheEntry<SK, V>> {
 
   T createCacheEntry(
-      final SK secondKey, final V value, final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup);
+      final SK secondKey, final V value, final ICacheEntryGroup<SK, V, T> cacheEntryGroup);
 
   void access(final T cacheEntry);
 

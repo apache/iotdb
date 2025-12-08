@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-interface ICacheSizeComputer<FK, SK, V> {
-
-  int computeFirstKeySize(FK firstKey);
+interface ICacheSizeComputer<SK, V> {
 
   int computeSecondKeySize(SK secondKey);
 

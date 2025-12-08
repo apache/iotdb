@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-public enum DualKeyCachePolicy {
+public enum CachePolicy {
   LRU,
   FIFO;
 }

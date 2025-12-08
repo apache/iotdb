@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ICache;
 
 import java.util.function.Function;
 
@@ -30,21 +30,19 @@ import java.util.function.Function;
  * @param <SK> The second key of cache value
  * @param <V> The cache value
  */
-public class DualKeyCacheBuilder<FK, SK, V> {
+public class CacheBuilder<SK, V> {
 
-  private DualKeyCachePolicy policy;
+  private CachePolicy policy;
 
   private long memoryCapacity;
-
-  private Function<FK, Integer> firstKeySizeComputer;
 
   private Function<SK, Integer> secondKeySizeComputer;
 
   private Function<V, Integer> valueSizeComputer;
 
   /** Initiate and return a dual key cache instance. */
-  public IDualKeyCache<FK, SK, V> build() {
-    ICacheEntryManager<FK, SK, V, ?> cacheEntryManager = null;
+  public ICache<SK, V> build() {
+    ICacheEntryManager<SK, V, ?> cacheEntryManager = null;
     switch (policy) {
       case LRU:
         cacheEntryManager = new LRUCacheEntryManager<>();
@@ -53,38 +51,32 @@ public class DualKeyCacheBuilder<FK, SK, V> {
         cacheEntryManager = new FIFOCacheEntryManager<>();
         break;
     }
-    return new DualKeyCacheImpl<>(
+    return new CacheImpl<>(
         cacheEntryManager,
-        new CacheSizeComputerImpl<>(firstKeySizeComputer, secondKeySizeComputer, valueSizeComputer),
+        new CacheSizeComputerImpl<>(secondKeySizeComputer, valueSizeComputer),
         memoryCapacity);
   }
 
   /** Define the cache eviction policy of dual key cache. */
-  public DualKeyCacheBuilder<FK, SK, V> cacheEvictionPolicy(DualKeyCachePolicy policy) {
+  public CacheBuilder<SK, V> cacheEvictionPolicy(CachePolicy policy) {
     this.policy = policy;
     return this;
   }
 
   /** Define the memory capacity of dual key cache. */
-  public DualKeyCacheBuilder<FK, SK, V> memoryCapacity(long memoryCapacity) {
+  public CacheBuilder<SK, V> memoryCapacity(long memoryCapacity) {
     this.memoryCapacity = memoryCapacity;
     return this;
   }
 
-  /** Define how to compute the memory usage of a first key in dual key cache. */
-  public DualKeyCacheBuilder<FK, SK, V> firstKeySizeComputer(Function<FK, Integer> computer) {
-    this.firstKeySizeComputer = computer;
-    return this;
-  }
-
   /** Define how to compute the memory usage of a second key in dual key cache. */
-  public DualKeyCacheBuilder<FK, SK, V> secondKeySizeComputer(Function<SK, Integer> computer) {
+  public CacheBuilder<SK, V> secondKeySizeComputer(Function<SK, Integer> computer) {
     this.secondKeySizeComputer = computer;
     return this;
   }
 
   /** Define how to compute the memory usage of a cache value in dual key cache. */
-  public DualKeyCacheBuilder<FK, SK, V> valueSizeComputer(Function<V, Integer> computer) {
+  public CacheBuilder<SK, V> valueSizeComputer(Function<V, Integer> computer) {
     this.valueSizeComputer = computer;
     return this;
   }

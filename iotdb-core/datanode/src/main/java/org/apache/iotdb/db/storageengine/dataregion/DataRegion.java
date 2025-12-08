@@ -2432,7 +2432,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(getDatabaseName());
+      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateLastCache();
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);

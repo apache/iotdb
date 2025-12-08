@@ -23,8 +23,8 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class FIFOCacheEntryManager<FK, SK, V>
-    implements ICacheEntryManager<FK, SK, V, FIFOCacheEntryManager.FIFOCacheEntry<SK, V>> {
+public class FIFOCacheEntryManager<SK, V>
+    implements ICacheEntryManager<SK, V, FIFOCacheEntryManager.FIFOCacheEntry<SK, V>> {
 
   private static final int SLOT_NUM = 128;
 
@@ -38,7 +38,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
   public FIFOCacheEntry<SK, V> createCacheEntry(
       final SK secondKey,
       final V value,
-      final ICacheEntryGroup<FK, SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
+      final ICacheEntryGroup<SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
     return new FIFOCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 

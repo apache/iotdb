@@ -537,7 +537,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateLastCache(final String database) {
-    DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(database);
+    DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateLastCache();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -546,7 +546,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
-      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidate(req.getFullPath());
+      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

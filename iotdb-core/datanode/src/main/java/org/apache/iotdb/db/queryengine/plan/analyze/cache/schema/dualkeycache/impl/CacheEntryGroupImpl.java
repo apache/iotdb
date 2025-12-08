@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
-    implements ICacheEntryGroup<FK, SK, V, T> {
+public class CacheEntryGroupImpl<SK, V, T extends ICacheEntry<SK, V>>
+    implements ICacheEntryGroup<SK, V, T> {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CacheEntryGroupImpl.class)
@@ -39,21 +39,13 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           // Calculate the outer entry of the "firstKeyMap" here
           + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 
-  private final FK firstKey;
-
   private final Map<SK, T> cacheEntryMap = new ConcurrentHashMap<>();
-  private final ICacheSizeComputer<FK, SK, V> sizeComputer;
+  private final ICacheSizeComputer<SK, V> sizeComputer;
   private final AtomicLong memory;
 
-  CacheEntryGroupImpl(final FK firstKey, final ICacheSizeComputer<FK, SK, V> sizeComputer) {
-    this.firstKey = firstKey;
+  CacheEntryGroupImpl(final ICacheSizeComputer<SK, V> sizeComputer) {
     this.sizeComputer = sizeComputer;
-    this.memory = new AtomicLong(INSTANCE_SIZE + sizeComputer.computeFirstKeySize(firstKey));
-  }
-
-  @Override
-  public FK getFirstKey() {
-    return firstKey;
+    this.memory = new AtomicLong(INSTANCE_SIZE);
   }
 
   @Override
@@ -115,12 +107,12 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
-    return Objects.equals(firstKey, that.firstKey);
+    final CacheEntryGroupImpl<?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?>) o;
+    return Objects.equals(cacheEntryMap, that.cacheEntryMap);
   }
 
   @Override
   public int hashCode() {
-    return firstKey.hashCode();
+    return cacheEntryMap.hashCode();
   }
 }
