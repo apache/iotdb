@@ -20,13 +20,21 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -40,6 +48,9 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
+
+import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
 
 public class PipeTabletInsertionEventTest {
 
@@ -397,5 +408,67 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void testAuthCheck() {
+    PipeInsertNodeTabletInsertionEvent event;
+
+    event =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.db",
+            insertRowNode,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(new PipeTsFileInsertionEventTest.TestAccessControl());
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+
+      event =
+          new PipeInsertNodeTabletInsertionEvent(
+              true,
+              "db",
+              new RelationalInsertRowNode(
+                  new PlanNodeId("plan node 1"),
+                  new PartialPath("tb", false),
+                  false,
+                  new String[] {"s1", "s4"},
+                  new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+                  2000L,
+                  new Object[] {2.0, false},
+                  false,
+                  new TsTableColumnCategory[] {
+                    TsTableColumnCategory.TAG,
+                    TsTableColumnCategory.ATTRIBUTE,
+                    TsTableColumnCategory.FIELD
+                  }),
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
   }
 }

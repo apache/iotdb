@@ -152,7 +152,7 @@ public class PipeTsFileInsertionEventTest {
     }
   }
 
-  private static class TestAccessControl implements AccessControl {
+  static class TestAccessControl implements AccessControl {
 
     @Override
     public void checkCanCreateDatabase(
@@ -188,7 +188,15 @@ public class PipeTsFileInsertionEventTest {
 
     @Override
     public void checkCanSelectFromTable(
-        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
+        String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
+      throw new AccessDeniedException(
+          NO_PERMISSION_PROMOTION
+              + PrivilegeType.SELECT
+              + " ON "
+              + tableName.getDatabaseName()
+              + "."
+              + tableName.getObjectName());
+    }
 
     @Override
     public void checkCanSelectFromDatabase4Pipe(

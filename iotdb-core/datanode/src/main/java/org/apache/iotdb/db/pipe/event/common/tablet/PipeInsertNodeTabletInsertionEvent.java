@@ -123,7 +123,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         Long.MAX_VALUE);
   }
 
-  private PipeInsertNodeTabletInsertionEvent(
+  public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModelEvent,
       final String databaseNameFromDataRegion,
       final InsertNode insertNode,
