@@ -93,33 +93,37 @@ public class TabletStatementConverter {
       final MeasurementSchema[] measurementSchemas = statement.getMeasurementSchemas();
       final String[] measurements = statement.getMeasurements();
       final TSDataType[] dataTypes = statement.getDataTypes();
-      final int schemaSize = measurements != null ? measurements.length : 0;
+      // If measurements and dataTypes are not null, use measurements.length as the standard length
+      final int originalSchemaSize = measurements != null ? measurements.length : 0;
 
+      // Build schemas and track valid column indices (skip null columns)
+      // measurements and dataTypes being null is standard - skip those columns
       final List<IMeasurementSchema> schemas = new ArrayList<>();
-      for (int i = 0; i < schemaSize; i++) {
-        if (measurementSchemas != null && measurementSchemas[i] != null) {
-          schemas.add(measurementSchemas[i]);
-        } else if (measurements[i] != null && dataTypes[i] != null) {
+      final List<Integer> validColumnIndices = new ArrayList<>();
+      for (int i = 0; i < originalSchemaSize; i++) {
+        if (dataTypes != null && measurements[i] != null && dataTypes[i] != null) {
           // Create MeasurementSchema if not present
           schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
-        } else {
-          schemas.add(null);
+          validColumnIndices.add(i);
         }
+        // Skip null columns - don't add to schemas or validColumnIndices
       }
 
-      // Get columnTypes (for table model)
+      final int schemaSize = schemas.size();
+
+      // Get columnTypes (for table model) - only for valid columns
       final TsTableColumnCategory[] columnCategories = statement.getColumnCategories();
       final List<ColumnCategory> tabletColumnTypes = new ArrayList<>();
       if (columnCategories != null && columnCategories.length > 0) {
-        for (int i = 0; i < schemaSize; i++) {
-          if (columnCategories[i] != null) {
-            tabletColumnTypes.add(columnCategories[i].toTsFileColumnType());
+        for (final int validIndex : validColumnIndices) {
+          if (columnCategories[validIndex] != null) {
+            tabletColumnTypes.add(columnCategories[validIndex].toTsFileColumnType());
           } else {
             tabletColumnTypes.add(ColumnCategory.FIELD);
           }
         }
       } else {
-        // Default to FIELD for all columns if not specified
+        // Default to FIELD for all valid columns if not specified
         for (int i = 0; i < schemaSize; i++) {
           tabletColumnTypes.add(ColumnCategory.FIELD);
         }
@@ -141,24 +145,34 @@ public class TabletStatementConverter {
         timestamps = new long[0];
       }
 
-      // Get values - convert Statement columns to Tablet format
+      // Get values - convert Statement columns to Tablet format, only for valid columns
       final Object[] statementColumns = statement.getColumns();
       final Object[] tabletValues = new Object[schemaSize];
       if (statementColumns != null && statementColumns.length > 0) {
-        for (int i = 0; i < schemaSize; i++) {
-          if (statementColumns[i] != null && dataTypes[i] != null) {
-            tabletValues[i] = convertStatementColumnToTablet(statementColumns[i], dataTypes[i]);
+        for (int i = 0; i < validColumnIndices.size(); i++) {
+          final int originalIndex = validColumnIndices.get(i);
+          if (statementColumns[originalIndex] != null && dataTypes[originalIndex] != null) {
+            tabletValues[i] =
+                convertStatementColumnToTablet(
+                    statementColumns[originalIndex], dataTypes[originalIndex]);
           } else {
             tabletValues[i] = null;
           }
         }
       }
 
-      // Get bitMaps - copy array to ensure immutability
+      // Get bitMaps - copy array to ensure immutability, only for valid columns
       final BitMap[] originalBitMaps = statement.getBitMaps();
-      final BitMap[] bitMaps = originalBitMaps != null
-          ? Arrays.copyOf(originalBitMaps, originalBitMaps.length)
-          : null;
+      final BitMap[] bitMaps;
+      if (originalBitMaps != null && originalBitMaps.length > 0) {
+        bitMaps = new BitMap[schemaSize];
+        for (int i = 0; i < validColumnIndices.size(); i++) {
+          final int originalIndex = validColumnIndices.get(i);
+          bitMaps[i] = originalBitMaps[originalIndex];
+        }
+      } else {
+        bitMaps = null;
+      }
 
       // Create Tablet using the full constructor
       // Tablet(String tableName, List<IMeasurementSchema> schemas, List<ColumnCategory>
@@ -179,9 +193,9 @@ public class TabletStatementConverter {
 
   /**
    * Convert a single column value from Statement format to Tablet format. Statement uses primitive
-   * arrays (e.g., int[], long[], float[]), while Tablet may need different format.
-   * All arrays are copied to ensure immutability - even if the original array is modified,
-   * the converted array remains unchanged.
+   * arrays (e.g., int[], long[], float[]), while Tablet may need different format. All arrays are
+   * copied to ensure immutability - even if the original array is modified, the converted array
+   * remains unchanged.
    *
    * @param columnValue column value from Statement (primitive array)
    * @param dataType data type of the column
