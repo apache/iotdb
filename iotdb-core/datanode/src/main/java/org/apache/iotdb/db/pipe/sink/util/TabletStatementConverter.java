@@ -146,6 +146,7 @@ public class TabletStatementConverter {
       }
 
       // Get values - convert Statement columns to Tablet format, only for valid columns
+      // All arrays are truncated/copied to rowSize length
       final Object[] statementColumns = statement.getColumns();
       final Object[] tabletValues = new Object[schemaSize];
       if (statementColumns != null && statementColumns.length > 0) {
@@ -154,21 +155,28 @@ public class TabletStatementConverter {
           if (statementColumns[originalIndex] != null && dataTypes[originalIndex] != null) {
             tabletValues[i] =
                 convertStatementColumnToTablet(
-                    statementColumns[originalIndex], dataTypes[originalIndex]);
+                    statementColumns[originalIndex], dataTypes[originalIndex], rowSize);
           } else {
             tabletValues[i] = null;
           }
         }
       }
 
-      // Get bitMaps - copy array to ensure immutability, only for valid columns
+      // Get bitMaps - copy and truncate to rowSize, only for valid columns
       final BitMap[] originalBitMaps = statement.getBitMaps();
       final BitMap[] bitMaps;
       if (originalBitMaps != null && originalBitMaps.length > 0) {
         bitMaps = new BitMap[schemaSize];
         for (int i = 0; i < validColumnIndices.size(); i++) {
           final int originalIndex = validColumnIndices.get(i);
-          bitMaps[i] = originalBitMaps[originalIndex];
+          if (originalBitMaps[originalIndex] != null) {
+            // Create a new BitMap truncated to rowSize
+            final byte[] truncatedBytes =
+                originalBitMaps[originalIndex].getTruncatedByteArray(rowSize);
+            bitMaps[i] = new BitMap(rowSize, truncatedBytes);
+          } else {
+            bitMaps[i] = null;
+          }
         }
       } else {
         bitMaps = null;
@@ -194,46 +202,56 @@ public class TabletStatementConverter {
   /**
    * Convert a single column value from Statement format to Tablet format. Statement uses primitive
    * arrays (e.g., int[], long[], float[]), while Tablet may need different format. All arrays are
-   * copied to ensure immutability - even if the original array is modified, the converted array
-   * remains unchanged.
+   * copied and truncated to rowSize length to ensure immutability - even if the original array is
+   * modified, the converted array remains unchanged.
    *
    * @param columnValue column value from Statement (primitive array)
    * @param dataType data type of the column
-   * @return column value in Tablet format (copied array)
+   * @param rowSize number of rows to copy (truncate to this length)
+   * @return column value in Tablet format (copied and truncated array)
    */
   private static Object convertStatementColumnToTablet(
-      final Object columnValue, final TSDataType dataType) {
+      final Object columnValue, final TSDataType dataType, final int rowSize) {
 
-    if (TSDataType.DATE.equals(dataType)) {
-      final int[] values = (int[]) columnValue;
-      // Copy the array first to ensure immutability
-      final int[] copiedValues = Arrays.copyOf(values, values.length);
-      final LocalDate[] localDateValue = new LocalDate[copiedValues.length];
-      for (int i = 0; i < copiedValues.length; i++) {
-        localDateValue[i] = DateUtils.parseIntToLocalDate(copiedValues[i]);
-      }
-      return localDateValue;
-    }
-
-    // For primitive arrays, always copy to ensure immutability
     if (columnValue == null) {
       return null;
     }
 
+    if (TSDataType.DATE.equals(dataType)) {
+      final int[] values = (int[]) columnValue;
+      // Copy and truncate to rowSize
+      final int[] copiedValues = Arrays.copyOf(values, Math.min(values.length, rowSize));
+      final LocalDate[] localDateValue = new LocalDate[rowSize];
+      for (int i = 0; i < copiedValues.length; i++) {
+        localDateValue[i] = DateUtils.parseIntToLocalDate(copiedValues[i]);
+      }
+      // Fill remaining with null if needed
+      for (int i = copiedValues.length; i < rowSize; i++) {
+        localDateValue[i] = null;
+      }
+      return localDateValue;
+    }
+
+    // For primitive arrays, copy and truncate to rowSize
     if (columnValue instanceof boolean[]) {
-      return Arrays.copyOf((boolean[]) columnValue, ((boolean[]) columnValue).length);
+      final boolean[] original = (boolean[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     } else if (columnValue instanceof int[]) {
-      return Arrays.copyOf((int[]) columnValue, ((int[]) columnValue).length);
+      final int[] original = (int[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     } else if (columnValue instanceof long[]) {
-      return Arrays.copyOf((long[]) columnValue, ((long[]) columnValue).length);
+      final long[] original = (long[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     } else if (columnValue instanceof float[]) {
-      return Arrays.copyOf((float[]) columnValue, ((float[]) columnValue).length);
+      final float[] original = (float[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     } else if (columnValue instanceof double[]) {
-      return Arrays.copyOf((double[]) columnValue, ((double[]) columnValue).length);
+      final double[] original = (double[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     } else if (columnValue instanceof Binary[]) {
-      // For Binary arrays, create a new array and copy references
+      // For Binary arrays, create a new array and copy references, truncate to rowSize
       final Binary[] original = (Binary[]) columnValue;
-      return Arrays.copyOf(original, original.length);
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
     }
 
     // For other types, return as-is (should not happen for standard types)
