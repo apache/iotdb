@@ -265,10 +265,10 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
-  public boolean shouldSplit(final boolean requireAsync) {
+  public boolean shouldSplit() {
     final int splitThreshold =
         IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
-    return tsFiles.size() > splitThreshold && isAsyncLoad == requireAsync;
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
   }
 
   /**
@@ -298,9 +298,13 @@ public class LoadTsFileStatement extends Statement {
       statement.isAsyncLoad = this.isAsyncLoad;
       statement.isGeneratedByPipe = this.isGeneratedByPipe;
 
-      statement.tsFiles = Collections.singletonList(tsFiles.get(i));
-      statement.resources = new ArrayList<>(1);
-      statement.writePointCountList = new ArrayList<>(1);
+      statement.tsFiles = new ArrayList<>(batchFiles);
+      statement.resources = new ArrayList<>(batchFiles.size());
+      statement.writePointCountList = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        statement.isTableModel.add(false);
+      }
+
       subStatements.add(statement);
     }
 

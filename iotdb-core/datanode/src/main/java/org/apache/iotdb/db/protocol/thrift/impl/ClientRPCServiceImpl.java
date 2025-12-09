@@ -314,10 +314,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-      // create and cache dataset
-      // For synchronous multi-file loading, split into sub-statements for batch execution
+      // Split statement if needed to limit resource consumption during statement analysis
       ExecutionResult result;
-      if (s.shouldSplit(false)) {
+      if (s.shouldSplit()) {
         result =
             executeBatchStatement(
                 s,
@@ -326,7 +325,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 statement,
                 partitionFetcher,
                 schemaFetcher,
-                config.getQueryTimeoutThreshold());
+                config.getQueryTimeoutThreshold(),
+                true);
       } else {
         result =
             COORDINATOR.executeForTreeModel(
@@ -1690,7 +1690,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           // Split statement if needed to limit resource consumption during statement analysis
           ExecutionResult result;
-          if (s.shouldSplit(true)) {
+          if (s.shouldSplit()) {
             result =
                 executeBatchStatement(
                     s,
@@ -1699,7 +1699,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     statement,
                     partitionFetcher,
                     schemaFetcher,
-                    config.getQueryTimeoutThreshold());
+                    config.getQueryTimeoutThreshold(),
+                    false);
           } else {
             result =
                 COORDINATOR.executeForTreeModel(
@@ -2949,13 +2950,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
    * @return the execution result
    */
   private ExecutionResult executeBatchStatement(
-      Statement statement,
-      long queryId,
-      SessionInfo sessionInfo,
-      String statementStr,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher,
-      long timeoutMs) {
+      final Statement statement,
+      final long queryId,
+      final SessionInfo sessionInfo,
+      final String statementStr,
+      final IPartitionFetcher partitionFetcher,
+      final ISchemaFetcher schemaFetcher,
+      final long timeoutMs,
+      final boolean userQuery) {
 
     ExecutionResult result = null;
     final List<? extends Statement> subStatements = statement.getSubStatements();
@@ -2968,23 +2970,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     for (int i = 0; i < totalSubStatements; i++) {
       final Statement subStatement = subStatements.get(i);
-      final List<? extends Statement> subSubStatements = subStatement.getSubStatements();
-      final int batchSize = subSubStatements.isEmpty() ? 1 : subSubStatements.size();
 
-      if (batchSize == 1) {
-        LOGGER.info(
-            "Executing sub-statement {}/{} in tree model, queryId: {}",
-            i + 1,
-            totalSubStatements,
-            queryId);
-      } else {
-        LOGGER.info(
-            "Executing sub-statement {}/{} in tree model, batch size: {}, queryId: {}",
-            i + 1,
-            totalSubStatements,
-            batchSize,
-            queryId);
-      }
+      LOGGER.info(
+          "Executing sub-statement {}/{} in tree model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
 
       result =
           COORDINATOR.executeForTreeModel(
@@ -2995,45 +2986,31 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               timeoutMs,
-              false);
+              userQuery);
 
       // Exit early if any sub-statement execution fails
       if (result != null
           && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (batchSize == 1) {
-          LOGGER.warn(
-              "Failed to execute sub-statement {}/{} in tree model, queryId: {}, error: {}",
-              i + 1,
-              totalSubStatements,
-              queryId,
-              result.status.getMessage());
-        } else {
-          LOGGER.warn(
-              "Failed to execute sub-statement {}/{} in tree model, batch size: {}, queryId: {}, error: {}",
-              i + 1,
-              totalSubStatements,
-              batchSize,
-              queryId,
-              result.status.getMessage());
-        }
+        final int completed = i + 1;
+        final int remaining = totalSubStatements - completed;
+        final double percentage = (completed * 100.0) / totalSubStatements;
+        LOGGER.warn(
+            "Failed to execute sub-statement {}/{} in tree model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            i + 1,
+            totalSubStatements,
+            queryId,
+            completed,
+            remaining,
+            String.format("%.2f", percentage),
+            result.status.getMessage());
         break;
       }
 
-      processedCount += batchSize;
-      if (batchSize == 1) {
-        LOGGER.info(
-            "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
-            i + 1,
-            totalSubStatements,
-            queryId);
-      } else {
-        LOGGER.info(
-            "Successfully executed sub-statement {}/{} in tree model, batch size: {}, queryId: {}",
-            i + 1,
-            totalSubStatements,
-            batchSize,
-            queryId);
-      }
+      LOGGER.info(
+          "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
     }
 
     if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
