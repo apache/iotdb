@@ -301,9 +301,6 @@ public class LoadTsFileStatement extends Statement {
       statement.tsFiles = new ArrayList<>(batchFiles);
       statement.resources = new ArrayList<>(batchFiles.size());
       statement.writePointCountList = new ArrayList<>(batchFiles.size());
-      for (int j = 0; j < batchFiles.size(); j++) {
-        statement.isTableModel.add(false);
-      }
 
       subStatements.add(statement);
     }
