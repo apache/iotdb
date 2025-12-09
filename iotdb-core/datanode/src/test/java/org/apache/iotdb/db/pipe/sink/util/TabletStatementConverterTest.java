@@ -56,7 +56,7 @@ public class TabletStatementConverterTest {
         new InsertTabletStatement(originalTablet, isAligned, null);
 
     // Convert Statement to Tablet
-    final Tablet convertedTablet = TabletStatementConverter.convertStatementToTablet(statement);
+    final Tablet convertedTablet = statement.convertToTablet();
 
     // Verify conversion
     assertTabletsEqual(originalTablet, convertedTablet);
@@ -76,7 +76,7 @@ public class TabletStatementConverterTest {
         new InsertTabletStatement(originalTablet, isAligned, databaseName);
 
     // Convert Statement to Tablet
-    final Tablet convertedTablet = TabletStatementConverter.convertStatementToTablet(statement);
+    final Tablet convertedTablet = statement.convertToTablet();
 
     // Verify conversion
     assertTabletsEqual(originalTablet, convertedTablet);
@@ -114,7 +114,7 @@ public class TabletStatementConverterTest {
     Assert.assertEquals(isAligned, statement.isAligned());
 
     // Verify data by converting Statement back to Tablet
-    final Tablet convertedTablet = TabletStatementConverter.convertStatementToTablet(statement);
+    final Tablet convertedTablet = statement.convertToTablet();
     assertTabletsEqual(originalTablet, convertedTablet);
   }
 
@@ -140,7 +140,7 @@ public class TabletStatementConverterTest {
     final InsertTabletStatement statement =
         TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
     // Convert Statement back to Tablet
-    final Tablet convertedTablet = TabletStatementConverter.convertStatementToTablet(statement);
+    final Tablet convertedTablet = statement.convertToTablet();
 
     // Verify round trip
     assertTabletsEqual(originalTablet, convertedTablet);
@@ -162,8 +162,7 @@ public class TabletStatementConverterTest {
         new InsertTabletStatement(originalTablet, isAligned, databaseName);
 
     // Convert Statement to Tablet
-    final Tablet convertedTablet =
-        TabletStatementConverter.convertStatementToTablet(originalStatement);
+    final Tablet convertedTablet = originalStatement.convertToTablet();
 
     // Convert Tablet back to Statement
     final InsertTabletStatement convertedStatement =

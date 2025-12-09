@@ -57,7 +57,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   public Tablet getTablet() {
     if (tablet == null && statement != null) {
       try {
-        tablet = TabletStatementConverter.convertStatementToTablet(statement);
+        tablet = statement.convertToTablet();
       } catch (final MetadataException e) {
         LOGGER.warn("Failed to convert statement to tablet.", e);
         return null;
@@ -172,7 +172,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     // If tablet is null, convert from statement
     if (tabletToSerialize == null && statement != null) {
       try {
-        tabletToSerialize = TabletStatementConverter.convertStatementToTablet(statement);
+        tabletToSerialize = statement.convertToTablet();
         isAlignedToSerialize = statement.isAligned();
       } catch (final MetadataException e) {
         throw new IOException("Failed to convert statement to tablet for serialization", e);
