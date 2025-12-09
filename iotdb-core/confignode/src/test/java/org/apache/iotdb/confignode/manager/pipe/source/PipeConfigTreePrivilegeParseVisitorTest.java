@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
@@ -35,6 +41,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.function.BiFunction;
 
 public class PipeConfigTreePrivilegeParseVisitorTest {
 
@@ -44,6 +51,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
       new PipeConfigTreePrivilegeParseVisitor(false);
 
   private ConfigNode oldInstance;
+  private final TestPermissionManager permissionManager = new TestPermissionManager();
 
   @Before
   public void setUp()
@@ -51,7 +59,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     oldInstance = ConfigNode.getInstance();
     ConfigNode.setInstance(new ConfigNode());
     final ConfigManager configManager = new ConfigManager();
-    configManager.setPermissionManager(new TestPermissionManager());
+    configManager.setPermissionManager(permissionManager);
     ConfigNode.getInstance().setConfigManager(configManager);
   }
 
@@ -61,11 +69,30 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
   }
 
   @Test
-  public void testCreateDatabase() {
+  public void testCanReadSysSchema() {
+    permissionManager.setUserPrivilege(
+        (userName, privilegeUnion) -> privilegeUnion.getPrivilegeType() == PrivilegeType.SYSTEM);
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
+
+    permissionManager.setUserPrivilege(
+        (userName, privilegeUnion) ->
+            privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
+                && privilegeUnion.getPath().equals("root.db"));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
+    Assert.assertFalse(
+        throwVisitor
+            .visitCreateDatabase(
+                new DatabaseSchemaPlan(
+                    ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
+                null)
+            .isPresent());
   }
 
   private static class TestPermissionManager extends PermissionManager {
+
+    private BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges =
+        (userName, privilegeUnion) -> true;
+
     public TestPermissionManager() {
       super(null, null);
     }
@@ -73,7 +100,13 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     @Override
     public TPermissionInfoResp checkUserPrivileges(
         final String username, final PrivilegeUnion union) {
-      return new TPermissionInfoResp(StatusUtils.OK);
+      return checkUserPrivileges.apply(username, union)
+          ? new TPermissionInfoResp(StatusUtils.OK)
+          : new TPermissionInfoResp(new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()));
+    }
+
+    void setUserPrivilege(final BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges) {
+      this.checkUserPrivileges = checkUserPrivileges;
     }
   }
 }
