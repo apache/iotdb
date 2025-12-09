@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
@@ -94,6 +95,49 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                 && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db.**")));
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, false));
+  }
+
+  @Test
+  public void testAuthPrivilege() {
+    permissionManager.setUserPrivilege(
+        (userName, privilegeUnion) ->
+            privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_USER);
+    Assert.assertTrue(
+        skipVisitor
+            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), null)
+            .isPresent());
+    Assert.assertTrue(
+        skipVisitor
+            .visitRevokeUser(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), null)
+            .isPresent());
+    Assert.assertFalse(
+        skipVisitor
+            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), null)
+            .isPresent());
+    Assert.assertFalse(
+        skipVisitor
+            .visitRevokeRole(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), null)
+            .isPresent());
+
+    permissionManager.setUserPrivilege(
+        (userName, privilegeUnion) ->
+            privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_ROLE);
+    Assert.assertFalse(
+        skipVisitor
+            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), null)
+            .isPresent());
+    Assert.assertFalse(
+        skipVisitor
+            .visitRevokeUser(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), null)
+            .isPresent());
+    Assert.assertTrue(
+        skipVisitor
+            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), null)
+            .isPresent());
+    Assert.assertTrue(
+        skipVisitor
+            .visitRevokeRole(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), null)
+            .isPresent());
   }
 
   private static class TestPermissionManager extends PermissionManager {
