@@ -169,35 +169,32 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
     checkCacheAvailable();
     List<Integer> posList = new ArrayList<>();
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (user.isOpenIdUser()) {
-        return posList;
-      }
-      int pos = 0;
-      for (PartialPath path : allPath) {
-        if (!user.checkPathPrivilege(path, permission)) {
-          boolean checkFromRole = false;
-          for (String rolename : user.getRoleSet()) {
-            Role cachedRole = iAuthorCache.getRoleCache(rolename);
-            if (cachedRole == null) {
-              return checkPathFromConfigNode(username, allPath, permission);
-            }
-            if (cachedRole.checkPathPrivilege(path, permission)) {
-              checkFromRole = true;
-              break;
-            }
+    User user = getUser(username);
+    if (user.isOpenIdUser()) {
+      return posList;
+    }
+    int pos = 0;
+    for (PartialPath path : allPath) {
+      if (!user.checkPathPrivilege(path, permission)) {
+        boolean checkFromRole = false;
+        for (String rolename : user.getRoleSet()) {
+          Role cachedRole = iAuthorCache.getRoleCache(rolename);
+          if (cachedRole == null) {
+            checkRoleFromConfigNode(username, rolename);
+            cachedRole = iAuthorCache.getRoleCache(rolename);
           }
-          if (!checkFromRole) {
-            posList.add(pos);
+          if (cachedRole.checkPathPrivilege(path, permission)) {
+            checkFromRole = true;
+            break;
           }
         }
-        pos++;
+        if (!checkFromRole) {
+          posList.add(pos);
+        }
       }
-      return posList;
-    } else {
-      return checkPathFromConfigNode(username, allPath, permission);
+      pos++;
     }
+    return posList;
   }
 
   @Override
@@ -640,15 +637,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
     }
     return permissionInfoResp;
-  }
-
-  private List<Integer> checkPathFromConfigNode(
-      String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
-    TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false);
-    req.setPaths(AuthUtils.serializePartialPathList(allPath));
-    return checkPrivilegeFromConfigNode(req).getFailPos();
   }
 
   private boolean checkRoleFromConfigNode(String username, String rolename) {
