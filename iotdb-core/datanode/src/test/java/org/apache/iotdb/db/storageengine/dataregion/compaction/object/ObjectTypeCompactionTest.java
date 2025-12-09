@@ -234,8 +234,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair2.getRight().exists());
   }
 
-  private Pair<TsFileResource, File> generateTsFileAndObject(boolean seq, long timestamp, int regionIdInTsFile)
-      throws IOException, WriteProcessException {
+  private Pair<TsFileResource, File> generateTsFileAndObject(
+      boolean seq, long timestamp, int regionIdInTsFile) throws IOException, WriteProcessException {
     TsFileResource resource = createEmptyFileAndResource(seq);
     Path testFile1 = Files.createTempFile(regionDir.toPath(), "test_", ".bin");
     byte[] content = new byte[100];
