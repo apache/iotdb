@@ -21,26 +21,16 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import java.util.function.Function;
 
-class CacheSizeComputerImpl<FK, SK, V> implements ICacheSizeComputer<FK, SK, V> {
-
-  private final Function<FK, Integer> firstKeySizeComputer;
+class CacheSizeComputerImpl<SK, V> implements ICacheSizeComputer<SK, V> {
 
   private final Function<SK, Integer> secondKeySizeComputer;
 
   private final Function<V, Integer> valueSizeComputer;
 
   CacheSizeComputerImpl(
-      Function<FK, Integer> firstKeySizeComputer,
-      Function<SK, Integer> secondKeySizeComputer,
-      Function<V, Integer> valueSizeCompute) {
-    this.firstKeySizeComputer = firstKeySizeComputer;
+      Function<SK, Integer> secondKeySizeComputer, Function<V, Integer> valueSizeCompute) {
     this.secondKeySizeComputer = secondKeySizeComputer;
     this.valueSizeComputer = valueSizeCompute;
-  }
-
-  @Override
-  public int computeFirstKeySize(FK firstKey) {
-    return firstKeySizeComputer.apply(firstKey);
   }
 
   @Override

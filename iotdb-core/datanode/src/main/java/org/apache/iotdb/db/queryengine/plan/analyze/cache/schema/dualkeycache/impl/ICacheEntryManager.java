@@ -23,27 +23,37 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
  * This interface defines the behaviour of a cache entry manager, which takes the responsibility of
  * cache value status management and cache eviction.
  *
- * @param <FK> The first key of cache value.
  * @param <SK> The second key of cache value.
  * @param <V> The cache value.
- * @param <T> The cache entry holding cache value.
  */
-interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
+interface ICacheEntryManager<SK, V> {
 
-  T createCacheEntry(
-      final SK secondKey, final V value, final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup);
+  default CacheEntry<SK, V> createCacheEntry(
+      final SK secondKey, final V value, final ICacheEntryGroup<SK, V> cacheEntryGroup) {
+    return new CacheEntry<>(secondKey, value, cacheEntryGroup);
+  }
 
-  void access(final T cacheEntry);
+  void access(final CacheEntry<SK, V> cacheEntry);
 
-  void put(final T cacheEntry);
+  void put(final CacheEntry<SK, V> cacheEntry);
 
   // A cacheEntry is removed iff the caller has called "invalidate" and it returns "true"
   // Shall never remove a cacheEntry directly or when the "invalidate" returns false
-  boolean invalidate(final T cacheEntry);
+  default boolean invalidate(final CacheEntry<SK, V> cacheEntry) {
+    if (cacheEntry.isInvalidated.getAndSet(true)) {
+      return false;
+    }
+
+    cacheEntry.next.pre = cacheEntry.pre;
+    cacheEntry.pre.next = cacheEntry.next;
+    cacheEntry.next = null;
+    cacheEntry.pre = null;
+    return true;
+  }
 
   // The "evict" is allowed to be concurrently called
   // Inner implementation guarantees that an entry won't be concurrently evicted
-  T evict();
+  CacheEntry<SK, V> evict();
 
   void cleanUp();
 }

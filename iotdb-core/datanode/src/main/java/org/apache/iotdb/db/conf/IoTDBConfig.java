@@ -1051,12 +1051,6 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
-  /**
-   * Threshold for cache size in mayEvict. When cache size exceeds this threshold, the system will
-   * compute total memory in each eviction iteration to ensure accurate memory management.
-   */
-  private int cacheEvictionMemoryComputationThreshold = 20;
-
   private int schemaThreadCount = 5;
 
   private String readConsistencyLevel = "strong";
@@ -3509,15 +3503,6 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
-  }
-
-  public int getCacheEvictionMemoryComputationThreshold() {
-    return cacheEvictionMemoryComputationThreshold;
-  }
-
-  public void setCacheEvictionMemoryComputationThreshold(
-      int cacheEvictionMemoryComputationThreshold) {
-    this.cacheEvictionMemoryComputationThreshold = cacheEvictionMemoryComputationThreshold;
   }
 
   public int getSchemaThreadCount() {

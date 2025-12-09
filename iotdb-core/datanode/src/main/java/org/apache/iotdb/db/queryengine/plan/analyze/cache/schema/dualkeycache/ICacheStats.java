@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
 /** This interface defines the status and statistics, that will be provided , of dual key cache. */
-public interface IDualKeyCacheStats {
+public interface ICacheStats {
 
   /**
    * Return the count of recorded requests, since the cache has been utilized after init or clean

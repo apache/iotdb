@@ -1097,12 +1097,6 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
-    conf.setCacheEvictionMemoryComputationThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "cache_eviction_memory_computation_threshold",
-                String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
-
     conf.setSchemaThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -2087,13 +2081,6 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
-
-      // update cache_eviction_memory_computation_threshold
-      conf.setCacheEvictionMemoryComputationThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "cache_eviction_memory_computation_threshold",
-                  String.valueOf(conf.getCacheEvictionMemoryComputationThreshold()))));
 
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(

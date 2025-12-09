@@ -19,21 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ICache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.CacheBuilder;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.CachePolicy;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +43,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -69,7 +65,7 @@ public class DeviceSchemaCache {
    *
    * <p>2. Optimize the speed in invalidation by databases for most scenarios.
    */
-  private final IDualKeyCache<String, PartialPath, DeviceCacheEntry> dualKeyCache;
+  private final ICache<PartialPath, DeviceCacheEntry> dualKeyCache;
 
   private final Map<String, String> databasePool = new ConcurrentHashMap<>();
 
@@ -77,11 +73,9 @@ public class DeviceSchemaCache {
 
   DeviceSchemaCache() {
     dualKeyCache =
-        new DualKeyCacheBuilder<String, PartialPath, DeviceCacheEntry>()
-            .cacheEvictionPolicy(
-                DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
+        new CacheBuilder<PartialPath, DeviceCacheEntry>()
+            .cacheEvictionPolicy(CachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
-            .firstKeySizeComputer(segment -> (int) RamUsageEstimator.sizeOf(segment))
             .secondKeySizeComputer(PartialPath::estimateSize)
             .valueSizeComputer(DeviceCacheEntry::estimateSize)
             .build();
@@ -99,7 +93,7 @@ public class DeviceSchemaCache {
    *     hit but result is {@code null}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(final PartialPath device, final String measurement) {
-    final DeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
+    final DeviceCacheEntry entry = dualKeyCache.get(device);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
   }
 
@@ -109,8 +103,7 @@ public class DeviceSchemaCache {
    * @param device IDeviceID
    */
   public void invalidateDeviceLastCache(final PartialPath device) {
-    dualKeyCache.update(
-        getLeadingSegment(device), device, null, entry -> -entry.invalidateLastCache(), false);
+    dualKeyCache.update(device, null, entry -> -entry.invalidateLastCache(), false);
   }
 
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
@@ -118,7 +111,6 @@ public class DeviceSchemaCache {
     final String databaseToUse = databasePool.computeIfAbsent(database, k -> database);
 
     dualKeyCache.update(
-        getLeadingSegment(devicePath),
         devicePath,
         new DeviceCacheEntry(),
         entry -> entry.setDeviceSchema(databaseToUse, deviceSchemaInfo),
@@ -126,7 +118,7 @@ public class DeviceSchemaCache {
   }
 
   public IDeviceSchema getDeviceSchema(final PartialPath device) {
-    final DeviceCacheEntry entry = dualKeyCache.get(getLeadingSegment(device), device);
+    final DeviceCacheEntry entry = dualKeyCache.get(device);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
@@ -141,7 +133,6 @@ public class DeviceSchemaCache {
     final String database2Use = databasePool.computeIfAbsent(database, k -> database);
 
     dualKeyCache.update(
-        getLeadingSegment(device),
         device,
         new DeviceCacheEntry(),
         initOrInvalidate
@@ -156,8 +147,7 @@ public class DeviceSchemaCache {
         Objects.isNull(timeValuePairs));
   }
 
-  public boolean getLastCache(
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> inputMap) {
+  public boolean getLastCache(final Map<PartialPath, Map<String, TimeValuePair>> inputMap) {
     return dualKeyCache.batchApply(inputMap, DeviceCacheEntry::updateInputMap);
   }
 
@@ -168,50 +158,27 @@ public class DeviceSchemaCache {
             : entry -> -entry.invalidateLastCache(measurement);
 
     if (!devicePath.hasWildcard()) {
-      dualKeyCache.update(getLeadingSegment(devicePath), devicePath, null, updateFunction, false);
+      dualKeyCache.update(devicePath, null, updateFunction, false);
     } else {
       // This may take quite a long time to perform, yet we assume that the "invalidateLastCache" is
       // only called by deletions, which has a low frequency; and it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.update(
-          segment -> {
-            try {
-              return devicePath.matchPrefixPath(new PartialPath(segment));
-            } catch (final IllegalPathException e) {
-              logger.warn(
-                  "Illegal segmentID {} found in cache when invalidating by path {}, invalidate it anyway",
-                  segment,
-                  devicePath);
-              return true;
-            }
-          },
-          cachedDeviceID -> cachedDeviceID.matchFullPath(devicePath),
-          updateFunction);
+          cachedDeviceID -> cachedDeviceID.matchFullPath(devicePath), updateFunction);
     }
   }
 
   void invalidateCache(
       final @Nonnull PartialPath devicePath, final boolean isMultiLevelWildcardMeasurement) {
     if (!devicePath.hasWildcard()) {
-      dualKeyCache.invalidate(getLeadingSegment(devicePath), devicePath);
+      dualKeyCache.invalidate(devicePath);
     } else {
       // This may take quite a long time to perform, yet we assume that the "invalidateLastCache" is
       // only called by deletions, which has a low frequency; and it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.invalidate(
-          segment -> {
-            try {
-              return devicePath.matchPrefixPath(new PartialPath(segment));
-            } catch (final IllegalPathException e) {
-              logger.warn(
-                  "Illegal segmentID {} found in cache when invalidating by path {}, invalidate it anyway",
-                  segment,
-                  devicePath);
-              return true;
-            }
-          },
           cachedDeviceID ->
               isMultiLevelWildcardMeasurement
                   ? devicePath.matchPrefixPath(cachedDeviceID)
@@ -241,44 +208,10 @@ public class DeviceSchemaCache {
     return dualKeyCache.stats().entriesCount();
   }
 
-  // Note: It might be very slow if the database is too long
-  void invalidateLastCache(final @Nonnull String database) {
-    Predicate<PartialPath> secondKeyChecker;
-    try {
-      final PartialPath databasePath = new PartialPath(database);
-      secondKeyChecker = device -> device.matchPrefixPath(databasePath);
-    } catch (final Exception ignored) {
-      secondKeyChecker = device -> device.startsWith(database);
-    }
-
-    lock.lock();
-    try {
-      dualKeyCache.update(
-          segment -> segment.startsWith(database),
-          device -> true,
-          entry -> -entry.invalidateLastCache());
-      dualKeyCache.update(
-          database::startsWith, secondKeyChecker, entry -> -entry.invalidateLastCache());
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  // Note: It might be very slow if the database is too long
-  public void invalidate(final @Nonnull String database) {
-    lock.lock();
-    try {
-      dualKeyCache.invalidate(segment -> segment.startsWith(database), device -> true);
-      dualKeyCache.invalidate(database::startsWith, device -> device.startsWith(database));
-    } finally {
-      lock.unlock();
-    }
-  }
-
   public void invalidateLastCache() {
     lock.lock();
     try {
-      dualKeyCache.update(segment -> true, device -> true, entry -> -entry.invalidateLastCache());
+      dualKeyCache.update(device -> true, entry -> -entry.invalidateLastCache());
     } finally {
       lock.unlock();
     }
@@ -287,7 +220,7 @@ public class DeviceSchemaCache {
   public void invalidateSchema() {
     lock.lock();
     try {
-      dualKeyCache.update(segment -> true, device -> true, entry -> -entry.invalidateSchema());
+      dualKeyCache.update(device -> true, entry -> -entry.invalidateSchema());
     } finally {
       lock.unlock();
     }
@@ -300,31 +233,5 @@ public class DeviceSchemaCache {
     } finally {
       lock.unlock();
     }
-  }
-
-  // Utils of leading segment
-
-  public static String getLeadingSegment(final PartialPath device) {
-    final String segment;
-    int lastSeparatorPos = -1;
-    int separatorNum = 0;
-
-    final String deviceStr = device.getFullPath();
-    for (int i = 0; i < deviceStr.length(); i++) {
-      if (deviceStr.charAt(i) == TsFileConstant.PATH_SEPARATOR_CHAR) {
-        lastSeparatorPos = i;
-        separatorNum++;
-        if (separatorNum == 3) {
-          break;
-        }
-      }
-    }
-    if (lastSeparatorPos == -1) {
-      segment = deviceStr;
-    } else {
-      segment = deviceStr.substring(0, lastSeparatorPos);
-    }
-
-    return segment;
   }
 }
