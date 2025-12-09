@@ -179,15 +179,11 @@ public class ObjectTypeUtils {
     return wrap.getLong();
   }
 
-  public static File getObjectPathFromBinary(Binary binary) {
+  public static Optional<File> getObjectPathFromBinary(Binary binary) {
     byte[] bytes = binary.getValues();
     String relativeObjectFilePath =
         new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
-    Optional<File> file = TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
-    if (!file.isPresent()) {
-      throw new ObjectFileNotExist(relativeObjectFilePath);
-    }
-    return file.get();
+    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
   }
 
   public static Optional<File> getNullableObjectPathFromBinary(
