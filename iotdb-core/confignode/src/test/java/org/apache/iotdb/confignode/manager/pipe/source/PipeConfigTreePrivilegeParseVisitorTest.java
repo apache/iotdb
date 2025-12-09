@@ -77,7 +77,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
-                && privilegeUnion.getPath().equals("root.db"));
+                && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db")));
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
     Assert.assertFalse(
         throwVisitor
