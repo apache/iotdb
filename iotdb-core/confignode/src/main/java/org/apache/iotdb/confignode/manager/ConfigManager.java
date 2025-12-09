@@ -74,6 +74,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -323,7 +324,7 @@ public class ConfigManager implements IManager {
   private final PartitionManager partitionManager;
 
   /** Manage cluster authorization. */
-  private final PermissionManager permissionManager;
+  private PermissionManager permissionManager;
 
   /** Manage load balancing. */
   protected LoadManager loadManager;
@@ -3105,5 +3106,10 @@ public class ConfigManager implements IManager {
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
     return resp;
+  }
+
+  @TestOnly
+  public void setPermissionManager(final PermissionManager permissionManager) {
+    this.permissionManager = permissionManager;
   }
 }
