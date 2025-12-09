@@ -161,6 +161,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -885,6 +887,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowMigrationsResp showMigrations(TShowMigrationsReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showMigrations(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TShowDataNodesResp showDataNodes() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showDataNodes(), resp -> !updateConfigNodeLeader(resp.status));
@@ -1301,6 +1309,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.migrateRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus balanceRegions() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.balanceRegions(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

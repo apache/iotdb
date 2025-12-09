@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.BalanceRegionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContin
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowMigrationsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
@@ -126,6 +128,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.BalanceRegionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -152,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQue
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
@@ -491,6 +495,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitShowMigrations(
+      ShowMigrationsStatement showMigrationsStatement, MPPQueryContext context) {
+    return new ShowMigrationsTask(showMigrationsStatement, false);
+  }
+
+  @Override
   public IConfigTask visitCreateSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement, MPPQueryContext context) {
     return new CreateSchemaTemplateTask(createSchemaTemplateStatement);
@@ -770,6 +780,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitMigrateRegion(
       MigrateRegionStatement migrateRegionStatement, MPPQueryContext context) {
     return new MigrateRegionTask(migrateRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitBalanceRegions(
+      BalanceRegionsStatement balanceRegionsStatement, MPPQueryContext context) {
+    return new BalanceRegionsTask(balanceRegionsStatement);
   }
 
   @Override

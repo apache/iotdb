@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.BalanceRegionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -503,6 +505,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showRegionStatement, context);
   }
 
+  public R visitShowMigrations(ShowMigrationsStatement showMigrationsStatement, C context) {
+    return visitStatement(showMigrationsStatement, context);
+  }
+
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
   }
@@ -633,6 +639,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitMigrateRegion(MigrateRegionStatement migrateRegionStatement, C context) {
     return visitStatement(migrateRegionStatement, context);
+  }
+
+  public R visitBalanceRegions(BalanceRegionsStatement balanceRegionsStatement, C context) {
+    return visitStatement(balanceRegionsStatement, context);
   }
 
   public R visitReconstructRegion(
