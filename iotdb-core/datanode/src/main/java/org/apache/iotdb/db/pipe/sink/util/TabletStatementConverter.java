@@ -39,6 +39,8 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
@@ -52,6 +54,8 @@ import java.util.List;
  * fields needed.
  */
 public class TabletStatementConverter {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TabletStatementConverter.class);
 
   // Memory calculation constants - extracted from RamUsageEstimator for better performance
   private static final long NUM_BYTES_ARRAY_HEADER =
@@ -68,102 +72,6 @@ public class TabletStatementConverter {
 
   private TabletStatementConverter() {
     // Utility class, no instantiation
-  }
-
-  /**
-   * Convert Tablet to InsertTabletStatement.
-   *
-   * @param tablet Tablet object to convert
-   * @param isAligned whether the tablet is aligned
-   * @param databaseName database name (optional, for table model)
-   * @return InsertTabletStatement
-   * @throws MetadataException if conversion fails
-   */
-  private static InsertTabletStatement convertTabletToStatement(
-      final Tablet tablet, final boolean isAligned, final String databaseName)
-      throws MetadataException {
-    try {
-      final String deviceId = tablet.getDeviceId();
-      final int rowSize = tablet.getRowSize();
-      final List<IMeasurementSchema> schemas = tablet.getSchemas();
-      final int schemaSize = schemas.size();
-      final long[] times = tablet.getTimestamps();
-      final Object[] values = tablet.getValues();
-      final BitMap[] bitMaps = tablet.getBitMaps();
-      final List<ColumnCategory> columnCategories = tablet.getColumnTypes();
-
-      // Construct InsertTabletStatement
-      final InsertTabletStatement statement = new InsertTabletStatement();
-
-      // Set device path based on databaseName
-      // For table model, use getTableName() which returns the table name
-      // For tree model, use getDeviceId() which returns the device path
-      if (databaseName != null) {
-        // For table model, deviceId is actually the table name
-        statement.setDevicePath(new PartialPath(deviceId, false));
-        statement.setDatabaseName(databaseName);
-        statement.setWriteToTable(true);
-      } else {
-        statement.setDevicePath(new PartialPath(deviceId));
-        statement.setWriteToTable(false);
-      }
-
-      // Set measurements, dataTypes, and measurementSchemas
-      final String[] measurements = new String[schemaSize];
-      final TSDataType[] statementDataTypes = new TSDataType[schemaSize];
-      final MeasurementSchema[] measurementSchemas = new MeasurementSchema[schemaSize];
-      for (int i = 0; i < schemaSize; i++) {
-        final IMeasurementSchema schema = schemas.get(i);
-        if (schema != null) {
-          measurements[i] = schema.getMeasurementName();
-          statementDataTypes[i] = schema.getType();
-          measurementSchemas[i] = (MeasurementSchema) schema;
-        } else {
-          measurements[i] = null;
-          statementDataTypes[i] = null;
-          measurementSchemas[i] = null;
-        }
-      }
-      statement.setMeasurements(measurements);
-      statement.setDataTypes(statementDataTypes);
-      statement.setMeasurementSchemas(measurementSchemas);
-
-      // Set column categories if databaseName is provided
-      if (databaseName != null && columnCategories != null) {
-        final TsTableColumnCategory[] statementColumnCategories =
-            new TsTableColumnCategory[schemaSize];
-        for (int i = 0; i < schemaSize; i++) {
-          if (i < columnCategories.size() && columnCategories.get(i) != null) {
-            statementColumnCategories[i] =
-                TsTableColumnCategory.fromTsFileColumnCategory(columnCategories.get(i));
-          } else {
-            statementColumnCategories[i] = null;
-          }
-        }
-        statement.setColumnCategories(statementColumnCategories);
-      }
-
-      // Set times, rowCount, columns, bitMaps
-      // Tablet.getTimestamps() returns an array of size maxRowNumber, but we only need rowSize
-      // elements
-      final long[] statementTimes;
-      if (times != null && times.length >= rowSize && rowSize > 0) {
-        statementTimes = new long[rowSize];
-        System.arraycopy(times, 0, statementTimes, 0, rowSize);
-      } else {
-        // If times array is null or too small, create empty array
-        statementTimes = new long[0];
-      }
-      statement.setTimes(statementTimes);
-      statement.setRowCount(rowSize);
-      statement.setColumns(values);
-      statement.setBitMaps(bitMaps);
-      statement.setAligned(isAligned);
-
-      return statement;
-    } catch (final Exception e) {
-      throw new MetadataException("Failed to convert Tablet to InsertTabletStatement", e);
-    }
   }
 
   /**
@@ -221,10 +129,14 @@ public class TabletStatementConverter {
       final long[] times = statement.getTimes();
       final int rowSize = statement.getRowCount();
       final long[] timestamps;
-      if (times != null && times.length >= rowSize) {
-        timestamps = new long[rowSize];
-        System.arraycopy(times, 0, timestamps, 0, rowSize);
+      if (times != null && times.length >= rowSize && rowSize > 0) {
+        timestamps = times;
       } else {
+        LOGGER.warn(
+            "Times array is null or too small. times.length={}, rowSize={}, deviceId={}",
+            times != null ? times.length : 0,
+            rowSize,
+            deviceIdOrTableName);
         timestamps = new long[0];
       }
 
@@ -332,9 +244,9 @@ public class TabletStatementConverter {
         org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * schemaSize);
 
-    // idColumnIndices (TAG columns): ArrayList base + array header
-    long idColumnIndicesSize = SIZE_OF_ARRAYLIST;
-    idColumnIndicesSize += NUM_BYTES_ARRAY_HEADER;
+    // tagColumnIndices (TAG columns): ArrayList base + array header
+    long tagColumnIndicesSize = SIZE_OF_ARRAYLIST;
+    tagColumnIndicesSize += NUM_BYTES_ARRAY_HEADER;
 
     // Deserialize and calculate memory in the same loop
     for (int i = 0; i < schemaSize; i++) {
@@ -354,7 +266,7 @@ public class TabletStatementConverter {
 
         // Calculate memory for TAG column indices
         if (columnCategories[i] != null && columnCategories[i].equals(TsTableColumnCategory.TAG)) {
-          idColumnIndicesSize +=
+          tagColumnIndicesSize +=
               org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize(
                       Integer.BYTES + NUM_BYTES_OBJECT_HEADER)
                   + NUM_BYTES_OBJECT_REF;
@@ -451,7 +363,7 @@ public class TabletStatementConverter {
         statement.setColumnCategories(columnCategories);
 
         memorySize += columnCategoriesMemorySize;
-        memorySize += idColumnIndicesSize;
+        memorySize += tagColumnIndicesSize;
       } else {
         // For tree model, use DataNodeDevicePathCache
         statement.setDevicePath(
@@ -485,20 +397,41 @@ public class TabletStatementConverter {
     return deserializeStatementFromTabletFormat(byteBuffer, false);
   }
 
-  private static Pair<String, TSDataType> readMeasurement(final ByteBuffer buffer) {
+  /**
+   * Skip a string in ByteBuffer without reading it. This is more efficient than reading and
+   * discarding the string.
+   *
+   * @param buffer ByteBuffer to skip string from
+   */
+  private static void skipString(final ByteBuffer buffer) {
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    if (size > 0) {
+      buffer.position(buffer.position() + size);
+    }
+  }
 
+  /**
+   * Read measurement name and data type from buffer, skipping other measurement schema fields
+   * (encoding, compression, and tags/attributes) that are not needed for InsertTabletStatement.
+   *
+   * @param buffer ByteBuffer containing serialized measurement schema
+   * @return Pair of measurement name and data type
+   */
+  private static Pair<String, TSDataType> readMeasurement(final ByteBuffer buffer) {
+    // Read measurement name and data type
     final Pair<String, TSDataType> pair =
         new Pair<>(ReadWriteIOUtils.readString(buffer), TSDataType.deserializeFrom(buffer));
 
-    ReadWriteIOUtils.readByte(buffer);
+    // Skip encoding type (byte) and compression type (byte) - 2 bytes total
+    buffer.position(buffer.position() + 2);
 
-    ReadWriteIOUtils.readByte(buffer);
-
+    // Skip tags/attributes map (Map<String, String>)
     final int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
       for (int i = 0; i < size; i++) {
-        ReadWriteIOUtils.readString(buffer);
-        ReadWriteIOUtils.readString(buffer);
+        // Skip key (String) and value (String) without constructing temporary objects
+        skipString(buffer);
+        skipString(buffer);
       }
     }
 
@@ -636,6 +569,7 @@ public class TabletStatementConverter {
         case TEXT:
         case STRING:
         case BLOB:
+          // Handle object array type: Binary[] is an array of objects
           final Binary[] binaryValues = new Binary[rowSize];
           // Calculate memory for Binary array: array header + object references
           long binaryArrayMemory =
