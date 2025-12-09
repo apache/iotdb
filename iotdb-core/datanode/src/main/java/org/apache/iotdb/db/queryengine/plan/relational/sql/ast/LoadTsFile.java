@@ -233,10 +233,10 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
-  public boolean shouldSplit(final boolean requireAsync) {
+  public boolean shouldSplit() {
     final int splitThreshold =
         IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
-    return tsFiles.size() > splitThreshold && isAsyncLoad == requireAsync;
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
   }
 
   /**

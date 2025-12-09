@@ -43,7 +43,7 @@ public abstract class Statement extends Node {
    * @return true if the statement should be split, false otherwise. Default implementation returns
    *     false.
    */
-  public boolean shouldSplit(final boolean requireAsync) {
+  public boolean shouldSplit() {
     return false;
   }
 

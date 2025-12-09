@@ -307,10 +307,10 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
-  public boolean shouldSplit(final boolean requireAsync) {
+  public boolean shouldSplit() {
     final int splitThreshold =
         IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
-    return tsFiles.size() > splitThreshold && isAsyncLoad == requireAsync;
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
   }
 
   /**
@@ -347,7 +347,7 @@ public class LoadTsFileStatement extends Statement {
       for (int j = 0; j < batchFiles.size(); j++) {
         statement.isTableModel.add(false);
       }
-      statement.statementType = StatementType.MULTI_BATCH_INSERT;
+
       subStatements.add(statement);
     }
 
