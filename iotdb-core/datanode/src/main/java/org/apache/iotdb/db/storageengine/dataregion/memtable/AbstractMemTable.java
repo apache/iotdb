@@ -590,6 +590,9 @@ public abstract class AbstractMemTable implements IMemTable {
     WritableMemChunk memChunk =
         (WritableMemChunk) memTableMap.get(deviceID).getMemChunkMap().get(measurementId);
 
+    if (memChunk == null) {
+      return;
+    }
     Optional<Long> anySatisfiedTimestamp =
         memChunk.getAnySatisfiedTimestamp(deletionList, globalTimeFilter);
     if (!anySatisfiedTimestamp.isPresent()) {
