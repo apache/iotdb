@@ -160,18 +160,14 @@ public class TabletStatementConverter {
       // Tablet(String tableName, List<IMeasurementSchema> schemas, List<ColumnCategory>
       // columnTypes,
       //        long[] timestamps, Object[] values, BitMap[] bitMaps, int rowSize)
-      final Tablet tablet =
-          new Tablet(
-              deviceIdOrTableName,
-              schemas,
-              tabletColumnTypes,
-              timestamps,
-              tabletValues,
-              bitMaps,
-              rowSize);
-
-      // Note: isAligned is not a property of Tablet, it's handled separately during insertion
-      return tablet;
+      return new Tablet(
+          deviceIdOrTableName,
+          schemas,
+          tabletColumnTypes,
+          timestamps,
+          tabletValues,
+          bitMaps,
+          rowSize);
     } catch (final Exception e) {
       throw new MetadataException("Failed to convert InsertTabletStatement to Tablet", e);
     }
