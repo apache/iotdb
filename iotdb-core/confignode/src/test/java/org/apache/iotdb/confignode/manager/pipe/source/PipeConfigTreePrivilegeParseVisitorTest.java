@@ -79,13 +79,21 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
                 && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db")));
     Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
+    Assert.assertFalse(skipVisitor.canReadSysSchema("root.db", null, false));
     Assert.assertFalse(
-        throwVisitor
-            .visitCreateDatabase(
-                new DatabaseSchemaPlan(
-                    ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
-                null)
-            .isPresent());
+            throwVisitor
+                    .visitCreateDatabase(
+                            new DatabaseSchemaPlan(
+                                    ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
+                            null)
+                    .isPresent());
+
+    permissionManager.setUserPrivilege(
+            (userName, privilegeUnion) ->
+                    privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
+                            && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db.**")));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, false));
   }
 
   private static class TestPermissionManager extends PermissionManager {
