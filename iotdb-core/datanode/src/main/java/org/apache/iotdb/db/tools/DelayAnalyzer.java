@@ -125,14 +125,12 @@ public class DelayAnalyzer {
     }
     this.windowSize = windowSize;
     this.delaySamples = new long[windowSize];
-    LOGGER.debug("DelayAnalyzer initialized with window size: {}", windowSize);
   }
 
   @TestOnly
   public DelayAnalyzer(int windowSize, int placeHolder) {
     this.windowSize = windowSize;
     this.delaySamples = new long[windowSize];
-    LOGGER.debug("DelayAnalyzer initialized with window size: {}", windowSize);
   }
 
   /**
