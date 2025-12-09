@@ -101,9 +101,9 @@ public class WritableMemChunkRegionScanTest {
     Assert.assertFalse(bitMaps.get(0).isMarked(0));
     Assert.assertTrue(bitMaps.get(0).isMarked(1));
     Assert.assertFalse(bitMaps.get(0).isMarked(2));
-    Assert.assertFalse(bitMaps.get(1).isMarked(0));
+    Assert.assertTrue(bitMaps.get(1).isMarked(0));
     Assert.assertFalse(bitMaps.get(1).isMarked(1));
-    Assert.assertFalse(bitMaps.get(1).isMarked(2));
+    Assert.assertTrue(bitMaps.get(1).isMarked(2));
     Assert.assertEquals(30001, timestamps[1]);
 
     bitMaps = new ArrayList<>();
@@ -127,8 +127,35 @@ public class WritableMemChunkRegionScanTest {
     Assert.assertTrue(bitMaps.get(1).isMarked(1));
     Assert.assertTrue(bitMaps.get(1).isMarked(2));
     Assert.assertEquals(30001, timestamps[2]);
-    Assert.assertFalse(bitMaps.get(2).isMarked(0));
+    Assert.assertTrue(bitMaps.get(2).isMarked(0));
     Assert.assertFalse(bitMaps.get(2).isMarked(1));
+    Assert.assertTrue(bitMaps.get(2).isMarked(2));
+
+    writableMemChunk.writeAlignedPoints(1000001, new Object[] {1, null, null}, measurementSchemas);
+    writableMemChunk.writeAlignedPoints(1000002, new Object[] {null, 1, null}, measurementSchemas);
+    writableMemChunk.writeAlignedPoints(1000002, new Object[] {1, 1, null}, measurementSchemas);
+    writableMemChunk.writeAlignedPoints(1000003, new Object[] {1, null, null}, measurementSchemas);
+    writableMemChunk.writeAlignedPoints(1000004, new Object[] {1, null, 1}, measurementSchemas);
+    bitMaps = new ArrayList<>();
+    timestamps =
+        writableMemChunk.getAnySatisfiedTimestamp(
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+            bitMaps,
+            true,
+            new TimeFilterOperators.TimeGt(1000000));
+    Assert.assertEquals(3, timestamps.length);
+    Assert.assertEquals(1000001, timestamps[0]);
+    Assert.assertFalse(bitMaps.get(0).isMarked(0));
+    Assert.assertTrue(bitMaps.get(0).isMarked(1));
+    Assert.assertTrue(bitMaps.get(0).isMarked(2));
+    Assert.assertEquals(1000002, timestamps[1]);
+    Assert.assertTrue(bitMaps.get(1).isMarked(0));
+    Assert.assertFalse(bitMaps.get(1).isMarked(1));
+    Assert.assertTrue(bitMaps.get(1).isMarked(2));
+    Assert.assertEquals(1000004, timestamps[2]);
+    Assert.assertTrue(bitMaps.get(2).isMarked(0));
+    Assert.assertTrue(bitMaps.get(2).isMarked(1));
     Assert.assertFalse(bitMaps.get(2).isMarked(2));
   }
 

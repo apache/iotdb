@@ -1034,7 +1034,7 @@ public class AlignedTVListIteratorTest {
       //      }
       long start = System.currentTimeMillis();
       //      long[] filteredTimestamp = writableMemChunk.getAnySatisfiedTimestamp(null, null);
-      writableMemChunk.getAnySatisfiedTimestamp(null, null);
+      writableMemChunk.getAnySatisfiedTimestamp(null, new TimeFilterOperators.TimeGt(3000000 - 2));
       System.out.println("cost: " + (System.currentTimeMillis() - start));
     }
   }

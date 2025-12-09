@@ -352,6 +352,19 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
     }
 
+    // example:
+    // globalTimeFilter:null, ignoreAllNullRows: true
+    // tvList:
+    // time s1    s2    s3
+    // 1    1     null  null
+    // 2    null  1     null
+    // 2    1     1     null
+    // 3    1     null  null
+    // 4    1     null  1
+    // timestampWithBitmap:
+    // timestamp: 1 bitmap: 011
+    // timestamp: 2 bitmap: 101
+    // timestamp: 4 bitmap: 110
     for (int row = 0; row < rowCount; row++) {
       // the row is deleted
       if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
@@ -362,12 +375,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         continue;
       }
 
-      BitMap bitMap = new BitMap(schemaList.size());
+      // Note that this method will only perform bitmap unmarking on the first occurrence of a
+      // non-null value in multiple timestamps for the same column.
+      BitMap currentRowNullValueBitmap = null;
 
-      boolean foundAnyNewColumnWithNonNullValue = false;
       for (int column = 0; column < schemaList.size(); column++) {
         if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
-          bitMap.mark(column);
           continue;
         }
 
@@ -378,31 +391,44 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
                 timestamp,
                 valueColumnsDeletionList.get(column),
                 valueColumnDeleteCursor.get(column))) {
-          bitMap.mark(column);
           continue;
         }
-
         if (!columnHasNonNullValue.isMarked(column)) {
           hasNonNullValueColumnCount.incrementAndGet();
-          foundAnyNewColumnWithNonNullValue = true;
           columnHasNonNullValue.mark(column);
+          currentRowNullValueBitmap =
+              currentRowNullValueBitmap != null
+                  ? currentRowNullValueBitmap
+                  : timestampWithBitmap.computeIfAbsent(
+                      timestamp, k -> getAllMarkedBitmap(schemaList.size()));
+          currentRowNullValueBitmap.unmark(column);
         }
       }
 
       if (!ignoreAllNullRows) {
-        // count devices in table model
-        timestampWithBitmap.put(timestamp, bitMap);
+        timestampWithBitmap.put(
+            timestamp,
+            currentRowNullValueBitmap != null
+                ? currentRowNullValueBitmap
+                : getAllMarkedBitmap(schemaList.size()));
         return;
       }
-      if (!foundAnyNewColumnWithNonNullValue) {
+      if (currentRowNullValueBitmap == null) {
         continue;
       }
-      timestampWithBitmap.put(timestamp, bitMap);
+      // found new column with non-null value
+      timestampWithBitmap.put(timestamp, currentRowNullValueBitmap);
 
       if (hasNonNullValueColumnCount.get() == schemaList.size()) {
         return;
       }
     }
+  }
+
+  private BitMap getAllMarkedBitmap(int size) {
+    BitMap bitMap = new BitMap(size);
+    bitMap.markAll();
+    return bitMap;
   }
 
   @Override
