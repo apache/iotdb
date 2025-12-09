@@ -63,6 +63,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -225,9 +226,14 @@ public class CteMaterializer {
       columnIndex2TsBlockColumnIndexList =
           IntStream.range(0, columnNames.size()).boxed().collect(Collectors.toList());
     }
-    // build column schema list of cte table based on column2BlockColumnIndex
+
+    // Get original column indices in the TsBlock
+    List<Integer> tsBlockColumnIndices =
+        adjustColumnIndexMapping(columnIndex2TsBlockColumnIndexList);
+
+    // build column schema list of cte table based on sorted original indices
     final List<ColumnSchema> columnSchemaList =
-        columnIndex2TsBlockColumnIndexList.stream()
+        tsBlockColumnIndices.stream()
             .map(
                 index ->
                     new ColumnSchema(
@@ -237,6 +243,30 @@ public class CteMaterializer {
                         TsTableColumnCategory.FIELD))
             .collect(Collectors.toList());
     return new TableSchema(cteName, columnSchemaList);
+  }
+
+  /**
+   * Adjust column index mapping by sorting and preserving original indices. For example, if input
+   * is {0, 3, 1, 2}, the output will be {0, 2, 3, 1}. This method doesn't modify the original list.
+   *
+   * @param originalIndexList original column index list
+   * @return adjusted column index list with sorted values preserving original positions
+   */
+  private List<Integer> adjustColumnIndexMapping(List<Integer> originalIndexList) {
+    if (originalIndexList == null || originalIndexList.isEmpty()) {
+      return originalIndexList;
+    }
+
+    // Create LinkedHashMap to maintain value-position mapping
+    Map<Integer, Integer> valueToPositionMap = new LinkedHashMap<>();
+    IntStream.range(0, originalIndexList.size())
+        .forEach(i -> valueToPositionMap.put(originalIndexList.get(i), i));
+
+    // Sort by key (value) and collect positions in sorted order
+    return valueToPositionMap.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toList());
   }
 
   private List<String> getCteExplainAnalyzeLines(

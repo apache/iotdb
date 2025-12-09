@@ -71,10 +71,10 @@ public class IoTDBCteIT {
       new String[] {
         "CREATE DATABASE IF NOT EXISTS testdb",
         "USE testdb",
-        "CREATE TABLE IF NOT EXISTS testtb(deviceid STRING TAG, voltage FLOAT FIELD)",
-        "INSERT INTO testtb VALUES(1000, 'd1', 100.0)",
-        "INSERT INTO testtb VALUES(2000, 'd1', 200.0)",
-        "INSERT INTO testtb VALUES(1000, 'd2', 300.0)",
+        "CREATE TABLE IF NOT EXISTS testtb(voltage FLOAT FIELD, manufacturer STRING FIELD, deviceid STRING TAG)",
+        "INSERT INTO testtb VALUES(1000, 100.0, 'a', 'd1')",
+        "INSERT INTO testtb VALUES(2000, 200.0, 'b', 'd1')",
+        "INSERT INTO testtb VALUES(1000, 300.0, 'c', 'd2')",
       };
 
   private static final String dropDbSqls = "DROP DATABASE IF EXISTS testdb";
@@ -118,10 +118,10 @@ public class IoTDBCteIT {
     String mainQuery =
         "select * from cte1 where voltage > "
             + "(with cte2 as materialized (select avg(voltage) as avg_voltage from testtb) select avg_voltage from cte2)";
-    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:01.000Z,d2,300.0,",
+          "1970-01-01T00:00:01.000Z,300.0,c,d2,",
         };
     String[] cteTemplateQueries = new String[] {"cte1 as %s (select * from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
@@ -131,18 +131,18 @@ public class IoTDBCteIT {
   public void testFilterQuery() {
     // case 1
     String mainQuery = "select * from cte where time > 1000 order by deviceid";
-    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:02.000Z,d1,200.0,",
+          "1970-01-01T00:00:02.000Z,200.0,b,d1,",
         };
     String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
 
     // case 2
     mainQuery = "select * from cte where voltage > 200 order by deviceid";
-    expectedHeader = new String[] {"time", "deviceid", "voltage"};
-    retArray = new String[] {"1970-01-01T00:00:01.000Z,d2,300.0,"};
+    expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
+    retArray = new String[] {"1970-01-01T00:00:01.000Z,300.0,c,d2,"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
   }
 
@@ -150,12 +150,12 @@ public class IoTDBCteIT {
   public void testSortQuery() {
     final String mainQuery = "select * from cte order by deviceid, voltage desc";
 
-    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:02.000Z,d1,200.0,",
-          "1970-01-01T00:00:01.000Z,d1,100.0,",
-          "1970-01-01T00:00:01.000Z,d2,300.0,"
+          "1970-01-01T00:00:02.000Z,200.0,b,d1,",
+          "1970-01-01T00:00:01.000Z,100.0,a,d1,",
+          "1970-01-01T00:00:01.000Z,300.0,c,d2,"
         };
     String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
@@ -165,10 +165,10 @@ public class IoTDBCteIT {
   public void testLimitOffsetQuery() {
     final String mainQuery = "select * from cte limit 1 offset 1";
 
-    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
+    String[] expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:02.000Z,d1,200.0,",
+          "1970-01-01T00:00:02.000Z,200.0,b,d1,",
         };
     String[] cteTemplateQueries =
         new String[] {"cte as %s (select * from testtb where deviceid = 'd1') "};
@@ -248,8 +248,8 @@ public class IoTDBCteIT {
 
   @Test
   public void testMultiReference() {
-    String[] expectedHeader = new String[] {"time", "deviceid", "voltage"};
-    String[] retArray = new String[] {"1970-01-01T00:00:01.000Z,d2,300.0,"};
+    String[] expectedHeader = new String[] {"time", "voltage", "manufacturer", "deviceid"};
+    String[] retArray = new String[] {"1970-01-01T00:00:01.000Z,300.0,c,d2,"};
     String[] cteTemplateQueries = new String[] {"cte as %s (select * from testtb)"};
     String mainQuery = "select * from cte where voltage > (select avg(voltage) from cte)";
     testCteSuccessWithVariants(cteTemplateQueries, mainQuery, expectedHeader, retArray);
@@ -280,10 +280,11 @@ public class IoTDBCteIT {
             session.executeQueryStatement(
                 String.format("with cte as %s (select * from testtb) select * from cte", keyword));
 
-        assertEquals(dataSet.getColumnNames().size(), 3);
+        assertEquals(dataSet.getColumnNames().size(), 4);
         assertEquals(dataSet.getColumnNames().get(0), "time");
-        assertEquals(dataSet.getColumnNames().get(1), "deviceid");
-        assertEquals(dataSet.getColumnNames().get(2), "voltage");
+        assertEquals(dataSet.getColumnNames().get(1), "voltage");
+        assertEquals(dataSet.getColumnNames().get(2), "manufacturer");
+        assertEquals(dataSet.getColumnNames().get(3), "deviceid");
         int cnt = 0;
         while (dataSet.hasNext()) {
           dataSet.next();
@@ -310,10 +311,11 @@ public class IoTDBCteIT {
                 String.format("with cte as %s (select * from testtb) select * from cte", keyword));
 
         final ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(metaData.getColumnCount(), 3);
+        assertEquals(metaData.getColumnCount(), 4);
         assertEquals(metaData.getColumnLabel(1), "time");
-        assertEquals(metaData.getColumnLabel(2), "deviceid");
-        assertEquals(metaData.getColumnLabel(3), "voltage");
+        assertEquals(metaData.getColumnLabel(2), "voltage");
+        assertEquals(metaData.getColumnLabel(3), "manufacturer");
+        assertEquals(metaData.getColumnLabel(4), "deviceid");
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -326,12 +328,12 @@ public class IoTDBCteIT {
 
   @Test
   public void testNest() {
-    final String mainQuery = "SELECT * FROM cte2";
+    final String mainQuery = "select * from cte2";
 
     String[] cteTemplateQueries =
         new String[] {
           "cte1 as %s (select deviceid, voltage from testtb where voltage > 200)",
-          "cte2 as %s (SELECT voltage FROM cte1)"
+          "cte2 as %s (select voltage from cte1)"
         };
     String[] expectedHeader = new String[] {"voltage"};
     String[] retArray = new String[] {"300.0,"};
@@ -339,7 +341,7 @@ public class IoTDBCteIT {
 
     cteTemplateQueries =
         new String[] {
-          "cte2 as %s (SELECT voltage FROM cte1)",
+          "cte2 as %s (select voltage from cte1)",
           "cte1 as %s (select deviceid, voltage from testtb where voltage > 200)"
         };
     String errMsg = "550: Table 'testdb.cte1' does not exist.";
@@ -406,8 +408,8 @@ public class IoTDBCteIT {
         "WITH RECURSIVE t(n) AS %s ("
             + " VALUES (1)"
             + " UNION ALL"
-            + " SELECT n+1 FROM t WHERE n < 100)"
-            + " SELECT sum(n) FROM t";
+            + " select n+1 from t WHERE n < 100)"
+            + " select sum(n) from t";
 
     for (String keyword : cteKeywords) {
       tableAssertTestFail(
@@ -426,7 +428,7 @@ public class IoTDBCteIT {
       adminStmt.execute("USE testdb");
       adminStmt.execute(
           "CREATE TABLE IF NOT EXISTS testtb1(deviceid STRING TAG, voltage FLOAT FIELD)");
-      adminStmt.execute("GRANT SELECT ON testdb.testtb TO USER tmpuser");
+      adminStmt.execute("GRANT select ON testdb.testtb TO USER tmpuser");
 
       try (Connection connection =
               EnvFactory.getEnv()
@@ -496,13 +498,13 @@ public class IoTDBCteIT {
                         // Test different types of CTE queries
                         String[] queries = {
                           String.format(
-                              "WITH cte as %s (SELECT * FROM testtb WHERE voltage > 150) SELECT * FROM cte ORDER BY deviceid",
+                              "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte ORDER BY deviceid",
                               cteKeywords[j % cteKeywords.length]),
                           String.format(
-                              "WITH cte as %s (SELECT deviceid, avg(voltage) as avg_v FROM testtb GROUP BY deviceid) SELECT * FROM cte",
+                              "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
                               cteKeywords[j % cteKeywords.length]),
                           String.format(
-                              "WITH cte as %s (SELECT * FROM testtb WHERE time > 1000) SELECT count(*) as cnt FROM cte",
+                              "WITH cte as %s (select * from testtb WHERE time > 1000) select count(*) as cnt from cte",
                               cteKeywords[j % cteKeywords.length])
                         };
 
