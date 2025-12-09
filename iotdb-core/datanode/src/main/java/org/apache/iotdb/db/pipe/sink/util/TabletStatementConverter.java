@@ -125,12 +125,13 @@ public class TabletStatementConverter {
         }
       }
 
-      // Get timestamps
+      // Get timestamps - always copy to ensure immutability
       final long[] times = statement.getTimes();
       final int rowSize = statement.getRowCount();
       final long[] timestamps;
       if (times != null && times.length >= rowSize && rowSize > 0) {
-        timestamps = times;
+        timestamps = new long[rowSize];
+        System.arraycopy(times, 0, timestamps, 0, rowSize);
       } else {
         LOGGER.warn(
             "Times array is null or too small. times.length={}, rowSize={}, deviceId={}",
@@ -153,8 +154,11 @@ public class TabletStatementConverter {
         }
       }
 
-      // Get bitMaps
-      final BitMap[] bitMaps = statement.getBitMaps();
+      // Get bitMaps - copy array to ensure immutability
+      final BitMap[] originalBitMaps = statement.getBitMaps();
+      final BitMap[] bitMaps = originalBitMaps != null
+          ? Arrays.copyOf(originalBitMaps, originalBitMaps.length)
+          : null;
 
       // Create Tablet using the full constructor
       // Tablet(String tableName, List<IMeasurementSchema> schemas, List<ColumnCategory>
@@ -176,24 +180,49 @@ public class TabletStatementConverter {
   /**
    * Convert a single column value from Statement format to Tablet format. Statement uses primitive
    * arrays (e.g., int[], long[], float[]), while Tablet may need different format.
+   * All arrays are copied to ensure immutability - even if the original array is modified,
+   * the converted array remains unchanged.
    *
    * @param columnValue column value from Statement (primitive array)
    * @param dataType data type of the column
-   * @return column value in Tablet format
+   * @return column value in Tablet format (copied array)
    */
   private static Object convertStatementColumnToTablet(
       final Object columnValue, final TSDataType dataType) {
 
     if (TSDataType.DATE.equals(dataType)) {
       final int[] values = (int[]) columnValue;
-      final LocalDate[] localDateValue = new LocalDate[values.length];
-      for (int i = 0; i < values.length; i++) {
-        localDateValue[i] = DateUtils.parseIntToLocalDate(values[i]);
+      // Copy the array first to ensure immutability
+      final int[] copiedValues = Arrays.copyOf(values, values.length);
+      final LocalDate[] localDateValue = new LocalDate[copiedValues.length];
+      for (int i = 0; i < copiedValues.length; i++) {
+        localDateValue[i] = DateUtils.parseIntToLocalDate(copiedValues[i]);
       }
-
       return localDateValue;
     }
-    // For primitive arrays (boolean[], int[], long[], float[], double[]), return as-is
+
+    // For primitive arrays, always copy to ensure immutability
+    if (columnValue == null) {
+      return null;
+    }
+
+    if (columnValue instanceof boolean[]) {
+      return Arrays.copyOf((boolean[]) columnValue, ((boolean[]) columnValue).length);
+    } else if (columnValue instanceof int[]) {
+      return Arrays.copyOf((int[]) columnValue, ((int[]) columnValue).length);
+    } else if (columnValue instanceof long[]) {
+      return Arrays.copyOf((long[]) columnValue, ((long[]) columnValue).length);
+    } else if (columnValue instanceof float[]) {
+      return Arrays.copyOf((float[]) columnValue, ((float[]) columnValue).length);
+    } else if (columnValue instanceof double[]) {
+      return Arrays.copyOf((double[]) columnValue, ((double[]) columnValue).length);
+    } else if (columnValue instanceof Binary[]) {
+      // For Binary arrays, create a new array and copy references
+      final Binary[] original = (Binary[]) columnValue;
+      return Arrays.copyOf(original, original.length);
+    }
+
+    // For other types, return as-is (should not happen for standard types)
     return columnValue;
   }
 
