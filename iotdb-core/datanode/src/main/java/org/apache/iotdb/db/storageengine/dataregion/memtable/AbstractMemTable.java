@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -451,7 +452,8 @@ public abstract class AbstractMemTable implements IMemTable {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetaDataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemTabled) {
+      List<Pair<Modification, IMemTable>> modsToMemTabled,
+      Filter globalTimeFilter) {
 
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
 
@@ -469,7 +471,12 @@ public abstract class AbstractMemTable implements IMemTable {
                 (MeasurementPath) fullPath, this, modsToMemTabled, ttlLowerBound);
       }
       getMemChunkHandleFromMemTable(
-          deviceID, measurementId, chunkMetaDataMap, memChunkHandleMap, deletionList);
+          deviceID,
+          measurementId,
+          chunkMetaDataMap,
+          memChunkHandleMap,
+          deletionList,
+          globalTimeFilter);
     } else {
       if (!memTableMap.containsKey(deviceID)) {
         return;
@@ -486,7 +493,8 @@ public abstract class AbstractMemTable implements IMemTable {
           ((AlignedPath) fullPath).getSchemaList(),
           chunkMetaDataMap,
           memChunkHandleMap,
-          deletionList);
+          deletionList,
+          globalTimeFilter);
     }
   }
 
@@ -497,7 +505,8 @@ public abstract class AbstractMemTable implements IMemTable {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<Modification, IMemTable>> modsToMemTabled,
+      Filter globalTimeFilter)
       throws IllegalPathException {
 
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
@@ -515,7 +524,8 @@ public abstract class AbstractMemTable implements IMemTable {
           chunkMetadataMap,
           memChunkHandleMap,
           ttlLowerBound,
-          modsToMemTabled);
+          modsToMemTabled,
+          globalTimeFilter);
     } else {
       getMemChunkHandleFromMemTable(
           deviceID,
@@ -523,7 +533,8 @@ public abstract class AbstractMemTable implements IMemTable {
           chunkMetadataMap,
           memChunkHandleMap,
           ttlLowerBound,
-          modsToMemTabled);
+          modsToMemTabled,
+          globalTimeFilter);
     }
   }
 
@@ -532,24 +543,30 @@ public abstract class AbstractMemTable implements IMemTable {
       String measurementId,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<TimeRange> deletionList) {
+      List<TimeRange> deletionList,
+      Filter globalTimeFilter) {
 
     WritableMemChunk memChunk =
         (WritableMemChunk) memTableMap.get(deviceID).getMemChunkMap().get(measurementId);
 
-    long[] timestamps = memChunk.getFilteredTimestamp(deletionList);
+    if (memChunk == null) {
+      return;
+    }
+    Optional<Long> anySatisfiedTimestamp =
+        memChunk.getAnySatisfiedTimestamp(deletionList, globalTimeFilter);
+    if (!anySatisfiedTimestamp.isPresent()) {
+      return;
+    }
+    long satisfiedTimestamp = anySatisfiedTimestamp.get();
 
     chunkMetadataMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
         .add(
-            buildChunkMetaDataForMemoryChunk(
-                measurementId,
-                timestamps[0],
-                timestamps[timestamps.length - 1],
-                Collections.emptyList()));
+            buildFakeChunkMetaDataForFakeMemoryChunk(
+                measurementId, satisfiedTimestamp, satisfiedTimestamp, Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
-        .add(new MemChunkHandleImpl(deviceID, measurementId, timestamps));
+        .add(new MemChunkHandleImpl(deviceID, measurementId, new long[] {satisfiedTimestamp}));
   }
 
   private void getMemAlignedChunkHandleFromMemTable(
@@ -557,7 +574,8 @@ public abstract class AbstractMemTable implements IMemTable {
       List<IMeasurementSchema> schemaList,
       Map<String, List<IChunkMetadata>> chunkMetadataList,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<List<TimeRange>> deletionList) {
+      List<List<TimeRange>> deletionList,
+      Filter globalTimeFilter) {
 
     AlignedWritableMemChunk alignedMemChunk =
         ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
@@ -574,7 +592,11 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = alignedMemChunk.getFilteredTimestamp(deletionList, bitMaps);
+    long[] timestamps =
+        alignedMemChunk.getAnySatisfiedTimestamp(deletionList, bitMaps, globalTimeFilter);
+    if (timestamps.length == 0) {
+      return;
+    }
 
     buildAlignedMemChunkHandle(
         deviceID,
@@ -592,7 +614,8 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataList,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<Modification, IMemTable>> modsToMemTabled,
+      Filter globalTimeFilter)
       throws IllegalPathException {
 
     AlignedWritableMemChunk memChunk = writableMemChunkGroup.getAlignedMemChunk();
@@ -611,7 +634,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     List<BitMap> bitMaps = new ArrayList<>();
-    long[] timestamps = memChunk.getFilteredTimestamp(deletionList, bitMaps);
+    long[] timestamps = memChunk.getAnySatisfiedTimestamp(deletionList, bitMaps, globalTimeFilter);
+    if (timestamps.length == 0) {
+      return;
+    }
     buildAlignedMemChunkHandle(
         deviceID,
         timestamps,
@@ -628,7 +654,8 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<Modification, IMemTable>> modsToMemTabled,
+      Filter globalTimeFilter)
       throws IllegalPathException {
 
     for (Entry<String, IWritableMemChunk> entry :
@@ -646,18 +673,20 @@ public abstract class AbstractMemTable implements IMemTable {
                 modsToMemTabled,
                 ttlLowerBound);
       }
-      long[] timestamps = writableMemChunk.getFilteredTimestamp(deletionList);
+      Optional<Long> anySatisfiedTimestamp =
+          writableMemChunk.getAnySatisfiedTimestamp(deletionList, globalTimeFilter);
+      if (!anySatisfiedTimestamp.isPresent()) {
+        return;
+      }
+      long satisfiedTimestamp = anySatisfiedTimestamp.get();
       chunkMetadataMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
           .add(
-              buildChunkMetaDataForMemoryChunk(
-                  measurementId,
-                  timestamps[0],
-                  timestamps[timestamps.length - 1],
-                  Collections.emptyList()));
+              buildFakeChunkMetaDataForFakeMemoryChunk(
+                  measurementId, satisfiedTimestamp, satisfiedTimestamp, Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
-          .add(new MemChunkHandleImpl(deviceID, measurementId, timestamps));
+          .add(new MemChunkHandleImpl(deviceID, measurementId, new long[] {satisfiedTimestamp}));
     }
   }
 
@@ -681,7 +710,7 @@ public abstract class AbstractMemTable implements IMemTable {
       chunkMetadataList
           .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
-              buildChunkMetaDataForMemoryChunk(
+              buildFakeChunkMetaDataForFakeMemoryChunk(
                   measurement, startEndTime[0], startEndTime[1], deletion));
       chunkHandleMap
           .computeIfAbsent(measurement, k -> new ArrayList<>())
@@ -712,7 +741,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return new long[] {startTime, endTime};
   }
 
-  private IChunkMetadata buildChunkMetaDataForMemoryChunk(
+  private IChunkMetadata buildFakeChunkMetaDataForFakeMemoryChunk(
       String measurement, long startTime, long endTime, List<TimeRange> deletionList) {
     TimeStatistics timeStatistics = new TimeStatistics();
     timeStatistics.setStartTime(startTime);

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
@@ -52,6 +53,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
@@ -712,29 +714,89 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     return new Pair<>(reorderedColumnValues, reorderedBitMaps);
   }
 
-  private void filterDeletedTimeStamp(
+  public long[] getAnySatisfiedTimestamp(
+      List<List<TimeRange>> deletionList, List<BitMap> bitMaps, Filter globalTimeFilter) {
+    BitMap columnHasNonNullValue = new BitMap(schemaList.size());
+    AtomicInteger hasNonNullValueColumnCount = new AtomicInteger(0);
+    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
+
+    getAnySatisfiedTimestamp(
+        list,
+        deletionList,
+        timestampWithBitmap,
+        globalTimeFilter,
+        columnHasNonNullValue,
+        hasNonNullValueColumnCount);
+    for (int i = 0;
+        i < sortedList.size() && hasNonNullValueColumnCount.get() < schemaList.size();
+        i++) {
+      getAnySatisfiedTimestamp(
+          sortedList.get(i),
+          deletionList,
+          timestampWithBitmap,
+          globalTimeFilter,
+          columnHasNonNullValue,
+          hasNonNullValueColumnCount);
+    }
+
+    long[] timestamps = new long[timestampWithBitmap.size()];
+    int idx = 0;
+    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
+      timestamps[idx++] = entry.getKey();
+      bitMaps.add(entry.getValue());
+    }
+    return timestamps;
+  }
+
+  private void getAnySatisfiedTimestamp(
       AlignedTVList alignedTVList,
       List<List<TimeRange>> valueColumnsDeletionList,
-      Map<Long, BitMap> timestampWithBitmap) {
+      Map<Long, BitMap> timestampWithBitmap,
+      Filter globalTimeFilter,
+      BitMap columnHasNonNullValue,
+      AtomicInteger hasNonNullValueColumnCount) {
+    if (globalTimeFilter != null
+        && !globalTimeFilter.satisfyStartEndTime(
+            alignedTVList.getMinTime(), alignedTVList.getMaxTime())) {
+      return;
+    }
     BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
-
     int rowCount = alignedTVList.rowCount();
     List<int[]> valueColumnDeleteCursor = new ArrayList<>();
     if (valueColumnsDeletionList != null) {
       valueColumnsDeletionList.forEach(x -> valueColumnDeleteCursor.add(new int[] {0}));
     }
 
+    // example:
+    // globalTimeFilter:null, ignoreAllNullRows: true
+    // tvList:
+    // time s1    s2    s3
+    // 1    1     null  null
+    // 2    null  1     null
+    // 2    1     1     null
+    // 3    1     null  null
+    // 4    1     null  1
+    // timestampWithBitmap:
+    // timestamp: 1 bitmap: 011
+    // timestamp: 2 bitmap: 101
+    // timestamp: 4 bitmap: 110
     for (int row = 0; row < rowCount; row++) {
       // the row is deleted
       if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
         continue;
       }
       long timestamp = alignedTVList.getTime(row);
+      if (globalTimeFilter != null && !globalTimeFilter.satisfy(timestamp, null)) {
+        continue;
+      }
 
-      BitMap bitMap = new BitMap(schemaList.size());
+      // Note that this method will only perform bitmap unmarking on the first occurrence of a
+      // non-null value in multiple timestamps for the same column.
+      BitMap currentRowNullValueBitmap = null;
+
       for (int column = 0; column < schemaList.size(); column++) {
         if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
-          bitMap.mark(column);
+          continue;
         }
 
         // skip deleted row
@@ -744,32 +806,36 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
                 timestamp,
                 valueColumnsDeletionList.get(column),
                 valueColumnDeleteCursor.get(column))) {
-          bitMap.mark(column);
-        }
-
-        // skip all-null row
-        if (bitMap.isAllMarked()) {
           continue;
         }
-        timestampWithBitmap.put(timestamp, bitMap);
+        if (!columnHasNonNullValue.isMarked(column)) {
+          hasNonNullValueColumnCount.incrementAndGet();
+          columnHasNonNullValue.mark(column);
+          currentRowNullValueBitmap =
+              currentRowNullValueBitmap != null
+                  ? currentRowNullValueBitmap
+                  : timestampWithBitmap.computeIfAbsent(
+                      timestamp, k -> getAllMarkedBitmap(schemaList.size()));
+          currentRowNullValueBitmap.unmark(column);
+        }
+      }
+
+      if (currentRowNullValueBitmap == null) {
+        continue;
+      }
+      // found new column with non-null value
+      timestampWithBitmap.put(timestamp, currentRowNullValueBitmap);
+
+      if (hasNonNullValueColumnCount.get() == schemaList.size()) {
+        return;
       }
     }
   }
 
-  public long[] getFilteredTimestamp(List<List<TimeRange>> deletionList, List<BitMap> bitMaps) {
-    Map<Long, BitMap> timestampWithBitmap = new TreeMap<>();
-
-    filterDeletedTimeStamp(list, deletionList, timestampWithBitmap);
-    for (AlignedTVList alignedTVList : sortedList) {
-      filterDeletedTimeStamp(alignedTVList, deletionList, timestampWithBitmap);
-    }
-
-    List<Long> filteredTimestamps = new ArrayList<>();
-    for (Map.Entry<Long, BitMap> entry : timestampWithBitmap.entrySet()) {
-      filteredTimestamps.add(entry.getKey());
-      bitMaps.add(entry.getValue());
-    }
-    return filteredTimestamps.stream().mapToLong(Long::valueOf).toArray();
+  private BitMap getAllMarkedBitmap(int size) {
+    BitMap bitMap = new BitMap(size);
+    bitMap.markAll();
+    return bitMap;
   }
 
   // Choose maximum avgPointSizeOfLargestColumn among working and sorted AlignedTVList as
