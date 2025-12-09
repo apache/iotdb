@@ -290,7 +290,7 @@ public class TabletStatementConverter {
     // Skip encoding type (byte) and compression type (byte) - 2 bytes total
     buffer.position(buffer.position() + 2);
 
-    // Skip tags/attributes map (Map<String, String>)
+    // Skip props map (Map<String, String>)
     final int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
       for (int i = 0; i < size; i++) {
@@ -434,6 +434,7 @@ public class TabletStatementConverter {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           // Handle object array type: Binary[] is an array of objects
           final Binary[] binaryValues = new Binary[rowSize];
           // Calculate memory for Binary array: array header + object references
