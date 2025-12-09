@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.file;
 
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
-import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -185,8 +185,8 @@ public abstract class SystemPropertiesHandler {
       throw new IOException(msg);
     }
     try {
-      FileUtils.move(tmpFile.toPath(), formalFile.toPath());
-    } catch (IOException e) {
+      FileUtils.moveFileSafe(tmpFile, formalFile);
+    } catch (Exception e) {
       String msg =
           String.format(
               "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
