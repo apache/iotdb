@@ -81,9 +81,10 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -844,7 +845,7 @@ public class AbstractCompactionTest {
 
   protected List<IFullPath> getPaths(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
-    Set<IFullPath> paths = new HashSet<>();
+    Set<IFullPath> paths = new LinkedHashSet<>();
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
@@ -852,7 +853,10 @@ public class AbstractCompactionTest {
         boolean isAlign = iDeviceIDBooleanPair.getRight();
         Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
         IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
-        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        List<IMeasurementSchema> measurementSchemas =
+            schemaMap.values().stream()
+                .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementName))
+                .collect(Collectors.toList());
         if (measurementSchemas.isEmpty()) {
           continue;
         }
