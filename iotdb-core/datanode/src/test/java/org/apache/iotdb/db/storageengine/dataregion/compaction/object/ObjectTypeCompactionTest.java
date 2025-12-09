@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -76,6 +77,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
   private String threadName;
   private File objectDir;
+  private File regionDir;
 
   @Before
   @Override
@@ -88,6 +90,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     super.setUp();
     try {
       objectDir = new File(TierManager.getInstance().getNextFolderForObjectFile());
+      regionDir = new File(objectDir, "0");
+      regionDir.mkdirs();
     } catch (DiskSpaceInsufficientException e) {
       throw new RuntimeException(e);
     }
@@ -102,7 +106,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     File[] files = objectDir.listFiles();
     if (files != null) {
       for (File file : files) {
-        Files.delete(file.toPath());
+        FileUtils.deleteFileOrDirectory(file);
       }
     }
   }
@@ -120,9 +124,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSeqCompactionWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 0);
     Pair<TsFileResource, File> pair2 =
-        generateTsFileAndObject(true, System.currentTimeMillis() + 1000000);
+        generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 100);
     tsFileManager.add(pair1.getLeft(), true);
     tsFileManager.add(pair2.getLeft(), true);
     InnerSpaceCompactionTask task =
@@ -141,9 +145,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testUnseqCompactionWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(false, System.currentTimeMillis() + 100000);
+        generateTsFileAndObject(false, System.currentTimeMillis() + 100000, 1);
     Pair<TsFileResource, File> pair2 =
-        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000);
+        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000, 0);
     tsFileManager.add(pair1.getLeft(), false);
     tsFileManager.add(pair2.getLeft(), false);
     InnerSpaceCompactionTask task =
@@ -162,9 +166,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testUnseqCompactionWithReadPointWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(false, System.currentTimeMillis() + 100000);
+        generateTsFileAndObject(false, System.currentTimeMillis() + 100000, 0);
     Pair<TsFileResource, File> pair2 =
-        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000);
+        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000, 0);
     tsFileManager.add(pair1.getLeft(), false);
     tsFileManager.add(pair2.getLeft(), false);
     InnerSpaceCompactionTask task =
@@ -183,9 +187,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testCrossCompactionWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() + 100000);
+        generateTsFileAndObject(true, System.currentTimeMillis() + 100000, 1);
     Pair<TsFileResource, File> pair2 =
-        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000);
+        generateTsFileAndObject(false, System.currentTimeMillis() - 1000000, 2);
     tsFileManager.add(pair1.getLeft(), true);
     tsFileManager.add(pair2.getLeft(), false);
     CrossSpaceCompactionTask task =
@@ -205,9 +209,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSettleCompaction() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 3);
     Pair<TsFileResource, File> pair2 =
-        generateTsFileAndObject(true, System.currentTimeMillis() + 1000000);
+        generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 0);
     tsFileManager.add(pair1.getLeft(), true);
     tsFileManager.add(pair2.getLeft(), true);
     SettleCompactionTask task =
@@ -224,19 +228,19 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair2.getRight().exists());
   }
 
-  private Pair<TsFileResource, File> generateTsFileAndObject(boolean seq, long timestamp)
+  private Pair<TsFileResource, File> generateTsFileAndObject(boolean seq, long timestamp, int regionIdInTsFile)
       throws IOException, WriteProcessException {
     TsFileResource resource = createEmptyFileAndResource(seq);
-    Path testFile1 = Files.createTempFile(objectDir.toPath(), "test_", ".bin");
+    Path testFile1 = Files.createTempFile(regionDir.toPath(), "test_", ".bin");
     byte[] content = new byte[100];
     for (int i = 0; i < 100; i++) {
       content[i] = (byte) i;
     }
     Files.write(testFile1, content);
-    String relativePath = testFile1.toFile().getName();
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + relativePath.length());
+    String relativePathInTsFile = regionIdInTsFile + File.separator + testFile1.toFile().getName();
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + relativePathInTsFile.length());
     buffer.putLong(100L);
-    buffer.put(BytesUtils.stringToBytes(relativePath));
+    buffer.put(BytesUtils.stringToBytes(relativePathInTsFile));
     buffer.flip();
     IDeviceID deviceID = new StringArrayDeviceID("t1", "d1");
     try (TsFileIOWriter writer = new TsFileIOWriter(resource.getTsFile())) {
