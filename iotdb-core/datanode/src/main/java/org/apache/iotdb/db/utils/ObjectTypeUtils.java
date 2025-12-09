@@ -35,7 +35,10 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encoding.decoder.DecoderWrapper;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +47,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
@@ -145,6 +150,47 @@ public class ObjectTypeUtils {
     }
     buffer.flip();
     return buffer;
+  }
+
+  public static Binary generateObjectBinary(long objectSize, String relativePath) {
+    byte[] filePathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
+    byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
+    System.arraycopy(BytesUtils.longToBytes(objectSize), 0, valueBytes, 0, Long.BYTES);
+    System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
+    return new Binary(valueBytes);
+  }
+
+  public static DecoderWrapper getReplaceDecoder(final Decoder decoder, final int newRegionId) {
+    return new ObjectRegionIdReplaceDecoder(decoder, newRegionId);
+  }
+
+  private static class ObjectRegionIdReplaceDecoder extends DecoderWrapper {
+
+    private final int newRegionId;
+
+    public ObjectRegionIdReplaceDecoder(Decoder decoder, int newRegionId) {
+      super(decoder);
+      this.newRegionId = newRegionId;
+    }
+
+    @Override
+    public Binary readBinary(ByteBuffer buffer) {
+      Binary originValue = originDecoder.readBinary(buffer);
+      Pair<Long, String> pair = ObjectTypeUtils.parseObjectBinary(originValue);
+      try {
+        Path path = Paths.get(pair.getRight());
+        int regionId = Integer.parseInt(path.getName(0).toString());
+        if (regionId == newRegionId) {
+          return originValue;
+        }
+        String newPath = pair.getRight().replaceFirst(regionId + "", newRegionId + "");
+        return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newPath);
+      } catch (NumberFormatException e) {
+        throw new IoTDBRuntimeException(
+            "wrong object file path: " + pair.getRight(),
+            TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+      }
+    }
   }
 
   public static int getActualReadSize(String filePath, long fileSize, long offset, long length) {
