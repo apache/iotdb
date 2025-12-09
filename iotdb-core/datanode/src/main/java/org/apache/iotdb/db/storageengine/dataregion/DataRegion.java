@@ -2319,7 +2319,8 @@ public class DataRegion implements IDataRegionForQuery {
       } else {
         tsFileResource
             .getProcessor()
-            .queryForSeriesRegionScanWithoutLock(partialPaths, context, fileScanHandles);
+            .queryForSeriesRegionScanWithoutLock(
+                partialPaths, context, fileScanHandles, globalTimeFilter);
       }
     }
     return fileScanHandles;
@@ -2396,7 +2397,8 @@ public class DataRegion implements IDataRegionForQuery {
       } else {
         tsFileResource
             .getProcessor()
-            .queryForDeviceRegionScanWithoutLock(devicePathsToContext, context, fileScanHandles);
+            .queryForDeviceRegionScanWithoutLock(
+                devicePathsToContext, context, fileScanHandles, globalTimeFilter);
       }
     }
     return fileScanHandles;
