@@ -533,7 +533,8 @@ public class CompactionUtils {
       TsFileSequenceReader reader,
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList,
       List<ModEntry> timeMods,
-      List<List<ModEntry>> valueMods)
+      List<List<ModEntry>> valueMods,
+      int currentRegionId)
       throws IOException {
     if (alignedChunkMetadataList.isEmpty()) {
       return;
@@ -578,7 +579,8 @@ public class CompactionUtils {
           objectColumnIndexList,
           timeDeletionIntervalList,
           objectDeletionIntervalList,
-          deletionCursors);
+          deletionCursors,
+          currentRegionId);
     }
   }
 
@@ -589,7 +591,8 @@ public class CompactionUtils {
       List<Integer> objectColumnIndexList,
       List<ModEntry> timeDeletions,
       List<List<ModEntry>> objectDeletions,
-      int[] deletionCursors)
+      int[] deletionCursors,
+      int currentRegionId)
       throws IOException {
     Chunk timeChunk =
         reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
@@ -612,6 +615,12 @@ public class CompactionUtils {
         continue;
       }
       Chunk chunk = reader.readMemChunk(valueChunkMetadata);
+      if (chunk != null) {
+        chunk
+            .getHeader()
+            .setReplaceDecoder(
+                decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, currentRegionId));
+      }
       valueChunks.add(chunk);
       valuePages.add(
           chunk == null
