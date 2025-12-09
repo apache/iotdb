@@ -1011,31 +1011,4 @@ public class AlignedTVListIteratorTest {
     }
     Assert.assertEquals(expectedCount, count);
   }
-
-  @Test
-  public void test() {
-    MeasurementSchema measurementSchema = new MeasurementSchema("s1", TSDataType.INT32);
-    WritableMemChunk writableMemChunk = new WritableMemChunk(measurementSchema);
-    Tablet tablet = new Tablet("root.test.d1", Collections.singletonList(measurementSchema));
-    int size = 3000000;
-    for (int i = 0; i < size; i++) {
-      writableMemChunk.writeNonAlignedPoint(i, i);
-    }
-    for (int j = 0; j < 10; j++) {
-      //      for (int i = 0; i < size; i++) {
-      //        if (tablet.getRowSize() == tablet.getMaxRowNumber() || i == size - 1) {
-      //          writableMemChunk.writeNonAlignedTablet(tablet.getTimestamps(),
-      // tablet.getValues()[0], tablet.getBitMaps()[0], TSDataType.INT32, 0, tablet.getRowSize());
-      //          tablet.reset();
-      //        }
-      //        int rowIdx = i % tablet.getMaxRowNumber();
-      //        tablet.addTimestamp(rowIdx, i);
-      //        tablet.addValue(rowIdx, 0, i);
-      //      }
-      long start = System.currentTimeMillis();
-      //      long[] filteredTimestamp = writableMemChunk.getAnySatisfiedTimestamp(null, null);
-      writableMemChunk.getAnySatisfiedTimestamp(null, new TimeFilterOperators.TimeGt(3000000 - 2));
-      System.out.println("cost: " + (System.currentTimeMillis() - start));
-    }
-  }
 }
