@@ -37,11 +37,11 @@ public class DelayAnalyzerTest {
   @Test
   public void testBasicQuantileCalculation() {
     // Window size of 100
-    DelayAnalyzer analyzer = new DelayAnalyzer(100);
+    DelayAnalyzer analyzer = new DelayAnalyzer(100, 1);
 
     long now = System.currentTimeMillis();
-    // Ingest delay data ranging from 0ms to 99ms
-    for (int i = 0; i < 100; i++) {
+    // Ingest delay data ranging from 0ms to 100ms
+    for (int i = 0; i <= 100; i++) {
       // arrival = now, generation = now - delay
       analyzer.update(now - i, now);
     }
@@ -58,7 +58,7 @@ public class DelayAnalyzerTest {
     // Allow 1ms calculation error (depending on rounding logic)
     Assert.assertTrue("P50 should be around 49", Math.abs(p50 - 49) <= 1);
     Assert.assertEquals("P99 should be 99", 99, p99);
-    Assert.assertEquals("Max should be 99", 99, max);
+    Assert.assertEquals("Max should be 100", 100, max);
   }
 
   /**
@@ -69,7 +69,7 @@ public class DelayAnalyzerTest {
   @Test
   public void testCircularBufferEviction() {
     // Extremely small window size: 5
-    DelayAnalyzer analyzer = new DelayAnalyzer(5);
+    DelayAnalyzer analyzer = new DelayAnalyzer(5, 1);
     long now = System.currentTimeMillis();
 
     // Phase 1: Fill the window with small delays (10ms)
@@ -97,7 +97,7 @@ public class DelayAnalyzerTest {
    */
   @Test
   public void testNegativeDelayHandling() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(10);
+    DelayAnalyzer analyzer = new DelayAnalyzer(1000);
     long now = 10000;
 
     // Generation time is later than arrival time (future time), simulating clock rollback or
@@ -113,7 +113,7 @@ public class DelayAnalyzerTest {
    */
   @Test
   public void testSafeWatermarkLogic() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(100);
+    DelayAnalyzer analyzer = new DelayAnalyzer(100, 1);
 
     // Inject a fixed delay of 500ms
     analyzer.update(1000, 1500);
@@ -129,7 +129,7 @@ public class DelayAnalyzerTest {
   /** Test 5: Empty buffer and boundary handling */
   @Test
   public void testEmptyAndBoundaries() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(10);
+    DelayAnalyzer analyzer = new DelayAnalyzer(1000);
 
     // 1. When no data exists
     Assert.assertEquals("Empty buffer should return 0", 0, analyzer.getDelayQuantile(0.99));
@@ -251,7 +251,7 @@ public class DelayAnalyzerTest {
   /** Test 9: Statistics retrieval */
   @Test
   public void testStatistics() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(100);
+    DelayAnalyzer analyzer = new DelayAnalyzer(100, 1);
     long now = System.currentTimeMillis();
 
     // Add some data
@@ -265,7 +265,7 @@ public class DelayAnalyzerTest {
     Assert.assertTrue("Statistics should contain P99", stats.contains("P99"));
 
     // Test empty statistics
-    DelayAnalyzer emptyAnalyzer = new DelayAnalyzer(10);
+    DelayAnalyzer emptyAnalyzer = new DelayAnalyzer(1000);
     String emptyStats = emptyAnalyzer.getStatistics();
     Assert.assertTrue("Empty statistics should indicate no data", emptyStats.contains("No data"));
   }
@@ -273,7 +273,7 @@ public class DelayAnalyzerTest {
   /** Test 10: Reset functionality */
   @Test
   public void testReset() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(100);
+    DelayAnalyzer analyzer = new DelayAnalyzer(100, 1);
     long now = System.currentTimeMillis();
 
     // Add data
@@ -297,7 +297,7 @@ public class DelayAnalyzerTest {
   /** Test 11: Sample count functionality */
   @Test
   public void testSampleCount() {
-    DelayAnalyzer analyzer = new DelayAnalyzer(100);
+    DelayAnalyzer analyzer = new DelayAnalyzer(100, 1);
     long now = System.currentTimeMillis();
 
     // Initial state

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +123,13 @@ public class DelayAnalyzer {
               "Window size must be between %d and %d, got %d",
               MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, windowSize));
     }
+    this.windowSize = windowSize;
+    this.delaySamples = new long[windowSize];
+    LOGGER.debug("DelayAnalyzer initialized with window size: {}", windowSize);
+  }
+
+  @TestOnly
+  public DelayAnalyzer(int windowSize, int placeHolder) {
     this.windowSize = windowSize;
     this.delaySamples = new long[windowSize];
     LOGGER.debug("DelayAnalyzer initialized with window size: {}", windowSize);
