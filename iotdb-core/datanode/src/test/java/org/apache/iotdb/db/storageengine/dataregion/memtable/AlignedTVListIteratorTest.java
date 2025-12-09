@@ -44,7 +44,9 @@ import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -1008,5 +1010,32 @@ public class AlignedTVListIteratorTest {
       count += alignedChunkWriter.getTimeChunkWriter().getStatistics().getCount();
     }
     Assert.assertEquals(expectedCount, count);
+  }
+
+  @Test
+  public void test() {
+    MeasurementSchema measurementSchema = new MeasurementSchema("s1", TSDataType.INT32);
+    WritableMemChunk writableMemChunk = new WritableMemChunk(measurementSchema);
+    Tablet tablet = new Tablet("root.test.d1", Collections.singletonList(measurementSchema));
+    int size = 3000000;
+    for (int i = 0; i < size; i++) {
+      writableMemChunk.writeNonAlignedPoint(i, i);
+    }
+    for (int j = 0; j < 10; j++) {
+      //      for (int i = 0; i < size; i++) {
+      //        if (tablet.getRowSize() == tablet.getMaxRowNumber() || i == size - 1) {
+      //          writableMemChunk.writeNonAlignedTablet(tablet.getTimestamps(),
+      // tablet.getValues()[0], tablet.getBitMaps()[0], TSDataType.INT32, 0, tablet.getRowSize());
+      //          tablet.reset();
+      //        }
+      //        int rowIdx = i % tablet.getMaxRowNumber();
+      //        tablet.addTimestamp(rowIdx, i);
+      //        tablet.addValue(rowIdx, 0, i);
+      //      }
+      long start = System.currentTimeMillis();
+      //      long[] filteredTimestamp = writableMemChunk.getAnySatisfiedTimestamp(null, null);
+      writableMemChunk.getAnySatisfiedTimestamp(null, null);
+      System.out.println("cost: " + (System.currentTimeMillis() - start));
+    }
   }
 }
