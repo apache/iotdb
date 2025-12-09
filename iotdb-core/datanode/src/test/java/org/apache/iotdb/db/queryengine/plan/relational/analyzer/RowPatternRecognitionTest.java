@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessCo
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -475,7 +476,8 @@ public class RowPatternRecognitionTest {
       final SqlParser sqlParser,
       final SessionInfo session) {
     final StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+        new StatementAnalyzerFactory(
+            metadata, sqlParser, nopAccessControl, new InternalTypeManager());
 
     Analyzer analyzer =
         new Analyzer(

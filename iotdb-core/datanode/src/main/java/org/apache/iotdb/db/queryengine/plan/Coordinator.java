@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -189,9 +190,11 @@ public class Coordinator {
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+  private final TypeManager typeManager;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
+    this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
@@ -205,13 +208,11 @@ public class Coordinator {
     this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
-                new PlannerContext(
-                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+                new PlannerContext(LocalExecutionPlanner.getInstance().metadata, typeManager))
             .getPlanOptimizers();
     this.distributionPlanOptimizers =
         new DistributedOptimizeFactory(
-                new PlannerContext(
-                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+                new PlannerContext(LocalExecutionPlanner.getInstance().metadata, typeManager))
             .getPlanOptimizers();
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
@@ -399,7 +400,8 @@ public class Coordinator {
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
-            dataNodeLocationSupplier);
+            dataNodeLocationSupplier,
+            typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -480,7 +482,7 @@ public class Coordinator {
           executor,
           statement.accept(
               new TableConfigTaskVisitor(
-                  clientSession, metadata, AuthorityChecker.getAccessControl()),
+                  clientSession, metadata, AuthorityChecker.getAccessControl(), typeManager),
               queryContext));
     }
     if (statement instanceof WrappedInsertStatement) {
@@ -498,7 +500,8 @@ public class Coordinator {
             logicalPlanOptimizers,
             distributionPlanOptimizers,
             AuthorityChecker.getAccessControl(),
-            dataNodeLocationSupplier);
+            dataNodeLocationSupplier,
+            typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 

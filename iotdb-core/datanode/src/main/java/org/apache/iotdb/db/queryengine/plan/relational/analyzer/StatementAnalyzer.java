@@ -192,7 +192,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -307,11 +306,11 @@ public class StatementAnalyzer {
 
   private final SessionInfo sessionContext;
 
-  private final TypeManager typeManager = new InternalTypeManager();
-
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
+
+  private final TypeManager typeManager;
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -321,7 +320,8 @@ public class StatementAnalyzer {
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
-      CorrelationSupport correlationSupport) {
+      CorrelationSupport correlationSupport,
+      TypeManager typeManager) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -330,6 +330,7 @@ public class StatementAnalyzer {
     this.sessionContext = sessionContext;
     this.metadata = metadata;
     this.correlationSupport = correlationSupport;
+    this.typeManager = typeManager;
   }
 
   public Scope analyze(Node node) {
