@@ -38,6 +38,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -58,6 +59,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -386,6 +388,10 @@ public class SessionManager implements SessionManagerMBean {
   /** update connection idle time after execution. */
   public void updateIdleTime() {
     currSessionIdleTime.set(System.nanoTime());
+    IClientSession session = currSession.get();
+    if (session != null) {
+      session.setLastActiveTime(CommonDateTimeUtils.currentTime());
+    }
   }
 
   public TimeZone getSessionTimeZone() {
@@ -536,6 +542,14 @@ public class SessionManager implements SessionManagerMBean {
             .map(IClientSession::convertToTSConnectionInfo)
             .sorted(Comparator.comparingLong(TSConnectionInfo::getLogInTime))
             .collect(Collectors.toList()));
+  }
+
+  public List<ConnectionInfo> getAllSessionConnectionInfo() {
+    return sessions.keySet().stream()
+        .filter(s -> StringUtils.isNotEmpty(s.getUsername()))
+        .map(IClientSession::convertToConnectionInfo)
+        .sorted(Comparator.comparingLong(ConnectionInfo::getLastActiveTime))
+        .collect(Collectors.toList());
   }
 
   private static class SessionManagerHelper {

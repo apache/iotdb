@@ -3074,10 +3074,9 @@ public class Session implements ISession {
             this.columnEncodersMap
                 .getOrDefault(
                     measurementSchema.getType(),
-                    TSEncoding.valueOf(
-                        TSFileDescriptor.getInstance()
-                            .getConfig()
-                            .getValueEncoder(measurementSchema.getType())))
+                    TSFileDescriptor.getInstance()
+                        .getConfig()
+                        .getValueEncoder(measurementSchema.getType()))
                 .serialize());
       }
     } else {
