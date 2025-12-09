@@ -3101,8 +3101,29 @@ public class StatementAnalyzer {
 
       // check if table schema is found in CTE data stores
       CteDataStore dataStore = queryContext.getCteDataStore(table);
-      Optional<TableSchema> tableSchema =
-          dataStore != null ? Optional.of(dataStore.getTableSchema()) : Optional.empty();
+      Optional<TableSchema> tableSchema = Optional.empty();
+      if (dataStore != null) {
+        tableSchema = Optional.of(dataStore.getTableSchema());
+        List<Integer> columnIndex2TsBlockColumnIndexList =
+            dataStore.getColumnIndex2TsBlockColumnIndexList();
+        if (columnIndex2TsBlockColumnIndexList != null
+            && !columnIndex2TsBlockColumnIndexList.isEmpty()) {
+          // Check if the list is completely sequential (0, 1, 2, ...)
+          boolean isSequential = true;
+          for (int i = 0; i < columnIndex2TsBlockColumnIndexList.size(); i++) {
+            if (columnIndex2TsBlockColumnIndexList.get(i) != i) {
+              isSequential = false;
+              break;
+            }
+          }
+
+          // Generate new TableSchema with reordered columns only if not sequential
+          if (!isSequential) {
+            tableSchema =
+                reorderTableSchemaColumns(tableSchema.get(), columnIndex2TsBlockColumnIndexList);
+          }
+        }
+      }
       // If table schema is not found, check if it is in metadata
       if (!tableSchema.isPresent()) {
         tableSchema = metadata.getTableSchema(sessionContext, name);
@@ -3124,6 +3145,17 @@ public class StatementAnalyzer {
       analysis.registerTable(table, tableSchema, name);
 
       return createAndAssignScope(table, scope, relationType);
+    }
+
+    private Optional<TableSchema> reorderTableSchemaColumns(
+        TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
+      List<ColumnSchema> columnSchemas = tableSchema.getColumns();
+      final List<ColumnSchema> columnSchemaList =
+          columnIndex2TsBlockColumnIndexList.stream()
+              .map(columnSchemas::get)
+              .collect(Collectors.toList());
+
+      return Optional.of(new TableSchema(tableSchema.getTableName(), columnSchemaList));
     }
 
     private Scope createScopeForCommonTableExpression(
