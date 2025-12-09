@@ -67,6 +67,15 @@ public class QueryId {
     return id;
   }
 
+  public int getDataNodeId() {
+    return getDataNodeId(id);
+  }
+
+  public static int getDataNodeId(String queryId) {
+    String[] splits = queryId.split("_");
+    return Integer.parseInt(splits[splits.length - 1]);
+  }
+
   @Override
   public String toString() {
     return id;

@@ -77,4 +77,6 @@ public interface IQueryExecution {
   IClientSession.SqlDialect getSQLDialect();
 
   String getUser();
+
+  String getClientHostname();
 }
