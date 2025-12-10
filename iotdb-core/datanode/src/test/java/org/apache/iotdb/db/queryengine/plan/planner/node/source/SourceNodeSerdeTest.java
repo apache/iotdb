@@ -35,7 +35,7 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
-public class PlanNodeSerdeTest {
+public class SourceNodeSerdeTest {
   @Test
   public void testLastQueryScanNode() throws IllegalPathException {
     LastQueryScanNode node =

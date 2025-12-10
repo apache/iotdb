@@ -802,6 +802,10 @@ SINK
     : S I N K
     ;
 
+SIZEINBYTES
+    : S I Z E I N B Y T E S
+    ;
+
 SLIMIT
     : S L I M I T
     ;

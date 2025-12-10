@@ -220,6 +220,7 @@ keyWords
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE

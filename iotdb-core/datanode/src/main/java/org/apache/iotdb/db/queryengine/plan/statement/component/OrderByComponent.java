@@ -63,6 +63,16 @@ public class OrderByComponent extends StatementNode {
         orderByDevice = true;
         deviceOrderPriority = sortItemList.size() - 1;
         break;
+      case OrderByKey.QUERYID:
+      case OrderByKey.DATANODEID:
+      case OrderByKey.ELAPSEDTIME:
+      case OrderByKey.STATEMENT:
+      case OrderByKey.DATABASE:
+      case OrderByKey.REGIONID:
+      case OrderByKey.TIMEPARTITION:
+      case OrderByKey.SIZEINBYTES:
+        // show queries statement or show disk usage statement
+        break;
       default:
         throw new IllegalArgumentException(
             String.format("Unknown sort key %s", sortItem.getSortKey()));

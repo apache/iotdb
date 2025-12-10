@@ -963,6 +963,14 @@ sortKey
     : TIME
     | TIMESERIES
     | DEVICE
+    | QUERYID
+    | DATANODEID
+    | ELAPSEDTIME
+    | STATEMENT
+    | DATABASE
+    | REGIONID
+    | TIMEPARTITION
+    | SIZEINBYTES
     ;
 
 // ---- Fill Clause
