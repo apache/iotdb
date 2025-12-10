@@ -82,26 +82,31 @@ public class CteMaterializer {
         .forEach(
             (tableRef, query) -> {
               Table table = tableRef.getNode();
-              if (query.isMaterialized() && !query.isDone()) {
-                CteDataStore dataStore =
-                    fetchCteQueryResult(context, table, query, analysis.getWith());
-                if (dataStore == null) {
-                  // CTE query execution failed. Use inline instead of materialization
-                  // in the outer query
-                  query.setDone(false);
-                  return;
+              if (query.isMaterialized()) {
+                if (!query.isDone()) {
+                  CteDataStore dataStore =
+                      fetchCteQueryResult(context, table, query, analysis.getWith());
+                  if (dataStore == null) {
+                    // CTE query execution failed. Use inline instead of materialization
+                    // in the outer query
+                    query.setCteDataStore(null);
+                    return;
+                  }
+                  query.setCteDataStore(dataStore);
                 }
-
-                context.addCteDataStore(table, dataStore);
-                query.setDone(true);
+                context.addCteQuery(table, query);
               }
             });
   }
 
   public void cleanUpCTE(MPPQueryContext context) {
-    Map<NodeRef<Table>, CteDataStore> cteDataStores = context.getCteDataStores();
-    cteDataStores.values().forEach(CteDataStore::clear);
-    cteDataStores.clear();
+    Map<NodeRef<Table>, Query> cteQueries = context.getCteQueries();
+    cteQueries.values().stream()
+        .map(Query::getCteDataStore)
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .forEach(CteDataStore::clear);
+    cteQueries.clear();
   }
 
   public CteDataStore fetchCteQueryResult(
@@ -145,7 +150,7 @@ public class CteMaterializer {
               sessionManager.getSessionInfoOfTableModel(sessionManager.getCurrSession()),
               String.format("Materialize query for CTE '%s'", table.getName()),
               LocalExecutionPlanner.getInstance().metadata,
-              context.getCteDataStores(),
+              context.getCteQueries(),
               context.getExplainType(),
               context.getTimeOut(),
               false);
@@ -160,8 +165,7 @@ public class CteMaterializer {
       TableSchema tableSchema = getTableSchema(datasetHeader, table.getName().toString());
 
       cteDataStore =
-          new CteDataStore(
-              query, tableSchema, datasetHeader.getColumnIndex2TsBlockColumnIndexList());
+          new CteDataStore(tableSchema, datasetHeader.getColumnIndex2TsBlockColumnIndexList());
       while (execution.hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {

@@ -146,7 +146,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
                   .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession()),
               "Try to Fetch Uncorrelated Scalar Subquery Result for Predicate",
               LocalExecutionPlanner.getInstance().metadata,
-              context.getCteDataStores(),
+              context.getCteQueries(),
               ExplainType.NONE,
               context.getTimeOut(),
               false);

@@ -117,7 +117,7 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean userQuery = false;
 
   private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
-  private Map<NodeRef<Table>, CteDataStore> cteDataStores = new HashMap<>();
+  private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
   // table -> (maxLineLength, 'explain' or 'explain analyze' result)
   // Max line length of each CTE should be remembered because we need to standardize
   // the output format of main query and CTE query.
@@ -493,20 +493,24 @@ public class MPPQueryContext implements IAuditEntity {
     return cteMaterializationCosts;
   }
 
-  public void addCteDataStore(Table table, CteDataStore dataStore) {
-    cteDataStores.put(NodeRef.of(table), dataStore);
+  public void addCteQuery(Table table, Query query) {
+    cteQueries.put(NodeRef.of(table), query);
   }
 
-  public Map<NodeRef<Table>, CteDataStore> getCteDataStores() {
-    return cteDataStores;
+  public Map<NodeRef<Table>, Query> getCteQueries() {
+    return cteQueries;
   }
 
   public CteDataStore getCteDataStore(Table table) {
-    return cteDataStores.get(NodeRef.of(table));
+    Query query = cteQueries.get(NodeRef.of(table));
+    if (query == null) {
+      return null;
+    }
+    return query.getCteDataStore();
   }
 
-  public void setCteDataStores(Map<NodeRef<Table>, CteDataStore> cteDataStores) {
-    this.cteDataStores = cteDataStores;
+  public void setCteQueries(Map<NodeRef<Table>, Query> cteQueries) {
+    this.cteQueries = cteQueries;
   }
 
   public Map<Query, List<Identifier>> getSubQueryTables() {
