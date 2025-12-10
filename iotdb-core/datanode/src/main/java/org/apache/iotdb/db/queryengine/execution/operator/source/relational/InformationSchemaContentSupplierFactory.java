@@ -1252,6 +1252,7 @@ public class InformationSchemaContentSupplierFactory {
     private DataRegion currentDataRegion;
     private long currentTimePartition;
     private List<String> currentTablesToScan;
+    private boolean currentDatabaseOnlyHasOneTable;
     private TableDiskUsageStatisticUtil statisticUtil;
 
     private final StorageEngineTimePartitionIterator timePartitionIterator;
@@ -1307,6 +1308,7 @@ public class InformationSchemaContentSupplierFactory {
                   currentDataRegion.getTsFileManager(),
                   currentTimePartition,
                   currentTablesToScan,
+                  currentDatabaseOnlyHasOneTable,
                   Optional.ofNullable(operatorContext.getInstanceContext()));
           return true;
         }
@@ -1325,10 +1327,12 @@ public class InformationSchemaContentSupplierFactory {
       }
 
       List<String> tablesToScan = new ArrayList<>(tTableInfos.size());
+      int totalValidTableCount = 0;
       for (TTableInfo tTableInfo : tTableInfos) {
         if (tTableInfo.getType() != TableType.BASE_TABLE.ordinal()) {
           continue;
         }
+        totalValidTableCount++;
         if (pushDownFilter != null) {
           Object[] row = new Object[5];
           row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
@@ -1350,6 +1354,7 @@ public class InformationSchemaContentSupplierFactory {
         paginationController.consumeLimit();
         tablesToScan.add(tTableInfo.getTableName());
       }
+      currentDatabaseOnlyHasOneTable = totalValidTableCount == 1;
       return tablesToScan;
     }
 

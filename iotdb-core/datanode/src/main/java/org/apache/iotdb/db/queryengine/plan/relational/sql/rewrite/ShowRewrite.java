@@ -60,7 +60,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
       final Map<NodeRef<Parameter>, Expression> parameterLookup,
       final WarningCollector warningCollector) {
     final Visitor visitor = new Visitor();
-    return (Statement) visitor.process(node);
+    return (Statement) visitor.process(node, null);
   }
 
   private static class Visitor extends AstVisitor<Node, Void> {
@@ -85,7 +85,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitCountStatement(final CountStatement countStatement, Void context) {
+    protected Node visitCountStatement(final CountStatement countStatement, final Void context) {
       return simpleQuery(
           new Select(
               false,

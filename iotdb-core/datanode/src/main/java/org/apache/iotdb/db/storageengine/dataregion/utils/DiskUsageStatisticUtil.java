@@ -25,11 +25,12 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -37,11 +38,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.function.LongConsumer;
@@ -108,7 +109,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
 
   public void calculateNextFile() {
     TsFileResource tsFileResource = iterator.next();
-    if (tsFileResource.isDeleted()) {
+    if (tsFileResource.isDeleted() || calculateWithoutOpenFile(tsFileResource)) {
+      iterator.remove();
+      tsFileResource.readUnlock();
       return;
     }
     FileReaderManager.getInstance().increaseFileReaderReference(tsFileResource, true);
@@ -130,44 +133,108 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     }
   }
 
+  protected abstract boolean calculateWithoutOpenFile(TsFileResource tsFileResource);
+
   protected abstract void calculateNextFile(
       TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException, IllegalPathException;
 
-  protected long calculateStartOffsetOfChunkGroup(
+  protected Offsets calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
       TsFileSequenceReader reader,
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice,
-      Pair<IDeviceID, Boolean> deviceIsAlignedPair)
+      Pair<IDeviceID, Boolean> deviceIsAlignedPair,
+      long rootMeasurementNodeStartOffset)
       throws IOException {
     int chunkGroupHeaderSize =
         new ChunkGroupHeader(deviceIsAlignedPair.getLeft()).getSerializedSize();
     if (deviceIsAlignedPair.getRight()) {
-      TimeseriesMetadata timeColumnTimeseriesMetadata =
-          reader.getTimeColumnMetadata(
-              firstMeasurementNodeOfCurrentDevice, timeSeriesMetadataIoSizeRecorder);
-      IChunkMetadata iChunkMetadata = timeColumnTimeseriesMetadata.getChunkMetadataList().get(0);
-      return iChunkMetadata.getOffsetOfChunkHeader() - chunkGroupHeaderSize;
+      Pair<Long, Long> timeseriesMetadataOffsetPair =
+          getTimeColumnMetadataOffset(reader, firstMeasurementNodeOfCurrentDevice);
+      IChunkMetadata firstChunkMetadata =
+          reader
+              .getChunkMetadataListByTimeseriesMetadataOffset(
+                  timeseriesMetadataOffsetPair.getLeft(), timeseriesMetadataOffsetPair.getRight())
+              .get(0);
+      return new Offsets(
+          firstChunkMetadata.getOffsetOfChunkHeader() - chunkGroupHeaderSize,
+          timeseriesMetadataOffsetPair.getLeft(),
+          rootMeasurementNodeStartOffset);
     } else {
-      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-      reader.getDeviceTimeseriesMetadata(
-          timeseriesMetadataList,
-          firstMeasurementNodeOfCurrentDevice,
-          Collections.emptySet(),
-          true,
-          timeSeriesMetadataIoSizeRecorder);
-      long minOffset = Long.MAX_VALUE;
-      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
-          minOffset = Math.min(minOffset, chunkMetadata.getOffsetOfChunkHeader());
+      Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetByDevice =
+          reader.getTimeseriesMetadataOffsetByDevice(
+              firstMeasurementNodeOfCurrentDevice, Collections.emptySet(), true);
+      long minTimeseriesMetadataOffset = 0;
+      long minChunkOffset = Long.MAX_VALUE;
+      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entry :
+          timeseriesMetadataOffsetByDevice.entrySet()) {
+        minTimeseriesMetadataOffset =
+            minTimeseriesMetadataOffset == 0
+                ? entry.getValue().getRight().getLeft()
+                : minTimeseriesMetadataOffset;
+        for (IChunkMetadata chunkMetadata : entry.getValue().getLeft()) {
+          minChunkOffset = Math.min(minChunkOffset, chunkMetadata.getOffsetOfChunkHeader());
           break;
         }
       }
-      return minOffset - chunkGroupHeaderSize;
+      return new Offsets(
+          minChunkOffset - chunkGroupHeaderSize,
+          minTimeseriesMetadataOffset,
+          rootMeasurementNodeStartOffset);
+    }
+  }
+
+  private Pair<Long, Long> getTimeColumnMetadataOffset(
+      TsFileSequenceReader reader, MetadataIndexNode measurementNode) throws IOException {
+    if (measurementNode.isDeviceLevel()) {
+      throw new IllegalArgumentException("device level metadata index node is not supported");
+    }
+    List<IMetadataIndexEntry> children = measurementNode.getChildren();
+    long startOffset = children.get(0).getOffset();
+    long endOffset =
+        children.size() > 1 ? children.get(1).getOffset() : measurementNode.getEndOffset();
+    if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+      return new Pair<>(startOffset, endOffset);
+    } else {
+      MetadataIndexNode metadataIndexNode =
+          reader.readMetadataIndexNode(
+              startOffset, endOffset, false, timeSeriesMetadataIoSizeRecorder);
+      return getTimeColumnMetadataOffset(reader, metadataIndexNode);
     }
   }
 
   @Override
   public void close() throws IOException {
     releaseReadLocks();
+  }
+
+  protected static class Offsets {
+    protected final long firstChunkOffset;
+    protected final long firstTimeseriesMetadataOffset;
+    protected final long firstMeasurementNodeOffset;
+
+    public Offsets(
+        long firstChunkOffset,
+        long firstTimeseriesMetadataOffset,
+        long firstMeasurementNodeOffset) {
+      this.firstChunkOffset = firstChunkOffset;
+      this.firstTimeseriesMetadataOffset = firstTimeseriesMetadataOffset;
+      this.firstMeasurementNodeOffset = firstMeasurementNodeOffset;
+    }
+
+    protected long minusOffsetForTableModel(Offsets other) {
+      return firstChunkOffset
+          - other.firstChunkOffset
+          + firstTimeseriesMetadataOffset
+          - other.firstTimeseriesMetadataOffset
+          + firstMeasurementNodeOffset
+          - other.firstMeasurementNodeOffset;
+    }
+
+    protected long minusOffsetForTreeModel(Offsets other) {
+      return firstChunkOffset
+          - other.firstChunkOffset
+          + firstTimeseriesMetadataOffset
+          - other.firstTimeseriesMetadataOffset;
+    }
   }
 }

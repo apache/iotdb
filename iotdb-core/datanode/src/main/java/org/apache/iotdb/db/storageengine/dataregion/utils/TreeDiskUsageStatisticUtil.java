@@ -29,7 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.read.TsFileDeviceIterator;
+import org.apache.tsfile.read.LazyTsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -76,37 +76,58 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   @Override
+  protected boolean calculateWithoutOpenFile(TsFileResource tsFileResource) {
+    return false;
+  }
+
+  @Override
   protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException, IllegalPathException {
-    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    long firstDeviceMeasurementNodeOffset = -1;
+    LazyTsFileDeviceIterator deviceIterator = reader.getLazyDeviceIterator();
     while (deviceIterator.hasNext()) {
-      Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
-      if (!matchPathPattern(deviceIsAlignedPair.getLeft())) {
+      IDeviceID deviceIsAlignedPair = deviceIterator.next();
+      firstDeviceMeasurementNodeOffset =
+          firstDeviceMeasurementNodeOffset == -1
+              ? deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0]
+              : firstDeviceMeasurementNodeOffset;
+      if (!matchPathPattern(deviceIsAlignedPair)) {
         continue;
       }
       MetadataIndexNode nodeOfFirstMatchedDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
-      Pair<IDeviceID, Boolean> nextNotMatchedDevice = null;
+      addMeasurementNodeSizeForCurrentDevice(deviceIterator);
+      IDeviceID nextNotMatchedDevice = null;
       MetadataIndexNode nodeOfNextNotMatchedDevice = null;
       while (deviceIterator.hasNext()) {
-        Pair<IDeviceID, Boolean> currentDevice = deviceIterator.next();
-        if (!matchPathPattern(currentDevice.getLeft())) {
+        IDeviceID currentDevice = deviceIterator.next();
+        if (!matchPathPattern(currentDevice)) {
           nextNotMatchedDevice = currentDevice;
           nodeOfNextNotMatchedDevice = deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
           break;
         }
+        addMeasurementNodeSizeForCurrentDevice(deviceIterator);
       }
       result +=
           calculatePathPatternSize(
               reader,
-              deviceIsAlignedPair,
+              new Pair<>(deviceIsAlignedPair, reader.isAlignedDevice(nodeOfFirstMatchedDevice)),
               nodeOfFirstMatchedDevice,
-              nextNotMatchedDevice,
-              nodeOfNextNotMatchedDevice);
+              nodeOfNextNotMatchedDevice == null
+                  ? null
+                  : new Pair<>(
+                      nextNotMatchedDevice, reader.isAlignedDevice(nodeOfNextNotMatchedDevice)),
+              nodeOfNextNotMatchedDevice,
+              firstDeviceMeasurementNodeOffset);
       if (isMatchedDeviceSequential) {
         break;
       }
     }
+  }
+
+  private void addMeasurementNodeSizeForCurrentDevice(LazyTsFileDeviceIterator iterator) {
+    long[] startEndPair = iterator.getCurrentDeviceMeasurementNodeOffset();
+    result += startEndPair[1] - startEndPair[0];
   }
 
   private long calculatePathPatternSize(
@@ -114,19 +135,24 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
       Pair<IDeviceID, Boolean> firstMatchedDevice,
       MetadataIndexNode nodeOfFirstMatchedDevice,
       Pair<IDeviceID, Boolean> nextNotMatchedDevice,
-      MetadataIndexNode nodeOfNextNotMatchedDevice)
+      MetadataIndexNode nodeOfNextNotMatchedDevice,
+      long firstDeviceMeasurementNodeOffset)
       throws IOException {
-    long startOffset, endOffset;
+    Offsets chunkGroupTimeseriesMetadataStartOffsetPair, chunkGroupTimeseriesMetadataEndOffsetPair;
     if (nextNotMatchedDevice == null) {
-      endOffset = reader.readFileMetadata().getMetaOffset();
+      chunkGroupTimeseriesMetadataEndOffsetPair =
+          new Offsets(
+              reader.readFileMetadata().getMetaOffset(), firstDeviceMeasurementNodeOffset, 0);
     } else {
-      endOffset =
-          calculateStartOffsetOfChunkGroup(
-              reader, nodeOfNextNotMatchedDevice, nextNotMatchedDevice);
+      chunkGroupTimeseriesMetadataEndOffsetPair =
+          calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
+              reader, nodeOfNextNotMatchedDevice, nextNotMatchedDevice, 0);
     }
-    startOffset =
-        calculateStartOffsetOfChunkGroup(reader, nodeOfFirstMatchedDevice, firstMatchedDevice);
-    return endOffset - startOffset;
+    chunkGroupTimeseriesMetadataStartOffsetPair =
+        calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
+            reader, nodeOfFirstMatchedDevice, firstMatchedDevice, 0);
+    return chunkGroupTimeseriesMetadataEndOffsetPair.minusOffsetForTreeModel(
+        chunkGroupTimeseriesMetadataStartOffsetPair);
   }
 
   private boolean matchPathPattern(IDeviceID deviceID) throws IllegalPathException {

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
@@ -43,18 +42,21 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   public static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableDiskUsageStatisticUtil.class);
   private final Map<String, Integer> tableIndexMap;
+  private final boolean databaseHasOnlyOneTable;
   private final long[] resultArr;
 
   public TableDiskUsageStatisticUtil(
       TsFileManager tsFileManager,
       long timePartition,
       List<String> tableNames,
+      boolean databaseHasOnlyOneTable,
       Optional<FragmentInstanceContext> context) {
     super(tsFileManager, timePartition, context);
     this.tableIndexMap = new HashMap<>();
     for (int i = 0; i < tableNames.size(); i++) {
       tableIndexMap.put(tableNames.get(i), i);
     }
+    this.databaseHasOnlyOneTable = databaseHasOnlyOneTable;
     this.resultArr = new long[tableNames.size()];
   }
 
@@ -64,22 +66,29 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   @Override
+  protected boolean calculateWithoutOpenFile(TsFileResource tsFileResource) {
+    if (!databaseHasOnlyOneTable || tsFileResource.anyModFileExists()) {
+      return false;
+    }
+    resultArr[0] += tsFileResource.getTsFileSize();
+    return true;
+  }
+
+  @Override
   protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException {
     TsFileMetadata tsFileMetadata = reader.readFileMetadata();
     if (!hasSatisfiedData(tsFileMetadata)) {
       return;
     }
-    int allSatisfiedTableIndex = getAllSatisfiedTableIndex(tsFileMetadata);
-    if (allSatisfiedTableIndex > 0) {
-      // size of tsfile - size of (tsfile magic string + version number + all metadata + metadata
-      // marker)
+    Pair<Integer, Boolean> allSatisfiedTableIndexPair = getAllSatisfiedTableIndex(tsFileMetadata);
+    int allSatisfiedTableIndex = allSatisfiedTableIndexPair.getLeft();
+    // the only one table in this tsfile might be deleted by mods, and it is not the table we
+    // queried
+    boolean mayContainSearchedTable = allSatisfiedTableIndexPair.getRight();
+    if (allSatisfiedTableIndex != -1) {
       resultArr[allSatisfiedTableIndex] +=
-          (tsFileResource.getTsFileSize()
-              - reader.getAllMetadataSize()
-              - 1
-              - TSFileConfig.MAGIC_STRING.getBytes().length
-              - 1);
+          mayContainSearchedTable ? tsFileResource.getTsFileSize() : 0;
       return;
     }
     calculateDiskUsageInBytesByOffset(reader);
@@ -91,13 +100,15 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     return tableIndexMap.keySet().stream().anyMatch(tableMetadataIndexNodeMap::containsKey);
   }
 
-  private int getAllSatisfiedTableIndex(TsFileMetadata tsFileMetadata) {
+  private Pair<Integer, Boolean> getAllSatisfiedTableIndex(TsFileMetadata tsFileMetadata) {
     if (tsFileMetadata.getTableMetadataIndexNodeMap().size() != 1) {
-      return -1;
+      return new Pair<>(-1, true);
     }
     String satisfiedTableName =
         tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
-    return tableIndexMap.get(satisfiedTableName);
+    String searchedTableName = tableIndexMap.keySet().iterator().next();
+    return new Pair<>(
+        tableIndexMap.get(satisfiedTableName), satisfiedTableName.equals(searchedTableName));
   }
 
   private void calculateDiskUsageInBytesByOffset(TsFileSequenceReader reader) throws IOException {
@@ -106,7 +117,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
         tsFileMetadata.getTableMetadataIndexNodeMap();
     String nextTable = null;
     Iterator<String> iterator = tableMetadataIndexNodeMap.keySet().iterator();
-    Map<String, Long> tableOffsetMap = new HashMap<>();
+    Map<String, Offsets> tableOffsetMap = new HashMap<>();
     while (iterator.hasNext()) {
       String currentTable = iterator.next();
       while (currentTable != null && tableIndexMap.containsKey(currentTable)) {
@@ -120,23 +131,42 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   }
 
   private long calculateTableSize(
-      Map<String, Long> tableOffsetMap,
+      Map<String, Offsets> tableOffsetMap,
       TsFileMetadata tsFileMetadata,
       TsFileSequenceReader reader,
       String tableName,
-      String nextTable) {
-    long startOffset, endOffset;
+      String nextTable)
+      throws IOException {
+    Offsets startOffset = getTableOffset(tableOffsetMap, reader, tableName);
+    Offsets endOffset;
     if (nextTable == null) {
-      endOffset = tsFileMetadata.getMetaOffset();
+      long firstMeasurementNodeOffsetOfFirstTable;
+      String firstTableName =
+          tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
+      Offsets firstTableOffset = tableOffsetMap.get(firstTableName);
+      if (firstTableOffset != null) {
+        firstMeasurementNodeOffsetOfFirstTable = firstTableOffset.firstMeasurementNodeOffset;
+      } else {
+        TsFileDeviceIterator deviceIterator =
+            reader.getTableDevicesIteratorWithIsAligned(
+                tableName, timeSeriesMetadataIoSizeRecorder);
+        deviceIterator.next();
+        firstMeasurementNodeOffsetOfFirstTable =
+            deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0];
+      }
+      endOffset =
+          new Offsets(
+              tsFileMetadata.getMetaOffset(),
+              firstMeasurementNodeOffsetOfFirstTable,
+              reader.getFileMetadataPos());
     } else {
       endOffset = getTableOffset(tableOffsetMap, reader, nextTable);
     }
-    startOffset = getTableOffset(tableOffsetMap, reader, tableName);
-    return endOffset - startOffset;
+    return endOffset.minusOffsetForTableModel(startOffset);
   }
 
-  private long getTableOffset(
-      Map<String, Long> tableOffsetMap, TsFileSequenceReader reader, String tableName) {
+  private Offsets getTableOffset(
+      Map<String, Offsets> tableOffsetMap, TsFileSequenceReader reader, String tableName) {
     return tableOffsetMap.computeIfAbsent(
         tableName,
         k -> {
@@ -144,8 +174,11 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
             TsFileDeviceIterator deviceIterator =
                 reader.getTableDevicesIteratorWithIsAligned(k, timeSeriesMetadataIoSizeRecorder);
             Pair<IDeviceID, Boolean> pair = deviceIterator.next();
-            return calculateStartOffsetOfChunkGroup(
-                reader, deviceIterator.getFirstMeasurementNodeOfCurrentDevice(), pair);
+            return calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
+                reader,
+                deviceIterator.getFirstMeasurementNodeOfCurrentDevice(),
+                pair,
+                deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0]);
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
