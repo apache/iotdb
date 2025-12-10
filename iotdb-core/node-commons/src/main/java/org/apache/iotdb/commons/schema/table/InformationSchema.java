@@ -50,6 +50,8 @@ public class InformationSchema {
   public static final String CONFIG_NODES = "config_nodes";
   public static final String DATA_NODES = "data_nodes";
   public static final String CONNECTIONS = "connections";
+  public static final String CURRENT_QUERIES = "current_queries";
+  public static final String QUERIES_COSTS_HISTOGRAM = "queries_costs_histogram";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -57,17 +59,15 @@ public class InformationSchema {
         new TagColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(
-            ColumnHeaderConstant.QUERY_ID_START_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+            ColumnHeaderConstant.START_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.ELAPSED_TIME_TABLE_MODEL, TSDataType.FLOAT));
     queriesTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.STATEMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+        new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.USER.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+        new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
     queriesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES, queriesTable);
 
@@ -361,6 +361,37 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
     connectionsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(CONNECTIONS, connectionsTable);
+
+    final TsTable currentQueriesTable = new TsTable(CURRENT_QUERIES);
+    currentQueriesTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.QUERY_ID_TABLE_MODEL, TSDataType.STRING));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.STATE_TABLE_MODEL, TSDataType.STRING));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.START_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.END_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.COST_TIME, TSDataType.FLOAT));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
+    currentQueriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
+    currentQueriesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(CURRENT_QUERIES, currentQueriesTable);
+
+    final TsTable queriesCostsHistogramTable = new TsTable(QUERIES_COSTS_HISTOGRAM);
+    queriesCostsHistogramTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.BIN, TSDataType.STRING));
+    queriesCostsHistogramTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.NUMS, TSDataType.INT32));
+    queriesCostsHistogramTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(QUERIES_COSTS_HISTOGRAM, queriesCostsHistogramTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {

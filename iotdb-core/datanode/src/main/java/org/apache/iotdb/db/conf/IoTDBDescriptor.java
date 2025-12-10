@@ -813,6 +813,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
+    conf.setQueryCostStatWindow(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_cost_stat_window", String.valueOf(conf.getQueryCostStatWindow()))));
+
     conf.setDataRegionNum(
         Integer.parseInt(
             properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
