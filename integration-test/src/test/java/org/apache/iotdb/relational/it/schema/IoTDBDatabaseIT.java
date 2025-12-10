@@ -400,11 +400,11 @@ public class IoTDBDatabaseIT {
               "columns,INF,",
               "config_nodes,INF,",
               "configurations,INF,",
+              "connections,INF,",
               "data_nodes,INF,",
               "databases,INF,",
               "functions,INF,",
               "keywords,INF,",
-              "models,INF,",
               "nodes,INF,",
               "pipe_plugins,INF,",
               "pipes,INF,",
@@ -508,16 +508,6 @@ public class IoTDBDatabaseIT {
                   "table_name,STRING,TAG,",
                   "view_definition,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc models"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "model_id,STRING,TAG,",
-                  "model_type,STRING,ATTRIBUTE,",
-                  "state,STRING,ATTRIBUTE,",
-                  "configs,STRING,ATTRIBUTE,",
-                  "notes,STRING,ATTRIBUTE,")));
-      TestUtils.assertResultSetEqual(
           statement.executeQuery("desc functions"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
@@ -579,6 +569,8 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(
           SQLException.class, () -> statement.execute("select * from config_nodes"));
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.executeQuery("select * from pipe_plugins"));
 
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
@@ -587,12 +579,6 @@ public class IoTDBDatabaseIT {
           Collections.emptySet());
 
       // No auth needed
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery(
-              "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
-          "plugin_name,plugin_type,class_name,plugin_jar,",
-          Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -652,6 +638,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,nodes,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,true,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,true,")));
       TestUtils.assertResultSetEqual(

@@ -113,7 +113,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -458,7 +458,7 @@ public class TableDeviceSchemaCache {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
-            : entry -> -entry.invalidateLastCache(measurement, false);
+            : entry -> -entry.invalidateLastCache(measurement);
 
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
@@ -545,7 +545,7 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  long getMemoryUsage() {
+  public long getMemoryUsage() {
     return dualKeyCache.stats().memoryUsage();
   }
 
@@ -681,7 +681,7 @@ public class TableDeviceSchemaCache {
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
           isAttributeColumn
               ? entry -> -entry.invalidateAttributeColumn(columnName)
-              : entry -> -entry.invalidateLastCache(columnName, true);
+              : entry -> -entry.invalidateLastCache(columnName);
       dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();

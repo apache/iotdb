@@ -1212,7 +1212,7 @@ public class DataRegionTest {
       }
       for (DataRegion region : regionsToBeDeleted) {
         StorageEngine.getInstance()
-            .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+            .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionIdString())));
       }
       Thread.sleep(500);
 
@@ -1411,7 +1411,7 @@ public class DataRegionTest {
     }
     for (DataRegion region : regionsToBeDeleted) {
       StorageEngine.getInstance()
-          .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+          .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionIdString())));
     }
     Thread.sleep(500);
 

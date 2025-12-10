@@ -22,14 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunction;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -125,6 +126,14 @@ public interface Metadata {
       final boolean isStrictIdColumn)
       throws LoadAnalyzeTableColumnDisorderException;
 
+  void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler);
+
   /**
    * This method is used for table device validation and should be invoked after column validation.
    *
@@ -201,9 +210,4 @@ public interface Metadata {
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   TableFunction getTableFunction(final String functionName);
-
-  /**
-   * @return ModelFetcher
-   */
-  IModelFetcher getModelFetcher();
 }

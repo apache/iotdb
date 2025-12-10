@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -51,8 +52,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -67,6 +66,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -121,6 +123,9 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
 public class InformationSchemaContentSupplierFactory {
+
+  private static final SessionManager sessionManager = SessionManager.getInstance();
+
   private InformationSchemaContentSupplierFactory() {}
 
   public static Iterator<TsBlock> getSupplier(
@@ -140,15 +145,13 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
         case InformationSchema.PIPE_PLUGINS:
-          return new PipePluginSupplier(dataTypes);
+          return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
           return new TopicSupplier(dataTypes, userEntity);
         case InformationSchema.SUBSCRIPTIONS:
           return new SubscriptionSupplier(dataTypes, userEntity);
         case InformationSchema.VIEWS:
           return new ViewsSupplier(dataTypes, userEntity);
-        case InformationSchema.MODELS:
-          return new ModelsSupplier(dataTypes);
         case InformationSchema.FUNCTIONS:
           return new FunctionsSupplier(dataTypes);
         case InformationSchema.CONFIGURATIONS:
@@ -161,6 +164,8 @@ public class InformationSchemaContentSupplierFactory {
           return new ConfigNodesSupplier(dataTypes, userEntity);
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
+        case InformationSchema.CONNECTIONS:
+          return new ConnectionsSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -603,8 +608,10 @@ public class InformationSchemaContentSupplierFactory {
   private static class PipePluginSupplier extends TsBlockSupplier {
     private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) throws Exception {
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final UserEntity entity)
+        throws ClientManagerException, TException {
       super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(entity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -784,112 +791,6 @@ public class InformationSchemaContentSupplierFactory {
         }
       }
       return true;
-    }
-  }
-
-  private static class ModelsSupplier extends TsBlockSupplier {
-    private final ModelIterator iterator;
-
-    private ModelsSupplier(final List<TSDataType> dataTypes) throws Exception {
-      super(dataTypes);
-      try (final ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        iterator = new ModelIterator(client.showModel(new TShowModelReq()));
-      }
-    }
-
-    private static class ModelIterator implements Iterator<ModelInfoInString> {
-
-      private int index = 0;
-      private final TShowModelResp resp;
-
-      private ModelIterator(TShowModelResp resp) {
-        this.resp = resp;
-      }
-
-      @Override
-      public boolean hasNext() {
-        return index < resp.getModelIdListSize();
-      }
-
-      @Override
-      public ModelInfoInString next() {
-        String modelId = resp.getModelIdList().get(index++);
-        return new ModelInfoInString(
-            modelId,
-            resp.getModelTypeMap().get(modelId),
-            resp.getCategoryMap().get(modelId),
-            resp.getStateMap().get(modelId));
-      }
-    }
-
-    private static class ModelInfoInString {
-
-      private final String modelId;
-      private final String modelType;
-      private final String category;
-      private final String state;
-
-      public ModelInfoInString(String modelId, String modelType, String category, String state) {
-        this.modelId = modelId;
-        this.modelType = modelType;
-        this.category = category;
-        this.state = state;
-      }
-
-      public String getModelId() {
-        return modelId;
-      }
-
-      public String getModelType() {
-        return modelType;
-      }
-
-      public String getCategory() {
-        return category;
-      }
-
-      public String getState() {
-        return state;
-      }
-    }
-
-    @Override
-    protected void constructLine() {
-      final ModelInfoInString modelInfo = iterator.next();
-      columnBuilders[0].writeBinary(
-          new Binary(modelInfo.getModelId(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(modelInfo.getModelType(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(
-          new Binary(modelInfo.getCategory(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeBinary(new Binary(modelInfo.getState(), TSFileConfig.STRING_CHARSET));
-      //      if (Objects.equals(modelType, ModelType.USER_DEFINED.toString())) {
-      //        columnBuilders[3].writeBinary(
-      //            new Binary(
-      //                INPUT_SHAPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + OUTPUT_SHAPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + INPUT_DATA_TYPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + OUTPUT_DATA_TYPE
-      //                    + ReadWriteIOUtils.readString(modelInfo),
-      //                TSFileConfig.STRING_CHARSET));
-      //        columnBuilders[4].writeBinary(
-      //            new Binary(ReadWriteIOUtils.readString(modelInfo),
-      // TSFileConfig.STRING_CHARSET));
-      //      } else {
-      //        columnBuilders[3].appendNull();
-      //        columnBuilders[4].writeBinary(
-      //            new Binary("Built-in model in IoTDB", TSFileConfig.STRING_CHARSET));
-      //      }
-      resultBuilder.declarePosition();
-    }
-
-    @Override
-    public boolean hasNext() {
-      return iterator.hasNext();
     }
   }
 
@@ -1250,5 +1151,37 @@ public class InformationSchemaContentSupplierFactory {
     }
 
     protected abstract void constructLine();
+  }
+
+  private static class ConnectionsSupplier extends TsBlockSupplier {
+    private Iterator<ConnectionInfo> sessionConnectionIterator;
+
+    private ConnectionsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      sessionConnectionIterator = sessionManager.getAllSessionConnectionInfo().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      ConnectionInfo connectionInfo = sessionConnectionIterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getSessionId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(connectionInfo.getUserName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeLong(connectionInfo.getLastActiveTime());
+      columnBuilders[5].writeBinary(
+          new Binary(connectionInfo.getClientAddress(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return sessionConnectionIterator.hasNext();
+    }
   }
 }

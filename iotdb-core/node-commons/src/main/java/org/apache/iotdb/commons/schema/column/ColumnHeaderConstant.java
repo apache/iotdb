@@ -205,6 +205,14 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
 
+  // column names for show idle connection
+  public static final String DATANODE_ID = "data_node_id";
+  public static final String USERID = "user_id";
+  public static final String SESSION_ID = "session_id";
+  public static final String USER_NAME = "user_name";
+  public static final String LAST_ACTIVE_TIME = "last_active_time";
+  public static final String CLIENT_IP = "client_ip";
+
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
   public static final String QUERY_ID_START_TIME_TABLE_MODEL = "start_time";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
@@ -463,6 +471,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
+
+  public static final List<ColumnHeader> showAvailableUrlsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showConfigNodesColumnHeaders =
       ImmutableList.of(

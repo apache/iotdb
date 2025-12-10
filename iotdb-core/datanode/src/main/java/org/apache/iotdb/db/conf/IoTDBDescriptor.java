@@ -2342,12 +2342,6 @@ public class IoTDBDescriptor {
             ? conf.getLoadActiveListeningCheckIntervalSeconds()
             : loadActiveListeningCheckIntervalSeconds);
 
-    conf.setLoadTableSchemaCacheSizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_table_schema_cache_size_in_bytes",
-                Long.toString(conf.getLoadTableSchemaCacheSizeInBytes()))));
-
     conf.setLoadMeasurementIdCacheSizeInBytes(
         Long.parseLong(
             properties.getProperty(
@@ -2401,6 +2395,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "skip_failed_table_schema_check",
                 String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2448,6 +2454,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
 
     conf.setSkipFailedTableSchemaCheck(
         Boolean.parseBoolean(
