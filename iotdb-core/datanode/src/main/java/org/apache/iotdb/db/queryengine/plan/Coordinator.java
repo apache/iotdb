@@ -831,10 +831,17 @@ public class Coordinator {
 
     // the QueryInfo smaller than expired time will be cleared
     long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000;
-    QueryInfo queryInfo = currentQueriesInfo.poll();
+    // peek head, the head QueryInfo is in the time window, return directly
+    QueryInfo queryInfo = currentQueriesInfo.peekFirst();
+    if (queryInfo.endTime >= expiredTime) {
+      return;
+    }
+
+    queryInfo = currentQueriesInfo.poll();
     while (queryInfo != null) {
       if (queryInfo.endTime < expiredTime) {
         // out of time window, clear queryInfo
+        coordinatorMemoryBlock.release(RamUsageEstimator.sizeOfObject(queryInfo));
         unrecordInHistogram(queryInfo.costTime);
         queryInfo = currentQueriesInfo.poll();
       } else {
