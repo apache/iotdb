@@ -215,9 +215,8 @@ public final class AstMemoryEstimator {
 
     @Override
     protected Void visitNode(Node node, Void context) {
-      addNodeSize(node);
-      addNodeLocationSize(node);
-      return null;
+      throw new UnsupportedOperationException(
+          String.format("Unsupported node type: %s.", node.getClass().getName()));
     }
 
     @Override
