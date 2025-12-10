@@ -24,7 +24,6 @@ package org.apache.iotdb.db.utils.cte;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -33,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CteDataStore {
-  private final Query query;
   private final TableSchema tableSchema;
   private final List<Integer> columnIndex2TsBlockColumnIndexList;
 
@@ -44,9 +42,7 @@ public class CteDataStore {
   // reference count by CteScanOperator
   private final AtomicInteger count;
 
-  public CteDataStore(
-      Query query, TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
-    this.query = query;
+  public CteDataStore(TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.tableSchema = tableSchema;
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
     this.cachedData = new ArrayList<>();
@@ -85,10 +81,6 @@ public class CteDataStore {
 
   public TableSchema getTableSchema() {
     return tableSchema;
-  }
-
-  public Query getQuery() {
-    return query;
   }
 
   public List<Integer> getColumnIndex2TsBlockColumnIndexList() {
