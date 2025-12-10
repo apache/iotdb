@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -34,7 +33,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +45,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Optional;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class RecordObjectTypeTest {
 
@@ -98,23 +102,32 @@ public class RecordObjectTypeTest {
     Record record = recordIterator.next();
 
     Binary result = record.readObject(0);
-    Assert.assertEquals(100, result.getLength());
+    assertEquals(100, result.getLength());
     for (int j = 0; j < 100; j++) {
-      Assert.assertEquals(j, result.getValues()[j]);
+      assertEquals(j, result.getValues()[j]);
     }
 
     result = record.readObject(0, 10, 2);
     Assert.assertArrayEquals(new byte[] {(byte) 10, (byte) 11}, result.getValues());
 
-    Object object = record.getObject(0);
-    Assert.assertTrue(object instanceof Binary);
-    Pair<Long, String> pair = ObjectTypeUtils.parseObjectBinary((Binary) object);
-    Assert.assertEquals(Long.valueOf(100L), pair.getLeft());
-    Assert.assertTrue(pair.getRight().startsWith("test_") && pair.getRight().endsWith(".bin"));
+    try {
+      record.getObject(0);
+      fail("Should throw exception");
+    } catch (UnsupportedOperationException e) {
+      assertEquals(OBJECT_ERR_MSG, e.getMessage());
+    }
 
-    Assert.assertArrayEquals(((Binary) object).getValues(), record.getBinary(0).getValues());
+    try {
+      record.getBinary(0);
+      fail("Should throw exception");
+    } catch (UnsupportedOperationException e) {
+      assertEquals(OBJECT_ERR_MSG, e.getMessage());
+    }
 
-    Assert.assertEquals("(Object) 100 B", record.getString(0));
+    Optional<File> objectFile = record.getObjectFile(0);
+    assertTrue(objectFile.isPresent());
+
+    assertEquals("(Object) 100 B", record.getString(0));
     Assert.assertFalse(recordIterator.hasNext());
   }
 
