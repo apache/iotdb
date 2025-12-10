@@ -365,16 +365,30 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-          result =
-              COORDINATOR.executeForTreeModel(
-                  s,
-                  queryId,
-                  SESSION_MANAGER.getSessionInfo(clientSession),
-                  statement,
-                  partitionFetcher,
-                  schemaFetcher,
-                  req.getTimeout(),
-                  true);
+          // Split statement if needed to limit resource consumption during statement analysis
+          if (s.shouldSplit()) {
+            result =
+                executeBatchStatement(
+                    s,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    partitionFetcher,
+                    schemaFetcher,
+                    config.getQueryTimeoutThreshold(),
+                    true);
+          } else {
+            result =
+                COORDINATOR.executeForTreeModel(
+                    s,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    partitionFetcher,
+                    schemaFetcher,
+                    req.getTimeout(),
+                    true);
+          }
         }
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
@@ -396,17 +410,32 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-        result =
-            COORDINATOR.executeForTableModel(
-                s,
-                relationSqlParser,
-                clientSession,
-                queryId,
-                SESSION_MANAGER.getSessionInfo(clientSession),
-                statement,
-                metadata,
-                req.getTimeout(),
-                true);
+        // Split statement if needed to limit resource consumption during statement analysis
+        if (s.shouldSplit()) {
+          result =
+              executeBatchTableStatement(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  config.getQueryTimeoutThreshold(),
+                  true);
+        } else {
+          result =
+              COORDINATOR.executeForTableModel(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  req.getTimeout(),
+                  true);
+        }
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1445,6 +1474,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         req.statementId,
         req.isSetStatementId(),
         req.isSetQueryId(),
+        req.isSetPreparedStatementName() ? req.getPreparedStatementName() : null,
         COORDINATOR::cleanupQueryExecution);
   }
 
@@ -1845,16 +1875,31 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               queryId = SESSION_MANAGER.requestQueryId();
               type = s.getType() == null ? null : s.getType().name();
               // create and cache dataset
-              result =
-                  COORDINATOR.executeForTreeModel(
-                      s,
-                      queryId,
-                      SESSION_MANAGER.getSessionInfo(clientSession),
-                      statement,
-                      partitionFetcher,
-                      schemaFetcher,
-                      config.getQueryTimeoutThreshold(),
-                      false);
+
+              // Split statement if needed to limit resource consumption during statement analysis
+              if (s.shouldSplit()) {
+                result =
+                    executeBatchStatement(
+                        s,
+                        queryId,
+                        SESSION_MANAGER.getSessionInfo(clientSession),
+                        statement,
+                        partitionFetcher,
+                        schemaFetcher,
+                        config.getQueryTimeoutThreshold(),
+                        false);
+              } else {
+                result =
+                    COORDINATOR.executeForTreeModel(
+                        s,
+                        queryId,
+                        SESSION_MANAGER.getSessionInfo(clientSession),
+                        statement,
+                        partitionFetcher,
+                        schemaFetcher,
+                        config.getQueryTimeoutThreshold(),
+                        false);
+              }
             }
           } else {
 
@@ -1875,17 +1920,32 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             queryId = SESSION_MANAGER.requestQueryId();
 
-            result =
-                COORDINATOR.executeForTableModel(
-                    s,
-                    relationSqlParser,
-                    clientSession,
-                    queryId,
-                    SESSION_MANAGER.getSessionInfo(clientSession),
-                    statement,
-                    metadata,
-                    config.getQueryTimeoutThreshold(),
-                    false);
+            // Split statement if needed to limit resource consumption during statement analysis
+            if (s.shouldSplit()) {
+              result =
+                  executeBatchTableStatement(
+                      s,
+                      relationSqlParser,
+                      clientSession,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(clientSession),
+                      statement,
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false);
+            } else {
+              result =
+                  COORDINATOR.executeForTableModel(
+                      s,
+                      relationSqlParser,
+                      clientSession,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(clientSession),
+                      statement,
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false);
+            }
           }
 
           results.add(result.status);
@@ -3189,5 +3249,181 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
+  }
+
+  /**
+   * Executes tree-model Statement sub-statements in batch.
+   *
+   * @param statement the Statement to be executed
+   * @param queryId the query ID
+   * @param sessionInfo the session information
+   * @param statementStr the SQL statement string
+   * @param partitionFetcher the partition fetcher
+   * @param schemaFetcher the schema fetcher
+   * @param timeoutMs the timeout in milliseconds
+   * @return the execution result
+   */
+  private ExecutionResult executeBatchStatement(
+      final Statement statement,
+      final long queryId,
+      final SessionInfo sessionInfo,
+      final String statementStr,
+      final IPartitionFetcher partitionFetcher,
+      final ISchemaFetcher schemaFetcher,
+      final long timeoutMs,
+      final boolean userQuery) {
+
+    ExecutionResult result = null;
+    final List<? extends Statement> subStatements = statement.getSubStatements();
+    final int totalSubStatements = subStatements.size();
+
+    LOGGER.info(
+        "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
+        totalSubStatements,
+        queryId);
+
+    for (int i = 0; i < totalSubStatements; i++) {
+      final Statement subStatement = subStatements.get(i);
+
+      LOGGER.info(
+          "Executing sub-statement {}/{} in tree model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
+
+      result =
+          COORDINATOR.executeForTreeModel(
+              subStatement,
+              queryId,
+              sessionInfo,
+              statementStr,
+              partitionFetcher,
+              schemaFetcher,
+              timeoutMs,
+              userQuery);
+
+      // Exit early if any sub-statement execution fails
+      if (result != null
+          && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        final int completed = i + 1;
+        final int remaining = totalSubStatements - completed;
+        final double percentage = (completed * 100.0) / totalSubStatements;
+        LOGGER.warn(
+            "Failed to execute sub-statement {}/{} in tree model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            i + 1,
+            totalSubStatements,
+            queryId,
+            completed,
+            remaining,
+            String.format("%.2f", percentage),
+            result.status.getMessage());
+        break;
+      }
+
+      LOGGER.info(
+          "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
+    }
+
+    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(
+          "Completed batch executing all {} sub-statement(s) in tree model, queryId: {}",
+          totalSubStatements,
+          queryId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Executes table-model Statement sub-statements in batch.
+   *
+   * @param statement the Statement to be executed
+   * @param relationSqlParser the relational SQL parser
+   * @param clientSession the client session
+   * @param queryId the query ID
+   * @param sessionInfo the session information
+   * @param statementStr the SQL statement string
+   * @param metadata the metadata
+   * @param timeoutMs the timeout in milliseconds
+   * @return the execution result
+   */
+  private ExecutionResult executeBatchTableStatement(
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final SqlParser relationSqlParser,
+      final IClientSession clientSession,
+      final long queryId,
+      final SessionInfo sessionInfo,
+      final String statementStr,
+      final Metadata metadata,
+      final long timeoutMs,
+      final boolean userQuery) {
+
+    ExecutionResult result = null;
+    List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
+        subStatements = statement.getSubStatements();
+    int totalSubStatements = subStatements.size();
+    LOGGER.info(
+        "Start batch executing {} sub-statement(s) in table model, queryId: {}",
+        totalSubStatements,
+        queryId);
+
+    for (int i = 0; i < totalSubStatements; i++) {
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement subStatement =
+          subStatements.get(i);
+
+      LOGGER.info(
+          "Executing sub-statement {}/{} in table model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
+
+      result =
+          COORDINATOR.executeForTableModel(
+              subStatement,
+              relationSqlParser,
+              clientSession,
+              queryId,
+              sessionInfo,
+              statementStr,
+              metadata,
+              timeoutMs,
+              userQuery);
+
+      // Exit early if any sub-statement execution fails
+      if (result != null
+          && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        final int completed = i + 1;
+        final int remaining = totalSubStatements - completed;
+        final double percentage = (completed * 100.0) / totalSubStatements;
+        LOGGER.warn(
+            "Failed to execute sub-statement {}/{} in table model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            i + 1,
+            totalSubStatements,
+            queryId,
+            completed,
+            remaining,
+            String.format("%.2f", percentage),
+            result.status.getMessage());
+        break;
+      }
+
+      LOGGER.info(
+          "Successfully executed sub-statement {}/{} in table model, queryId: {}",
+          i + 1,
+          totalSubStatements,
+          queryId);
+    }
+
+    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(
+          "Completed batch executing all {} sub-statement(s) in table model, queryId: {}",
+          totalSubStatements,
+          queryId);
+    }
+
+    return result;
   }
 }

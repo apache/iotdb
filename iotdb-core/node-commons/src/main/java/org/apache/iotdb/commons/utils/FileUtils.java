@@ -418,7 +418,7 @@ public class FileUtils {
     final String sourceFileName = sourceFile.getName();
     final File targetFile = new File(targetDir, sourceFileName);
     if (targetFile.exists()) {
-      moveFile(sourceFile, targetFile);
+      moveFile(sourceFile, targetDir);
     } else {
       org.apache.tsfile.external.commons.io.FileUtils.moveFileToDirectory(
           sourceFile, targetDir, true);
@@ -428,31 +428,37 @@ public class FileUtils {
   private static void moveFile(File sourceFile, File targetDir) throws IOException {
     String sourceFileName = sourceFile.getName();
     final File exitsFile = new File(targetDir, sourceFileName);
-    try (final FileInputStream is1 = new FileInputStream(sourceFile);
-        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
-      long sourceFileSize = is1.getChannel().size();
-      long exitsFileSize = is2.getChannel().size();
-      if (sourceFileSize != exitsFileSize) {
-        File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
-        if (!file.exists()) {
-          moveFileRename(sourceFile, file);
-          return;
-        }
-      }
 
-      String sourceFileMD5 = DigestUtils.md5Hex(is1);
-      String exitsFileMD5 = DigestUtils.md5Hex(is2);
+    // First check file sizes
+    long sourceFileSize = sourceFile.length();
+    long existsFileSize = exitsFile.length();
 
-      if (sourceFileMD5.equals(exitsFileMD5)) {
-        org.apache.tsfile.external.commons.io.FileUtils.forceDelete(sourceFile);
-        LOGGER.info(
-            "Deleted the file {} because it already exists in the target directory: {}",
-            sourceFile.getName(),
-            targetDir.getAbsolutePath());
-      } else {
-        File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+    if (sourceFileSize != existsFileSize) {
+      File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
+      if (!file.exists()) {
         moveFileRename(sourceFile, file);
       }
+      return;
+    }
+
+    // If sizes are equal, check MD5
+    String sourceFileMD5;
+    String existsFileMD5;
+    try (final FileInputStream is1 = new FileInputStream(sourceFile);
+        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+      sourceFileMD5 = DigestUtils.md5Hex(is1);
+      existsFileMD5 = DigestUtils.md5Hex(is2);
+    }
+
+    if (sourceFileMD5.equals(existsFileMD5)) {
+      org.apache.tsfile.external.commons.io.FileUtils.forceDelete(sourceFile);
+      LOGGER.info(
+          "Deleted the file {} because it already exists in the target directory: {}",
+          sourceFile.getName(),
+          targetDir.getAbsolutePath());
+    } else {
+      File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+      moveFileRename(sourceFile, file);
     }
   }
 
@@ -492,27 +498,35 @@ public class FileUtils {
       throws IOException {
     String sourceFileName = sourceFile.getName();
     final File exitsFile = new File(targetDir, sourceFileName);
-    try (final FileInputStream is1 = new FileInputStream(sourceFile);
-        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
-      long sourceFileSize = is1.getChannel().size();
-      long exitsFileSize = is2.getChannel().size();
-      if (sourceFileSize != exitsFileSize) {
-        File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
-        if (!file.exists()) {
-          copyFileRename(sourceFile, file);
-          return;
-        }
-      }
-      String sourceFileMD5 = DigestUtils.md5Hex(is1);
-      String exitsFileMD5 = DigestUtils.md5Hex(is2);
-      if (sourceFileMD5.equals(exitsFileMD5)) {
-        return;
-      }
 
-      File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+    // First check file sizes
+    long sourceFileSize = sourceFile.length();
+    long exitsFileSize = exitsFile.length();
+
+    if (sourceFileSize != exitsFileSize) {
+      File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
       if (!file.exists()) {
         copyFileRename(sourceFile, file);
       }
+      return;
+    }
+
+    // If sizes are equal, check MD5
+    String sourceFileMD5;
+    String exitsFileMD5;
+    try (final FileInputStream is1 = new FileInputStream(sourceFile);
+        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+      sourceFileMD5 = DigestUtils.md5Hex(is1);
+      exitsFileMD5 = DigestUtils.md5Hex(is2);
+    }
+
+    if (sourceFileMD5.equals(exitsFileMD5)) {
+      return;
+    }
+
+    File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
+    if (!file.exists()) {
+      copyFileRename(sourceFile, file);
     }
   }
 

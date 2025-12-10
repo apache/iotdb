@@ -45,6 +45,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -219,6 +220,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           e);
       return false;
     } catch (final Exception e) {
+      if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        LOGGER.info(
+            "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
+            e);
+        return false;
+      }
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(

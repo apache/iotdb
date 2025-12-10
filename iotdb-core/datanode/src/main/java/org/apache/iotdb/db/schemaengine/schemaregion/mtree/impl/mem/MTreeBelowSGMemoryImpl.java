@@ -238,7 +238,8 @@ public class MTreeBelowSGMemoryImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -252,6 +253,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -328,7 +335,8 @@ public class MTreeBelowSGMemoryImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -338,6 +346,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write operations on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {

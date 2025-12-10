@@ -115,7 +115,7 @@
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
         <logback.version>1.3.16</logback.version>
-        <lz4-java.version>1.8.0</lz4-java.version>
+        <lz4-java.version>1.10.1</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -134,7 +134,7 @@
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.9</ratis-thirdparty-misc.version>
+        <ratis-thirdparty-misc.version>1.0.10</ratis-thirdparty-misc.version>
         <!--
       This is an unreleased version of a custom branch. The 8-character part after the version number
       This is an unreleased version of a custom branch. The 8-character part after the version number
@@ -173,7 +173,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.2.0-251027-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.2.0-251113-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -321,37 +321,49 @@
                 <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.tsfile</groupId>
+                <artifactId>tsfile</artifactId>
+                <version>${tsfile.version}</version>
+                <!-- Once tsfile switch to at.yawk.lz4:lz4-java, remove the following part -->
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.lz4</groupId>
+                        <artifactId>lz4-java</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-server</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-server-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-common</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-client</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-grpc</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-proto</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.timecho.ratis</groupId>
+                <groupId>org.apache.ratis</groupId>
                 <artifactId>ratis-metrics-api</artifactId>
                 <version>${ratis.version}</version>
             </dependency>
@@ -492,7 +504,7 @@
                 <version>${zstd-jni.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.lz4</groupId>
+                <groupId>at.yawk.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>${lz4-java.version}</version>
             </dependency>
