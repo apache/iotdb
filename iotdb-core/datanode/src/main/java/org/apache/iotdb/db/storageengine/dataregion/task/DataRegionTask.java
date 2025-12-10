@@ -46,7 +46,7 @@ public interface DataRegionTask extends Runnable, StreamSerializable {
 
     TaskType taskType = TaskType.values()[typeOrdinal];
 
-    DataRegionTask task = null;
+    DataRegionTask task;
     switch (taskType) {
       case SchemaEvolutionTask:
        task = new SchemaEvolutionTask(dataRegion);
