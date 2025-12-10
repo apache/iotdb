@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -32,12 +30,10 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;
 import org.apache.iotdb.db.queryengine.plan.function.Repeat;
 import org.apache.iotdb.db.queryengine.plan.function.Split;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
@@ -558,21 +554,6 @@ public class TestMetadata implements Metadata {
         throw new SemanticException("Unknown function: " + functionName);
       }
     }
-  }
-
-  @Override
-  public IModelFetcher getModelFetcher() {
-    String modelId = "timer_xl";
-    IModelFetcher fetcher = Mockito.mock(IModelFetcher.class);
-    ModelInferenceDescriptor descriptor = Mockito.mock(ModelInferenceDescriptor.class);
-    Mockito.when(descriptor.getTargetAINode()).thenReturn(new TEndPoint("127.0.0.1", 10810));
-    ModelInformation modelInformation = Mockito.mock(ModelInformation.class);
-    Mockito.when(modelInformation.available()).thenReturn(true);
-    Mockito.when(modelInformation.getInputShape()).thenReturn(new int[] {1440, 96});
-    Mockito.when(descriptor.getModelInformation()).thenReturn(modelInformation);
-    Mockito.when(descriptor.getModelName()).thenReturn(modelId);
-    Mockito.when(fetcher.fetchModel(modelId)).thenReturn(descriptor);
-    return fetcher;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

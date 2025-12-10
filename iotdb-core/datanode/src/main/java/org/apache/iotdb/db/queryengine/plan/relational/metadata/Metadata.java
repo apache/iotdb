@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderExceptio
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -211,9 +210,4 @@ public interface Metadata {
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   TableFunction getTableFunction(final String functionName);
-
-  /**
-   * @return ModelFetcher
-   */
-  IModelFetcher getModelFetcher();
 }
