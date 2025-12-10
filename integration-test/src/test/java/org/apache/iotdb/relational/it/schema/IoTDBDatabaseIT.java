@@ -398,11 +398,11 @@ public class IoTDBDatabaseIT {
               "columns,INF,",
               "config_nodes,INF,",
               "configurations,INF,",
+              "connections,INF,",
               "data_nodes,INF,",
               "databases,INF,",
               "functions,INF,",
               "keywords,INF,",
-              "models,INF,",
               "nodes,INF,",
               "pipe_plugins,INF,",
               "pipes,INF,",
@@ -503,16 +503,6 @@ public class IoTDBDatabaseIT {
                   "database,STRING,TAG,",
                   "table_name,STRING,TAG,",
                   "view_definition,STRING,ATTRIBUTE,")));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc models"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "model_id,STRING,TAG,",
-                  "model_type,STRING,ATTRIBUTE,",
-                  "state,STRING,ATTRIBUTE,",
-                  "configs,STRING,ATTRIBUTE,",
-                  "notes,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc functions"),
           "ColumnName,DataType,Category,",
@@ -637,13 +627,13 @@ public class IoTDBDatabaseIT {
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,models,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
                   "test,test,INF,USING,test,BASE TABLE,",
                   "test,view_table,100,USING,null,VIEW FROM TREE,")));
       TestUtils.assertResultSetEqual(

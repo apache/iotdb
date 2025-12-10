@@ -19,30 +19,68 @@
 
 package org.apache.iotdb.ainode.utils;
 
-import java.io.File;
+import com.google.common.collect.ImmutableSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class AINodeTestUtils {
 
-  public static final String EXAMPLE_MODEL_PATH =
-      "file://"
-          + System.getProperty("user.dir")
-          + File.separator
-          + "src"
-          + File.separator
-          + "test"
-          + File.separator
-          + "resources"
-          + File.separator
-          + "ainode-example";
+  public static final Map<String, FakeModelInfo> BUILTIN_LTSM_MAP =
+      Stream.of(
+              new AbstractMap.SimpleEntry<>(
+                  "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
+              new AbstractMap.SimpleEntry<>(
+                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")))
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+  public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
+
+  static {
+    Map<String, FakeModelInfo> tmp =
+        Stream.of(
+                new AbstractMap.SimpleEntry<>(
+                    "arima", new FakeModelInfo("arima", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "holtwinters", new FakeModelInfo("holtwinters", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "exponential_smoothing",
+                    new FakeModelInfo("exponential_smoothing", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "naive_forecaster",
+                    new FakeModelInfo("naive_forecaster", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "stl_forecaster",
+                    new FakeModelInfo("stl_forecaster", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "gaussian_hmm",
+                    new FakeModelInfo("gaussian_hmm", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "gmm_hmm", new FakeModelInfo("gmm_hmm", "sktime", "builtin", "active")),
+                new AbstractMap.SimpleEntry<>(
+                    "stray", new FakeModelInfo("stray", "sktime", "builtin", "active")))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    tmp.putAll(BUILTIN_LTSM_MAP);
+    BUILTIN_MODEL_MAP = Collections.unmodifiableMap(tmp);
+  }
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AINodeTestUtils.class);
 
   public static void checkHeader(ResultSetMetaData resultSetMetaData, String title)
       throws SQLException {
@@ -92,6 +130,63 @@ public class AINodeTestUtils {
         fail("Thread timeout after 10 minutes");
       }
     }
+  }
+
+  public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
+      throws SQLException, InterruptedException {
+    Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
+    for (int retry = 0; retry < 200; retry++) {
+      Set<String> foundDevices = new HashSet<>();
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+        while (resultSet.next()) {
+          String deviceId = resultSet.getString("DeviceId");
+          String loadedModelId = resultSet.getString("ModelId");
+          int count = resultSet.getInt("Count(instances)");
+          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
+          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
+            foundDevices.add(deviceId);
+            LOGGER.info("Model {} is loaded to device {}", modelId, device);
+          }
+        }
+        if (foundDevices.containsAll(targetDevices)) {
+          LOGGER.info("Model {} is loaded to devices {}, start testing", modelId, targetDevices);
+          return;
+        }
+      }
+      TimeUnit.SECONDS.sleep(3);
+    }
+    fail("Model " + modelId + " is not loaded on device " + device);
+  }
+
+  public static void checkModelNotOnSpecifiedDevice(
+      Statement statement, String modelId, String device)
+      throws SQLException, InterruptedException {
+    Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    LOGGER.info("Checking model: {} not on target devices: {}", modelId, targetDevices);
+    for (int retry = 0; retry < 50; retry++) {
+      Set<String> foundDevices = new HashSet<>();
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+        while (resultSet.next()) {
+          String deviceId = resultSet.getString("DeviceId");
+          String loadedModelId = resultSet.getString("ModelId");
+          int count = resultSet.getInt("Count(instances)");
+          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
+          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
+            foundDevices.add(deviceId);
+            LOGGER.info("Model {} is loaded to device {}", modelId, device);
+          }
+        }
+        if (foundDevices.isEmpty()) {
+          LOGGER.info("Model {} is unloaded from devices {}.", modelId, targetDevices);
+          return;
+        }
+      }
+      TimeUnit.SECONDS.sleep(3);
+    }
+    fail("Model " + modelId + " is still loaded on device " + device);
   }
 
   public static class FakeModelInfo {

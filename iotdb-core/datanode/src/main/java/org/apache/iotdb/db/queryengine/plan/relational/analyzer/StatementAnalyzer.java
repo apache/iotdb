@@ -40,13 +40,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -133,6 +131,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -192,7 +191,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -212,6 +210,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.VerifyException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -281,6 +280,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.Bas
 import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
@@ -306,11 +306,11 @@ public class StatementAnalyzer {
 
   private final SessionInfo sessionContext;
 
-  private final TypeManager typeManager = new InternalTypeManager();
-
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
+
+  private final TypeManager typeManager;
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -320,7 +320,8 @@ public class StatementAnalyzer {
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
-      CorrelationSupport correlationSupport) {
+      CorrelationSupport correlationSupport,
+      TypeManager typeManager) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -329,6 +330,7 @@ public class StatementAnalyzer {
     this.sessionContext = sessionContext;
     this.metadata = metadata;
     this.correlationSupport = correlationSupport;
+    this.typeManager = typeManager;
   }
 
   public Scope analyze(Node node) {
@@ -3979,15 +3981,12 @@ public class StatementAnalyzer {
       if (node.getRowCount() instanceof LongLiteral) {
         rowCount = ((LongLiteral) node.getRowCount()).getParsedValue();
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected OFFSET rowCount: " +
-        // node.getRowCount().getClass().getSimpleName());
-        throw new SemanticException(
+        checkState(
+            node.getRowCount() instanceof Parameter,
             "unexpected OFFSET rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        OptionalLong providedValue =
-        //            analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
-        //        rowCount = providedValue.orElse(0);
+        OptionalLong providedValue =
+            analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
+        rowCount = providedValue.orElse(0);
       }
       if (rowCount < 0) {
         throw new SemanticException(
@@ -4048,14 +4047,10 @@ public class StatementAnalyzer {
       } else if (node.getRowCount() instanceof LongLiteral) {
         rowCount = OptionalLong.of(((LongLiteral) node.getRowCount()).getParsedValue());
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected LIMIT rowCount: " +
-        // node.getRowCount().getClass().getSimpleName());
-        throw new SemanticException(
+        checkState(
+            node.getRowCount() instanceof Parameter,
             "unexpected LIMIT rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope,
-        // "LIMIT");
+        rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "LIMIT");
       }
       rowCount.ifPresent(
           count -> {
@@ -4071,32 +4066,27 @@ public class StatementAnalyzer {
       return false;
     }
 
-    //    private OptionalLong analyzeParameterAsRowCount(
-    //        Parameter parameter, Scope scope, String context) {
-    //      // validate parameter index
-    //      analyzeExpression(parameter, scope);
-    //      Expression providedValue = analysis.getParameters().get(NodeRef.of(parameter));
-    //      Object value;
-    //      try {
-    //        value =
-    //            evaluateConstantExpression(
-    //                providedValue,
-    //                BIGINT,
-    //                plannerContext,
-    //                session,
-    //                accessControl,
-    //                analysis.getParameters());
-    //      } catch (VerifyException e) {
-    //        throw new SemanticException(
-    //            String.format("Non constant parameter value for %s: %s", context, providedValue));
-    //      }
-    //      if (value == null) {
-    //        throw new SemanticException(
-    //            String.format("Parameter value provided for %s is NULL: %s", context,
-    // providedValue));
-    //      }
-    //      return OptionalLong.of((long) value);
-    //    }
+    private OptionalLong analyzeParameterAsRowCount(
+        Parameter parameter, Scope scope, String context) {
+      // validate parameter index
+      analyzeExpression(parameter, scope);
+      Expression providedValue = analysis.getParameters().get(NodeRef.of(parameter));
+      Object value;
+      try {
+        value =
+            evaluateConstantExpression(
+                providedValue, new PlannerContext(metadata, typeManager), sessionContext);
+
+      } catch (VerifyException e) {
+        throw new SemanticException(
+            String.format("Non constant parameter value for %s: %s", context, providedValue));
+      }
+      if (value == null) {
+        throw new SemanticException(
+            String.format("Parameter value provided for %s is NULL: %s", context, providedValue));
+      }
+      return OptionalLong.of((long) value);
+    }
 
     private void analyzeAggregations(
         QuerySpecification node,
@@ -4692,11 +4682,6 @@ public class StatementAnalyzer {
       String functionName = node.getName().toString();
       TableFunction function = metadata.getTableFunction(functionName);
 
-      // set model fetcher for ForecastTableFunction
-      if (function instanceof ForecastTableFunction) {
-        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
-      }
-
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {
         errorLocation = node.getArguments().get(0);
@@ -5185,7 +5170,7 @@ public class StatementAnalyzer {
         Expression expression, ScalarParameterSpecification argumentSpecification) {
       // currently, only constant arguments are supported
       Object constantValue =
-          IrExpressionInterpreter.evaluateConstantExpression(
+          evaluateConstantExpression(
               expression, new PlannerContext(metadata, typeManager), sessionContext);
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)

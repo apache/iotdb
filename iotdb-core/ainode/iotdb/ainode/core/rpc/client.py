@@ -38,7 +38,6 @@ from iotdb.thrift.confignode.ttypes import (
     TAINodeRemoveReq,
     TAINodeRestartReq,
     TNodeVersionInfo,
-    TUpdateModelInfoReq,
 )
 
 logger = Logger()
@@ -155,12 +154,7 @@ class ConfigNodeClient(object):
             self._try_to_connect()
         except TException:
             # can not connect to each config node
-            self._sync_latest_config_node_list()
             self._try_to_connect()
-
-    def _sync_latest_config_node_list(self) -> None:
-        # TODO
-        pass
 
     def _update_config_node_leader(self, status: TSStatus) -> bool:
         if status.code == TSStatusCode.REDIRECTION_RECOMMEND.get_status_code():
@@ -266,39 +260,6 @@ class ConfigNodeClient(object):
                 logger.warning(
                     "Failed to connect to ConfigNode {} from AINode when executing "
                     "get_ainode_configuration()",
-                    self._config_leader,
-                )
-                self._config_leader = None
-            self._wait_and_reconnect()
-        raise TException(self._MSG_RECONNECTION_FAIL)
-
-    def update_model_info(
-        self,
-        model_id: str,
-        model_status: int,
-        attribute: str = "",
-        ainode_id=None,
-        input_length=0,
-        output_length=0,
-    ) -> None:
-        if ainode_id is None:
-            ainode_id = []
-        for _ in range(0, self._RETRY_NUM):
-            try:
-                req = TUpdateModelInfoReq(model_id, model_status, attribute)
-                if ainode_id is not None:
-                    req.aiNodeIds = ainode_id
-                req.inputLength = input_length
-                req.outputLength = output_length
-                status = self._client.updateModelInfo(req)
-                if not self._update_config_node_leader(status):
-                    verify_success(
-                        status, "An error occurs when calling update model info"
-                    )
-                    return status
-            except TTransport.TException:
-                logger.warning(
-                    "Failed to connect to ConfigNode {} from AINode when executing update model info",
                     self._config_leader,
                 )
                 self._config_leader = None
