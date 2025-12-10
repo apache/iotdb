@@ -167,8 +167,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public List<Integer> checkUserPathPrivileges(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
-    checkCacheAvailable();
     List<Integer> posList = new ArrayList<>();
+    if (username.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      return posList;
+    }
+    checkCacheAvailable();
     User user = getUser(username);
     if (user.isOpenIdUser()) {
       return posList;
