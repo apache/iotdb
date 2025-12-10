@@ -33,7 +33,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -247,11 +246,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
-      batchReq.tabletReqs.add(
-          PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-              Tablet.deserialize(transferReq.body),
-              ReadWriteIOUtils.readBool(transferReq.body),
-              ReadWriteIOUtils.readString(transferReq.body)));
+      batchReq.tabletReqs.add(PipeTransferTabletRawReqV2.toTPipeTransferRawReq(transferReq.body));
     }
 
     batchReq.version = transferReq.version;
