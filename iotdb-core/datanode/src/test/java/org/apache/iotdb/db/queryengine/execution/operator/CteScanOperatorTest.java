@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteS
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
@@ -72,14 +71,11 @@ public class CteScanOperatorTest {
     // Create a simple table schema for testing
     TableSchema tableSchema = createTestTableSchema();
 
-    // Create mock query
-    Query mockQuery = mock(Query.class);
-
     // Create column index mapping
     List<Integer> columnIndex2TsBlockColumnIndexList = Arrays.asList(0, 1, 2);
 
     // Initialize CteDataStore
-    cteDataStore = new CteDataStore(mockQuery, tableSchema, columnIndex2TsBlockColumnIndexList);
+    cteDataStore = new CteDataStore(tableSchema, columnIndex2TsBlockColumnIndexList);
 
     // Add test data to the data store
     List<TsBlock> testData = createTestTsBlocks();
@@ -105,9 +101,8 @@ public class CteScanOperatorTest {
   @Test
   public void testEmptyDataStore() throws Exception {
     // Create empty data store
-    Query mockQuery = mock(Query.class);
     TableSchema tableSchema = createTestTableSchema();
-    CteDataStore emptyDataStore = new CteDataStore(mockQuery, tableSchema, Arrays.asList(0, 1, 2));
+    CteDataStore emptyDataStore = new CteDataStore(tableSchema, Arrays.asList(0, 1, 2));
 
     cteScanOperator = new CteScanOperator(operatorContext, planNodeId, emptyDataStore);
     // Should not have data

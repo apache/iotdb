@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
@@ -143,7 +144,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import org.apache.thrift.TBase;
 import org.apache.tsfile.utils.Accountable;
@@ -418,7 +418,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       Metadata metadata,
-      Map<NodeRef<Table>, CteDataStore> cteDataStoreMap,
+      Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
       long timeOut,
       boolean userQuery) {
@@ -429,7 +429,7 @@ public class Coordinator {
         userQuery,
         ((queryContext, startTime) -> {
           queryContext.setSubquery(true);
-          queryContext.setCteDataStores(cteDataStoreMap);
+          queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
           return createQueryExecutionForTableModel(
               statement,
