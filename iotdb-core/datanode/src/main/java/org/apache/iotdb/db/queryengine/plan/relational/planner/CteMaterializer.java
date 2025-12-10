@@ -39,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -97,16 +96,6 @@ public class CteMaterializer {
                 context.addCteQuery(table, query);
               }
             });
-  }
-
-  public void cleanUpCTE(MPPQueryContext context) {
-    Map<NodeRef<Table>, Query> cteQueries = context.getCteQueries();
-    cteQueries.values().stream()
-        .map(Query::getCteDataStore)
-        .filter(java.util.Objects::nonNull)
-        .distinct()
-        .forEach(CteDataStore::clear);
-    cteQueries.clear();
   }
 
   public CteDataStore fetchCteQueryResult(
