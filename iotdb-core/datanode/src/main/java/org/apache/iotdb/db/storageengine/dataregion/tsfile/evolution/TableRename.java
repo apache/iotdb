@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -68,6 +69,20 @@ public class TableRename implements SchemaEvolution {
   public void deserialize(InputStream stream) throws IOException {
     nameBefore = ReadWriteIOUtils.readVarIntString(stream);
     nameAfter = ReadWriteIOUtils.readVarIntString(stream);
+  }
+
+  @Override
+  public long serialize(ByteBuffer buffer) {
+    long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), buffer);
+    size += ReadWriteIOUtils.writeVar(nameBefore, buffer);
+    size += ReadWriteIOUtils.writeVar(nameAfter, buffer);
+    return size;
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    nameBefore = ReadWriteIOUtils.readVarIntString(buffer);
+    nameAfter = ReadWriteIOUtils.readVarIntString(buffer);
   }
 
   public String getNameBefore() {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.nio.ByteBuffer;
+import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
@@ -27,7 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /** A schema evolution operation that can be applied to a TableSchemaMap. */
-public interface SchemaEvolution extends StreamSerializable {
+public interface SchemaEvolution extends StreamSerializable, BufferSerializable {
 
   /**
    * Apply this schema evolution operation to the given metadata.
@@ -43,12 +45,11 @@ public interface SchemaEvolution extends StreamSerializable {
     COLUMN_RENAME
   }
 
-  static SchemaEvolution createFrom(InputStream stream) throws IOException {
-    int type = ReadWriteForEncodingUtils.readVarInt(stream);
+  static SchemaEvolution createFrom(int type) {
     if (type < 0 || type > SchemaEvolutionType.values().length) {
-      throw new IOException("Invalid evolution type: " + type);
+      throw new IllegalArgumentException("Invalid evolution type: " + type);
     }
-    SchemaEvolution evolution = null;
+    SchemaEvolution evolution;
     SchemaEvolutionType evolutionType = SchemaEvolutionType.values()[type];
     switch (evolutionType) {
       case TABLE_RENAME:
@@ -58,9 +59,22 @@ public interface SchemaEvolution extends StreamSerializable {
         evolution = new ColumnRename();
         break;
       default:
-        throw new IOException("Invalid evolution type: " + evolutionType);
+        throw new IllegalArgumentException("Invalid evolution type: " + evolutionType);
     }
+    return evolution;
+  }
+
+  static SchemaEvolution createFrom(InputStream stream) throws IOException {
+    int type = ReadWriteForEncodingUtils.readVarInt(stream);
+    SchemaEvolution evolution = createFrom(type);
     evolution.deserialize(stream);
+    return evolution;
+  }
+
+  static SchemaEvolution createFrom(ByteBuffer buffer) {
+    int type = ReadWriteForEncodingUtils.readVarInt(buffer);
+    SchemaEvolution evolution = createFrom(type);
+    evolution.deserialize(buffer);
     return evolution;
   }
 }

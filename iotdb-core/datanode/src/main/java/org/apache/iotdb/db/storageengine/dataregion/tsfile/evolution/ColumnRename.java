@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
@@ -71,6 +72,27 @@ public class ColumnRename implements SchemaEvolution {
     nameBefore = ReadWriteIOUtils.readVarIntString(stream);
     nameAfter = ReadWriteIOUtils.readVarIntString(stream);
     byte category = ReadWriteIOUtils.readByte(stream);
+    if (category != -1)  {
+      dataType = TSDataType.values()[category];
+    }
+  }
+
+  @Override
+  public long serialize(ByteBuffer buffer) {
+    int size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), buffer);
+    size += ReadWriteIOUtils.writeVar(tableName, buffer);
+    size += ReadWriteIOUtils.writeVar(nameBefore, buffer);
+    size += ReadWriteIOUtils.writeVar(nameAfter, buffer);
+    size += ReadWriteIOUtils.write(dataType != null ? (byte) dataType.ordinal() : -1, buffer);
+    return size;
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    tableName = ReadWriteIOUtils.readVarIntString(buffer);
+    nameBefore = ReadWriteIOUtils.readVarIntString(buffer);
+    nameAfter = ReadWriteIOUtils.readVarIntString(buffer);
+    byte category = ReadWriteIOUtils.readByte(buffer);
     if (category != -1)  {
       dataType = TSDataType.values()[category];
     }
