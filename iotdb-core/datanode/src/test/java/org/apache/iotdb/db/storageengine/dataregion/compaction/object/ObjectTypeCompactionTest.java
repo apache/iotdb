@@ -29,6 +29,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.PlainObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Sett
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -232,6 +236,45 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
+  }
+
+  @Test
+  public void testPlainObjectBinaryReplaceRegionId() {
+    IObjectPath objectPath = new PlainObjectPath(1, 0, new StringArrayDeviceID("t1.d1"), "s1");
+    ByteBuffer buffer =
+        ByteBuffer.allocate(Long.BYTES + objectPath.getSerializeSizeToObjectValue());
+    buffer.putLong(10);
+    objectPath.serializeToObjectValue(buffer);
+
+    Binary origin = new Binary(buffer.array());
+    Binary result = ObjectTypeUtils.replaceRegionIdForObjectBinary(10, origin);
+    ByteBuffer deserializeBuffer = ByteBuffer.wrap(result.getValues());
+    deserializeBuffer.getLong();
+    Assert.assertEquals(
+        new PlainObjectPath(10, 0, new StringArrayDeviceID("t1.d1"), "s1").toString(),
+        IObjectPath.getDeserializer().deserializeFromObjectValue(deserializeBuffer).toString());
+  }
+
+  @Test
+  public void testBase32ObjectBinaryReplaceRegionId() {
+    config.setRestrictObjectLimit(false);
+    try {
+      IObjectPath objectPath = new Base32ObjectPath(1, 0, new StringArrayDeviceID("t1.d1"), "s1");
+      ByteBuffer buffer =
+          ByteBuffer.allocate(Long.BYTES + objectPath.getSerializeSizeToObjectValue());
+      buffer.putLong(10);
+      objectPath.serializeToObjectValue(buffer);
+
+      Binary origin = new Binary(buffer.array());
+      Binary result = ObjectTypeUtils.replaceRegionIdForObjectBinary(10, origin);
+      ByteBuffer deserializeBuffer = ByteBuffer.wrap(result.getValues());
+      deserializeBuffer.getLong();
+      Assert.assertEquals(
+          new Base32ObjectPath(10, 0, new StringArrayDeviceID("t1.d1"), "s1").toString(),
+          IObjectPath.getDeserializer().deserializeFromObjectValue(deserializeBuffer).toString());
+    } finally {
+      config.setRestrictObjectLimit(true);
+    }
   }
 
   private Pair<TsFileResource, File> generateTsFileAndObject(

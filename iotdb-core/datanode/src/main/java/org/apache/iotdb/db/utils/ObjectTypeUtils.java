@@ -30,7 +30,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.Base32ObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.PlainObjectPath;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -38,8 +40,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encoding.decoder.DecoderWrapper;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -65,7 +66,8 @@ public class ObjectTypeUtils {
 
   public static ByteBuffer readObjectContent(
       Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
-    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    Pair<Long, String> objectLengthPathPair =
+        ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(binary);
     long fileLength = objectLengthPathPair.getLeft();
     String relativePath = objectLengthPathPair.getRight();
     int actualReadSize =
@@ -152,12 +154,12 @@ public class ObjectTypeUtils {
     return buffer;
   }
 
-  public static Binary generateObjectBinary(long objectSize, String relativePath) {
-    byte[] filePathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
-    byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
-    System.arraycopy(BytesUtils.longToBytes(objectSize), 0, valueBytes, 0, Long.BYTES);
-    System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
-    return new Binary(valueBytes);
+  public static Binary generateObjectBinary(long objectSize, IObjectPath objectPath) {
+    byte[] valueBytes = new byte[objectPath.getSerializeSizeToObjectValue() + Long.BYTES];
+    ByteBuffer buffer = ByteBuffer.wrap(valueBytes);
+    ReadWriteIOUtils.write(objectSize, buffer);
+    objectPath.serializeToObjectValue(buffer);
+    return new Binary(buffer.array());
   }
 
   public static DecoderWrapper getReplaceDecoder(final Decoder decoder, final int newRegionId) {
@@ -176,20 +178,42 @@ public class ObjectTypeUtils {
     @Override
     public Binary readBinary(ByteBuffer buffer) {
       Binary originValue = originDecoder.readBinary(buffer);
-      Pair<Long, String> pair = ObjectTypeUtils.parseObjectBinary(originValue);
-      try {
-        Path path = Paths.get(pair.getRight());
-        int regionId = Integer.parseInt(path.getName(0).toString());
-        if (regionId == newRegionId) {
-          return originValue;
-        }
-        String newPath = pair.getRight().replaceFirst(regionId + "", newRegionId + "");
-        return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newPath);
-      } catch (NumberFormatException e) {
-        throw new IoTDBRuntimeException(
-            "wrong object file path: " + pair.getRight(),
-            TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
+      return ObjectTypeUtils.replaceRegionIdForObjectBinary(newRegionId, originValue);
+    }
+  }
+
+  public static Binary replaceRegionIdForObjectBinary(int newRegionId, Binary originValue) {
+    Pair<Long, IObjectPath> pair =
+        ObjectTypeUtils.parseObjectBinaryToSizeIObjectPathPair(originValue);
+    IObjectPath objectPath = pair.getRight();
+    try {
+      Path path;
+      if (objectPath instanceof PlainObjectPath) {
+        path = Paths.get(objectPath.toString());
+      } else {
+        path = ((Base32ObjectPath) objectPath).getPath();
       }
+      int regionId = Integer.parseInt(path.getName(0).toString());
+      if (regionId == newRegionId) {
+        return originValue;
+      }
+      IObjectPath newObjectPath;
+      if (objectPath instanceof PlainObjectPath) {
+        String newPath = objectPath.toString().replaceFirst(regionId + "", newRegionId + "");
+        newObjectPath = new PlainObjectPath(newPath);
+      } else {
+        String[] subPath = new String[path.getNameCount() - 1];
+        for (int i = 1; i < path.getNameCount(); i++) {
+          subPath[i - 1] = path.getName(i).toString();
+        }
+        Path newPath = Paths.get(newRegionId + "", subPath);
+        newObjectPath = new Base32ObjectPath(newPath);
+      }
+      return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
+    } catch (NumberFormatException e) {
+      throw new IoTDBRuntimeException(
+          "wrong object file path: " + pair.getRight(),
+          TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }
   }
 
@@ -210,13 +234,21 @@ public class ObjectTypeUtils {
     return (int) actualReadSize;
   }
 
-  public static Pair<Long, String> parseObjectBinary(Binary binary) {
+  public static Pair<Long, String> parseObjectBinaryToSizeStringPathPair(Binary binary) {
     byte[] bytes = binary.getValues();
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     long length = buffer.getLong();
     String relativeObjectFilePath =
-        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
+        IObjectPath.getDeserializer().deserializeFromObjectValue(buffer).toString();
     return new Pair<>(length, relativeObjectFilePath);
+  }
+
+  public static Pair<Long, IObjectPath> parseObjectBinaryToSizeIObjectPathPair(Binary binary) {
+    byte[] bytes = binary.getValues();
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    long length = buffer.getLong();
+    IObjectPath objectPath = IObjectPath.getDeserializer().deserializeFromObjectValue(buffer);
+    return new Pair<>(length, objectPath);
   }
 
   public static long getObjectLength(Binary binary) {
@@ -230,7 +262,7 @@ public class ObjectTypeUtils {
     byte[] bytes = binary.getValues();
     ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
     String relativeObjectFilePath =
-        IObjectPath.Deserializer.DESERIALIZER.deserializeFromObjectValue(buffer).toString();
+        IObjectPath.getDeserializer().deserializeFromObjectValue(buffer).toString();
     return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
   }
 

@@ -60,10 +60,11 @@ public interface IObjectPath {
     IObjectPath deserializeFrom(InputStream inputStream) throws IOException;
 
     IObjectPath deserializeFromObjectValue(ByteBuffer byteBuffer);
+  }
 
-    Deserializer DESERIALIZER =
-        CONFIG.getRestrictObjectLimit()
-            ? PlainObjectPath.getDESERIALIZER()
-            : Base32ObjectPath.getDESERIALIZER();
+  static Deserializer getDeserializer() {
+    return CONFIG.getRestrictObjectLimit()
+        ? PlainObjectPath.getDESERIALIZER()
+        : Base32ObjectPath.getDESERIALIZER();
   }
 }

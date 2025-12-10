@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath.Deserializer;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -134,7 +133,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     long searchIndex = stream.readLong();
     boolean isEOF = stream.readByte() == 1;
     long offset = stream.readLong();
-    IObjectPath filePath = Deserializer.DESERIALIZER.deserializeFrom(stream);
+    IObjectPath filePath = IObjectPath.getDeserializer().deserializeFrom(stream);
     int contentLength = stream.readInt();
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contentLength, filePath);
     objectNode.setSearchIndex(searchIndex);
@@ -145,7 +144,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     long searchIndex = buffer.getLong();
     boolean isEOF = buffer.get() == 1;
     long offset = buffer.getLong();
-    IObjectPath filePath = Deserializer.DESERIALIZER.deserializeFrom(buffer);
+    IObjectPath filePath = IObjectPath.getDeserializer().deserializeFrom(buffer);
     Optional<File> objectFile =
         TierManager.getInstance().getAbsoluteObjectFilePath(filePath.toString());
     int contentLength = buffer.getInt();
@@ -169,7 +168,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   public static ObjectNode deserialize(ByteBuffer byteBuffer) {
     boolean isEoF = ReadWriteIOUtils.readBool(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
-    IObjectPath filePath = Deserializer.DESERIALIZER.deserializeFrom(byteBuffer);
+    IObjectPath filePath = IObjectPath.getDeserializer().deserializeFrom(byteBuffer);
     int contentLength = ReadWriteIOUtils.readInt(byteBuffer);
     byte[] content = ReadWriteIOUtils.readBytes(byteBuffer, contentLength);
     return new ObjectNode(isEoF, offset, content, filePath);
