@@ -61,6 +61,10 @@ public class Base32ObjectPath implements IObjectPath {
     path = Paths.get(first, more);
   }
 
+  public Base32ObjectPath(Path path) {
+    this.path = path;
+  }
+
   public Base32ObjectPath(int regionId, long time, IDeviceID iDeviceID, String measurement) {
     Object[] segments = iDeviceID.getSegments();
     String[] pathSegments = new String[segments.length + 2];
@@ -149,6 +153,10 @@ public class Base32ObjectPath implements IObjectPath {
   @Override
   public String toString() {
     return path.toString();
+  }
+
+  public Path getPath() {
+    return path;
   }
 
   public static Factory getFACTORY() {

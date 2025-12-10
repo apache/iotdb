@@ -114,7 +114,8 @@ public class RecordObjectTypeTest {
 
     Object object = record.getObject(0);
     Assert.assertTrue(object instanceof Binary);
-    Pair<Long, String> pair = ObjectTypeUtils.parseObjectBinary((Binary) object);
+    Pair<Long, String> pair =
+        ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair((Binary) object);
     Assert.assertEquals(Long.valueOf(100L), pair.getLeft());
     Assert.assertTrue(pair.getRight().startsWith("test_") && pair.getRight().endsWith(".bin"));
 

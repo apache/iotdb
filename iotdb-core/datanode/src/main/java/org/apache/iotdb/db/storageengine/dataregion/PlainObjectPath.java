@@ -53,7 +53,7 @@ public class PlainObjectPath implements IObjectPath {
 
   private static final Factory FACTORY = PlainObjectPath::new;
 
-  private PlainObjectPath(String filePath) {
+  public PlainObjectPath(String filePath) {
     this.filePath = filePath;
   }
 
