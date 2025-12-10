@@ -403,7 +403,6 @@ public class IoTDBDatabaseIT {
               "databases,INF,",
               "functions,INF,",
               "keywords,INF,",
-              "models,INF,",
               "nodes,INF,",
               "pipe_plugins,INF,",
               "pipes,INF,",
@@ -504,16 +503,6 @@ public class IoTDBDatabaseIT {
                   "database,STRING,TAG,",
                   "table_name,STRING,TAG,",
                   "view_definition,STRING,ATTRIBUTE,")));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc models"),
-          "ColumnName,DataType,Category,",
-          new HashSet<>(
-              Arrays.asList(
-                  "model_id,STRING,TAG,",
-                  "model_type,STRING,ATTRIBUTE,",
-                  "state,STRING,ATTRIBUTE,",
-                  "configs,STRING,ATTRIBUTE,",
-                  "notes,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc functions"),
           "ColumnName,DataType,Category,",
@@ -638,7 +627,6 @@ public class IoTDBDatabaseIT {
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,models,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
@@ -651,7 +639,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("20,"));
+          Collections.singleton("19,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
