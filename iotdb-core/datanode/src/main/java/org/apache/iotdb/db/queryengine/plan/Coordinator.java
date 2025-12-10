@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.apache.thrift.TBase;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,6 +172,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 import static org.apache.iotdb.db.queryengine.plan.Coordinator.QueryInfo.DEFAULT_END_TIME;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
+import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -234,7 +237,11 @@ public class Coordinator {
     }
 
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        retryFailTasksExecutor, this::clearExpiredQueriesInfoTask, 5, 5, TimeUnit.MILLISECONDS);
+        retryFailTasksExecutor,
+        this::clearExpiredQueriesInfoTask,
+        1_000L,
+        1_000L,
+        TimeUnit.MILLISECONDS);
     LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
   }
 
@@ -655,23 +662,21 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
         boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
+        Supplier<String> contentOfQuerySupplier =
+            new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
         if (isUserQuery) {
           recordCurrentQueries(
               queryExecution.getQueryId(),
               queryExecution.getStartExecutionTime(),
-              queryExecution.getStartExecutionTime()
-                  + queryExecution.getTotalExecutionTime() / 1_000_000L,
+              System.currentTimeMillis(),
               queryExecution.getTotalExecutionTime(),
-              queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+              contentOfQuerySupplier,
               queryExecution.getUser(),
               queryExecution.getClientHostname());
         }
         queryExecutionMap.remove(queryId);
         if (isUserQuery) {
-          recordQueries(
-              queryExecution::getTotalExecutionTime,
-              new ContentOfQuerySupplier(nativeApiRequest, queryExecution),
-              t);
+          recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
         }
       }
     }
@@ -770,7 +775,7 @@ public class Coordinator {
       long startTime,
       long endTime,
       long costTimeInNs,
-      String statement,
+      Supplier<String> contentOfQuerySupplier,
       String user,
       String clientHost) {
     if (CONFIG.getQueryCostStatWindow() <= 0) {
@@ -786,7 +791,14 @@ public class Coordinator {
     float costTimeInSeconds = costTimeInNs * 1e-9f;
 
     QueryInfo queryInfo =
-        new QueryInfo(queryId, startTime, endTime, costTimeInSeconds, statement, user, clientHost);
+        new QueryInfo(
+            queryId,
+            startTime,
+            endTime,
+            costTimeInSeconds,
+            contentOfQuerySupplier.get(),
+            user,
+            clientHost);
 
     while (!coordinatorMemoryBlock.allocate(RamUsageEstimator.sizeOfObject(queryInfo))) {
       // try to release memory from the head of queue
@@ -830,10 +842,10 @@ public class Coordinator {
     }
 
     // the QueryInfo smaller than expired time will be cleared
-    long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000;
+    long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000L;
     // peek head, the head QueryInfo is in the time window, return directly
     QueryInfo queryInfo = currentQueriesInfo.peekFirst();
-    if (queryInfo.endTime >= expiredTime) {
+    if (queryInfo == null || queryInfo.endTime >= expiredTime) {
       return;
     }
 
@@ -863,7 +875,7 @@ public class Coordinator {
     Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
     Set<String> repetitionQueryIdSet = new HashSet<>();
     long currentTime = System.currentTimeMillis();
-    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000;
+    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
     while (historyQueriesIterator.hasNext()) {
       QueryInfo queryInfo = historyQueriesIterator.next();
       if (queryInfo.endTime < needRecordTime) {
@@ -899,8 +911,9 @@ public class Coordinator {
     return Arrays.stream(currentQueriesCostHistogram).mapToInt(AtomicInteger::get).toArray();
   }
 
-  public static class QueryInfo {
+  public static class QueryInfo implements Accountable {
     public static final long DEFAULT_END_TIME = -1L;
+    private static final long INSTANCE_SIZE = shallowSizeOfInstance(QueryInfo.class);
 
     private final String queryId;
 
@@ -957,6 +970,14 @@ public class Coordinator {
 
     public String getStatement() {
       return statement;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return INSTANCE_SIZE
+          + sizeOfCharArray(statement.length())
+          + sizeOfCharArray(user.length())
+          + sizeOfCharArray(clientHost.length());
     }
   }
 

@@ -1063,7 +1063,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           startTime / 1_000_000,
           endTime / 1_000_000,
           costTime,
-          statement,
+          () -> statement,
           clientSession.getUsername(),
           clientSession.getClientAddress());
       recordQueries(() -> costTime, () -> statement, null);

@@ -230,15 +230,16 @@ public class RestApiServiceImpl extends RestApiService {
       } else {
         IClientSession clientSession = SESSION_MANAGER.getCurrSession();
 
+        Supplier<String> contentOfQuerySupplier = new FastLastQueryContentSupplier(prefixPathList);
         COORDINATOR.recordCurrentQueries(
             null,
             startTime / 1_000_000,
             endTime / 1_000_000,
             costTime,
-            restFastLastQueryReq(prefixPathList),
+            contentOfQuerySupplier,
             clientSession.getUsername(),
             clientSession.getClientAddress());
-        recordQueries(() -> costTime, new FastLastQueryContentSupplier(prefixPathList), t);
+        recordQueries(() -> costTime, contentOfQuerySupplier, t);
       }
     }
   }

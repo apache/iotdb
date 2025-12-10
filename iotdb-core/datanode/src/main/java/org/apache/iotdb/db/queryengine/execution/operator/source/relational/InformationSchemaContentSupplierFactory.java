@@ -210,7 +210,7 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[1].writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
-        columnBuilders[2].writeInt(QueryId.getDataNodeId(queryExecution.getQueryId()));
+        columnBuilders[2].writeInt(QueryId.getDataNodeId());
         columnBuilders[3].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[4].writeBinary(
@@ -1185,7 +1185,7 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class CurrentQueriesSupplier extends TsBlockSupplier {
-    protected int nextConsumedIndex;
+    private int nextConsumedIndex;
     private List<Coordinator.StatedQueriesInfo> queriesInfo;
 
     private CurrentQueriesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
@@ -1216,7 +1216,7 @@ public class InformationSchemaContentSupplierFactory {
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryInfo.getEndTime(), TimeUnit.MILLISECONDS));
       }
-      columnBuilders[4].writeInt(QueryId.getDataNodeId(queryInfo.getQueryId()));
+      columnBuilders[4].writeInt(QueryId.getDataNodeId());
       columnBuilders[5].writeFloat(queryInfo.getCostTime());
       columnBuilders[6].writeBinary(BytesUtils.valueOf(queryInfo.getStatement()));
       columnBuilders[7].writeBinary(BytesUtils.valueOf(queryInfo.getUser()));
@@ -1232,7 +1232,7 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class QueriesCostsHistogramSupplier extends TsBlockSupplier {
-    protected int nextConsumedIndex;
+    private int nextConsumedIndex;
     private static final Binary[] BUCKETS =
         new Binary[] {
           BytesUtils.valueOf("[0,1)"),
@@ -1297,7 +1297,7 @@ public class InformationSchemaContentSupplierFactory {
           BytesUtils.valueOf("[59,60)"),
           BytesUtils.valueOf("60+")
         };
-    private int[] currentQueriesCostHistogram;
+    private final int[] currentQueriesCostHistogram;
 
     private QueriesCostsHistogramSupplier(
         final List<TSDataType> dataTypes, final UserEntity userEntity) {

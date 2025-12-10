@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -36,6 +37,8 @@ import static java.util.Objects.requireNonNull;
 public class QueryId {
 
   public static final QueryId MOCK_QUERY_ID = QueryId.valueOf("mock_query_id");
+
+  private static final int DATANODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final String id;
 
@@ -67,13 +70,8 @@ public class QueryId {
     return id;
   }
 
-  public int getDataNodeId() {
-    return getDataNodeId(id);
-  }
-
-  public static int getDataNodeId(String queryId) {
-    String[] splits = queryId.split("_");
-    return Integer.parseInt(splits[splits.length - 1]);
+  public static int getDataNodeId() {
+    return DATANODE_ID;
   }
 
   @Override
