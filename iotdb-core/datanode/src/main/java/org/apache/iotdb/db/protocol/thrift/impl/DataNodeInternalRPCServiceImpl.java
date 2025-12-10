@@ -158,8 +158,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedEvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -195,6 +197,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -233,6 +236,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -784,6 +788,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                 new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
                         : new DeleteDataNode(
                             new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                .getStatus());
+  }
+
+  @Override
+  public TSStatus evolveSchemaInDataRegion(final TDataRegionEvolveSchemaReq req) {
+    final List<SchemaEvolution> schemaEvolutions =
+        SchemaEvolution.createListFrom(req.schemaEvolutions);
+    return executeInternalSchemaTask(
+        req.getDataRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                        ? new PipeEnrichedEvolveSchemaNode(
+                            new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                        : new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
                 .getStatus());
   }
 

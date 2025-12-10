@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.nio.ByteBuffer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -28,6 +26,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /** A schema evolution operation that renames a column in a table schema. */
 public class ColumnRename implements SchemaEvolution {
@@ -40,10 +39,11 @@ public class ColumnRename implements SchemaEvolution {
   // for deserialization
   public ColumnRename() {}
 
-  public ColumnRename(String tableName, String nameBefore, String nameAfter) {
+  public ColumnRename(String tableName, String nameBefore, String nameAfter, TSDataType dataType) {
     this.tableName = tableName.toLowerCase();
     this.nameBefore = nameBefore.toLowerCase();
     this.nameAfter = nameAfter.toLowerCase();
+    this.dataType = dataType;
   }
 
   @Override
@@ -72,7 +72,7 @@ public class ColumnRename implements SchemaEvolution {
     nameBefore = ReadWriteIOUtils.readVarIntString(stream);
     nameAfter = ReadWriteIOUtils.readVarIntString(stream);
     byte category = ReadWriteIOUtils.readByte(stream);
-    if (category != -1)  {
+    if (category != -1) {
       dataType = TSDataType.values()[category];
     }
   }
@@ -93,7 +93,7 @@ public class ColumnRename implements SchemaEvolution {
     nameBefore = ReadWriteIOUtils.readVarIntString(buffer);
     nameAfter = ReadWriteIOUtils.readVarIntString(buffer);
     byte category = ReadWriteIOUtils.readByte(buffer);
-    if (category != -1)  {
+    if (category != -1) {
       dataType = TSDataType.values()[category];
     }
   }
@@ -102,8 +102,19 @@ public class ColumnRename implements SchemaEvolution {
     return dataType;
   }
 
-  public void setDataType(
-      TSDataType dataType) {
+  public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public String getNameBefore() {
+    return nameBefore;
+  }
+
+  public String getNameAfter() {
+    return nameAfter;
   }
 }

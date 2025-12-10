@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.task;
 
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class SchemaEvolutionTask implements DataRegionTask {
 

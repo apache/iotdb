@@ -19,20 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {

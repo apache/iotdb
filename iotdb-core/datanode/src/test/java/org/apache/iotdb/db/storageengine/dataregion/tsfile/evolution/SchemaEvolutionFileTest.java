@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.io.FileOutputStream;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -51,7 +52,7 @@ public class SchemaEvolutionFileTest {
     List<SchemaEvolution> schemaEvolutionList =
         Arrays.asList(
             new TableRename("t1", "t2"),
-            new ColumnRename("t2", "s1", "s2"),
+            new ColumnRename("t2", "s1", "s2", TSDataType.INT32),
             new TableRename("t3", "t1"));
     schemaEvolutionFile.append(schemaEvolutionList);
 
@@ -67,7 +68,7 @@ public class SchemaEvolutionFileTest {
     schemaEvolutionList =
         Arrays.asList(
             new TableRename("t2", "t3"),
-            new ColumnRename("t3", "s2", "s1"),
+            new ColumnRename("t3", "s2", "s1", TSDataType.INT32),
             new TableRename("t1", "t2"));
     schemaEvolutionFile.append(schemaEvolutionList);
     evolvedSchema = schemaEvolutionFile.readAsSchema();
@@ -97,7 +98,7 @@ public class SchemaEvolutionFileTest {
     List<SchemaEvolution> schemaEvolutionList =
         Arrays.asList(
             new TableRename("t1", "t2"),
-            new ColumnRename("t2", "s1", "s2"),
+            new ColumnRename("t2", "s1", "s2", TSDataType.INT32),
             new TableRename("t3", "t1"));
     schemaEvolutionFile.append(schemaEvolutionList);
 
@@ -111,7 +112,7 @@ public class SchemaEvolutionFileTest {
       fileOutputStream.write(new byte[100]);
     }
 
-    schemaEvolutionFile =  new SchemaEvolutionFile(files[0].getAbsolutePath());
+    schemaEvolutionFile = new SchemaEvolutionFile(files[0].getAbsolutePath());
     EvolvedSchema evolvedSchema = schemaEvolutionFile.readAsSchema();
     assertEquals("t1", evolvedSchema.getOriginalTableName("t2"));
     assertEquals("s1", evolvedSchema.getOriginalColumnName("t2", "s2"));

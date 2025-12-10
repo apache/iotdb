@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.task;
 
-import java.io.IOException;
-import java.io.InputStream;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
+
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 public interface DataRegionTask extends Runnable, StreamSerializable {
 
@@ -38,7 +40,8 @@ public interface DataRegionTask extends Runnable, StreamSerializable {
   }
 
   @SuppressWarnings("SwitchStatementWithTooFewBranches")
-  static DataRegionTask createFrom(InputStream stream, long taskId, DataRegion dataRegion) throws IOException {
+  static DataRegionTask createFrom(InputStream stream, long taskId, DataRegion dataRegion)
+      throws IOException {
     int typeOrdinal = ReadWriteForEncodingUtils.readVarInt(stream);
     if (typeOrdinal < 0 || typeOrdinal >= TaskType.values().length) {
       throw new IOException("Invalid task type: " + typeOrdinal);
@@ -49,10 +52,10 @@ public interface DataRegionTask extends Runnable, StreamSerializable {
     DataRegionTask task;
     switch (taskType) {
       case SchemaEvolutionTask:
-       task = new SchemaEvolutionTask(dataRegion);
-       break;
-       default:
-         throw new IOException("Invalid task type: " + taskType);
+        task = new SchemaEvolutionTask(dataRegion);
+        break;
+      default:
+        throw new IOException("Invalid task type: " + taskType);
     }
     task.deserialize(stream);
     task.setTaskId(taskId);

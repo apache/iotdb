@@ -112,6 +112,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -128,8 +129,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -148,6 +151,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
+import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector.DiskDirectorySelector;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -167,10 +171,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -452,7 +456,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void initDiskSelector() {
-    final ILoadDiskSelector.DiskDirectorySelector selector =
+    final DiskDirectorySelector selector =
         (sourceDirectory, fileName, tierLevel) -> {
           try {
             return TierManager.getInstance()
@@ -1021,15 +1025,12 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<TsFileSet> recoverTsFileSets(
-      long partitionId,
-      Map<Long, List<TsFileSet>> tsFileSetMap
-  ) {
+      long partitionId, Map<Long, List<TsFileSet>> tsFileSetMap) {
     List<TsFileSet> tsFileSets =
         tsFileSetMap.computeIfAbsent(
             partitionId,
             pid -> {
-              File fileSetDir =
-                  new File(getFileSetsDir(partitionId));
+              File fileSetDir = new File(getFileSetsDir(partitionId));
               File[] fileSets = fileSetDir.listFiles();
               if (fileSets == null || fileSets.length == 0) {
                 return Collections.emptyList();
@@ -1040,9 +1041,7 @@ public class DataRegion implements IDataRegionForQuery {
                   try {
                     tsFileSet =
                         new TsFileSet(
-                            Long.parseLong(fileSet.getName()),
-                            fileSetDir.getAbsolutePath(),
-                            true);
+                            Long.parseLong(fileSet.getName()), fileSetDir.getAbsolutePath(), true);
                   } catch (NumberFormatException e) {
                     continue;
                   }
@@ -1057,7 +1056,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
     return tsFileSets;
   }
-
 
   private Callable<Void> recoverFilesInPartition(
       long partitionId,
@@ -1234,23 +1232,48 @@ public class DataRegion implements IDataRegionForQuery {
     for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {
       long partitionId = partitionVersionEntry.getKey();
       long maxVersion = partitionVersionEntry.getValue();
-      lastTsFileSetMap.compute(partitionId, (pid, lastSet) -> {
-        if (lastSet == null) {
-          lastSet = createNewFileSet(maxVersion, partitionId);
-        } else if (lastSet.getEndVersion() < maxVersion) {
-          lastSet = createNewFileSet(maxVersion, partitionId);
-        }
-        try {
-          lastSet.appendSchemaEvolution(schemaEvolutions);
-        } catch (IOException e) {
-          logger.error("Cannot append schema evolutions to fileSets in partition {}-{}", dataRegionId, partitionId, e);
-        }
-        return lastSet;
-      });
+      lastTsFileSetMap.compute(
+          partitionId,
+          (pid, lastSet) -> {
+            if (lastSet == null) {
+              lastSet = createNewFileSet(maxVersion, partitionId);
+            } else if (lastSet.getEndVersion() < maxVersion) {
+              lastSet = createNewFileSet(maxVersion, partitionId);
+            }
+            try {
+              lastSet.appendSchemaEvolution(schemaEvolutions);
+            } catch (IOException e) {
+              logger.error(
+                  "Cannot append schema evolutions to fileSets in partition {}-{}",
+                  dataRegionId,
+                  partitionId,
+                  e);
+            }
+            return lastSet;
+          });
     }
   }
 
   public void applySchemaEvolutionToObjects(List<SchemaEvolution> schemaEvolutions) {
+    for (SchemaEvolution schemaEvolution : schemaEvolutions) {
+      if (schemaEvolution instanceof TableRename) {
+        TableRename tableRename = (TableRename) schemaEvolution;
+        renameTableForObjects(tableRename.getNameBefore(), tableRename.getNameAfter());
+      } else if (schemaEvolution instanceof ColumnRename) {
+        ColumnRename columnRename = (ColumnRename) schemaEvolution;
+        if (columnRename.getDataType() == TSDataType.OBJECT) {
+          renameMeasurementForObjects(columnRename.getTableName(), columnRename.getNameBefore(), columnRename.getNameAfter());
+        }
+      }
+    }
+  }
+
+  private void renameTableForObjects(String nameBefore, String nameAfter) {
+    // TODO-SchemaEvolution
+    throw new UnsupportedOperationException();
+  }
+
+  private void renameMeasurementForObjects(String tableName, String nameBefore, String nameAfter) {
     // TODO-SchemaEvolution
     throw new UnsupportedOperationException();
   }
@@ -1686,7 +1709,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
-    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+    for (Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
@@ -2661,7 +2684,8 @@ public class DataRegion implements IDataRegionForQuery {
         deviceIdBackThen = evolvedSchema.rewriteDeviceId(singleDeviceId);
       }
 
-      if (!tsFileResource.isSatisfied(deviceIdBackThen, globalTimeFilter, isSeq, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          deviceIdBackThen, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       try {
@@ -2885,12 +2909,12 @@ public class DataRegion implements IDataRegionForQuery {
     for (TableDeletionEntry modEntry : deleteDataNode.getModEntries()) {
       long startTime = modEntry.getStartTime();
       long endTime = modEntry.getEndTime();
-      for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      for (Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
           involvedProcessors.add(entry.getValue());
         }
       }
-      for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      for (Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
         if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
           involvedProcessors.add(entry.getValue());
         }
@@ -2926,13 +2950,13 @@ public class DataRegion implements IDataRegionForQuery {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
     deleteDataNode.setSearchIndex(searchIndex);
-    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+    for (Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
       if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
-    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+    for (Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
       if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
@@ -3060,7 +3084,7 @@ public class DataRegion implements IDataRegionForQuery {
       ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
 
       if ((timeIndex instanceof ArrayDeviceTimeIndex)
-          && (deletion.getType() == ModEntry.ModType.TABLE_DELETION)) {
+          && (deletion.getType() == ModType.TABLE_DELETION)) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
         Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
         boolean onlyOneTable = false;
@@ -4225,7 +4249,7 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
       // infoForMetrics[4]: InsertedPointsNumber
-      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+      for (Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {

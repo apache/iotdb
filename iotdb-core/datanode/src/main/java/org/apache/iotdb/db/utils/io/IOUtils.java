@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.utils.io;
 
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
 // TODO: move to TsFile
 public class IOUtils {

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.tsfile.enums.TSDataType;
+import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class EvolvedSchemaTest {
 
@@ -33,7 +35,7 @@ public class EvolvedSchemaTest {
     List<SchemaEvolution> schemaEvolutionList =
         Arrays.asList(
             new TableRename("t1", "t2"),
-            new ColumnRename("t2", "s1", "s2"),
+            new ColumnRename("t2", "s1", "s2", TSDataType.INT32),
             new TableRename("t3", "t1"));
     EvolvedSchema oldSchema = new EvolvedSchema();
     EvolvedSchema allSchema = new EvolvedSchema();
@@ -44,7 +46,7 @@ public class EvolvedSchemaTest {
     schemaEvolutionList =
         Arrays.asList(
             new TableRename("t2", "t3"),
-            new ColumnRename("t3", "s2", "s1"),
+            new ColumnRename("t3", "s2", "s1", TSDataType.INT32),
             new TableRename("t1", "t2"));
     EvolvedSchema newSchema = new EvolvedSchema();
     schemaEvolutionList.forEach(schemaEvolution -> schemaEvolution.applyTo(newSchema));

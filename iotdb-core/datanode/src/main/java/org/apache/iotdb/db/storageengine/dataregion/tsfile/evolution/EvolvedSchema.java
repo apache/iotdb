@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.util.HashMap;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
@@ -95,10 +95,12 @@ public class EvolvedSchema {
 
   @Override
   public String toString() {
-    return "EvolvedSchema{" +
-        "originalTableNames=" + originalTableNames +
-        ", originalColumnNames=" + originalColumnNames +
-        '}';
+    return "EvolvedSchema{"
+        + "originalTableNames="
+        + originalTableNames
+        + ", originalColumnNames="
+        + originalColumnNames
+        + '}';
   }
 
   public IDeviceID rewriteDeviceId(IDeviceID deviceID) {
@@ -128,32 +130,35 @@ public class EvolvedSchema {
   }
 
   public static EvolvedSchema merge(EvolvedSchema... schemas) {
-      EvolvedSchema firstNotNullSchema = null;
-      int i = 0;
-      for (; i < schemas.length; i++) {
-        if (schemas[i] != null) {
-          firstNotNullSchema = schemas[i];
-          i++;
-          break;
-        }
+    EvolvedSchema firstNotNullSchema = null;
+    int i = 0;
+    for (; i < schemas.length; i++) {
+      if (schemas[i] != null) {
+        firstNotNullSchema = schemas[i];
+        i++;
+        break;
       }
+    }
 
-      if (firstNotNullSchema == null) {
-        return null;
-      }
-      EvolvedSchema mergedSchema = deepCopy(firstNotNullSchema);
+    if (firstNotNullSchema == null) {
+      return null;
+    }
+    EvolvedSchema mergedSchema = deepCopy(firstNotNullSchema);
 
     for (; i < schemas.length; i++) {
       if (schemas[i] != null) {
         EvolvedSchema newSchema = schemas[i];
-        for (Entry<String, String> finalOriginalTableName : newSchema.originalTableNames.entrySet()) {
+        for (Entry<String, String> finalOriginalTableName :
+            newSchema.originalTableNames.entrySet()) {
           if (!finalOriginalTableName.getValue().isEmpty()) {
-            mergedSchema.renameTable(finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+            mergedSchema.renameTable(
+                finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
           }
         }
-        for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry : newSchema.originalColumnNames.entrySet()) {
-          for (Entry<String, String> finalColNameOriginalColNameEntry : finalTableNameColumnNameMapEntry.getValue()
-              .entrySet()) {
+        for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry :
+            newSchema.originalColumnNames.entrySet()) {
+          for (Entry<String, String> finalColNameOriginalColNameEntry :
+              finalTableNameColumnNameMapEntry.getValue().entrySet()) {
             if (!finalColNameOriginalColNameEntry.getValue().isEmpty()) {
               String finalTableName = finalTableNameColumnNameMapEntry.getKey();
               String finalColName = finalColNameOriginalColNameEntry.getKey();

@@ -19,6 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.utils.io.IOUtils;
+
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -26,33 +44,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.utils.io.IOUtils;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class EvolveSchemaNode extends SearchNode implements WALEntryValue {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(EvolveSchemaNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(EvolveSchemaNode.class);
 
   protected TRegionReplicaSet regionReplicaSet;
   protected ProgressIndex progressIndex;
   private final List<SchemaEvolution> schemaEvolutions;
 
-  public EvolveSchemaNode(PlanNodeId id,
-      List<SchemaEvolution> schemaEvolutions) {
+  public EvolveSchemaNode(PlanNodeId id, List<SchemaEvolution> schemaEvolutions) {
     super(id);
     this.schemaEvolutions = schemaEvolutions;
   }
@@ -175,5 +176,14 @@ public class EvolveSchemaNode extends SearchNode implements WALEntryValue {
   @Override
   public int serializedSize() {
     return 0;
+  }
+
+  public List<SchemaEvolution> getSchemaEvolutions() {
+    return schemaEvolutions;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitEvolveSchemaNode(this, context);
   }
 }

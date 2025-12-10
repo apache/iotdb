@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -27,6 +26,9 @@ import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /** A schema evolution operation that can be applied to a TableSchemaMap. */
 public interface SchemaEvolution extends StreamSerializable, BufferSerializable {
@@ -76,5 +78,14 @@ public interface SchemaEvolution extends StreamSerializable, BufferSerializable 
     SchemaEvolution evolution = createFrom(type);
     evolution.deserialize(buffer);
     return evolution;
+  }
+
+  static List<SchemaEvolution> createListFrom(ByteBuffer buffer) {
+    int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+    List<SchemaEvolution> list = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      list.add(createFrom(buffer));
+    }
+    return list;
   }
 }

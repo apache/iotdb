@@ -42,6 +42,7 @@ public class SchemaEvolutionFile {
 
   /**
    * Recover the SchemaEvolutionFile if it is broken.
+   *
    * @return true if the file exists false otherwise
    * @throws IOException if the file cannot be recovered
    */

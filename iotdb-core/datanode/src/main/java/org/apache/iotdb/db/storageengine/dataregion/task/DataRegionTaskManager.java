@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.task;
 
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -27,9 +32,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
 public class DataRegionTaskManager {
@@ -54,17 +56,19 @@ public class DataRegionTaskManager {
       return;
     }
 
-    Arrays.sort(files, (f1, f2) -> {
-      String fileName1 = f1.getName();
-      int suffixIndex1 = fileName1.indexOf(".");
-      long taskId1 = Long.parseLong(fileName1.substring(0, suffixIndex1));
+    Arrays.sort(
+        files,
+        (f1, f2) -> {
+          String fileName1 = f1.getName();
+          int suffixIndex1 = fileName1.indexOf(".");
+          long taskId1 = Long.parseLong(fileName1.substring(0, suffixIndex1));
 
-      String fileName2 = f2.getName();
-      int suffixIndex2 = fileName2.indexOf(".");
-      long taskId2 = Long.parseLong(fileName1.substring(0, suffixIndex2));
+          String fileName2 = f2.getName();
+          int suffixIndex2 = fileName2.indexOf(".");
+          long taskId2 = Long.parseLong(fileName1.substring(0, suffixIndex2));
 
-      return Long.compare(taskId1, taskId2);
-    });
+          return Long.compare(taskId1, taskId2);
+        });
 
     for (File file : files) {
       String fileName = file.getName();

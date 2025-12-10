@@ -123,9 +123,6 @@ public class TsFileSet implements Comparable<TsFileSet> {
 
   @Override
   public String toString() {
-    return "TsFileSet{" +
-        "endVersion=" + endVersion +
-        ", fileSetDir=" + fileSetDir +
-        '}';
+    return "TsFileSet{" + "endVersion=" + endVersion + ", fileSetDir=" + fileSetDir + '}';
   }
 }

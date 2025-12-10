@@ -459,6 +459,12 @@ struct TDeleteDataForDeleteSchemaReq {
   3: optional bool isGeneratedByPipe
 }
 
+struct TDataRegionEvolveSchemaReq {
+  1: required list<common.TConsensusGroupId> dataRegionIdList
+  2: required binary schemaEvolutions
+  3: optional bool isGeneratedByPipe
+}
+
 struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
@@ -1075,6 +1081,8 @@ service IDataNodeRPCService {
    * Config node inform this dataNode to execute a distribution data deleion queryengine task
    */
   common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
+
+  common.TSStatus evolveSchemaInDataRegion(TDataRegionEvolveSchemaReq req)
 
   /**
    * Delete matched timeseries and remove according schema black list in target schemRegion

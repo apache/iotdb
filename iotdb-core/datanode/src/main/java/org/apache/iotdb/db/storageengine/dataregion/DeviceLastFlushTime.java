@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.HashMap;

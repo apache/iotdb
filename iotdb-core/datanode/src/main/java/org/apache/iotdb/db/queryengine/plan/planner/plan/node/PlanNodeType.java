@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedEvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -321,6 +322,7 @@ public enum PlanNodeType {
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
   EVOLVE_SCHEMA((short) 2004),
+  PIPE_ENRICHED_EVOLVE_SCHEMA((short) 2005),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -366,6 +368,8 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
       case 2004:
         return EvolveSchemaNode.deserializeFromWAL(stream);
+      case 2005:
+        return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -394,6 +398,8 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
         return EvolveSchemaNode.deserializeFromWAL(buffer);
+      case 2005:
+        return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -721,6 +727,8 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserialize(buffer);
       case 2004:
         return EvolveSchemaNode.deserialize(buffer);
+      case 2005:
+        return PipeEnrichedEvolveSchemaNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

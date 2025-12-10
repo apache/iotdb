@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import java.nio.charset.StandardCharsets;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -94,6 +93,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1789,41 +1789,59 @@ public class DataRegionTest {
       throws IllegalPathException, WriteProcessException, QueryProcessException, IOException {
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
-        new MeasurementSchema("tag1", TSDataType.STRING),
-        new MeasurementSchema("s1", TSDataType.INT64),
-        new MeasurementSchema("s2", TSDataType.DOUBLE)
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
     };
-    RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(new PlanNodeId(""),
-        new PartialPath(new String[] {"table1"}),
-        true,
-        measurements,
-        new TSDataType[]{TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
-        measurementSchemas,
-        10,
-        new Object[]{new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
-        false,
-        new TsTableColumnCategory[]{TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD});
+    RelationalInsertRowNode insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"table1"}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
     dataRegion.insert(insertRowNode);
 
     // table1 -> table2
     dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
 
     // cannot query with the old name
-    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[]{"table1", "tag1"});
-    List<IFullPath> fullPaths = Arrays.asList(
-        new AlignedFullPath(deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
-    );
-    QueryDataSource dataSource = dataRegion.query(fullPaths, deviceID1, new QueryContext(), null,
-        Collections.singletonList(0L), Long.MAX_VALUE);
+    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "tag1"});
+    List<IFullPath> fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    QueryDataSource dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID1,
+            new QueryContext(),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
     assertTrue(dataSource.getSeqResources().isEmpty());
 
     // can query with the new name
-    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[]{"table2", "tag1"});
-    fullPaths = Arrays.asList(
-        new AlignedFullPath(deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
-    );
-    dataSource = dataRegion.query(fullPaths, deviceID2, new QueryContext(), null,
-        Collections.singletonList(0L), Long.MAX_VALUE);
+    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[] {"table2", "tag1"});
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID2,
+            new QueryContext(),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
     assertEquals(1, dataSource.getSeqResources().size());
 
     DataNodeTableCache.getInstance()
@@ -1832,32 +1850,50 @@ public class DataRegionTest {
         .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
 
     // write again with table1
-    insertRowNode = new RelationalInsertRowNode(new PlanNodeId(""),
-        new PartialPath(new String[] {"table1"}),
-        true,
-        measurements,
-        new TSDataType[]{TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
-        measurementSchemas,
-        10,
-        new Object[]{new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
-        false,
-        new TsTableColumnCategory[]{TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD});
+    insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"table1"}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
     dataRegion.insert(insertRowNode);
 
     // can query with table1
-    fullPaths = Arrays.asList(
-        new AlignedFullPath(deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
-    );
-    dataSource = dataRegion.query(fullPaths, deviceID1, new QueryContext(), null,
-        Collections.singletonList(0L), Long.MAX_VALUE);
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID1,
+            new QueryContext(),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
     assertEquals(1, dataSource.getUnseqResources().size());
 
     // can query with table2
-    fullPaths = Arrays.asList(
-        new AlignedFullPath(deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas))
-    );
-    dataSource = dataRegion.query(fullPaths, deviceID2, new QueryContext(), null,
-        Collections.singletonList(0L), Long.MAX_VALUE);
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID2,
+            new QueryContext(),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
     assertEquals(1, dataSource.getSeqResources().size());
   }
 }
