@@ -22,7 +22,6 @@ import threading
 from concurrent.futures import wait
 from typing import Dict, Optional
 
-import torch
 import torch.multiprocessing as mp
 
 from iotdb.ainode.core.exception import InferenceModelInternalError
@@ -41,9 +40,6 @@ from iotdb.ainode.core.inference.pool_scheduler.basic_pool_scheduler import (
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.model.model_enums import BuiltInModelType
-from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
-from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
 from iotdb.ainode.core.util.atmoic_int import AtomicInt
 from iotdb.ainode.core.util.batch_executor import BatchExecutor
 from iotdb.ainode.core.util.decorator import synchronized
@@ -76,9 +72,9 @@ class PoolController:
             thread_name_prefix=ThreadName.INFERENCE_POOL_CONTROLLER.value
         )
 
-    # =============== Pool Management ===============
+    # =============== Automatic Pool Management (Developing) ===============
     @synchronized(threading.Lock())
-    def first_req_init(self, model_id: str):
+    def first_req_init(self, model_id: str, device):
         """
         Initialize the pools when the first request for the given model_id arrives.
         """
@@ -107,38 +103,35 @@ class PoolController:
         Initialize the first pool for the given model_id.
         Ensure the pool is ready before returning.
         """
-        device = torch.device(device_str)
-        device_id = device.index
+        pass
+        # device = torch.device(device_str)
+        # device_id = device.index
+        #
+        # first_queue = mp.Queue()
+        # ready_event = mp.Event()
+        # first_pool = InferenceRequestPool(
+        #     pool_id=0,
+        #     model_id=model_id,
+        #     device=device_str,
+        #     request_queue=first_queue,
+        #     result_queue=self._result_queue,
+        #     ready_event=ready_event,
+        # )
+        # first_pool.start()
+        # self._register_pool(model_id, device_str, 0, first_pool, first_queue)
+        #
+        # if not ready_event.wait(timeout=30):
+        #     self._erase_pool(model_id, device_id, 0)
+        #     logger.error(
+        #         f"[Inference][Device-{device}][Pool-0] Pool failed to be ready in time"
+        #     )
+        # else:
+        #     self.set_state(model_id, device_id, 0, PoolState.RUNNING)
+        #     logger.info(
+        #         f"[Inference][Device-{device}][Pool-0] Pool started running for model {model_id}"
+        #     )
 
-        if model_id == "sundial":
-            config = SundialConfig()
-        elif model_id == "timer_xl":
-            config = TimerConfig()
-        first_queue = mp.Queue()
-        ready_event = mp.Event()
-        first_pool = InferenceRequestPool(
-            pool_id=0,
-            model_id=model_id,
-            device=device_str,
-            config=config,
-            request_queue=first_queue,
-            result_queue=self._result_queue,
-            ready_event=ready_event,
-        )
-        first_pool.start()
-        self._register_pool(model_id, device_str, 0, first_pool, first_queue)
-
-        if not ready_event.wait(timeout=30):
-            self._erase_pool(model_id, device_id, 0)
-            logger.error(
-                f"[Inference][Device-{device}][Pool-0] Pool failed to be ready in time"
-            )
-        else:
-            self.set_state(model_id, device_id, 0, PoolState.RUNNING)
-            logger.info(
-                f"[Inference][Device-{device}][Pool-0] Pool started running for model {model_id}"
-            )
-
+    # =============== Pool Management ===============
     def load_model(self, model_id: str, device_id_list: list[str]):
         """
         Load the model to the specified devices asynchronously.
@@ -255,29 +248,19 @@ class PoolController:
         """
 
         def _expand_pool_on_device(*_):
-            result_queue = mp.Queue()
+            request_queue = mp.Queue()
             pool_id = self._new_pool_id.get_and_increment()
             model_info = self._model_manager.get_model_info(model_id)
-            model_type = model_info.model_type
-            if model_type == BuiltInModelType.SUNDIAL.value:
-                config = SundialConfig()
-            elif model_type == BuiltInModelType.TIMER_XL.value:
-                config = TimerConfig()
-            else:
-                raise InferenceModelInternalError(
-                    f"Unsupported model type {model_type} for loading model {model_id}"
-                )
             pool = InferenceRequestPool(
                 pool_id=pool_id,
                 model_info=model_info,
                 device=device_id,
-                config=config,
-                request_queue=result_queue,
+                request_queue=request_queue,
                 result_queue=self._result_queue,
                 ready_event=mp.Event(),
             )
             pool.start()
-            self._register_pool(model_id, device_id, pool_id, pool, result_queue)
+            self._register_pool(model_id, device_id, pool_id, pool, request_queue)
             if not pool.ready_event.wait(timeout=300):
                 logger.error(
                     f"[Inference][Device-{device_id}][Pool-{pool_id}] Pool failed to be ready in time"
