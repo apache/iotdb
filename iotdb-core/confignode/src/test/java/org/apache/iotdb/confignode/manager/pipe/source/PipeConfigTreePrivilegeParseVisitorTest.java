@@ -23,10 +23,18 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -42,6 +50,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.function.BiFunction;
 
 public class PipeConfigTreePrivilegeParseVisitorTest {
@@ -140,6 +152,73 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             .isPresent());
   }
 
+  @Test
+  public void testPatternRelatedPrivilege() throws IOException {
+    final PartialPath matchedPath =
+        new PartialPath(new String[] {"root", "db", "device", "measurement"});
+    final PartialPath unmatchedPath =
+        new PartialPath(new String[] {"root", "db", "device2", "measurement"});
+
+    final PathPatternTree originalTree = new PathPatternTree();
+    originalTree.appendPathPattern(matchedPath);
+    originalTree.appendPathPattern(unmatchedPath);
+    originalTree.constructTree();
+    final ByteBuffer buffer = originalTree.serialize();
+
+    Assert.assertEquals(
+        Collections.singletonList(matchedPath),
+        PathPatternTree.deserialize(
+                ((PipeDeleteTimeSeriesPlan)
+                        skipVisitor
+                            .visitPipeDeleteTimeSeries(new PipeDeleteTimeSeriesPlan(buffer), null)
+                            .get())
+                    .getPatternTreeBytes())
+            .getAllPathPatterns());
+    Assert.assertEquals(
+        Collections.singletonList(matchedPath),
+        PathPatternTree.deserialize(
+                ((PipeDeleteLogicalViewPlan)
+                        skipVisitor
+                            .visitPipeDeleteLogicalView(new PipeDeleteLogicalViewPlan(buffer), null)
+                            .get())
+                    .getPatternTreeBytes())
+            .getAllPathPatterns());
+    Assert.assertThrows(
+        AccessDeniedException.class,
+        () -> throwVisitor.visitPipeDeleteTimeSeries(new PipeDeleteTimeSeriesPlan(buffer), null));
+    Assert.assertThrows(
+        AccessDeniedException.class,
+        () -> throwVisitor.visitPipeDeleteLogicalView(new PipeDeleteLogicalViewPlan(buffer), null));
+
+    Assert.assertEquals(
+        Collections.singleton(matchedPath),
+        ((PipeDeactivateTemplatePlan)
+                skipVisitor
+                    .visitPipeDeactivateTemplate(
+                        new PipeDeactivateTemplatePlan(
+                            new HashMap<PartialPath, List<Template>>() {
+                              {
+                                put(matchedPath, Collections.singletonList(new Template()));
+                                put(unmatchedPath, Collections.singletonList(new Template()));
+                              }
+                            }),
+                        null)
+                    .get())
+            .getTemplateSetInfo()
+            .keySet());
+
+    Assert.assertTrue(
+        skipVisitor
+            .visitTTL(
+                new SetTTLPlan(new String[] {"root", "db", "device", "measurement"}, 100), null)
+            .isPresent());
+    Assert.assertFalse(
+        skipVisitor
+            .visitTTL(
+                new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100), null)
+            .isPresent());
+  }
+
   private static class TestPermissionManager extends PermissionManager {
 
     private BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges =
@@ -157,8 +236,18 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
           : new TPermissionInfoResp(new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()));
     }
 
-    void setUserPrivilege(final BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges) {
+    private void setUserPrivilege(
+        final BiFunction<String, PrivilegeUnion, Boolean> checkUserPrivileges) {
       this.checkUserPrivileges = checkUserPrivileges;
+    }
+
+    @Override
+    public PathPatternTree fetchRawAuthorizedPTree(
+        final String userName, final PrivilegeType type) {
+      final PathPatternTree tree = new PathPatternTree();
+      tree.appendPathPattern(new PartialPath(new String[] {"root", "db", "device", "**"}));
+      tree.constructTree();
+      return tree;
     }
   }
 }
