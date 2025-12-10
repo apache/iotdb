@@ -184,15 +184,8 @@ public abstract class SystemPropertiesHandler {
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
-    try {
-      FileUtils.moveFileSafe(tmpFile, formalFile);
-    } catch (Exception e) {
-      String msg =
-          String.format(
-              "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
-              tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
-      throw new IOException(msg, e);
-    }
+
+    FileUtils.moveFileSafe(tmpFile, formalFile);
   }
 
   public void resetFilePath(String filePath) {
