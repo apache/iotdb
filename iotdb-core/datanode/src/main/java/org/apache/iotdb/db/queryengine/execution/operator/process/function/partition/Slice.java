@@ -29,14 +29,17 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
 import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 /** Parts of partition. */
@@ -170,6 +173,14 @@ public class Slice {
 
     @Override
     public Binary getBinary(int columnIndex) {
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        throw new UnsupportedOperationException(OBJECT_ERR_MSG);
+      }
+      return getBinarySafely(columnIndex);
+    }
+
+    public Binary getBinarySafely(int columnIndex) {
       return originalColumns[columnIndex].getBinary(offset);
     }
 
@@ -193,15 +204,24 @@ public class Slice {
 
     @Override
     public Object getObject(int columnIndex) {
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        throw new UnsupportedOperationException(OBJECT_ERR_MSG);
+      }
       return originalColumns[columnIndex].getObject(offset);
     }
 
     @Override
-    public Binary readObject(int columnIndex, long offset, int length) {
+    public Optional<File> getObjectFile(int columnIndex) {
       if (getDataType(columnIndex) != Type.OBJECT) {
         throw new UnsupportedOperationException("current column is not object column");
       }
-      Binary binary = getBinary(columnIndex);
+      return ObjectTypeUtils.getObjectPathFromBinary(getBinarySafely(columnIndex));
+    }
+
+    @Override
+    public Binary readObject(int columnIndex, long offset, int length) {
+      Binary binary = getBinarySafely(columnIndex);
       return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
     }
 
