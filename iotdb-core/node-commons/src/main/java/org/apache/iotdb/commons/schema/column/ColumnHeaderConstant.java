@@ -206,7 +206,7 @@ public class ColumnHeaderConstant {
   public static final String STATEMENT = "Statement";
 
   // column names for show idle connection
-  public static final String DATANODE_ID = "data_node_id";
+  public static final String DATANODE_ID = "datanode_id";
   public static final String USERID = "user_id";
   public static final String SESSION_ID = "session_id";
   public static final String USER_NAME = "user_name";
