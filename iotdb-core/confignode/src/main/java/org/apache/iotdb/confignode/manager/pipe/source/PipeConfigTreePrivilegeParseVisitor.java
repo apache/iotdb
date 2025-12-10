@@ -332,7 +332,11 @@ public class PipeConfigTreePrivilegeParseVisitor
         for (final PartialPath intersectedPath :
             getAllIntersectedPatterns(
                 templateEntry.getKey(), userName, pipeDeactivateTemplatePlan)) {
-          newTemplateSetInfo.put(intersectedPath, templateEntry.getValue());
+          // root.db.device2.measurement -> root.db.device.** = root.db
+          // Note that we cannot take this circumstance into account
+          if (intersectedPath.getNodeLength() == templateEntry.getKey().getNodeLength()) {
+            newTemplateSetInfo.put(intersectedPath, templateEntry.getValue());
+          }
         }
       }
       return !newTemplateSetInfo.isEmpty()
@@ -356,7 +360,7 @@ public class PipeConfigTreePrivilegeParseVisitor
               new PartialPath(setTTLPlan.getPathPattern()), userName, setTTLPlan);
       // The intersectionList is either a singleton list or an empty list, because the pipe
       // pattern and TTL path are each either a prefix path or a full path
-      return !paths.isEmpty()
+      return !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length
           ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
           : Optional.empty();
     } catch (final AuthException e) {

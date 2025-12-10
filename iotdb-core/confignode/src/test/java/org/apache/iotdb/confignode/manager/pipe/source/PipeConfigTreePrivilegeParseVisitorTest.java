@@ -158,6 +158,8 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
         new PartialPath(new String[] {"root", "db", "device", "measurement"});
     final PartialPath unmatchedPath =
         new PartialPath(new String[] {"root", "db", "device2", "measurement"});
+    final PartialPath intersectPath =
+        new PartialPath(new String[] {"root", "*", "device", "measurement"});
 
     final PathPatternTree originalTree = new PathPatternTree();
     originalTree.appendPathPattern(matchedPath);
@@ -198,10 +200,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                         new PipeDeactivateTemplatePlan(
                             new HashMap<PartialPath, List<Template>>() {
                               {
-                                put(
-                                    new PartialPath(
-                                        new String[] {"root", "*", "device", "measurement"}),
-                                    Collections.singletonList(new Template()));
+                                put(intersectPath, Collections.singletonList(new Template()));
                                 put(unmatchedPath, Collections.singletonList(new Template()));
                               }
                             }),
@@ -210,11 +209,15 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             .getTemplateSetInfo()
             .keySet());
 
-    Assert.assertTrue(
-        skipVisitor
-            .visitTTL(
-                new SetTTLPlan(new String[] {"root", "db", "device", "measurement"}, 100), null)
-            .isPresent());
+    Assert.assertArrayEquals(
+        new String[] {"root", "db", "device", "measurement"},
+        ((SetTTLPlan)
+                skipVisitor
+                    .visitTTL(
+                        new SetTTLPlan(new String[] {"root", "*", "device", "measurement"}, 100),
+                        null)
+                    .get())
+            .getPathPattern());
     Assert.assertFalse(
         skipVisitor
             .visitTTL(
