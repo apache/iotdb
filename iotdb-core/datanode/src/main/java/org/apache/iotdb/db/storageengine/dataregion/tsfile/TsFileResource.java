@@ -1640,11 +1640,15 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return tsFileSets;
   }
 
-  public EvolvedSchema getMergedEvolvedSchema() throws IOException {
+  public EvolvedSchema getMergedEvolvedSchema() {
     List<EvolvedSchema> list = new ArrayList<>();
     for (TsFileSet fileSet : getTsFileSets()) {
-      EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
-      list.add(readEvolvedSchema);
+      try {
+        EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
+        list.add(readEvolvedSchema);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot read evolved schema from {}, skipping it", fileSet);
+      }
     }
 
     return EvolvedSchema.merge(list.toArray(new EvolvedSchema[0]));

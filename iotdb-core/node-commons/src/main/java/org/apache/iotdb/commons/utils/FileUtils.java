@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.commons.utils;
 
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
@@ -332,6 +338,81 @@ public class FileUtils {
 
     LOGGER.info("move file success, {}", fromTo);
     return true;
+  }
+
+  public static <T> List<T> applyReversedIndexesOnListV2(
+      final List<Integer> filteredIndexes, final List<T> originalList) {
+    // filteredIndexes.sort(null); if necessary
+    List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
+    int filteredIndexPos = 0;
+    int processingIndex = 0;
+    for (; processingIndex < originalList.size(); processingIndex++) {
+      if (filteredIndexPos >= filteredIndexes.size()) {
+        // all filteredIndexes processed, add remaining to the filteredList
+        filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
+        break;
+      } else {
+        int filteredIndex = filteredIndexes.get(filteredIndexPos);
+        if (filteredIndex == processingIndex) {
+          // the index is filtered, move to the next filtered pos
+          filteredIndexPos ++;
+        } else {
+          // the index is not filtered, add to the filteredList
+          filteredList.add(originalList.get(processingIndex));
+        }
+      }
+    }
+    return filteredList;
+  }
+
+  public static <T> List<T> applyReversedIndexesOnListV1(
+      final List<Integer> filteredIndexes, final List<T> originalList) {
+    final Set<Integer> indexes = new HashSet<>(filteredIndexes);
+    return Objects.nonNull(originalList)
+        ? IntStream.range(0, originalList.size())
+        .filter(index -> !indexes.contains(index)) // 保留不在排除列表中的下标
+        .mapToObj(originalList::get)
+        .collect(Collectors.toList())
+        : null;
+  }
+
+  public static void main(String[] args) {
+    int elementNum = 10_000_000;
+    int filteredNum = elementNum / 10;
+    Random random = new Random();
+    List<Integer> originalList = IntStream.range(0, elementNum).boxed().collect(Collectors.toList());
+    List<Integer> filteredIndexes = new ArrayList<>(filteredNum);
+    for (int i = 0; i < filteredNum; i++) {
+      filteredIndexes.add(random.nextInt(elementNum));
+    }
+    filteredIndexes = filteredIndexes.stream().sorted().distinct().collect(Collectors.toList());
+
+    long start = System.currentTimeMillis();
+    List<Integer> appliedList = applyReversedIndexesOnListV1(filteredIndexes, originalList);
+    System.out.println(System.currentTimeMillis() - start);
+    Set<Integer> appliedSet = new HashSet<>(appliedList);
+    for (Integer filteredIndex : filteredIndexes) {
+      if (appliedSet.contains(filteredIndex)) {
+        System.out.println("Incorrect implementation");
+        System.exit(-1);
+      }
+    }
+
+
+    start = System.currentTimeMillis();
+    appliedList = WapplyReversedIndexesOnListV2(filteredIndexes, originalList);
+    System.out.println(System.currentTimeMillis() - start);
+    appliedSet = new HashSet<>(appliedList);
+    if (appliedList.size() != originalList.size() - filteredIndexes.size()) {
+      System.out.println("Incorrect implementation");
+      System.exit(-1);
+    }
+    for (Integer filteredIndex : filteredIndexes) {
+      if (appliedSet.contains(filteredIndex)) {
+        System.out.println("Incorrect implementation");
+        System.exit(-1);
+      }
+    }
   }
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {

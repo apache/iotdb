@@ -122,6 +122,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.ClosedFileScanHandleImpl;
+import org.apache.iotdb.db.storageengine.dataregion.task.DataRegionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.task.SchemaEvolutionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -364,6 +366,8 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
   private Map<Long, TsFileSet> lastTsFileSetMap = new ConcurrentHashMap<>();
+
+  private DataRegionTaskManager dataRegionTaskManager;
 
   /**
    * Construct a database processor.
@@ -727,6 +731,9 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
+    dataRegionTaskManager = new DataRegionTaskManager(this);
+    dataRegionTaskManager.recover();
+
     if (asyncTsFileResourceRecoverTaskList.isEmpty()) {
       initCompactionSchedule();
     }
@@ -756,9 +763,13 @@ public class DataRegion implements IDataRegionForQuery {
   protected void updateDeviceLastFlushTime(TsFileResource resource) {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
+    EvolvedSchema mergedEvolvedSchema = resource.getMergedEvolvedSchema();
     for (IDeviceID deviceId : resource.getDevices()) {
       @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
       long endTime = resource.getEndTime(deviceId).get();
+      if (mergedEvolvedSchema != null) {
+        deviceId = mergedEvolvedSchema.rewriteDeviceId(deviceId);
+      }
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -773,10 +784,14 @@ public class DataRegion implements IDataRegionForQuery {
       long timePartitionId, List<TsFileResource> resources) {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
+      EvolvedSchema mergedEvolvedSchema = resource.getMergedEvolvedSchema();
       for (IDeviceID deviceId : resource.getDevices()) {
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
+        if (mergedEvolvedSchema != null) {
+          deviceId = mergedEvolvedSchema.rewriteDeviceId(deviceId);
+        }
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -1001,6 +1016,10 @@ public class DataRegion implements IDataRegionForQuery {
         + TsFileSet.FILE_SET_DIR_NAME;
   }
 
+  public File getDataRegionSysDir() {
+    return dataRegionSysDir;
+  }
+
   private List<TsFileSet> recoverTsFileSets(
       long partitionId,
       Map<Long, List<TsFileSet>> tsFileSetMap
@@ -1189,7 +1208,7 @@ public class DataRegion implements IDataRegionForQuery {
     return newSet;
   }
 
-  public void applySchemaEvolution(List<SchemaEvolution> schemaEvolutions) {
+  public void applySchemaEvolution(List<SchemaEvolution> schemaEvolutions) throws IOException {
     long startTime = System.nanoTime();
     writeLock("applySchemaEvolution");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
@@ -1198,30 +1217,42 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       DataNodeTableCache.getInstance().invalid(databaseName);
-      schemaEvolutions.forEach(lastFlushTimeMap::accept);
 
       syncCloseAllWorkingTsFileProcessors();
 
-      for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {
-        long partitionId = partitionVersionEntry.getKey();
-        long maxVersion = partitionVersionEntry.getValue();
-        lastTsFileSetMap.compute(partitionId, (pid, lastSet) -> {
-          if (lastSet == null) {
-            lastSet = createNewFileSet(maxVersion, partitionId);
-          } else if (lastSet.getEndVersion() < maxVersion) {
-            lastSet = createNewFileSet(maxVersion, partitionId);
-          }
-          try {
-            lastSet.appendSchemaEvolution(schemaEvolutions);
-          } catch (IOException e) {
-            logger.error("Cannot append schema evolutions to fileSets in partition {}-{}", dataRegionId, partitionId, e);
-          }
-          return lastSet;
-        });
-      }
+      // may update table names in deviceIds
+      schemaEvolutions.forEach(lastFlushTimeMap::accept);
+
+      SchemaEvolutionTask evolutionTask = new SchemaEvolutionTask(schemaEvolutions, this);
+      dataRegionTaskManager.submitAndRun(evolutionTask);
     } finally {
       writeUnlock();
     }
+  }
+
+  public void recordSchemaEvolution(List<SchemaEvolution> schemaEvolutions) {
+    for (Entry<Long, Long> partitionVersionEntry : partitionMaxFileVersions.entrySet()) {
+      long partitionId = partitionVersionEntry.getKey();
+      long maxVersion = partitionVersionEntry.getValue();
+      lastTsFileSetMap.compute(partitionId, (pid, lastSet) -> {
+        if (lastSet == null) {
+          lastSet = createNewFileSet(maxVersion, partitionId);
+        } else if (lastSet.getEndVersion() < maxVersion) {
+          lastSet = createNewFileSet(maxVersion, partitionId);
+        }
+        try {
+          lastSet.appendSchemaEvolution(schemaEvolutions);
+        } catch (IOException e) {
+          logger.error("Cannot append schema evolutions to fileSets in partition {}-{}", dataRegionId, partitionId, e);
+        }
+        return lastSet;
+      });
+    }
+  }
+
+  public void applySchemaEvolutionToObjects(List<SchemaEvolution> schemaEvolutions) {
+    // TODO-SchemaEvolution
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -2624,12 +2655,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      EvolvedSchema evolvedSchema;
-      try {
-        evolvedSchema = tsFileResource.getMergedEvolvedSchema();
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema();
       IDeviceID deviceIdBackThen = singleDeviceId;
       if (evolvedSchema != null) {
         deviceIdBackThen = evolvedSchema.rewriteDeviceId(singleDeviceId);

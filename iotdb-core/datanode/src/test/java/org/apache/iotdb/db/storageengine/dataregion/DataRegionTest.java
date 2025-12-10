@@ -1786,7 +1786,7 @@ public class DataRegionTest {
 
   @Test
   public void testSchemaEvolution()
-      throws IllegalPathException, WriteProcessException, QueryProcessException {
+      throws IllegalPathException, WriteProcessException, QueryProcessException, IOException {
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
         new MeasurementSchema("tag1", TSDataType.STRING),

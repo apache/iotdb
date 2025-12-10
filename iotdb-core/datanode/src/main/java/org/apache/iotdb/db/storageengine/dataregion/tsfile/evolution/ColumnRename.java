@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -32,6 +34,7 @@ public class ColumnRename implements SchemaEvolution {
   private String tableName;
   private String nameBefore;
   private String nameAfter;
+  private TSDataType dataType;
 
   // for deserialization
   public ColumnRename() {}
@@ -58,6 +61,7 @@ public class ColumnRename implements SchemaEvolution {
     size += ReadWriteIOUtils.writeVar(tableName, stream);
     size += ReadWriteIOUtils.writeVar(nameBefore, stream);
     size += ReadWriteIOUtils.writeVar(nameAfter, stream);
+    size += ReadWriteIOUtils.write(dataType != null ? (byte) dataType.ordinal() : -1, stream);
     return size;
   }
 
@@ -66,5 +70,18 @@ public class ColumnRename implements SchemaEvolution {
     tableName = ReadWriteIOUtils.readVarIntString(stream);
     nameBefore = ReadWriteIOUtils.readVarIntString(stream);
     nameAfter = ReadWriteIOUtils.readVarIntString(stream);
+    byte category = ReadWriteIOUtils.readByte(stream);
+    if (category != -1)  {
+      dataType = TSDataType.values()[category];
+    }
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public void setDataType(
+      TSDataType dataType) {
+    this.dataType = dataType;
   }
 }
