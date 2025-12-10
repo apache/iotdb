@@ -198,7 +198,10 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                         new PipeDeactivateTemplatePlan(
                             new HashMap<PartialPath, List<Template>>() {
                               {
-                                put(matchedPath, Collections.singletonList(new Template()));
+                                put(
+                                    new PartialPath(
+                                        new String[] {"root", "*", "device", "measurement"}),
+                                    Collections.singletonList(new Template()));
                                 put(unmatchedPath, Collections.singletonList(new Template()));
                               }
                             }),
