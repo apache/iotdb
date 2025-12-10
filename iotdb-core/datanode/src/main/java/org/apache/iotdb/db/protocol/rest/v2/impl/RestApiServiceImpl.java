@@ -212,7 +212,8 @@ public class RestApiServiceImpl extends RestApiService {
       t = e;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
-      long costTime = System.nanoTime() - startTime;
+      long endTime = System.nanoTime();
+      long costTime = endTime - startTime;
 
       StatementType statementType =
           Optional.ofNullable(statement)
@@ -227,7 +228,18 @@ public class RestApiServiceImpl extends RestApiService {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       } else {
-        recordQueries(() -> costTime, new FastLastQueryContentSupplier(prefixPathList), t);
+        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+
+        Supplier<String> contentOfQuerySupplier = new FastLastQueryContentSupplier(prefixPathList);
+        COORDINATOR.recordCurrentQueries(
+            null,
+            startTime / 1_000_000,
+            endTime / 1_000_000,
+            costTime,
+            contentOfQuerySupplier,
+            clientSession.getUsername(),
+            clientSession.getClientAddress());
+        recordQueries(() -> costTime, contentOfQuerySupplier, t);
       }
     }
   }

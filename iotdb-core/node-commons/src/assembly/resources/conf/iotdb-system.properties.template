@@ -1080,6 +1080,12 @@ max_tsblock_line_number=1000
 # Datatype: long
 slow_query_threshold=10000
 
+# Time window threshold(min) for record of history queries.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+query_cost_stat_window=0
+
 # The max executing time of query. unit: ms
 # effectiveMode: restart
 # Datatype: int

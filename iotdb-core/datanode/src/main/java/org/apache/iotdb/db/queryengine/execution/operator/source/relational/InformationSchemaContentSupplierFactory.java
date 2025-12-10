@@ -68,6 +68,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
@@ -166,6 +167,10 @@ public class InformationSchemaContentSupplierFactory {
           return new DataNodesSupplier(dataTypes, userEntity);
         case InformationSchema.CONNECTIONS:
           return new ConnectionsSupplier(dataTypes, userEntity);
+        case InformationSchema.CURRENT_QUERIES:
+          return new CurrentQueriesSupplier(dataTypes, userEntity);
+        case InformationSchema.QUERIES_COSTS_HISTOGRAM:
+          return new QueriesCostsHistogramSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -201,14 +206,11 @@ public class InformationSchemaContentSupplierFactory {
       final IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
       if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
-        final String[] splits = queryExecution.getQueryId().split("_");
-        final int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
-
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
-        columnBuilders[2].writeInt(dataNodeId);
+        columnBuilders[2].writeInt(QueryId.getDataNodeId());
         columnBuilders[3].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[4].writeBinary(
@@ -1179,6 +1181,142 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       return sessionConnectionIterator.hasNext();
+    }
+  }
+
+  private static class CurrentQueriesSupplier extends TsBlockSupplier {
+    private int nextConsumedIndex;
+    private List<Coordinator.StatedQueriesInfo> queriesInfo;
+
+    private CurrentQueriesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      queriesInfo = Coordinator.getInstance().getCurrentQueriesInfo();
+      try {
+        accessControl.checkUserGlobalSysPrivilege(userEntity);
+      } catch (final AccessDeniedException e) {
+        queriesInfo =
+            queriesInfo.stream()
+                .filter(iQueryInfo -> userEntity.getUsername().equals(iQueryInfo.getUser()))
+                .collect(Collectors.toList());
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final Coordinator.StatedQueriesInfo queryInfo = queriesInfo.get(nextConsumedIndex);
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(queryInfo.getQueryId()));
+      columnBuilders[1].writeBinary(BytesUtils.valueOf(queryInfo.getQueryState()));
+      columnBuilders[2].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              queryInfo.getStartTime(), TimeUnit.MILLISECONDS));
+      if (queryInfo.getEndTime() == Coordinator.QueryInfo.DEFAULT_END_TIME) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeLong(
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                queryInfo.getEndTime(), TimeUnit.MILLISECONDS));
+      }
+      columnBuilders[4].writeInt(QueryId.getDataNodeId());
+      columnBuilders[5].writeFloat(queryInfo.getCostTime());
+      columnBuilders[6].writeBinary(BytesUtils.valueOf(queryInfo.getStatement()));
+      columnBuilders[7].writeBinary(BytesUtils.valueOf(queryInfo.getUser()));
+      columnBuilders[8].writeBinary(BytesUtils.valueOf(queryInfo.getClientHost()));
+      resultBuilder.declarePosition();
+      nextConsumedIndex++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < queriesInfo.size();
+    }
+  }
+
+  private static class QueriesCostsHistogramSupplier extends TsBlockSupplier {
+    private int nextConsumedIndex;
+    private static final Binary[] BUCKETS =
+        new Binary[] {
+          BytesUtils.valueOf("[0,1)"),
+          BytesUtils.valueOf("[1,2)"),
+          BytesUtils.valueOf("[2,3)"),
+          BytesUtils.valueOf("[3,4)"),
+          BytesUtils.valueOf("[4,5)"),
+          BytesUtils.valueOf("[5,6)"),
+          BytesUtils.valueOf("[6,7)"),
+          BytesUtils.valueOf("[7,8)"),
+          BytesUtils.valueOf("[8,9)"),
+          BytesUtils.valueOf("[9,10)"),
+          BytesUtils.valueOf("[10,11)"),
+          BytesUtils.valueOf("[11,12)"),
+          BytesUtils.valueOf("[12,13)"),
+          BytesUtils.valueOf("[13,14)"),
+          BytesUtils.valueOf("[14,15)"),
+          BytesUtils.valueOf("[15,16)"),
+          BytesUtils.valueOf("[16,17)"),
+          BytesUtils.valueOf("[17,18)"),
+          BytesUtils.valueOf("[18,19)"),
+          BytesUtils.valueOf("[19,20)"),
+          BytesUtils.valueOf("[20,21)"),
+          BytesUtils.valueOf("[21,22)"),
+          BytesUtils.valueOf("[22,23)"),
+          BytesUtils.valueOf("[23,24)"),
+          BytesUtils.valueOf("[24,25)"),
+          BytesUtils.valueOf("[25,26)"),
+          BytesUtils.valueOf("[26,27)"),
+          BytesUtils.valueOf("[27,28)"),
+          BytesUtils.valueOf("[28,29)"),
+          BytesUtils.valueOf("[29,30)"),
+          BytesUtils.valueOf("[30,31)"),
+          BytesUtils.valueOf("[31,32)"),
+          BytesUtils.valueOf("[32,33)"),
+          BytesUtils.valueOf("[33,34)"),
+          BytesUtils.valueOf("[34,35)"),
+          BytesUtils.valueOf("[35,36)"),
+          BytesUtils.valueOf("[36,37)"),
+          BytesUtils.valueOf("[37,38)"),
+          BytesUtils.valueOf("[38,39)"),
+          BytesUtils.valueOf("[39,40)"),
+          BytesUtils.valueOf("[40,41)"),
+          BytesUtils.valueOf("[41,42)"),
+          BytesUtils.valueOf("[42,43)"),
+          BytesUtils.valueOf("[43,44)"),
+          BytesUtils.valueOf("[44,45)"),
+          BytesUtils.valueOf("[45,46)"),
+          BytesUtils.valueOf("[46,47)"),
+          BytesUtils.valueOf("[47,48)"),
+          BytesUtils.valueOf("[48,49)"),
+          BytesUtils.valueOf("[49,50)"),
+          BytesUtils.valueOf("[50,51)"),
+          BytesUtils.valueOf("[51,52)"),
+          BytesUtils.valueOf("[52,53)"),
+          BytesUtils.valueOf("[53,54)"),
+          BytesUtils.valueOf("[54,55)"),
+          BytesUtils.valueOf("[55,56)"),
+          BytesUtils.valueOf("[56,57)"),
+          BytesUtils.valueOf("[57,58)"),
+          BytesUtils.valueOf("[58,59)"),
+          BytesUtils.valueOf("[59,60)"),
+          BytesUtils.valueOf("60+")
+        };
+    private final int[] currentQueriesCostHistogram;
+
+    private QueriesCostsHistogramSupplier(
+        final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      currentQueriesCostHistogram = Coordinator.getInstance().getCurrentQueriesCostHistogram();
+    }
+
+    @Override
+    protected void constructLine() {
+      columnBuilders[0].writeBinary(BUCKETS[nextConsumedIndex]);
+      columnBuilders[1].writeInt(currentQueriesCostHistogram[nextConsumedIndex]);
+      resultBuilder.declarePosition();
+      nextConsumedIndex++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < 61;
     }
   }
 }

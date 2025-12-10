@@ -1050,13 +1050,23 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       resp.setMoreData(false);
 
-      long costTime = System.nanoTime() - startTime;
+      long endTime = System.nanoTime();
+      long costTime = endTime - startTime;
 
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_QUERY_STATEMENT, StatementType.FAST_LAST_QUERY.name(), costTime);
       CommonUtils.addQueryLatency(StatementType.FAST_LAST_QUERY, costTime);
-      recordQueries(
-          () -> costTime, () -> String.format("thrift fastLastQuery %s", prefixPath), null);
+
+      String statement = String.format("thrift fastLastQuery %s", prefixPath);
+      COORDINATOR.recordCurrentQueries(
+          null,
+          startTime / 1_000_000,
+          endTime / 1_000_000,
+          costTime,
+          () -> statement,
+          clientSession.getUsername(),
+          clientSession.getClientAddress());
+      recordQueries(() -> costTime, () -> statement, null);
       return resp;
     } catch (final Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
