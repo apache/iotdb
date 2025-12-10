@@ -186,7 +186,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             checkRoleFromConfigNode(username, rolename);
             cachedRole = iAuthorCache.getRoleCache(rolename);
           }
-          if (cachedRole.checkPathPrivilege(path, permission)) {
+          if (cachedRole != null && cachedRole.checkPathPrivilege(path, permission)) {
             checkFromRole = true;
             break;
           }
