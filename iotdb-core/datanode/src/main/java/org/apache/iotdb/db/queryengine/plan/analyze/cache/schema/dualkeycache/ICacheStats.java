@@ -17,25 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
+package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-/**
- * This interface defines the behaviour of a cache entry holding the cache value. The cache entry is
- * mainly accessed via second key from cache entry group and managed by cache entry manager for
- * cache eviction.
- *
- * @param <SK> The second key of cache value.
- * @param <V> The cache value.
- */
-interface ICacheEntry<SK, V> {
+/** This interface defines the status and statistics, that will be provided , of dual key cache. */
+public interface ICacheStats {
 
-  SK getSecondKey();
+  /**
+   * Return the count of recorded requests, since the cache has been utilized after init or clean
+   * up.
+   */
+  long requestCount();
 
-  V getValue();
+  /**
+   * Return the count of recorded cache hit cases, since the cache has been utilized after init or
+   * clean up.
+   */
+  long hitCount();
 
-  ICacheEntryGroup getBelongedGroup();
+  /** Return the hit rate of recorded cases, equal hitCount() / requestCount(). */
+  double hitRate();
 
-  void setBelongedGroup(ICacheEntryGroup belongedGroup);
+  /** Return current memory usage of dual key cache. */
+  long memoryUsage();
 
-  void replaceValue(V newValue);
+  /** Return capacity of dual key cache. */
+  long capacity();
+
+  /** Return entries num of dual key cache */
+  long entriesCount();
 }

@@ -111,7 +111,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       PartialPath prefixPath =
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> resultMap = new HashMap<>();
+      final Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
 
       final String prefixString = prefixPath.toString();
       for (ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -170,21 +170,18 @@ public class RestApiServiceImpl extends RestApiService {
       List<Object> timeseries = new ArrayList<>();
       List<Object> valueList = new ArrayList<>();
       List<Object> dataTypeList = new ArrayList<>();
-      for (Map.Entry<String, Map<PartialPath, Map<String, TimeValuePair>>> entry :
+      for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
           resultMap.entrySet()) {
-        for (final Map.Entry<PartialPath, Map<String, TimeValuePair>> device2MeasurementLastEntry :
-            entry.getValue().entrySet()) {
-          final String deviceWithSeparator =
-              device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
-          for (Map.Entry<String, TimeValuePair> measurementEntry :
-              device2MeasurementLastEntry.getValue().entrySet()) {
-            final TimeValuePair tvPair = measurementEntry.getValue();
-            if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
-              valueList.add(tvPair.getValue().getStringValue());
-              dataTypeList.add(tvPair.getValue().getDataType().name());
-              targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-              timeseries.add(deviceWithSeparator + measurementEntry.getKey());
-            }
+        final String deviceWithSeparator =
+            device2MeasurementLastEntry.getKey() + TsFileConstant.PATH_SEPARATOR;
+        for (Map.Entry<String, TimeValuePair> measurementEntry :
+            device2MeasurementLastEntry.getValue().entrySet()) {
+          final TimeValuePair tvPair = measurementEntry.getValue();
+          if (tvPair != DeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+            valueList.add(tvPair.getValue().getStringValue());
+            dataTypeList.add(tvPair.getValue().getDataType().name());
+            targetDataSet.addTimestampsItem(tvPair.getTimestamp());
+            timeseries.add(deviceWithSeparator + measurementEntry.getKey());
           }
         }
       }

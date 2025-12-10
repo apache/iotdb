@@ -491,6 +491,60 @@ public class TestUtils {
     return false;
   }
 
+  public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    executeNonQuery(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
+  }
+
+  public static void executeNonQuery(
+      BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
+    executeNonQueries(env, Collections.singletonList(sql), userName, password, defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+    executeNonQueries(
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    int lastIndex = 0;
+    Connection localConnection = null;
+    Connection connectionToUse = defaultConnection;
+    Statement statement;
+    try {
+      // create a new connection if default is not provided or the previous is broken
+      if (connectionToUse == null) {
+        localConnection = env.getConnection(userName, password);
+        connectionToUse = localConnection;
+      }
+      statement = connectionToUse.createStatement();
+      for (int i = lastIndex; i < sqlList.size(); ++i) {
+        statement.execute(sqlList.get(i));
+      }
+    } catch (SQLException e) {
+      // the default connection should be closed by the upper level
+      // while the local connection should be closed here
+      if (connectionToUse == localConnection && localConnection != null) {
+        try {
+          localConnection.close();
+        } catch (SQLException ex) {
+          // ignore
+        }
+      }
+      throw new RuntimeException(e);
+    }
+  }
+
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,72 +40,72 @@ public class ActiveLoadFailedMessageHandler {
               // system is memory constrains
               put(
                   "memory",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
               // system is read only
               put(
                   "read only",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
               // Timed out to wait for procedure return. The procedure is still running.
               put(
                   "procedure return",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to time out to wait for procedure return, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
               // DataNode is not enough, please register more.
               put(
                   "not enough",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the datanode is not enough, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
               // Fail to connect to any config node. Please check status of ConfigNodes or logs of
               // connected DataNode.
               put(
                   "any config node",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to fail to connect to any config node, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
               // Current query is time out, query start time is 1729653161797, ddl is
               // -3046040214706, current time is 1729653184210, please check your statement or
               // modify timeout parameter
               put(
                   "query is time out",
-                  filePair ->
+                  entry ->
                       LOGGER.info(
                           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to current query is time out, will retry later.",
-                          filePair.getLeft(),
-                          filePair.getRight()));
+                          entry.getFile(),
+                          entry.isGeneratedByPipe()));
             }
           });
 
   @FunctionalInterface
   private interface ExceptionMessageHandler {
-    void handle(final Pair<String, Boolean> filePair);
+    void handle(final ActiveLoadPendingQueue.ActiveLoadEntry activeLoadEntry);
   }
 
   public static boolean isExceptionMessageShouldRetry(
-      final Pair<String, Boolean> filePair, final String message) {
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final String message) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      EXCEPTION_MESSAGE_HANDLER_MAP.get("read only").handle(filePair);
+      EXCEPTION_MESSAGE_HANDLER_MAP.get("read only").handle(entry);
       return true;
     }
 
     for (String key : EXCEPTION_MESSAGE_HANDLER_MAP.keySet()) {
       if (message != null && message.contains(key)) {
-        EXCEPTION_MESSAGE_HANDLER_MAP.get(key).handle(filePair);
+        EXCEPTION_MESSAGE_HANDLER_MAP.get(key).handle(entry);
         return true;
       }
     }

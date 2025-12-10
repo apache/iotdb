@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,37 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure.pattern;
+package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import java.util.Objects;
-
-public abstract class SinglePipePattern extends PipePattern {
-
-  protected final String pattern;
-
-  protected SinglePipePattern(final String pattern) {
-    this.pattern = pattern != null ? pattern : getDefaultPattern();
-  }
-
-  @Override
-  public boolean isSingle() {
-    return true;
-  }
-
-  @Override
-  public String getPattern() {
-    return pattern;
-  }
-
-  @Override
-  public boolean isRoot() {
-    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
-  }
-
-  public abstract String getDefaultPattern();
-
-  @Override
-  public String toString() {
-    return "{pattern='" + pattern + '}';
-  }
+public enum CachePolicy {
+  LRU,
+  FIFO;
 }

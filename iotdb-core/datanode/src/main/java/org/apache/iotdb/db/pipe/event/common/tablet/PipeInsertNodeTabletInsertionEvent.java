@@ -106,13 +106,20 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   public ByteBuffer getByteBuffer() throws WALPipeException {
-    return insertNode.serializeToByteBuffer();
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      throw new PipeException("InsertNode has been released");
+    }
+    return node.serializeToByteBuffer();
   }
 
   public String getDeviceId() {
-    return Objects.nonNull(insertNode.getDevicePath())
-        ? insertNode.getDevicePath().getFullPath()
-        : null;
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      return null;
+    }
+    final PartialPath targetPath = node.getDevicePath();
+    return Objects.nonNull(targetPath) ? targetPath.getFullPath() : null;
   }
 
   public long getExtractTime() {
@@ -185,13 +192,21 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      throw new PipeException("InsertNode has been released");
+    }
     return new PipeInsertNodeTabletInsertionEvent(
         insertNode, pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return insertNode.isGeneratedByPipe();
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      throw new PipeException("InsertNode has been released");
+    }
+    return node.isGeneratedByPipe();
   }
 
   @Override
@@ -328,6 +343,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
       dataContainers = new ArrayList<>();
       final InsertNode node = getInsertNode();
+      if (Objects.isNull(node)) {
+        throw new PipeException("InsertNode has been released");
+      }
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
@@ -393,6 +411,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
+    final InsertNode insertNode = this.insertNode;
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
             progressIndex,
@@ -405,6 +424,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String coreReportMessage() {
+    final InsertNode insertNode = this.insertNode;
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
             progressIndex,

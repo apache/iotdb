@@ -23,13 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,7 +45,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeReceiverStatusHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
+  private static final String NO_PERMISSION = "No permission";
+  private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
+  private static final String NO_PERMISSION_STR = "No permissions for this operation";
 
   private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
@@ -80,6 +87,11 @@ public class PipeReceiverStatusHandler {
     this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
+  public void handle(
+      final TSStatus status, final String exceptionMessage, final String recordMessage) {
+    handle(status, exceptionMessage, recordMessage, false);
+  }
+
   /**
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
    * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
@@ -93,7 +105,10 @@ public class PipeReceiverStatusHandler {
    *     put any time-related info here
    */
   public void handle(
-      final TSStatus status, final String exceptionMessage, final String recordMessage) {
+      final TSStatus status,
+      final @Nullable String exceptionMessage,
+      final String recordMessage,
+      final boolean log4NoPrivileges) {
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
@@ -117,6 +132,7 @@ public class PipeReceiverStatusHandler {
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+      case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
               "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
@@ -151,95 +167,101 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeSinkRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+          throw status.getCode() == 1815
+                  && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
+              ? new PipeNonReportException(exceptionMessage)
+              : new PipeRuntimeSinkRetryTimesConfigurableException(
+                  exceptionMessage,
+                  (int)
+                      Math.max(
+                          PipeSubtask.MAX_RETRY_TIMES,
+                          Math.min(
+                              CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
         }
 
       case 803: // NO_PERMISSION
         if (skipIfNoPrivileges) {
+          if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
+            LOGGER.warn(
+                "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                getNoPermission(true),
+                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                status);
+          }
           return;
         }
-
-        synchronized (this) {
-          recordExceptionStatusIfNecessary(recordMessage);
-
-          if (exceptionEventHasBeenRetried.get()
-              && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxMillisWhenOtherExceptionsOccur) {
-            LOGGER.warn(
-                "No permission: retry timeout. will be ignored. event: {}. status: {}",
-                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
-                status);
-            resetExceptionStatus();
+        handleOtherExceptions(status, exceptionMessage, recordMessage, true);
+        break;
+      default:
+        // Some auth error may be wrapped in other codes
+        if (Objects.nonNull(exceptionMessage) && exceptionMessage.contains(NO_PERMISSION_STR)) {
+          if (skipIfNoPrivileges) {
+            if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
+              LOGGER.warn(
+                  "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                  getNoPermission(true),
+                  shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+                  status);
+            }
             return;
           }
-
-          // Reduce the log if retry forever
-          if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
-            PipeLogger.log(LOGGER::warn, "No permission: will retry forever. status: %s", status);
-          } else {
-            LOGGER.warn(
-                "No permission: will retry for at least {} seconds. status: {}",
-                (retryMaxMillisWhenOtherExceptionsOccur
-                        + exceptionFirstEncounteredTime.get()
-                        - System.currentTimeMillis())
-                    / 1000.0,
-                status);
-          }
-
-          exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeSinkRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(
-                          CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
+          handleOtherExceptions(status, exceptionMessage, recordMessage, true);
+          break;
         }
-
-      default: // Other exceptions
-        synchronized (this) {
-          recordExceptionStatusIfNecessary(recordMessage);
-
-          if (exceptionEventHasBeenRetried.get()
-              && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxMillisWhenOtherExceptionsOccur) {
-            LOGGER.warn(
-                "Unclassified exception: retry timeout. will be ignored. event: {}. status: {}",
-                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
-                status);
-            resetExceptionStatus();
-            return;
-          }
-
-          // Reduce the log if retry forever
-          if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
-            PipeLogger.log(
-                LOGGER::warn, "Unclassified exception: will retry forever. status: %s", status);
-          } else {
-            LOGGER.warn(
-                "Unclassified exception: will retry for at least {} seconds. status: {}",
-                (retryMaxMillisWhenOtherExceptionsOccur
-                        + exceptionFirstEncounteredTime.get()
-                        - System.currentTimeMillis())
-                    / 1000.0,
-                status);
-          }
-
-          exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeSinkRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(
-                          CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
-        }
+        // Other exceptions
+        handleOtherExceptions(status, exceptionMessage, recordMessage, false);
+        break;
     }
+  }
+
+  private synchronized void handleOtherExceptions(
+      final TSStatus status,
+      final String exceptionMessage,
+      final String recordMessage,
+      final boolean noPermission) {
+    recordExceptionStatusIfNecessary(recordMessage);
+
+    if (exceptionEventHasBeenRetried.get()
+        && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
+            > retryMaxMillisWhenOtherExceptionsOccur) {
+      LOGGER.warn(
+          "{}: retry timeout. will be ignored. event: {}. status: {}",
+          getNoPermission(noPermission),
+          shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
+          status);
+      resetExceptionStatus();
+      return;
+    }
+
+    // Reduce the log if retry forever
+    if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
+      PipeLogger.log(
+          LOGGER::warn,
+          "%s: will retry forever. status: %s",
+          getNoPermission(noPermission),
+          status);
+    } else {
+      LOGGER.warn(
+          "{}: will retry for at least {} seconds. status: {}",
+          getNoPermission(noPermission),
+          (retryMaxMillisWhenOtherExceptionsOccur
+                  + exceptionFirstEncounteredTime.get()
+                  - System.currentTimeMillis())
+              / 1000.0,
+          status);
+    }
+
+    exceptionEventHasBeenRetried.set(true);
+    throw new PipeRuntimeSinkRetryTimesConfigurableException(
+        exceptionMessage,
+        (int)
+            Math.max(
+                PipeSubtask.MAX_RETRY_TIMES,
+                Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
+  }
+
+  private static String getNoPermission(final boolean noPermission) {
+    return noPermission ? NO_PERMISSION : UNCLASSIFIED_EXCEPTION;
   }
 
   private void recordExceptionStatusIfNecessary(final String message) {
@@ -299,5 +321,10 @@ public class PipeReceiverStatusHandler {
     }
     resultStatus.setSubStatus(givenStatusList);
     return resultStatus;
+  }
+
+  @TestOnly
+  public static void setLogger(final Logger logger) {
+    LOGGER = logger;
   }
 }

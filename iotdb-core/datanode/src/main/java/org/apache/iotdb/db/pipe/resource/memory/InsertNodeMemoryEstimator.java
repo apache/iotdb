@@ -574,6 +574,10 @@ public class InsertNodeMemoryEstimator {
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
     for (int i = 0; i < values.length; i++) {
+      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+        size += NUM_BYTES_OBJECT_HEADER;
+        continue;
+      }
       switch (measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:

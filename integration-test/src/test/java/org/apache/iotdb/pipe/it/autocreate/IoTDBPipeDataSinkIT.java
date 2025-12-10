@@ -55,11 +55,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (0,1)", "flush"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -86,11 +85,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (1,1)", "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -121,11 +119,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (1,1)", "flush"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -154,11 +151,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (2,1)", "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -180,14 +176,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (4, 1)",
-              "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.vehicle.d0(time,s1) values (4,1)",
+              "insert into root.vehicle.d0(time,s1) values (3,1),(0,1)",
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -234,11 +229,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (0,1)", "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -312,7 +306,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create timeSeries root.ln.wf01.wt01.boolean boolean",
@@ -325,14 +319,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
               "create timeSeries root.ln.wf01.wt01.text text",
               "create timeSeries root.ln.wf01.wt01.string string",
               "create timeSeries root.ln.wf01.wt01.blob blob",
-              "create aligned timeSeries root.ln.wf01.wt02(int32 int32, boolean boolean)",
-              "insert into root.ln.wf01.wt01(time, boolean, int32, int64, float, double, time_stamp, date, text, string, blob) values (20000, false, 123, 321, 13.3, 14.4, now(), '2000-12-13', 'abc', 'def', X'f103')",
-              "insert into root.ln.wf01.wt02(time, int32, boolean) values (20000, 123, false)",
+              "create aligned timeSeries root.ln.wf01.wt02(int32 int32,boolean boolean)",
+              "insert into root.ln.wf01.wt01(time,boolean,int32,int64,float,double,time_stamp,date,text,string,blob) values (20000,false,123,321,13.3,14.4,now(),'2000-12-13','abc','def',X'f103')",
+              "insert into root.ln.wf01.wt02(time,int32,boolean) values (20000,123,false)",
               // For pattern parse
-              "insert into root.ln.wf01.wt11(time, redundant_data) values (20000, -1)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.ln.wf01.wt11(time,redundant_data) values (20000,-1)",
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -382,11 +375,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (1,1)", "flush"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -414,11 +406,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (2,1)", "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -440,14 +431,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (4, 1)",
-              "insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)",
-              "flush"))) {
-        return;
-      }
+              "insert into root.vehicle.d0(time,s1) values (4,1)",
+              "insert into root.vehicle.d0(time,s1) values (3,1),(0,1)",
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -479,11 +469,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
-        return;
-      }
+          Arrays.asList("insert into root.vehicle.d0(time,s1) values (1,1)", "flush"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -512,14 +501,12 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create timeSeries root.vehicle.d0.s1 int32",
-              "insert into root.vehicle.d0(time, s1) values (2, 1)",
-              "flush"))) {
-        return;
-      }
+              // "create timeSeries root.vehicle.d0.s1 int32",
+              "insert into root.vehicle.d0(time,s1) values (2,1)", "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,

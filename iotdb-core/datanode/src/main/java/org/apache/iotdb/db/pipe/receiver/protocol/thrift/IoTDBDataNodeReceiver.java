@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -83,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -475,7 +476,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus loadTsFileAsync(final List<String> absolutePaths) throws IOException {
-    if (!ActiveLoadUtil.loadFilesToActiveDir(null, absolutePaths, true)) {
+    final Map<String, String> loadAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            null,
+            shouldConvertDataTypeOnTypeMismatch,
+            validateTsFile.get(),
+            null,
+            shouldMarkAsPipeRequest.get());
+    if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -504,10 +512,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final List<PipePattern> pipePatterns =
-        PipePattern.parseMultiplePatterns(
+    final PipePattern pipePattern =
+        PipePattern.parsePatternFromString(
             parameters.get(ColumnHeaderConstant.PATH_PATTERN), IoTDBPipePattern::new);
-    final PipePattern pipePattern = PipePattern.buildUnionPattern(pipePatterns);
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -522,7 +529,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       // Here we apply the statements as many as possible
       // Even if there are failed statements
       STATEMENT_PATTERN_PARSE_VISITOR
-          .process(originalStatement, (UnionIoTDBPipePattern) pipePattern)
+          .process(originalStatement, (IoTDBPipePatternOperations) pipePattern)
           .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
           .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
@@ -700,10 +707,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
-          statement.getPipeLoggingString(),
-          e);
+          statement.getPipeLoggingString());
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {

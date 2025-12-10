@@ -65,6 +65,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
@@ -96,6 +97,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -240,7 +242,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean doAsyncLoad(final Analysis analysis) {
     final long startTime = System.nanoTime();
     try {
-      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(tsFiles, null, isDeleteAfterLoad)) {
+      final Map<String, String> activeLoadAttributes =
+          ActiveLoadPathHelper.buildAttributes(
+              databaseLevel,
+              isConvertOnTypeMismatch,
+              isVerifySchema,
+              tabletConversionThresholdBytes,
+              isGeneratedByPipe);
+      if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
+          tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         analysis.setStatement(loadTsFileStatement);
@@ -297,10 +307,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
-                "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
+                "Loading file %s failed. Detail: %s",
                 tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
@@ -661,6 +678,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
         throw e;
       } catch (Exception e) {
+        if (e.getCause() instanceof LoadAnalyzeTypeMismatchException && isConvertOnTypeMismatch) {
+          throw (LoadAnalyzeTypeMismatchException) e.getCause();
+        }
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ICacheStats;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-class CacheStats implements IDualKeyCacheStats {
+class CacheStats implements ICacheStats {
 
   // prepare some buffer for high load scenarios
   private static final double MEMORY_THRESHOLD_RATIO = 0.8;

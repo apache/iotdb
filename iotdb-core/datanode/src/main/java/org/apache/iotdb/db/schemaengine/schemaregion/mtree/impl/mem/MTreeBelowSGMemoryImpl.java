@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -213,7 +212,8 @@ public class MTreeBelowSGMemoryImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -227,6 +227,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -303,7 +309,8 @@ public class MTreeBelowSGMemoryImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -313,6 +320,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write operations on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
@@ -1094,8 +1107,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public int fillLastQueryMap(
-      final PartialPath prefixPath,
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill)
+      final PartialPath prefixPath, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
@@ -1111,9 +1123,7 @@ public class MTreeBelowSGMemoryImpl {
               }
             }
             final PartialPath path = node.getPartialPath();
-            mapToFill
-                .computeIfAbsent(DeviceSchemaCache.getLeadingSegment(path), o -> new HashMap<>())
-                .put(path, measurementMap);
+            mapToFill.put(path, measurementMap);
             sensorNum[0] += measurementMap.size();
           }
         }) {

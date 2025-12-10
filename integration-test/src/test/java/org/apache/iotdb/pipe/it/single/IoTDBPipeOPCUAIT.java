@@ -43,10 +43,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          env, "insert into root.db.d1(time, s1) values (1, 1)")) {
-        return;
-      }
+      TestUtils.executeNonQuery(env, "insert into root.db.d1(time,s1) values (1,1)", null);
 
       final Map<String, String> connectorAttributes = new HashMap<>();
       connectorAttributes.put("sink", "opc-ua-sink");

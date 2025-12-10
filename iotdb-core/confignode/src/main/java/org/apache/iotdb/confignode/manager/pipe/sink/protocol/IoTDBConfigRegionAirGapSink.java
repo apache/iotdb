@@ -185,7 +185,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeConfigRegionWritePlanEvent.toString());
+          pipeConfigRegionWritePlanEvent.toString(),
+          true);
     }
   }
 
@@ -241,7 +242,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeConfigRegionSnapshotEvent.toString());
+          pipeConfigRegionSnapshotEvent.toString(),
+          true);
     } else {
       LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
     }

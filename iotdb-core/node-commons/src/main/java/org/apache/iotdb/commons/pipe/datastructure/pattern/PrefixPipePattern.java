@@ -19,24 +19,41 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
-public class PrefixPipePattern extends SinglePipePattern {
+public class PrefixPipePattern extends PipePattern {
+
+  private final String pattern;
 
   public PrefixPipePattern(final String pattern) {
-    super(pattern);
+    this.pattern = pattern != null ? pattern : getDefaultPattern();
+  }
+
+  private String getDefaultPattern() {
+    return PipeSourceConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
   }
 
   @Override
-  public String getDefaultPattern() {
-    return PipeSourceConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
+  public String getPattern() {
+    return pattern;
+  }
+
+  @Override
+  public boolean isRoot() {
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
   @Override
@@ -124,7 +141,45 @@ public class PrefixPipePattern extends SinglePipePattern {
   }
 
   @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    if (isRoot()) {
+      return Collections.singletonList(new PartialPath(new String[] {"root", "**"}));
+    }
+
+    final List<PartialPath> paths = new ArrayList<>();
+    try {
+      // 1. "root.d1"
+      paths.add(new PartialPath(pattern));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 2. "root.d1*"
+      paths.add(new PartialPath(pattern + "*"));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 3. "root.d1.**"
+      paths.add(
+          new PartialPath(
+              pattern + TsFileConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (final IllegalPathException ignored) {
+    }
+    try {
+      // 4. "root.d1*.**"
+      paths.add(
+          new PartialPath(
+              pattern
+                  + "*"
+                  + TsFileConstant.PATH_SEPARATOR
+                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (final IllegalPathException ignored) {
+    }
+
+    return paths;
+  }
+
+  @Override
   public String toString() {
-    return "PrefixPipePattern" + super.toString();
+    return "PrefixPipePattern{pattern='" + pattern + "'}";
   }
 }

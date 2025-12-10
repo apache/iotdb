@@ -81,5 +81,5 @@ public interface IDataRegionForQuery {
   /** Get database name of this DataRegion */
   String getDatabaseName();
 
-  String getDataRegionId();
+  String getDataRegionIdString();
 }

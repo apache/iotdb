@@ -540,7 +540,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateLastCache(final String database) {
-    DataNodeSchemaCache.getInstance().invalidateDatabaseLastCache(database);
+    DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateLastCache();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -549,7 +549,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
-      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidate(req.getFullPath());
+      DataNodeSchemaCache.getInstance().getDeviceSchemaCache().invalidateAll();
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -2014,16 +2014,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           || options.contains(CacheClearOptions.QUERY)) {
         storageEngine.clearCache();
       }
-      if (options.contains(CacheClearOptions.QUERY)
-          && options.contains(CacheClearOptions.TREE_SCHEMA)) {
+      if (options.contains(CacheClearOptions.QUERY) && options.contains(CacheClearOptions.SCHEMA)) {
         schemaCache.getDeviceSchemaCache().invalidateAll();
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       if (options.contains(CacheClearOptions.QUERY)) {
         schemaCache.getDeviceSchemaCache().invalidateLastCache();
       }
-      if (options.contains(CacheClearOptions.TREE_SCHEMA)) {
-        schemaCache.getDeviceSchemaCache().invalidateTreeSchema();
+      if (options.contains(CacheClearOptions.SCHEMA)) {
+        schemaCache.getDeviceSchemaCache().invalidateSchema();
       }
     } catch (final Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

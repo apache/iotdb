@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
@@ -60,12 +60,12 @@ import java.util.stream.Stream;
 
 /**
  * The {@link PipeConfigPhysicalPlanPatternParseVisitor} will transform the schema {@link
- * ConfigPhysicalPlan}s using {@link UnionIoTDBPipePattern}. Rule:
+ * ConfigPhysicalPlan}s using {@link IoTDBPipePatternOperations}. Rule:
  *
  * <p>1. All patterns in the output {@link ConfigPhysicalPlan} will be the intersection of the
- * original {@link ConfigPhysicalPlan}'s patterns and the given {@link UnionIoTDBPipePattern}.
+ * original {@link ConfigPhysicalPlan}'s patterns and the given {@link IoTDBPipePatternOperations}.
  *
- * <p>2. If a pattern does not intersect with the {@link UnionIoTDBPipePattern}, it's dropped.
+ * <p>2. If a pattern does not intersect with the {@link IoTDBPipePatternOperations}, it's dropped.
  *
  * <p>3. If all the patterns in the {@link ConfigPhysicalPlan} is dropped, the {@link
  * ConfigPhysicalPlan} is dropped.
@@ -74,13 +74,13 @@ import java.util.stream.Stream;
  * one is used in the {@link PipeConfigRegionWritePlanEvent} in {@link ConfigRegionListeningQueue}.
  */
 public class PipeConfigPhysicalPlanPatternParseVisitor
-    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, UnionIoTDBPipePattern> {
+    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBPipePatternOperations> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigPhysicalPlanPatternParseVisitor.class);
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
-      final ConfigPhysicalPlan plan, final UnionIoTDBPipePattern pattern) {
+      final ConfigPhysicalPlan plan, final IoTDBPipePatternOperations pattern) {
     return Optional.of(plan);
   }
 
@@ -92,7 +92,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   // Other matches using "matchPrefixPath" are with the same principle.
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
-      final DatabaseSchemaPlan createDatabasePlan, final UnionIoTDBPipePattern pattern) {
+      final DatabaseSchemaPlan createDatabasePlan, final IoTDBPipePatternOperations pattern) {
     return pattern.matchPrefixPath(createDatabasePlan.getSchema().getName())
         ? Optional.of(createDatabasePlan)
         : Optional.empty();
@@ -100,7 +100,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitAlterDatabase(
-      final DatabaseSchemaPlan alterDatabasePlan, final UnionIoTDBPipePattern pattern) {
+      final DatabaseSchemaPlan alterDatabasePlan, final IoTDBPipePatternOperations pattern) {
     return pattern.matchPrefixPath(alterDatabasePlan.getSchema().getName())
         ? Optional.of(alterDatabasePlan)
         : Optional.empty();
@@ -108,7 +108,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
-      final DeleteDatabasePlan deleteDatabasePlan, final UnionIoTDBPipePattern pattern) {
+      final DeleteDatabasePlan deleteDatabasePlan, final IoTDBPipePatternOperations pattern) {
     return pattern.matchPrefixPath(deleteDatabasePlan.getName())
         ? Optional.of(deleteDatabasePlan)
         : Optional.empty();
@@ -117,7 +117,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
       final CreateSchemaTemplatePlan createSchemaTemplatePlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     // This is a deserialized template and can be arbitrarily altered
     final Template template = createSchemaTemplatePlan.getTemplate();
     template.getSchemaMap().keySet().removeIf(measurement -> !pattern.matchTailNode(measurement));
@@ -129,7 +129,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     return pattern.matchPrefixPath(commitSetSchemaTemplatePlan.getPath())
         ? Optional.of(commitSetSchemaTemplatePlan)
         : Optional.empty();
@@ -138,7 +138,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
       final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     return pattern.matchPrefixPath(pipeUnsetSchemaTemplatePlan.getPath())
         ? Optional.of(pipeUnsetSchemaTemplatePlan)
         : Optional.empty();
@@ -147,7 +147,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
       final ExtendSchemaTemplatePlan extendSchemaTemplatePlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     final TemplateExtendInfo extendInfo = extendSchemaTemplatePlan.getTemplateExtendInfo();
     final int[] filteredIndexes =
         IntStream.range(0, extendInfo.getMeasurements().size())
@@ -167,30 +167,30 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorPlan grantUserPlan, final UnionIoTDBPipePattern pattern) {
+      final AuthorPlan grantUserPlan, final IoTDBPipePatternOperations pattern) {
     return visitPathRelatedAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
-      final AuthorPlan revokeUserPlan, final UnionIoTDBPipePattern pattern) {
+      final AuthorPlan revokeUserPlan, final IoTDBPipePatternOperations pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorPlan revokeUserPlan, final UnionIoTDBPipePattern pattern) {
+      final AuthorPlan revokeUserPlan, final IoTDBPipePatternOperations pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorPlan revokeUserPlan, final UnionIoTDBPipePattern pattern) {
+      final AuthorPlan revokeUserPlan, final IoTDBPipePatternOperations pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
-      final AuthorPlan pathRelatedAuthorPlan, final UnionIoTDBPipePattern pattern) {
+      final AuthorPlan pathRelatedAuthorPlan, final IoTDBPipePatternOperations pattern) {
     final List<PartialPath> intersectedPaths =
         pathRelatedAuthorPlan.getNodeNameList().stream()
             .map(pattern::getIntersection)
@@ -219,7 +219,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
       final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     try {
       final PathPatternTree intersectedTree =
           pattern.getIntersection(
@@ -238,7 +238,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
       final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     try {
       final PathPatternTree intersectedTree =
           pattern.getIntersection(
@@ -280,7 +280,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
       final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     final Map<PartialPath, List<Template>> newTemplateSetInfo =
         pipeDeactivateTemplatePlan.getTemplateSetInfo().entrySet().stream()
             .flatMap(
@@ -303,7 +303,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
-      final SetTTLPlan setTTLPlan, final UnionIoTDBPipePattern pattern) {
+      final SetTTLPlan setTTLPlan, final IoTDBPipePatternOperations pattern) {
     final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
     final List<PartialPath> intersectionList =
         pattern.matchPrefixPath(partialPath.getFullPath())

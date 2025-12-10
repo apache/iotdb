@@ -34,13 +34,13 @@ import java.util.function.ToIntFunction;
  * @param <SK> The second key of cache value
  * @param <V> The cache value
  */
-public interface IDualKeyCache<FK, SK, V> {
+public interface ICache<SK, V> {
 
   /** Get the cache value with given first key and second key. */
-  V get(final FK firstKey, final SK secondKey);
+  V get(final SK secondKey);
 
   <R> boolean batchApply(
-      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction);
+      final Map<SK, R> inputMap, final BiFunction<V, R, Boolean> mappingFunction);
 
   /**
    * Update the existing value. The updater shall return the difference caused by the update,
@@ -53,11 +53,7 @@ public interface IDualKeyCache<FK, SK, V> {
    * @param createIfNotExists put the value to cache iff it does not exist,
    */
   void update(
-      final FK firstKey,
-      final SK secondKey,
-      final V value,
-      final ToIntFunction<V> updater,
-      final boolean createIfNotExists);
+      final SK key, final V value, final ToIntFunction<V> updater, final boolean createIfNotExists);
 
   /**
    * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
@@ -67,21 +63,7 @@ public interface IDualKeyCache<FK, SK, V> {
    * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
    * the concurrency safety for the value update.
    */
-  void update(
-      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
-
-  /**
-   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
-   * predicate. The updater shall return the difference caused by the update, because we do not want
-   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
-   *
-   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
-   * the concurrency safety for the value update.
-   */
-  void update(
-      final Predicate<FK> firstKeyChecker,
-      final Predicate<SK> secondKeyChecker,
-      final ToIntFunction<V> updater);
+  void update(final Predicate<SK> keyChecker, final ToIntFunction<V> updater);
 
   /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
@@ -91,20 +73,12 @@ public interface IDualKeyCache<FK, SK, V> {
   void invalidateAll();
 
   /** Return all the current cache status and statistics. */
-  IDualKeyCacheStats stats();
-
-  /** remove all entries for firstKey */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(final FK firstKey);
+  ICacheStats stats();
 
   /** remove matched entry */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(final FK firstKey, final SK secondKey);
+  void invalidate(final SK secondKey);
 
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(final FK firstKey, final Predicate<SK> secondKeyChecker);
-
-  /** remove all entries matching the firstKey and the secondKey */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker);
+  void invalidate(final Predicate<SK> keyChecker);
 }

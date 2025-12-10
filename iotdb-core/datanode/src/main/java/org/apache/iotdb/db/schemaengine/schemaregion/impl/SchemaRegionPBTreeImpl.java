@@ -635,7 +635,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               plan.getProps(),
               plan.getAlias(),
               (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       try {
         // Should merge
@@ -746,7 +749,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       try {
         // Update statistics and schemaDataTypeNumMap
@@ -845,7 +851,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -1438,8 +1448,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public int fillLastQueryMap(
-      final PartialPath pattern,
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill) {
+      final PartialPath pattern, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill) {
     throw new UnsupportedOperationException("Not implemented");
   }
 
