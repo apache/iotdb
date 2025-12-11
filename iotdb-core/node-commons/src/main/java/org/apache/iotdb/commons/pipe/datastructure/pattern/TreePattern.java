@@ -847,7 +847,6 @@ public abstract class TreePattern {
       }
 
       // 4. Single Level Wildcard (*) in Trie
-      // Access direct field instead of map lookup
       if (node.wildcardNode != null) {
         return checkCoverage(node.wildcardNode, pathNodes, index + 1);
       }
@@ -902,7 +901,6 @@ public abstract class TreePattern {
       }
 
       // 5b. Check '*' in Trie (matches specific query node)
-      // Access direct field instead of map lookup
       return node.wildcardNode != null && checkOverlap(node.wildcardNode, pathNodes, index + 1);
     }
   }
