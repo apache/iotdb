@@ -35,6 +35,7 @@ public enum ThreadName {
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
   FRAGMENT_INSTANCE_DISPATCH("Fragment-Instance-Dispatch"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
+  EXPIRED_QUERIES_INFO_CLEAR("Expired-Queries-Info-Clear"),
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
   MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
