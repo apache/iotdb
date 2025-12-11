@@ -64,7 +64,6 @@ public class IoTDBCurrentQueriesIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getDataNodeConfig().setQueryCostStatWindow(1);
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123123456");
   }
@@ -81,6 +80,7 @@ public class IoTDBCurrentQueriesIT {
           EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
       Statement statement = connection.createStatement();
       statement.execute("USE information_schema");
+      statement.execute("set configuration \"query_cost_stat_window\"='1'");
 
       // 1. query current_queries table
       String sql = "SELECT * FROM current_queries";
