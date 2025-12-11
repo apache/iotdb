@@ -21,7 +21,7 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from iotdb.ainode.core.exception import BadConfigValueError
+from iotdb.ainode.core.exception import BadConfigValueException
 
 
 class TSDataType(Enum):
@@ -122,7 +122,7 @@ def _get_type_in_byte(data_type: pd.Series):
     elif data_type == "text":
         return b"\x05"
     else:
-        raise BadConfigValueError(
+        raise BadConfigValueException(
             "data_type",
             data_type,
             "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",
@@ -138,7 +138,7 @@ def get_data_type_byte_from_str(value):
         byte: corresponding data type in [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05']
     """
     if value not in ["bool", "int32", "int64", "float32", "float64", "text"]:
-        raise BadConfigValueError(
+        raise BadConfigValueException(
             "data_type",
             value,
             "data_type should be in ['bool', 'int32', 'int64', 'float32', 'float64', 'text']",

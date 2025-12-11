@@ -18,7 +18,7 @@
 
 import torch
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
 
@@ -28,7 +28,7 @@ class SundialPipeline(ForecastPipeline):
 
     def _preprocess(self, inputs):
         if len(inputs.shape) != 2:
-            raise InferenceModelInternalError(
+            raise InferenceModelInternalException(
                 f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
             )
         return inputs
