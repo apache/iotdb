@@ -250,6 +250,17 @@ public class CteMaterializer {
       return originalIndexList;
     }
 
+    boolean isSequential = true;
+    for (int i = 0; i < originalIndexList.size(); i++) {
+      if (originalIndexList.get(i) != i) {
+        isSequential = false;
+        break;
+      }
+    }
+    if (isSequential) {
+      return originalIndexList;
+    }
+
     // Create LinkedHashMap to maintain value-position mapping
     Map<Integer, Integer> valueToPositionMap = new LinkedHashMap<>();
     IntStream.range(0, originalIndexList.size())

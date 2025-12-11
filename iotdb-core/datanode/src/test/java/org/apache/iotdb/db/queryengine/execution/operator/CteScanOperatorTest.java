@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -40,6 +39,7 @@ import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -157,11 +157,9 @@ public class CteScanOperatorTest {
 
     // maxPeekMemory + maxReturnSize + retainedSize
     long maxPeekMemory = cteScanOperator.calculateMaxPeekMemory();
-    assertEquals(
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(), maxPeekMemory);
+    assertEquals(RamUsageEstimator.NUM_BYTES_OBJECT_REF, maxPeekMemory);
     long maxReturnSize = cteScanOperator.calculateMaxReturnSize();
-    assertEquals(
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(), maxReturnSize);
+    assertEquals(RamUsageEstimator.NUM_BYTES_OBJECT_REF, maxReturnSize);
     long retainedSize = cteScanOperator.calculateRetainedSizeAfterCallingNext();
     assertEquals(0L, retainedSize);
 
