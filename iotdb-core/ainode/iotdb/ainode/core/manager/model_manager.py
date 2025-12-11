@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from typing import List, Optional
+from typing import Optional
 
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import (

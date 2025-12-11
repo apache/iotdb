@@ -249,8 +249,8 @@ class ModelStorage:
                 - file://<local_path>
                 - repo://<huggingface_repo_id> (Maybe in the future)
         Raises:
-            ModelExistedError: If the model_id already exists.
-            InvalidModelUriError: If the URI format is invalid.
+            ModelExistedException: If the model_id already exists.
+            InvalidModelUriException: If the URI format is invalid.
         """
 
         if self.is_model_registered(model_id):
@@ -490,6 +490,9 @@ class ModelStorage:
                     logger.info(f"Model directory is deleted: {model_path}")
                 except Exception as e:
                     logger.error(f"Failed to delete model directory {model_path}: {e}")
+                    model_info.state = (
+                        ModelStates.ACTIVE
+                    )  # Revert state update on failure
                     raise e
             del self._models[category_value][model_id]
             logger.info(f"Model {model_id} has been removed from model storage")

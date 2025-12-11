@@ -28,12 +28,14 @@ from typing import Dict, Tuple
 from huggingface_hub import snapshot_download
 
 from iotdb.ainode.core.exception import InvalidModelUriException
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     UriType,
 )
-from iotdb.ainode.core.model.model_storage import logger
+
+logger = Logger()
 
 
 def parse_uri_type(uri: str) -> UriType:
@@ -109,6 +111,10 @@ def ensure_init_file(dir_path: str):
 def _fetch_model_from_local(source_path: str, storage_path: str):
     logger.info(f"Copying model from local path: {source_path} -> {storage_path}")
     source_dir = Path(source_path)
+    if not source_dir.exists():
+        raise InvalidModelUriException(f"Source path does not exist: {source_path}")
+    if not source_dir.is_dir():
+        raise InvalidModelUriException(f"Source path is not a directory: {source_path}")
     storage_dir = Path(storage_path)
     for file in source_dir.iterdir():
         if file.is_file():
