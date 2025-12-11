@@ -30,11 +30,15 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDevice.class);
+
   private static final String ALIGNED_HEADER = "__aligned";
   private static final String DATABASE_HEADER = "__database";
   private Offset offset;
@@ -138,5 +142,25 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   @Override
   public String toString() {
     return "ShowDevice" + toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    if (offset != null) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += offset.ramBytesUsed();
+    }
+    if (limit != null) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += limit.ramBytesUsed();
+    }
+    // AbstractQueryDeviceWithCache fields
+    if (results != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
+      // ShowDevicesResult objects are not Accountable, so we only estimate list overhead
+    }
+    return size;
   }
 }

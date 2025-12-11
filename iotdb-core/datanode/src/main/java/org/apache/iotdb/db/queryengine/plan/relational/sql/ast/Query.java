@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class Query extends Statement {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Query.class);
 
   private final Optional<With> with;
   private final QueryBody queryBody;
@@ -154,5 +157,33 @@ public class Query extends Statement {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(queryBody);
+    if (with.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += with.get().ramBytesUsed();
+    }
+    if (fill.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += fill.get().ramBytesUsed();
+    }
+    if (orderBy.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += orderBy.get().ramBytesUsed();
+    }
+    if (offset.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += offset.get().ramBytesUsed();
+    }
+    if (limit.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += limit.get().ramBytesUsed();
+    }
+    return size;
   }
 }

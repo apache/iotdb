@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -38,7 +40,12 @@ import static com.google.common.collect.Iterables.isEmpty;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
-public class QualifiedName {
+public class QualifiedName implements Accountable {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(QualifiedName.class);
+  private static final long OPTIONAL_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Optional.class);
 
   private final List<Identifier> originalParts;
   private final List<String> parts;
@@ -225,5 +232,37 @@ public class QualifiedName {
     String suffix = ReadWriteIOUtils.readString(byteBuffer);
 
     return new QualifiedName(originalParts, parts, name, prefix, suffix);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    if (originalParts != null) {
+      size += RamUsageEstimator.shallowSizeOf(originalParts);
+      for (Identifier identifier : originalParts) {
+        if (identifier != null) {
+          size += identifier.ramBytesUsed();
+        }
+      }
+    }
+    if (parts != null) {
+      size += RamUsageEstimator.shallowSizeOf(parts);
+      for (String part : parts) {
+        if (part != null) {
+          size += RamUsageEstimator.sizeOf(part);
+        }
+      }
+    }
+    if (name != null) {
+      size += RamUsageEstimator.sizeOf(name);
+    }
+    if (prefix != null) {
+      size += OPTIONAL_INSTANCE_SIZE;
+      size += prefix.ramBytesUsed();
+    }
+    if (suffix != null) {
+      size += RamUsageEstimator.sizeOf(suffix);
+    }
+    return size;
   }
 }

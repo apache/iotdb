@@ -47,6 +47,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -65,6 +66,8 @@ import java.util.stream.Collectors;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class DeleteDevice extends AbstractTraverseDevice {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeleteDevice.class);
 
   // Used for data deletion
   private List<TableDeletionEntry> modEntries;
@@ -248,5 +251,28 @@ public class DeleteDevice extends AbstractTraverseDevice {
   @Override
   public String toString() {
     return toStringHelper(this) + " - " + super.toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
+    size += AstMemoryEstimationHelper.getShallowSizeOfList(tagDeterminedFilterList);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
+    size += AstMemoryEstimationHelper.getShallowSizeOfList(columnHeaderList);
+    if (getAttributeColumns() != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
+    }
+    if (modEntries != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(modEntries);
+      for (TableDeletionEntry entry : modEntries) {
+        size += entry == null ? 0L : entry.ramBytesUsed();
+      }
+    }
+    return size;
   }
 }

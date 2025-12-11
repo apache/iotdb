@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +31,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class SingleColumn extends SelectItem {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SingleColumn.class);
 
   @Nullable private final Identifier alias;
   private final Expression expression;
@@ -135,5 +139,22 @@ public class SingleColumn extends SelectItem {
     }
 
     return alias.equals(((SingleColumn) other).alias);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
+    if (alias != null) {
+      size += alias.ramBytesUsed();
+    }
+    if (expandedExpressions != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(expandedExpressions);
+    }
+    if (accordingColumnNames != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(accordingColumnNames);
+    }
+    return size;
   }
 }

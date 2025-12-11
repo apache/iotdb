@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -32,6 +33,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class Join extends Relation {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Join.class);
 
   public enum Type {
     CROSS,
@@ -161,5 +164,23 @@ public class Join extends Relation {
     }
 
     return type.equals(((Join) other).type);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
+    if (criteria != null) {
+      // JoinCriteria is not Accountable, so we calculate its memory manually
+      size += RamUsageEstimator.shallowSizeOfInstance(criteria.getClass());
+      // Calculate memory for nodes in criteria
+      List<Node> criteriaNodes = criteria.getNodes();
+      if (criteriaNodes != null) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(criteriaNodes);
+      }
+    }
+    return size;
   }
 }

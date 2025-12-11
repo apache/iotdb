@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,6 +28,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AlterPipe extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlterPipe.class);
 
   private final String pipeName;
   private final boolean ifExistsCondition;
@@ -139,5 +143,31 @@ public class AlterPipe extends PipeStatement {
         .add("isReplaceAllProcessorAttributes", isReplaceAllProcessorAttributes)
         .add("isReplaceAllConnectorAttributes", isReplaceAllConnectorAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pipeName);
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            extractorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            extractorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            processorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            processorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            connectorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            connectorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+    return size;
   }
 }

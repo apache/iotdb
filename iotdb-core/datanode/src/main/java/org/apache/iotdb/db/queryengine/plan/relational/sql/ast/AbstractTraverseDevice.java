@@ -187,6 +187,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.attributeColumns = attributeColumns;
   }
 
+  public List<String> getAttributeColumns() {
+    return attributeColumns;
+  }
+
   public List<ColumnHeader> getColumnHeaderList() {
     return columnHeaderList;
   }

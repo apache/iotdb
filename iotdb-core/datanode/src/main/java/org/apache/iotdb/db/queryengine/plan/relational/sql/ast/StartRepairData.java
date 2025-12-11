@@ -22,7 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 public class StartRepairData extends WrappedStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(StartRepairData.class);
+
   public StartRepairData(Statement innerTreeStatement, MPPQueryContext context) {
     super(innerTreeStatement, context);
   }

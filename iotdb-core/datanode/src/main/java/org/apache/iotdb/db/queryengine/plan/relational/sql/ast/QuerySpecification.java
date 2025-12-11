@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class QuerySpecification extends QueryBody {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(QuerySpecification.class);
 
   private final Select select;
   private final Optional<Relation> from;
@@ -184,5 +188,46 @@ public class QuerySpecification extends QueryBody {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(select);
+    if (from.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += from.get().ramBytesUsed();
+    }
+    if (where.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += where.get().ramBytesUsed();
+    }
+    if (groupBy.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += groupBy.get().ramBytesUsed();
+    }
+    if (having.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += having.get().ramBytesUsed();
+    }
+    if (fill.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += fill.get().ramBytesUsed();
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(windows);
+    if (orderBy.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += orderBy.get().ramBytesUsed();
+    }
+    if (offset.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += offset.get().ramBytesUsed();
+    }
+    if (limit.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += limit.get().ramBytesUsed();
+    }
+    return size;
   }
 }

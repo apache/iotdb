@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.Nullable;
 
 import java.util.List;
@@ -29,6 +31,9 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class CreateView extends CreateTable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateView.class);
+
   private final PartialPath prefixPath;
   private final boolean replace;
   private final boolean restrict;
@@ -91,5 +96,18 @@ public class CreateView extends CreateTable {
         .add("replace", replace)
         .add("restrict", restrict)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = super.ramBytesUsed();
+    // Subtract CreateTable's INSTANCE_SIZE and add CreateView's INSTANCE_SIZE
+    size -= RamUsageEstimator.shallowSizeOfInstance(CreateTable.class);
+    size += INSTANCE_SIZE;
+    if (prefixPath != null) {
+      // PartialPath is not a Node, estimate its size
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(prefixPath.getFullPath());
+    }
+    return size;
   }
 }

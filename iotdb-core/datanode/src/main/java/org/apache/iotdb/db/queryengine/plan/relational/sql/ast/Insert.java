@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -38,6 +39,8 @@ public final class Insert extends Statement {
   public static final String ROWS = "rows";
   public static final Type ROWS_TYPE = LongType.INT64;
   public static final TsTableColumnCategory ROWS_CATEGORY = TsTableColumnCategory.FIELD;
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Insert.class);
 
   private final Table table;
   private final Query query;
@@ -110,5 +113,17 @@ public final class Insert extends Statement {
         .add("columns", columns)
         .add("query", query)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
+    if (columns != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columns);
+    }
+    return size;
   }
 }
