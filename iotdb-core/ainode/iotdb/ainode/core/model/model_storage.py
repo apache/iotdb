@@ -490,9 +490,6 @@ class ModelStorage:
                     logger.info(f"Model directory is deleted: {model_path}")
                 except Exception as e:
                     logger.error(f"Failed to delete model directory {model_path}: {e}")
-                    model_info.state = (
-                        ModelStates.ACTIVE
-                    )  # Revert state update on failure
                     raise e
             del self._models[category_value][model_id]
             logger.info(f"Model {model_id} has been removed from model storage")
