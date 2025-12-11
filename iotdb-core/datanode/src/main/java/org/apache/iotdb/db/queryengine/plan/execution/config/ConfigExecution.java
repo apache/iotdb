@@ -353,4 +353,8 @@ public class ConfigExecution implements IQueryExecution {
   public String getUser() {
     return context.getSession().getUserName();
   }
+
+  public String getClientHostname() {
+    return context.getCliHostname();
+  }
 }

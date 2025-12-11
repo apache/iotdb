@@ -86,6 +86,8 @@ public class DataNodeLocationSupplierFactory {
       switch (tableName) {
         case InformationSchema.QUERIES:
         case InformationSchema.CONNECTIONS:
+        case InformationSchema.CURRENT_QUERIES:
+        case InformationSchema.QUERIES_COSTS_HISTOGRAM:
           return getReadableDataNodeLocations();
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:
@@ -96,7 +98,6 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.TOPICS:
         case InformationSchema.SUBSCRIPTIONS:
         case InformationSchema.VIEWS:
-        case InformationSchema.MODELS:
         case InformationSchema.FUNCTIONS:
         case InformationSchema.CONFIGURATIONS:
         case InformationSchema.KEYWORDS:

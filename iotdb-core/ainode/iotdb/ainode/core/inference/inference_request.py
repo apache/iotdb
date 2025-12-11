@@ -15,14 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import threading
 from typing import Any
 
 import torch
 
-from iotdb.ainode.core.inference.strategy.abstract_inference_pipeline import (
-    AbstractInferencePipeline,
-)
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.util.atmoic_int import AtomicInt
 
@@ -41,8 +39,7 @@ class InferenceRequest:
         req_id: str,
         model_id: str,
         inputs: torch.Tensor,
-        inference_pipeline: AbstractInferencePipeline,
-        max_new_tokens: int = 96,
+        output_length: int = 96,
         **infer_kwargs,
     ):
         if inputs.ndim == 1:
@@ -52,9 +49,8 @@ class InferenceRequest:
         self.model_id = model_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
-        self.inference_pipeline = inference_pipeline
-        self.max_new_tokens = (
-            max_new_tokens  # Number of time series data points to generate
+        self.output_length = (
+            output_length  # Number of time series data points to generate
         )
 
         self.batch_size = inputs.size(0)
@@ -65,7 +61,7 @@ class InferenceRequest:
 
         # Preallocate output buffer [batch_size, max_new_tokens]
         self.output_tensor = torch.zeros(
-            self.batch_size, max_new_tokens, device="cpu"
+            self.batch_size, output_length, device="cpu"
         )  # shape: [self.batch_size, max_new_steps]
 
     def mark_running(self):
@@ -77,7 +73,7 @@ class InferenceRequest:
     def is_finished(self) -> bool:
         return (
             self.state == InferenceRequestState.FINISHED
-            or self.cur_step_idx >= self.max_new_tokens
+            or self.cur_step_idx >= self.output_length
         )
 
     def write_step_output(self, step_output: torch.Tensor):
@@ -87,11 +83,11 @@ class InferenceRequest:
         batch_size, step_size = step_output.shape
         end_idx = self.cur_step_idx + step_size
 
-        if end_idx > self.max_new_tokens:
+        if end_idx > self.output_length:
             self.output_tensor[:, self.cur_step_idx :] = step_output[
-                :, : self.max_new_tokens - self.cur_step_idx
+                :, : self.output_length - self.cur_step_idx
             ]
-            self.cur_step_idx = self.max_new_tokens
+            self.cur_step_idx = self.output_length
         else:
             self.output_tensor[:, self.cur_step_idx : end_idx] = step_output
             self.cur_step_idx = end_idx

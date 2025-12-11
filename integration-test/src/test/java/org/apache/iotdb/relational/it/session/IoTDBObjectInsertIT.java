@@ -93,9 +93,7 @@ public class IoTDBObjectInsertIT {
             + File.separator
             + "test-classes"
             + File.separator
-            + "ainode-example"
-            + File.separator
-            + "model.pt";
+            + "object-example.pt";
     File object = new File(testObject);
 
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -194,9 +192,7 @@ public class IoTDBObjectInsertIT {
             + File.separator
             + "test-classes"
             + File.separator
-            + "ainode-example"
-            + File.separator
-            + "model.pt";
+            + "object-example.pt";
     byte[] objectBytes = Files.readAllBytes(Paths.get(testObject));
     List<byte[]> objectSegments = new ArrayList<>();
     for (int i = 0; i < objectBytes.length; i += 512) {

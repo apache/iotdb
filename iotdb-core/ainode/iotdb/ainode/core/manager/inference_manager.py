@@ -18,7 +18,6 @@
 
 import threading
 import time
-from abc import ABC, abstractmethod
 from typing import Dict
 
 import pandas as pd
@@ -29,29 +28,22 @@ from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import (
     InferenceModelInternalError,
-    InvalidWindowArgumentError,
     NumericalRangeException,
-    runtime_error_extractor,
 )
 from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
+from iotdb.ainode.core.inference.pipeline.basic_pipeline import (
+    ChatPipeline,
+    ClassificationPipeline,
+    ForecastPipeline,
+)
+from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.pool_controller import PoolController
-from iotdb.ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
-    TimerSundialInferencePipeline,
-)
-from iotdb.ainode.core.inference.strategy.timerxl_inference_pipeline import (
-    TimerXLInferencePipeline,
-)
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
-from iotdb.ainode.core.model.model_enums import BuiltInModelType
-from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
-from iotdb.ainode.core.model.sundial.modeling_sundial import SundialForPrediction
-from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
-from iotdb.ainode.core.model.timerxl.modeling_timer import TimerForPrediction
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.ainode.core.util.serde import convert_to_binary
@@ -69,83 +61,6 @@ from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 logger = Logger()
-
-
-class InferenceStrategy(ABC):
-    def __init__(self, model):
-        self.model = model
-
-    @abstractmethod
-    def infer(self, full_data, **kwargs):
-        pass
-
-
-# [IoTDB] full data deserialized from iotdb is composed of [timestampList, valueList, length],
-# we only get valueList currently.
-class TimerXLStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **_):
-        data = full_data[1][0]
-        if data.dtype.byteorder not in ("=", "|"):
-            np_data = data.byteswap()
-            data = np_data.view(np_data.dtype.newbyteorder())
-        seqs = torch.tensor(data).unsqueeze(0).float()
-        # TODO: unify model inference input
-        output = self.model.generate(seqs, max_new_tokens=predict_length, revin=True)
-        df = pd.DataFrame(output[0])
-        return convert_to_binary(df)
-
-
-class SundialStrategy(InferenceStrategy):
-    def infer(self, full_data, predict_length=96, **_):
-        data = full_data[1][0]
-        if data.dtype.byteorder not in ("=", "|"):
-            np_data = data.byteswap()
-            data = np_data.view(np_data.dtype.newbyteorder())
-        seqs = torch.tensor(data).unsqueeze(0).float()
-        # TODO: unify model inference input
-        output = self.model.generate(
-            seqs, max_new_tokens=predict_length, num_samples=10, revin=True
-        )
-        df = pd.DataFrame(output[0].mean(dim=0))
-        return convert_to_binary(df)
-
-
-class BuiltInStrategy(InferenceStrategy):
-    def infer(self, full_data, **_):
-        data = pd.DataFrame(full_data[1]).T
-        output = self.model.inference(data)
-        df = pd.DataFrame(output)
-        return convert_to_binary(df)
-
-
-class RegisteredStrategy(InferenceStrategy):
-    def infer(self, full_data, window_interval=None, window_step=None, **_):
-        _, dataset, _, length = full_data
-        if window_interval is None or window_step is None:
-            window_interval = length
-            window_step = float("inf")
-
-        if window_interval <= 0 or window_step <= 0 or window_interval > length:
-            raise InvalidWindowArgumentError(window_interval, window_step, length)
-
-        data = torch.tensor(dataset, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
-
-        times = int((length - window_interval) // window_step + 1)
-        results = []
-        try:
-            for i in range(times):
-                start = 0 if window_step == float("inf") else i * window_step
-                end = start + window_interval
-                window = data[:, start:end, :]
-                out = self.model(window)
-                df = pd.DataFrame(out.squeeze(0).detach().numpy())
-                results.append(df)
-        except Exception as e:
-            msg = runtime_error_extractor(str(e)) or str(e)
-            raise InferenceModelInternalError(msg)
-
-        # concatenate or return first window for forecast
-        return [convert_to_binary(df) for df in results]
 
 
 class InferenceManager:
@@ -251,15 +166,6 @@ class InferenceManager:
             with self._result_wrapper_lock:
                 del self._result_wrapper_map[req_id]
 
-    def _get_strategy(self, model_id, model):
-        if isinstance(model, TimerForPrediction):
-            return TimerXLStrategy(model)
-        if isinstance(model, SundialForPrediction):
-            return SundialStrategy(model)
-        if self._model_manager.model_storage.is_built_in_or_fine_tuned(model_id):
-            return BuiltInStrategy(model)
-        return RegisteredStrategy(model)
-
     def _run(
         self,
         req,
@@ -272,59 +178,54 @@ class InferenceManager:
         model_id = req.modelId
         try:
             raw = data_getter(req)
+            # full data deserialized from iotdb is composed of [timestampList, valueList, None, length], we only get valueList currently.
             full_data = deserializer(raw)
-            inference_attrs = extract_attrs(req)
+            # TODO: TSBlock -> Tensor codes should be unified
+            data = full_data[1][0]  # get valueList in ndarray
+            if data.dtype.byteorder not in ("=", "|"):
+                np_data = data.byteswap()
+                data = np_data.view(np_data.dtype.newbyteorder())
+            # the inputs should be on CPU before passing to the inference request
+            inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
 
-            predict_length = int(inference_attrs.pop("predict_length", 96))
+            inference_attrs = extract_attrs(req)
+            output_length = int(inference_attrs.pop("output_length", 96))
             if (
-                predict_length
-                > AINodeDescriptor().get_config().get_ain_inference_max_predict_length()
+                output_length
+                > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
             ):
                 raise NumericalRangeException(
                     "output_length",
                     1,
                     AINodeDescriptor()
                     .get_config()
-                    .get_ain_inference_max_predict_length(),
-                    predict_length,
+                    .get_ain_inference_max_output_length(),
+                    output_length,
                 )
 
             if self._pool_controller.has_request_pools(model_id):
-                # use request pool to accelerate inference when the model instance is already loaded.
-                # TODO: TSBlock -> Tensor codes should be unified
-                data = full_data[1][0]
-                if data.dtype.byteorder not in ("=", "|"):
-                    np_data = data.byteswap()
-                    data = np_data.view(np_data.dtype.newbyteorder())
-                # the inputs should be on CPU before passing to the inference request
-                inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
-                model_type = self._model_manager.get_model_info(model_id).model_type
-                if model_type == BuiltInModelType.SUNDIAL.value:
-                    inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
-                elif model_type == BuiltInModelType.TIMER_XL.value:
-                    inference_pipeline = TimerXLInferencePipeline(TimerConfig())
-                else:
-                    raise InferenceModelInternalError(
-                        f"Unsupported model_id: {model_id}"
-                    )
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
                     model_id=model_id,
                     inputs=inputs,
-                    inference_pipeline=inference_pipeline,
-                    max_new_tokens=predict_length,
+                    output_length=output_length,
                 )
                 outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
-                # load model
-                accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
-                model = self._model_manager.load_model(model_id, inference_attrs, accel)
-                # inference by strategy
-                strategy = self._get_strategy(model_id, model)
-                outputs = strategy.infer(
-                    full_data, predict_length=predict_length, **inference_attrs
-                )
+                model_info = self._model_manager.get_model_info(model_id)
+                inference_pipeline = load_pipeline(model_info, device="cpu")
+                if isinstance(inference_pipeline, ForecastPipeline):
+                    outputs = inference_pipeline.forecast(
+                        inputs, predict_length=output_length, **inference_attrs
+                    )
+                elif isinstance(inference_pipeline, ClassificationPipeline):
+                    outputs = inference_pipeline.classify(inputs)
+                elif isinstance(inference_pipeline, ChatPipeline):
+                    outputs = inference_pipeline.chat(inputs)
+                else:
+                    logger.error("[Inference] Unsupported pipeline type.")
+                outputs = convert_to_binary(pd.DataFrame(outputs[0]))
 
             # construct response
             status = get_status(TSStatusCode.SUCCESS_STATUS)
@@ -345,7 +246,7 @@ class InferenceManager:
             data_getter=lambda r: r.inputData,
             deserializer=deserialize,
             extract_attrs=lambda r: {
-                "predict_length": r.outputLength,
+                "output_length": r.outputLength,
                 **(r.options or {}),
             },
             resp_cls=TForecastResp,
@@ -358,8 +259,7 @@ class InferenceManager:
             data_getter=lambda r: r.dataset,
             deserializer=deserialize,
             extract_attrs=lambda r: {
-                "window_interval": getattr(r.windowParams, "windowInterval", None),
-                "window_step": getattr(r.windowParams, "windowStep", None),
+                "output_length": int(r.inferenceAttributes.pop("outputLength", 96)),
                 **(r.inferenceAttributes or {}),
             },
             resp_cls=TInferenceResp,

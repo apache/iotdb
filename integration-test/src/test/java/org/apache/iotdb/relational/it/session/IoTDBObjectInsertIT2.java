@@ -74,9 +74,7 @@ public class IoTDBObjectInsertIT2 extends IoTDBObjectInsertIT {
             + File.separator
             + "test-classes"
             + File.separator
-            + "ainode-example"
-            + File.separator
-            + "model.pt";
+            + "object-example.pt";
     File object = new File(testObject);
 
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
