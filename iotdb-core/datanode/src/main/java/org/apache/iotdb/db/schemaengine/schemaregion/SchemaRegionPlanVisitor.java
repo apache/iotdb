@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
@@ -115,5 +116,10 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
 
   public R visitDeleteLogicalView(IDeleteLogicalViewPlan deleteLogicalViewPlan, C context) {
     return visitSchemaRegionPlan(deleteLogicalViewPlan, context);
+  }
+
+  public R visitAlterEncodingCompressor(
+      final AlterEncodingCompressorNode alterEncodingCompressorNode, final C context) {
+    return visitSchemaRegionPlan(alterEncodingCompressorNode, context);
   }
 }

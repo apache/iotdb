@@ -101,7 +101,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final boolean isTSFileUsed) {
+      final boolean isTSFileUsed,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         username,
@@ -110,7 +111,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         loadTsFileStrategy,
         useLeaderCache,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
 
     endPointSet = new HashSet<>(endPoints);
 
@@ -299,6 +301,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
           Boolean.toString(shouldMarkAsPipeRequest));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
+          Boolean.toString(skipIfNoPrivileges));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);

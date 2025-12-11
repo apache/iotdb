@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -87,6 +89,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -237,7 +240,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return result;
   }
 
-  private TSStatus checkPermission(final ConfigPhysicalPlan plan) {
+  private TSStatus checkPermission(final ConfigPhysicalPlan plan) throws IOException {
     switch (plan.getType()) {
       case CreateDatabase:
       case AlterDatabase:
@@ -268,6 +271,33 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                         .getAllPathPatterns()),
                 PrivilegeType.WRITE_SCHEMA.ordinal())
             .getStatus();
+      case PipeAlterEncodingCompressor:
+        if (skipIfNoPrivileges.get()) {
+          final PathPatternTree pathPatternTree =
+              PathPatternTree.deserialize(
+                  ByteBuffer.wrap(
+                      configManager
+                          .fetchAuthizedPatternTree(username, PrivilegeType.WRITE_SCHEMA.ordinal())
+                          .getPathPatternTree()));
+          ((PipeAlterEncodingCompressorPlan) plan)
+              .setPatternTreeBytes(
+                  PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                          PathPatternTree.deserialize(
+                              ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
+                          pathPatternTree)
+                      .serialize());
+          return StatusUtils.OK;
+        } else {
+          return configManager
+              .checkUserPrivileges(
+                  username,
+                  new ArrayList<>(
+                      PathPatternTree.deserialize(
+                              ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
+                          .getAllPathPatterns()),
+                  PrivilegeType.WRITE_SCHEMA.ordinal())
+              .getStatus();
+        }
       case PipeDeleteLogicalView:
         return configManager
             .checkUserPrivileges(
@@ -429,6 +459,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .deactivateTemplate(
                 generatePseudoQueryId(),
                 ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(),
+                shouldMarkAsPipeRequest.get());
+      case PipeAlterEncodingCompressor:
+        return configManager
+            .getProcedureManager()
+            .alterEncodingCompressor(
+                generatePseudoQueryId(),
+                PathPatternTree.deserialize(
+                    ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
+                ((PipeAlterEncodingCompressorPlan) plan).getEncoding(),
+                ((PipeAlterEncodingCompressorPlan) plan).getCompressor(),
+                true,
                 shouldMarkAsPipeRequest.get());
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger

@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
@@ -116,7 +117,8 @@ public class DeleteTimeSeriesProcedure
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
-          invalidateCache(env);
+          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, true);
+          setNextState(DeleteTimeSeriesState.DELETE_DATA);
           break;
         case DELETE_DATA:
           LOGGER.info("Delete data of timeSeries {}", requestMessage);
@@ -193,13 +195,18 @@ public class DeleteTimeSeriesProcedure
         .orElse(0L);
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+  public static void invalidateCache(
+      final ConfigNodeProcedureEnv env,
+      final ByteBuffer patternTreeBytes,
+      final String requestMessage,
+      final Consumer<ProcedureException> setFailure,
+      final boolean needLock) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
+            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes).setNeedLock(needLock),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
@@ -207,13 +214,11 @@ public class DeleteTimeSeriesProcedure
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
-        setFailure(
+        setFailure.accept(
             new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
         return;
       }
     }
-
-    setNextState(DeleteTimeSeriesState.DELETE_DATA);
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
@@ -341,7 +346,7 @@ public class DeleteTimeSeriesProcedure
     patternTreeBytes = preparePatternTreeBytesData(patternTree);
   }
 
-  private ByteBuffer preparePatternTreeBytesData(final PathPatternTree patternTree) {
+  public static ByteBuffer preparePatternTreeBytesData(final PathPatternTree patternTree) {
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
@@ -376,7 +381,9 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
+    if (this == o) {
+      return true;
+    }
     if (o == null || getClass() != o.getClass()) return false;
     final DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
     return this.getProcId() == that.getProcId()
@@ -392,8 +399,7 @@ public class DeleteTimeSeriesProcedure
         getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
-  private class DeleteTimeSeriesRegionTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  private class DeleteTimeSeriesRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -421,29 +427,6 @@ public class DeleteTimeSeriesProcedure
           dataNodeRequestType,
           dataNodeRequestGenerator);
       this.taskName = taskName;
-    }
-
-    @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        final TDataNodeLocation dataNodeLocation,
-        final List<TConsensusGroupId> consensusGroupIdList,
-        final TSStatus response) {
-      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        final List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
     }
 
     @Override
