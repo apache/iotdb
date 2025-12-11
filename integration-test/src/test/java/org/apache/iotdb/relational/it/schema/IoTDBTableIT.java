@@ -816,9 +816,7 @@ public class IoTDBTableIT {
               + File.separator
               + "test-classes"
               + File.separator
-              + "ainode-example"
-              + File.separator
-              + "model.pt";
+              + "object-example.pt";
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("a", TSDataType.STRING));
