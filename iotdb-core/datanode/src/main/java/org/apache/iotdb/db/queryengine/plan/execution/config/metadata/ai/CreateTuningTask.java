@@ -28,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 import java.util.Map;
 
-public class CreateTrainingTask implements IConfigTask {
+public class CreateTuningTask implements IConfigTask {
 
   private final String modelId;
   private final boolean isTableModel;
@@ -43,7 +43,7 @@ public class CreateTrainingTask implements IConfigTask {
   private List<List<Long>> timeRanges;
 
   // For table model
-  public CreateTrainingTask(
+  public CreateTuningTask(
       String modelId, Map<String, String> parameters, String existingModelId, String targetSql) {
     this.modelId = modelId;
     this.parameters = parameters;
@@ -53,7 +53,7 @@ public class CreateTrainingTask implements IConfigTask {
   }
 
   // For tree model
-  public CreateTrainingTask(
+  public CreateTuningTask(
       String modelId,
       Map<String, String> parameters,
       List<List<Long>> timeRanges,
@@ -71,7 +71,7 @@ public class CreateTrainingTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTraining(
+    return configTaskExecutor.createTuningTask(
         modelId, isTableModel, parameters, timeRanges, existingModelId, targetSql, targetPaths);
   }
 }
