@@ -370,13 +370,19 @@ public abstract class TreePattern {
 
           // 1. Length: Shorter is generally broader (e.g., root.** vs root.sg.d1)
           final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
-          if (lenCompare != 0) return lenCompare;
+          if (lenCompare != 0) {
+            return lenCompare;
+          }
 
           // 2. Wildcards: Pattern with wildcards is broader (e.g., root.sg.* vs root.sg.d1)
           final boolean w1 = p1.hasWildcard();
           final boolean w2 = p2.hasWildcard();
-          if (w1 && !w2) return -1;
-          if (!w1 && w2) return 1;
+          if (w1 && !w2) {
+            return -1;
+          }
+          if (!w1 && w2) {
+            return 1;
+          }
 
           // 3. Deterministic tie-breaker
           return p1.compareTo(p2);
@@ -505,7 +511,7 @@ public abstract class TreePattern {
     }
   }
 
-  /** Checks if 'patternA' overlaps with 'patternB'. */
+  /** Checks if 'patternA' overlaps with 'patternB' using a Trie optimization. */
   private static boolean overlaps(final TreePattern patternA, final TreePattern patternB) {
     try {
       final List<PartialPath> pathsA = patternA.getBaseInclusionPaths();
@@ -515,17 +521,21 @@ public abstract class TreePattern {
         return false;
       }
 
-      // Logic: Check if ANY path in A overlaps with ANY path in B.
+      // Optimization: Build Trie from the smaller list (usually) or just patternB
+      // to avoid O(N^2) comparisons.
+      final PatternTrie trie = new PatternTrie();
+      for (final PartialPath path : pathsB) {
+        trie.add(path);
+      }
+
+      // Check if any path in A overlaps with the Trie constructed from B
       for (final PartialPath pathA : pathsA) {
-        for (final PartialPath pathB : pathsB) {
-          if (pathA.overlapWith(pathB)) {
-            return true;
-          }
+        if (trie.overlaps(pathA)) {
+          return true;
         }
       }
       return false;
     } catch (final Exception e) {
-      // Best effort check
       LOGGER.warn(
           "Pipe: Failed to check if pattern [{}] overlaps with [{}]. Assuming false.",
           patternA.getPattern(),
@@ -764,8 +774,11 @@ public abstract class TreePattern {
     private final TrieNode root = new TrieNode();
 
     private static class TrieNode {
-      // Children nodes mapped by path segment
+      // Children nodes mapped by specific path segments (excluding *)
       Map<String, TrieNode> children = new HashMap<>();
+      // Optimized field for One Level Wildcard (*) child to reduce map lookups
+      TrieNode wildcardNode = null;
+
       // Marks if a pattern ends here (e.g., "root.sg" is a set path)
       boolean isLeaf = false;
       // Special flags for optimization
@@ -784,25 +797,31 @@ public abstract class TreePattern {
           return;
         }
 
-        node = node.children.computeIfAbsent(segment, k -> new TrieNode());
-
-        // If this segment is **, mark it.
-        // Note: In IoTDB PartialPath, ** is usually the last node or specific wildcard.
+        // Check for Multi-Level Wildcard (**)
         if (segment.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
           node.isMultiLevelWildcard = true;
           // Optimization: clear children as ** covers everything
-          node.children.clear();
+          node.children = Collections.emptyMap();
+          node.wildcardNode = null;
           node.isLeaf = true;
           return;
+        }
+
+        // Check for One-Level Wildcard (*)
+        if (segment.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+          if (node.wildcardNode == null) {
+            node.wildcardNode = new TrieNode();
+          }
+          node = node.wildcardNode;
+        } else {
+          // Regular specific node
+          node = node.children.computeIfAbsent(segment, k -> new TrieNode());
         }
       }
       node.isLeaf = true;
     }
 
-    /**
-     * Checks if the given path is covered by any existing pattern in the Trie. e.g., if Trie has
-     * "root.sg.**", then "root.sg.d1.s1" returns true.
-     */
+    /** Checks if the given path is covered by any existing pattern in the Trie. */
     public boolean isCovered(final PartialPath path) {
       return checkCoverage(root, path.getNodes(), 0);
     }
@@ -816,28 +835,75 @@ public abstract class TreePattern {
       // 2. If we reached the end of the query path
       if (index >= pathNodes.length) {
         // The path is covered if the Trie also ends here (isLeaf)
-        // Example: Trie="root.sg", Path="root.sg" -> Covered
-        // Example: Trie="root.sg.d1", Path="root.sg" -> Not Covered (Trie is more specific)
         return node.isLeaf;
       }
 
       final String currentSegment = pathNodes[index];
 
-      // 3. Direct Match or Single Level Wildcard (*) in Trie
-      // Check exact match child
+      // 3. Direct Match in Trie
       final TrieNode child = node.children.get(currentSegment);
       if (child != null && checkCoverage(child, pathNodes, index + 1)) {
         return true;
       }
 
-      // Check if Trie has a '*' child (One Level Wildcard)
-      // '*' in Trie covers any single level in Path
-      final TrieNode wildcardChild = node.children.get(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
-      if (wildcardChild != null) {
-        return checkCoverage(wildcardChild, pathNodes, index + 1);
+      // 4. Single Level Wildcard (*) in Trie
+      // Access direct field instead of map lookup
+      if (node.wildcardNode != null) {
+        return checkCoverage(node.wildcardNode, pathNodes, index + 1);
       }
 
       return false;
+    }
+
+    /** Checks if the given path overlaps with any pattern in the Trie. */
+    public boolean overlaps(final PartialPath path) {
+      return checkOverlap(root, path.getNodes(), 0);
+    }
+
+    private boolean checkOverlap(final TrieNode node, final String[] pathNodes, final int index) {
+      // 1. If Trie has '**', it overlaps everything.
+      if (node.isMultiLevelWildcard) {
+        return true;
+      }
+
+      // 2. If Query Path has '**', it overlaps everything remaining in this valid branch.
+      if (index < pathNodes.length
+          && pathNodes[index].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        return true;
+      }
+
+      // 3. End of Query Path: Overlap exists if Trie also ends here.
+      if (index >= pathNodes.length) {
+        return node.isLeaf;
+      }
+
+      final String pNode = pathNodes[index];
+
+      // 4. Case: Query Node is '*' (matches any child in Trie, both specific and wildcard)
+      if (pNode.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        // Check all specific children
+        for (final TrieNode child : node.children.values()) {
+          if (checkOverlap(child, pathNodes, index + 1)) {
+            return true;
+          }
+        }
+        // Check wildcard child
+        if (node.wildcardNode != null) {
+          return checkOverlap(node.wildcardNode, pathNodes, index + 1);
+        }
+        return false;
+      }
+
+      // 5. Case: Query Node is specific (e.g., "d1")
+      // 5a. Check exact match in Trie
+      final TrieNode exactChild = node.children.get(pNode);
+      if (exactChild != null && checkOverlap(exactChild, pathNodes, index + 1)) {
+        return true;
+      }
+
+      // 5b. Check '*' in Trie (matches specific query node)
+      // Access direct field instead of map lookup
+      return node.wildcardNode != null && checkOverlap(node.wildcardNode, pathNodes, index + 1);
     }
   }
 }
