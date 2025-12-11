@@ -23,7 +23,9 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.utils.Binary;
 
+import java.io.File;
 import java.time.LocalDate;
+import java.util.Optional;
 
 public interface Record {
   /**
@@ -83,7 +85,7 @@ public interface Record {
    * Returns the Binary value at the specified column in this row.
    *
    * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT},
-   * {@code TSDataType.STRING} or {@code TSDataType.BLOB} or {@code TSDataType.OBJECT}.
+   * {@code TSDataType.STRING} or {@code TSDataType.BLOB}.
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
@@ -112,6 +114,15 @@ public interface Record {
   LocalDate getLocalDate(int columnIndex);
 
   Object getObject(int columnIndex);
+
+  /**
+   * Returns the OBJECT value's real file path in current node at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return Optional.empty() if current node doesn't have the real file storing the object content,
+   *     otherwise the File referring to the OBJECT value's real file path
+   */
+  Optional<File> getObjectFile(int columnIndex);
 
   /**
    * Returns the Binary representation of an object stored at the specified column in this row.

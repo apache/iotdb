@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encoding.decoder.DecoderWrapper;
 import org.apache.tsfile.utils.Binary;
@@ -255,6 +256,13 @@ public class ObjectTypeUtils {
     byte[] bytes = binary.getValues();
     ByteBuffer wrap = ByteBuffer.wrap(bytes);
     return wrap.getLong();
+  }
+
+  public static Optional<File> getObjectPathFromBinary(Binary binary) {
+    byte[] bytes = binary.getValues();
+    String relativeObjectFilePath =
+        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
+    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
   }
 
   public static Optional<File> getNullableObjectPathFromBinary(

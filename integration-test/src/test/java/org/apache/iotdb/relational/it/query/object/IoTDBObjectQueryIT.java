@@ -33,21 +33,19 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
-import static org.junit.Assert.assertArrayEquals;
+import static org.apache.iotdb.jdbc.IoTDBJDBCResultSet.OBJECT_ERR_MSG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -104,10 +102,20 @@ public class IoTDBObjectQueryIT {
           int cnt = 0;
           while (resultSet.next()) {
             cnt++;
-            Blob blob = resultSet.getBlob(3);
-            byte[] bytes = resultSet.getBytes("o1");
-            assertArrayEquals(blob.getBytes(1, (int) blob.length()), bytes);
-            assertTrue(new String(bytes).endsWith(String.format("%d.bin", cnt)));
+            try {
+              resultSet.getBlob(3);
+              fail();
+            } catch (SQLException e) {
+              assertEquals(OBJECT_ERR_MSG, e.getMessage());
+            }
+
+            try {
+              resultSet.getBytes("o1");
+              fail();
+            } catch (SQLException e) {
+              assertEquals(OBJECT_ERR_MSG, e.getMessage());
+            }
+
             String s = resultSet.getString(3);
             assertEquals("(Object) 5 B", s);
           }
@@ -150,13 +158,15 @@ public class IoTDBObjectQueryIT {
           String s = field.getStringValue();
           assertEquals("(Object) 5 B", s);
           Object blob = field.getObjectValue(TSDataType.OBJECT);
-          assertTrue(blob instanceof Binary);
-          assertTrue(
-              new String(((Binary) blob).getValues()).endsWith(String.format("%d.bin", cnt)));
+          assertTrue(blob instanceof String);
+          assertEquals("(Object) 5 B", blob);
 
-          Binary binary = field.getBinaryV();
-          assertArrayEquals(binary.getValues(), ((Binary) blob).getValues());
-          assertTrue(new String(binary.getValues()).endsWith(String.format("%d.bin", cnt)));
+          try {
+            field.getBinaryV();
+            fail();
+          } catch (UnsupportedOperationException e) {
+            assertEquals("OBJECT Type only support getStringValue", e.getMessage());
+          }
         }
         assertEquals(4, cnt);
       }
@@ -174,8 +184,12 @@ public class IoTDBObjectQueryIT {
           assertEquals("(Object) 5 B", o);
           String s = iterator.getString("o1");
           assertEquals("(Object) 5 B", s);
-          Binary blob = iterator.getBlob(3);
-          assertTrue(new String(blob.getValues()).endsWith(String.format("%d.bin", cnt)));
+          try {
+            iterator.getBlob(3);
+            fail();
+          } catch (StatementExecutionException e) {
+            assertEquals("OBJECT Type only support getString", e.getMessage());
+          }
         }
         assertEquals(4, cnt);
       }
