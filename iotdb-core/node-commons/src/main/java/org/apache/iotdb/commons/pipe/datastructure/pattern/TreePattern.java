@@ -417,6 +417,19 @@ public abstract class TreePattern {
   /**
    * Prunes patterns from the inclusion list that are fully covered by ANY pattern in the exclusion
    * list.
+   *
+   * <p><b>Optimization Strategy:</b>
+   *
+   * <ol>
+   *   <li><b>Build Exclusion Trie:</b> Construct a Trie containing all paths from the exclusion
+   *       list. This aggregates the coverage of all exclusion patterns into a single structure.
+   *   <li><b>Check Coverage:</b> Iterate through the inclusion list. For each inclusion pattern,
+   *       check if ALL of its represented paths are covered by the Exclusion Trie. If so, the
+   *       pattern is redundant and removed.
+   * </ol>
+   *
+   * <p><b>Time Complexity:</b> O((N + M) * L), where N is the number of inclusion patterns, M is
+   * the number of exclusion patterns, and L is the average path length.
    */
   private static List<TreePattern> pruneInclusionPatterns(
       final List<TreePattern> inclusion, final List<TreePattern> exclusion) {
@@ -427,15 +440,29 @@ public abstract class TreePattern {
       return inclusion;
     }
 
+    // 1. Build Trie with all exclusion paths
+    // The Trie represents the union of all excluded areas.
+    final PatternTrie exclusionTrie = new PatternTrie();
+    for (final TreePattern exc : exclusion) {
+      for (final PartialPath path : exc.getBaseInclusionPaths()) {
+        exclusionTrie.add(path);
+      }
+    }
+
     final List<TreePattern> prunedInclusion = new ArrayList<>();
+    // 2. Filter inclusion patterns
     for (final TreePattern inc : inclusion) {
-      boolean isFullyExcluded = false;
-      for (final TreePattern exc : exclusion) {
-        if (covers(exc, inc)) {
-          isFullyExcluded = true;
+      boolean isFullyExcluded = true;
+      // An inclusion pattern is fully excluded only if ALL its constituent base paths
+      // are covered by the exclusion Trie.
+      for (final PartialPath path : inc.getBaseInclusionPaths()) {
+        if (!exclusionTrie.isCovered(path)) {
+          isFullyExcluded = false;
           break;
         }
       }
+
+      // If not fully excluded (i.e., at least one path survives), keep it.
       if (!isFullyExcluded) {
         prunedInclusion.add(inc);
       }
@@ -446,6 +473,19 @@ public abstract class TreePattern {
   /**
    * Prunes patterns from the exclusion list that do NOT overlap with any of the remaining inclusion
    * patterns.
+   *
+   * <p><b>Optimization Strategy:</b>
+   *
+   * <ol>
+   *   <li><b>Build Inclusion Trie:</b> Construct a Trie containing all paths from the inclusion
+   *       list. This aggregates the search space of inclusion patterns.
+   *   <li><b>Filter Exclusions:</b> Iterate through the exclusion list. For each exclusion pattern,
+   *       check if it overlaps with the Inclusion Trie. Only exclusions that overlap with at least
+   *       one inclusion pattern are kept.
+   * </ol>
+   *
+   * <p><b>Time Complexity:</b> O((N + M) * L), where N is the number of inclusion patterns, M is
+   * the number of exclusion patterns, and L is the average path length.
    */
   private static List<TreePattern> pruneIrrelevantExclusions(
       final List<TreePattern> inclusion, final List<TreePattern> exclusion) {
@@ -453,96 +493,35 @@ public abstract class TreePattern {
       return new ArrayList<>();
     }
     if (inclusion == null || inclusion.isEmpty()) {
-      // If inclusion is empty, exclusion is irrelevant anyway, but usually this case
-      // throws exception earlier.
+      // If inclusion is empty, exclusion is irrelevant anyway.
       return new ArrayList<>();
     }
 
+    // 1. Build Trie from Inclusion Patterns
+    final PatternTrie inclusionTrie = new PatternTrie();
+    for (final TreePattern inc : inclusion) {
+      for (final PartialPath path : inc.getBaseInclusionPaths()) {
+        inclusionTrie.add(path);
+      }
+    }
+
+    // 2. Filter Exclusion Patterns using the Trie
     final List<TreePattern> relevantExclusion = new ArrayList<>();
     for (final TreePattern exc : exclusion) {
       boolean overlapsWithAnyInclusion = false;
-      for (final TreePattern inc : inclusion) {
-        if (overlaps(exc, inc)) {
+      // An exclusion pattern is relevant if ANY of its base paths overlap with the inclusion Trie
+      for (final PartialPath path : exc.getBaseInclusionPaths()) {
+        if (inclusionTrie.overlaps(path)) {
           overlapsWithAnyInclusion = true;
           break;
         }
       }
+
       if (overlapsWithAnyInclusion) {
         relevantExclusion.add(exc);
       }
     }
     return relevantExclusion;
-  }
-
-  /** Checks if 'coverer' pattern fully covers 'coveree' pattern. */
-  private static boolean covers(final TreePattern coverer, final TreePattern coveree) {
-    try {
-      final List<PartialPath> covererPaths = coverer.getBaseInclusionPaths();
-      final List<PartialPath> covereePaths = coveree.getBaseInclusionPaths();
-
-      if (covererPaths.isEmpty() || covereePaths.isEmpty()) {
-        return false;
-      }
-
-      // Logic: For 'coverer' to cover 'coveree', ALL paths in 'coveree' must be included
-      // by at least one path in 'coverer'.
-      for (final PartialPath sub : covereePaths) {
-        boolean isSubCovered = false;
-        for (final PartialPath sup : covererPaths) {
-          if (sup.include(sub)) {
-            isSubCovered = true;
-            break;
-          }
-        }
-        if (!isSubCovered) {
-          return false;
-        }
-      }
-      return true;
-    } catch (final Exception e) {
-      // In case of path parsing errors or unsupported operations, assume no coverage
-      // to be safe and avoid aggressive pruning.
-      LOGGER.warn(
-          "Pipe: Failed to check if pattern [{}] covers [{}]. Assuming false.",
-          coverer.getPattern(),
-          coveree.getPattern(),
-          e);
-      return false;
-    }
-  }
-
-  /** Checks if 'patternA' overlaps with 'patternB' using a Trie optimization. */
-  private static boolean overlaps(final TreePattern patternA, final TreePattern patternB) {
-    try {
-      final List<PartialPath> pathsA = patternA.getBaseInclusionPaths();
-      final List<PartialPath> pathsB = patternB.getBaseInclusionPaths();
-
-      if (pathsA.isEmpty() || pathsB.isEmpty()) {
-        return false;
-      }
-
-      // Optimization: Build Trie from the smaller list (usually) or just patternB
-      // to avoid O(N^2) comparisons.
-      final PatternTrie trie = new PatternTrie();
-      for (final PartialPath path : pathsB) {
-        trie.add(path);
-      }
-
-      // Check if any path in A overlaps with the Trie constructed from B
-      for (final PartialPath pathA : pathsA) {
-        if (trie.overlaps(pathA)) {
-          return true;
-        }
-      }
-      return false;
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Pipe: Failed to check if pattern [{}] overlaps with [{}]. Assuming false.",
-          patternA.getPattern(),
-          patternB.getPattern(),
-          e);
-      return false;
-    }
   }
 
   /**
