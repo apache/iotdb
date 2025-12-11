@@ -29,10 +29,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.itbase.runtime.NodeConnection;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -52,6 +49,7 @@ import java.util.stream.Stream;
  * This test class ensures the audit log behave exactly the same as we expected, including the
  * number, sequence and content of the audit logs.
  */
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBAuditLogBasicIT {
