@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -394,6 +395,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowDatabasesStatement(
       final RelationalSqlParser.ShowDatabasesStatementContext ctx) {
     return new ShowDB(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
+  }
+
+  @Override
+  public Node visitCountDatabasesStatement(
+      final RelationalSqlParser.CountDatabasesStatementContext ctx) {
+    return new CountDB(getLocation(ctx));
   }
 
   @Override

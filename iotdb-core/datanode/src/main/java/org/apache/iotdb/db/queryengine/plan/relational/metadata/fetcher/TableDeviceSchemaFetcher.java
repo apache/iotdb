@@ -579,7 +579,7 @@ public class TableDeviceSchemaFetcher {
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryList.add(deviceEntry);
       // Only cache those exact device query
-      // Fetch paths is null iff there are fuzzy queries related to id columns
+      // Fetch paths is null iff there are fuzzy queries related to tag columns
       if (Objects.nonNull(statement.getPartitionKeyList())) {
         cache.putAttributes(statement.getDatabase(), deviceID, attributeMap);
       }

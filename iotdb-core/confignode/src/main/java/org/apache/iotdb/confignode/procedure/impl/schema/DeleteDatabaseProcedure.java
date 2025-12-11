@@ -201,6 +201,8 @@ public class DeleteDatabaseProcedure
           // Delete Database metrics
           PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
               MetricService.getInstance(), deleteDatabaseSchema.getName());
+          PartitionMetrics.unbindDatabaseTableMetrics(
+              MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // Delete DatabasePartitionTable
           final TSStatus deleteConfigResult =

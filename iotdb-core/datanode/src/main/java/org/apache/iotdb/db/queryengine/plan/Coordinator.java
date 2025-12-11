@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
@@ -486,6 +487,7 @@ public class Coordinator {
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
         || statement instanceof ShowDB
+        || statement instanceof CountDB
         || statement instanceof CreateDB
         || statement instanceof AlterDB
         || statement instanceof Use
