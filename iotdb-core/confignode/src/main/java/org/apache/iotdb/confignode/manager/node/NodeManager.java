@@ -179,6 +179,7 @@ public class NodeManager {
     globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
     globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
     globalConfig.setEnableGrantOption(commonConfig.getEnableGrantOption());
+    globalConfig.setRestrictObjectLimit(configNodeConfig.getRestrictObjectLimit());
     dataSet.setGlobalConfig(globalConfig);
   }
 

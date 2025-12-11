@@ -684,4 +684,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setAuditableOperationResult(auditableOperationResult);
     return this;
   }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    cnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
 }

@@ -169,6 +169,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return getDataNodeDir() + File.separator + "system";
   }
 
+  public String getDataNodeObjectDir() {
+    return getDataNodeDir() + File.separator + "data" + File.separator + "object";
+  }
+
   @Override
   protected MppJVMConfig initVMConfig() {
     return MppJVMConfig.builder()

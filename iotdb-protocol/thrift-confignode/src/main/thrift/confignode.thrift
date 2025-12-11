@@ -50,6 +50,7 @@ struct TGlobalConfig {
   11: optional i32 tagAttributeTotalSize
   12: optional bool isEnterprise
   13: optional i64 timePartitionOrigin
+  14: optional bool restrictObjectLimit
 }
 
 struct TRatisConfig {

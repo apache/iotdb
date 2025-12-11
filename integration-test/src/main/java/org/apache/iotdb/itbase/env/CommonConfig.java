@@ -211,4 +211,6 @@ public interface CommonConfig {
   CommonConfig setAuditableOperationLevel(String auditableOperationLevel);
 
   CommonConfig setAuditableOperationResult(String auditableOperationResult);
+
+  CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit);
 }
