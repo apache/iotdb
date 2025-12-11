@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -58,6 +59,12 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
+  // TsFileResource, used for Object file management
+  protected final TsFileResource tsFileResource;
+  // Flag indicating whether Tablet has Object data, defaults to true to ensure scanning will be
+  // performed
+  protected boolean hasObjectData = true;
+
   // mods entry
   protected PipeMemoryBlock allocatedMemoryBlockForModifications;
   protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
@@ -80,7 +87,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final PipeInsertionEvent sourceEvent) {
+      final PipeInsertionEvent sourceEvent,
+      final TsFileResource tsFileResource) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
 
@@ -95,6 +103,13 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+
+    // Get TsFileResource and hasObjectData from sourceEvent
+    this.tsFileResource =
+        tsFileResource != null
+            ? tsFileResource
+            : (sourceEvent != null ? (TsFileResource) sourceEvent.getTsFileResource() : null);
+    this.hasObjectData = sourceEvent != null && sourceEvent.hasObjectData();
 
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()

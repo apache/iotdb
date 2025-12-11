@@ -559,6 +559,7 @@ public abstract class TabletInsertionEventParser {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         {
           final Binary[] binaryValueColumns =
               isSingleOriginValueColumn
@@ -618,6 +619,7 @@ public abstract class TabletInsertionEventParser {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         final Binary[] columns = new Binary[rowSize];
         Arrays.fill(columns, Binary.EMPTY_VALUE);
         valueColumns[columnIndex] = columns;

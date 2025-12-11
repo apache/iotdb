@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.object.PipeObjectResourceManager;
 import org.apache.iotdb.db.pipe.resource.ref.PipeDataNodePhantomReferenceManager;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeCompactionManager;
@@ -36,6 +37,7 @@ public class PipeDataNodeResourceManager {
   private final PipeMemoryManager pipeMemoryManager;
   private final PipeLogManager pipeLogManager;
   private final PipePhantomReferenceManager pipePhantomReferenceManager;
+  private final PipeObjectResourceManager pipeObjectResourceManager;
 
   public static PipeTsFileResourceManager tsfile() {
     return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
@@ -61,6 +63,10 @@ public class PipeDataNodeResourceManager {
     return PipeResourceManagerHolder.INSTANCE.pipePhantomReferenceManager;
   }
 
+  public static PipeObjectResourceManager object() {
+    return PipeResourceManagerHolder.INSTANCE.pipeObjectResourceManager;
+  }
+
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private PipeDataNodeResourceManager() {
@@ -70,6 +76,7 @@ public class PipeDataNodeResourceManager {
     pipeMemoryManager = new PipeMemoryManager();
     pipeLogManager = new PipeLogManager();
     pipePhantomReferenceManager = new PipeDataNodePhantomReferenceManager();
+    pipeObjectResourceManager = new PipeObjectResourceManager();
   }
 
   private static class PipeResourceManagerHolder {

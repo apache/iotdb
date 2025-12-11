@@ -104,6 +104,9 @@ public enum BuiltinPipePlugin {
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
   PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncSink.class),
+
+  // TsFile export sink (datanode only, placeholder class here)
+  TSFILE_SINK("tsfile-sink", DoNothingSink.class),
   ;
 
   private final String pipePluginName;

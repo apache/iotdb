@@ -70,7 +70,16 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException {
-    super(pipeName, creationTime, null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(
+        pipeName,
+        creationTime,
+        null,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null); // tsFileResource will be obtained from sourceEvent
 
     this.isWithMod = isWithMod;
     try {
@@ -206,7 +215,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
                   final TabletInsertionEvent next;
                   if (!hasNext()) {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 Boolean.TRUE,
@@ -232,9 +241,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 true);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                     close();
                   } else {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 Boolean.TRUE,
@@ -260,6 +274,11 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 false);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                   }
                   return next;
                 }

@@ -54,8 +54,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -92,6 +94,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+
+  // Object type scanning fields
+  // objectDataPaths == null means not scanned, != null means scanned
+  // hasObjectData defaults to true to ensure scanning will be performed
+  private volatile boolean hasObjectData = true;
+  private volatile String[] objectDataPaths = null;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -307,12 +315,99 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return extractTime;
   }
 
+  /////////////////////////// Object Related Methods ///////////////////////////
+
+  @Override
+  public void scanForObjectData() {
+    // If already scanned (objectDataPaths != null), return directly
+    if (objectDataPaths != null) {
+      return;
+    }
+
+    // If flag is false (no Object), do not scan, set to empty directly
+    if (!hasObjectData) {
+      objectDataPaths = new String[0];
+      return;
+    }
+
+    // TsFile data scanning is complex and expensive, return default values for now
+    // To scan actual data content precisely, need to iterate all chunk data in TsFile
+    // If flag is true but actual scan finds no data, set to false
+    hasObjectData = false;
+    objectDataPaths = new String[0];
+  }
+
+  @Override
+  public void setHasObject(boolean hasObject) {
+    this.hasObjectData = hasObject;
+  }
+
+  @Override
+  public boolean hasObjectData() {
+    return hasObjectData;
+  }
+
+  @Override
+  public String[] getObjectPaths() {
+    return objectDataPaths != null ? objectDataPaths : new String[0];
+  }
+
+  public boolean linkObjectFiles() {
+    // First scan Object data internally
+    scanForObjectData();
+
+    // If no Object data, return success directly
+    if (!hasObjectData()) {
+      return true;
+    }
+
+    final String[] objectPaths = getObjectPaths();
+    if (objectPaths == null || objectPaths.length == 0) {
+      return true;
+    }
+
+    try {
+      // Convert String[] to List<String>
+      final List<String> objectPathList = new ArrayList<>();
+      for (final String path : objectPaths) {
+        if (path != null && !path.isEmpty()) {
+          objectPathList.add(path);
+        }
+      }
+
+      // Call PipeObjectResourceManager to link Object files
+      return PipeDataNodeResourceManager.object()
+          .linkObjectFiles(resource, objectPathList, pipeName);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to link object files for TsFile {}: {}",
+          tsFile != null ? tsFile.getPath() : "null",
+          e.getMessage(),
+          e);
+      return false;
+    }
+  }
+
+  public TsFileResource getResource() {
+    return resource;
+  }
+
+  @Override
+  public TsFileResource getTsFileResource() {
+    return resource;
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
+      scanForObjectData();
+      if (Objects.nonNull(pipeName) && hasObjectData) {
+        PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
+        PipeDataNodeResourceManager.object().increaseReference(resource, pipeName);
+      }
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         modFile =
@@ -337,6 +432,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
+      if (hasObjectData) {
+        // Object files will be cleaned up automatically when TSFile reference count reaches 0
+        // No need to manually unpin here
+        PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
+      }
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
       if (isWithMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
@@ -411,26 +511,33 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeTsFileInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        tableNames,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+    final PipeTsFileInsertionEvent copiedEvent =
+        new PipeTsFileInsertionEvent(
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            tableNames,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime);
+
+    // Copy Object-related state
+    copiedEvent.hasObjectData = this.hasObjectData;
+    copiedEvent.objectDataPaths = this.objectDataPaths;
+
+    return copiedEvent;
   }
 
   @Override
