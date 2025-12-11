@@ -256,7 +256,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     if (namedQuery.isMaterialized() && namedQuery.isDone()) {
-      RelationPlan materializedCtePlan = processMaterializedCte(table, scope);
+      RelationPlan materializedCtePlan = processMaterializedCte(table, namedQuery, scope);
       if (materializedCtePlan != null) {
         return materializedCtePlan;
       }
@@ -265,8 +265,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return processRegularCte(table, namedQuery, scope);
   }
 
-  private RelationPlan processMaterializedCte(Table table, Scope scope) {
-    CteDataStore dataStore = queryContext.getCteDataStore(table);
+  private RelationPlan processMaterializedCte(Table table, Query query, Scope scope) {
+    CteDataStore dataStore = query.getCteDataStore();
     if (dataStore == null) {
       return null;
     }

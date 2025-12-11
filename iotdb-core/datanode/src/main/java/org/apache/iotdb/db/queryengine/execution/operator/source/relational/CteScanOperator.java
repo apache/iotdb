@@ -30,7 +30,6 @@ import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.db.utils.cte.MemoryReader;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -44,9 +43,6 @@ public class CteScanOperator extends AbstractSourceOperator {
   private final CteDataStore dataStore;
   private final int dataStoreRefCount;
   private CteDataReader dataReader;
-
-  private final long maxReturnSize =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public CteScanOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
@@ -96,7 +92,8 @@ public class CteScanOperator extends AbstractSourceOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    return maxReturnSize;
+    // The returned object is a reference to TsBlock in CteDataReader
+    return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   }
 
   @Override

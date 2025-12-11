@@ -53,7 +53,7 @@ public class CteDataStore {
 
   public boolean addTsBlock(TsBlock tsBlock) {
     IoTDBConfig iotConfig = IoTDBDescriptor.getInstance().getConfig();
-    long bytesSize = tsBlock.getRetainedSizeInBytes();
+    long bytesSize = tsBlock.getSizeInBytes();
     int rows = tsBlock.getPositionCount();
     if (bytesSize + cachedBytes >= iotConfig.getCteBufferSize()
         || rows + cachedRows >= iotConfig.getMaxRowsInCteBuffer()) {
