@@ -46,7 +46,7 @@ from iotdb.ainode.core.constant import (
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
 )
-from iotdb.ainode.core.exception import BadNodeUrlError
+from iotdb.ainode.core.exception import BadNodeUrlException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.util.decorator import singleton
 from iotdb.thrift.common.ttypes import TEndPoint
@@ -437,7 +437,7 @@ class AINodeDescriptor(object):
                     file_configs["ain_cluster_ingress_time_zone"]
                 )
 
-        except BadNodeUrlError:
+        except BadNodeUrlException:
             logger.warning("Cannot load AINode conf file, use default configuration.")
 
         except Exception as e:
@@ -489,7 +489,7 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
     """
     split = endpoint_url.split(":")
     if len(split) != 2:
-        raise BadNodeUrlError(endpoint_url)
+        raise BadNodeUrlException(endpoint_url)
 
     ip = split[0]
     try:
@@ -497,4 +497,4 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         result = TEndPoint(ip, port)
         return result
     except ValueError:
-        raise BadNodeUrlError(endpoint_url)
+        raise BadNodeUrlException(endpoint_url)
