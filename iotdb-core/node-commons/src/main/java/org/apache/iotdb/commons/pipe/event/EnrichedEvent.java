@@ -489,6 +489,70 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
+   * Scan and detect if the event contains any Object type (BLOB or STRING) data. This method should
+   * be called before {@link #hasObjectData()} and {@link #getObjectPaths()}. Default implementation
+   * does nothing. Only events that may contain Object types need to override this.
+   */
+  public void scanForObjectData() {
+    // Default implementation does nothing
+  }
+
+  /**
+   * Set whether the event has Object type data manually. This can be used to manually mark Object
+   * data without scanning. Default implementation does nothing. Only events that may contain Object
+   * types need to override this.
+   *
+   * @param hasObject whether the event has Object type data
+   */
+  public void setHasObject(boolean hasObject) {
+    // Default implementation does nothing
+  }
+
+  /**
+   * Check if the event contains any Object type (BLOB or STRING) data. Default implementation
+   * returns false. Only events that may contain Object types need to override this.
+   *
+   * @return true if the event contains Object type data, false otherwise
+   */
+  public boolean hasObjectData() {
+    return false;
+  }
+
+  /**
+   * Get the paths of measurements that contain Object type (BLOB or STRING) data. Default
+   * implementation returns an empty array. Only events that may contain Object types need to
+   * override this.
+   *
+   * @return array of measurement names that contain Object type data, empty array if none
+   */
+  public String[] getObjectPaths() {
+    return new String[0];
+  }
+
+  /////////////////////////// Object Resource Management ///////////////////////////
+
+  /**
+   * Get the TsFileResource associated with this event. Default implementation returns null. Only
+   * events that are associated with a TsFile need to override this.
+   *
+   * @return TsFileResource if this event is associated with a TsFile, null otherwise
+   */
+  public Object getTsFileResource() {
+    // Default implementation returns null
+    return null;
+  }
+
+  /**
+   * Set the TsFileResource for this event. Default implementation does nothing. Only events that
+   * need to store TsFileResource need to override this.
+   *
+   * @param tsFileResource the TsFileResource to set
+   */
+  public void setTsFileResource(Object tsFileResource) {
+    // Default implementation does nothing
+  }
+
+  /**
    * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
    */

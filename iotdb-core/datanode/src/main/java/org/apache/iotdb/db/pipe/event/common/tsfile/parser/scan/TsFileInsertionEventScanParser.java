@@ -106,7 +106,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException {
-    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(
+        pipeName,
+        creationTime,
+        pattern,
+        null,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        null); // tsFileResource will be obtained from sourceEvent
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -194,31 +203,38 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   recordTabletMetrics(tablet);
                   final boolean hasNext = hasNext();
                   try {
-                    return sourceEvent == null
-                        ? new PipeRawTabletInsertionEvent(
-                            null,
-                            null,
-                            null,
-                            null,
-                            tablet,
-                            isAligned,
-                            null,
-                            0,
-                            pipeTaskMeta,
-                            sourceEvent,
-                            !hasNext)
-                        : new PipeRawTabletInsertionEvent(
-                            sourceEvent.getRawIsTableModelEvent(),
-                            sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                            sourceEvent.getRawTableModelDataBase(),
-                            sourceEvent.getRawTreeModelDataBase(),
-                            tablet,
-                            isAligned,
-                            sourceEvent.getPipeName(),
-                            sourceEvent.getCreationTime(),
-                            pipeTaskMeta,
-                            sourceEvent,
-                            !hasNext);
+                    final PipeRawTabletInsertionEvent event =
+                        sourceEvent == null
+                            ? new PipeRawTabletInsertionEvent(
+                                null,
+                                null,
+                                null,
+                                null,
+                                tablet,
+                                isAligned,
+                                null,
+                                0,
+                                pipeTaskMeta,
+                                sourceEvent,
+                                !hasNext)
+                            : new PipeRawTabletInsertionEvent(
+                                sourceEvent.getRawIsTableModelEvent(),
+                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                                sourceEvent.getRawTableModelDataBase(),
+                                sourceEvent.getRawTreeModelDataBase(),
+                                tablet,
+                                isAligned,
+                                sourceEvent.getPipeName(),
+                                sourceEvent.getCreationTime(),
+                                pipeTaskMeta,
+                                sourceEvent,
+                                !hasNext);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+
+                    return event;
                   } finally {
                     if (!hasNext) {
                       close();
@@ -358,6 +374,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
           }
           tablet.getBitMaps()[i].mark(rowIndex);
@@ -388,6 +405,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
             break;
           default:
@@ -419,6 +437,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           tablet.addValue(rowIndex, 0, data.getBinary().getValues());
           break;
         default:

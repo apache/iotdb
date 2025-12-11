@@ -236,6 +236,26 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void scanForObjectData() {
+    event.scanForObjectData();
+  }
+
+  @Override
+  public void setHasObject(boolean hasObject) {
+    event.setHasObject(hasObject);
+  }
+
+  @Override
+  public boolean hasObjectData() {
+    return event.hasObjectData();
+  }
+
+  @Override
+  public String[] getObjectPaths() {
+    return event.getObjectPaths();
+  }
+
+  @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
   }

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTableModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTreeModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTsFileBuilder;
+import org.apache.iotdb.db.pipe.sink.util.builder.PipeTsFileIdGenerator;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -50,7 +51,18 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
 
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);
-  private final AtomicLong currentBatchId = new AtomicLong(BATCH_ID_GENERATOR.incrementAndGet());
+  private final AtomicLong currentBatchId = new AtomicLong(PipeTsFileIdGenerator.getNextBatchId());
+
+  /**
+   * Get the next BatchID
+   *
+   * @return the next BatchID
+   * @deprecated Use {@link PipeTsFileIdGenerator#getNextBatchId()} instead
+   */
+  @Deprecated
+  public static long getNextBatchId() {
+    return PipeTsFileIdGenerator.getNextBatchId();
+  }
 
   private final PipeTsFileBuilder treeModeTsFileBuilder;
   private final PipeTsFileBuilder tableModeTsFileBuilder;

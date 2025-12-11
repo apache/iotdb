@@ -3612,6 +3612,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
         FileMetrics.getInstance().increaseObjectFileNum(1);
         FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
+        PipeInsertionDataNodeListener.getInstance().listenToObjectNode(dataRegionIdString);
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
