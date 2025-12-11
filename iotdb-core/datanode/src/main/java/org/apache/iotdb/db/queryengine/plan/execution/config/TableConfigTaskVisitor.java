@@ -63,7 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePl
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTuningTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
@@ -1530,7 +1530,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
-    return new CreateTrainingTask(
+    return new CreateTuningTask(
         node.getModelId(), node.getParameters(), node.getExistingModelId(), node.getTargetSql());
   }
 

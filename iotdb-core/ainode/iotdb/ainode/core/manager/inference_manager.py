@@ -27,7 +27,7 @@ import torch.multiprocessing as mp
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import (
-    InferenceModelInternalError,
+    InferenceModelInternalException,
     NumericalRangeException,
 )
 from iotdb.ainode.core.inference.inference_request import (
@@ -161,7 +161,7 @@ class InferenceManager:
             return outputs
         except Exception as e:
             logger.error(e)
-            raise InferenceModelInternalError(str(e))
+            raise InferenceModelInternalException(str(e))
         finally:
             with self._result_wrapper_lock:
                 del self._result_wrapper_map[req_id]

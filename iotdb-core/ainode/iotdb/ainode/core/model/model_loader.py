@@ -32,7 +32,7 @@ from transformers import (
 )
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from iotdb.ainode.core.exception import ModelNotExistError
+from iotdb.ainode.core.exception import ModelNotExistException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_info import ModelInfo
@@ -131,7 +131,7 @@ def load_model_from_pt(model_info: ModelInfo, **kwargs):
     model_file = os.path.join(model_path, "model.pt")
     if not os.path.exists(model_file):
         logger.error(f"Model file not found at {model_file}.")
-        raise ModelNotExistError(model_file)
+        raise ModelNotExistException(model_file)
     model = torch.jit.load(model_file)
     if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
         return model

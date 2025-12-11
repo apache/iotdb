@@ -22,7 +22,7 @@ import psutil
 import torch
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from iotdb.ainode.core.exception import ModelNotExistError
+from iotdb.ainode.core.exception import ModelNotExistException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.model.model_loader import load_model
@@ -86,7 +86,7 @@ def estimate_pool_size(device: torch.device, model_id: str) -> int:
         logger.error(
             f"[Inference] Cannot estimate inference pool size on device: {device}, because model: {model_id} is not supported."
         )
-        raise ModelNotExistError(model_id)
+        raise ModelNotExistException(model_id)
 
     system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]

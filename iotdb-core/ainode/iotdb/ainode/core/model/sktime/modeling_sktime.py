@@ -30,8 +30,8 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from iotdb.ainode.core.exception import (
-    BuiltInModelNotSupportError,
-    InferenceModelInternalError,
+    BuiltInModelNotSupportException,
+    InferenceModelInternalException,
 )
 from iotdb.ainode.core.log import Logger
 
@@ -66,7 +66,7 @@ class ForecastingModel(SktimeModel):
             output = self._model.predict(fh=range(predict_length))
             return np.array(output, dtype=np.float64)
         except Exception as e:
-            raise InferenceModelInternalError(str(e))
+            raise InferenceModelInternalException(str(e))
 
 
 class DetectionModel(SktimeModel):
@@ -82,7 +82,7 @@ class DetectionModel(SktimeModel):
             else:
                 return np.array(output, dtype=np.int32)
         except Exception as e:
-            raise InferenceModelInternalError(str(e))
+            raise InferenceModelInternalException(str(e))
 
 
 class ArimaModel(ForecastingModel):
@@ -155,7 +155,7 @@ class STRAYModel(DetectionModel):
             scaled_data = pd.Series(scaled_data.flatten())
             return super().generate(scaled_data, **kwargs)
         except Exception as e:
-            raise InferenceModelInternalError(str(e))
+            raise InferenceModelInternalException(str(e))
 
 
 # Model factory mapping
@@ -176,5 +176,5 @@ def create_sktime_model(model_id: str, **kwargs) -> SktimeModel:
     attributes = update_attribute({**kwargs}, get_attributes(model_id.upper()))
     model_class = _MODEL_FACTORY.get(model_id.upper())
     if model_class is None:
-        raise BuiltInModelNotSupportError(model_id)
+        raise BuiltInModelNotSupportException(model_id)
     return model_class(attributes)
