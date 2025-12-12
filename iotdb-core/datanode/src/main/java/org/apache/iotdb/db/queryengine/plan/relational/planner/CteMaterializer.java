@@ -107,8 +107,7 @@ public class CteMaterializer {
     try {
       Query q = query;
       if (with != null) {
-        List<Identifier> tables =
-            context.getSubQueryTables().getOrDefault(query, ImmutableList.of());
+        List<Identifier> tables = context.getTables(query);
         List<WithQuery> withQueries =
             with.getQueries().stream()
                 .filter(
