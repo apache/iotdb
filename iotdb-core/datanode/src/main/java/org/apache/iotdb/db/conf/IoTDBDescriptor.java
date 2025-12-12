@@ -813,6 +813,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
+    conf.setQueryCostStatWindow(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_cost_stat_window", String.valueOf(conf.getQueryCostStatWindow()))));
+
     conf.setDataRegionNum(
         Integer.parseInt(
             properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
@@ -2029,6 +2034,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("slow_query_threshold"))));
+      // update query_cost_stat_window
+      conf.setQueryCostStatWindow(
+          Integer.parseInt(
+              properties.getProperty(
+                  "query_cost_stat_window",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("query_cost_stat_window"))));
       // update select into operation max buffer size
       conf.setIntoOperationBufferSizeInByte(
           Long.parseLong(
@@ -2395,6 +2406,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "skip_failed_table_schema_check",
                 String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2442,6 +2465,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
 
     conf.setSkipFailedTableSchemaCheck(
         Boolean.parseBoolean(

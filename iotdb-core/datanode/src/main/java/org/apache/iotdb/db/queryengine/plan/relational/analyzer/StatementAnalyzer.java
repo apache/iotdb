@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -4682,11 +4681,6 @@ public class StatementAnalyzer {
     public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
       String functionName = node.getName().toString();
       TableFunction function = metadata.getTableFunction(functionName);
-
-      // set model fetcher for ForecastTableFunction
-      if (function instanceof ForecastTableFunction) {
-        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
-      }
 
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {

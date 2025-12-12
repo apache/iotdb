@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
+import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -141,23 +143,37 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.apache.thrift.TBase;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.queryengine.plan.Coordinator.QueryInfo.DEFAULT_END_TIME;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
+import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -203,11 +219,31 @@ public class Coordinator {
 
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
+  private final BlockingDeque<QueryInfo> currentQueriesInfo = new LinkedBlockingDeque<>();
+  private final AtomicInteger[] currentQueriesCostHistogram = new AtomicInteger[61];
+  private final ScheduledExecutorService retryFailTasksExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.EXPIRED_QUERIES_INFO_CLEAR.getName());
+
   private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
   private final TypeManager typeManager;
+
+  {
+    for (int i = 0; i < 61; i++) {
+      currentQueriesCostHistogram[i] = new AtomicInteger();
+    }
+
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        retryFailTasksExecutor,
+        this::clearExpiredQueriesInfoTask,
+        1_000L,
+        1_000L,
+        TimeUnit.MILLISECONDS);
+    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+  }
 
   static {
     coordinatorMemoryBlock =
@@ -625,12 +661,22 @@ public class Coordinator {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
+        boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
+        Supplier<String> contentOfQuerySupplier =
+            new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
+        if (isUserQuery) {
+          recordCurrentQueries(
+              queryExecution.getQueryId(),
+              queryExecution.getStartExecutionTime(),
+              System.currentTimeMillis(),
+              queryExecution.getTotalExecutionTime(),
+              contentOfQuerySupplier,
+              queryExecution.getUser(),
+              queryExecution.getClientHostname());
+        }
         queryExecutionMap.remove(queryId);
-        if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
-          recordQueries(
-              queryExecution::getTotalExecutionTime,
-              new ContentOfQuerySupplier(nativeApiRequest, queryExecution),
-              t);
+        if (isUserQuery) {
+          recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
         }
       }
     }
@@ -721,5 +767,250 @@ public class Coordinator {
 
   public ExecutorService getDispatchExecutor() {
     return dispatchExecutor;
+  }
+
+  /** record query info in memory data structure */
+  public void recordCurrentQueries(
+      String queryId,
+      long startTime,
+      long endTime,
+      long costTimeInNs,
+      Supplier<String> contentOfQuerySupplier,
+      String user,
+      String clientHost) {
+    if (CONFIG.getQueryCostStatWindow() <= 0) {
+      return;
+    }
+
+    if (queryId == null) {
+      // fast Last query API executeFastLastDataQueryForOnePrefixPath will enter this
+      queryId = queryIdGenerator.createNextQueryId().getId();
+    }
+
+    // ns -> s
+    float costTimeInSeconds = costTimeInNs * 1e-9f;
+
+    QueryInfo queryInfo =
+        new QueryInfo(
+            queryId,
+            startTime,
+            endTime,
+            costTimeInSeconds,
+            contentOfQuerySupplier.get(),
+            user,
+            clientHost);
+
+    while (!coordinatorMemoryBlock.allocate(RamUsageEstimator.sizeOfObject(queryInfo))) {
+      // try to release memory from the head of queue
+      QueryInfo queryInfoToRelease = currentQueriesInfo.poll();
+      if (queryInfoToRelease == null) {
+        // no element in the queue and the memory is still not enough, skip this record
+        return;
+      } else {
+        // release memory and unrecord in histogram
+        coordinatorMemoryBlock.release(RamUsageEstimator.sizeOfObject(queryInfoToRelease));
+        unrecordInHistogram(queryInfoToRelease.costTime);
+      }
+    }
+
+    currentQueriesInfo.addLast(queryInfo);
+    recordInHistogram(costTimeInSeconds);
+  }
+
+  private void recordInHistogram(float costTimeInSeconds) {
+    int bucket = (int) costTimeInSeconds;
+    if (bucket < 60) {
+      currentQueriesCostHistogram[bucket].getAndIncrement();
+    } else {
+      currentQueriesCostHistogram[60].getAndIncrement();
+    }
+  }
+
+  private void unrecordInHistogram(float costTimeInSeconds) {
+    int bucket = (int) costTimeInSeconds;
+    if (bucket < 60) {
+      currentQueriesCostHistogram[bucket].getAndDecrement();
+    } else {
+      currentQueriesCostHistogram[60].getAndDecrement();
+    }
+  }
+
+  private void clearExpiredQueriesInfoTask() {
+    int queryCostStatWindow = CONFIG.getQueryCostStatWindow();
+    if (queryCostStatWindow <= 0) {
+      return;
+    }
+
+    // the QueryInfo smaller than expired time will be cleared
+    long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000L;
+    // peek head, the head QueryInfo is in the time window, return directly
+    QueryInfo queryInfo = currentQueriesInfo.peekFirst();
+    if (queryInfo == null || queryInfo.endTime >= expiredTime) {
+      return;
+    }
+
+    queryInfo = currentQueriesInfo.poll();
+    while (queryInfo != null) {
+      if (queryInfo.endTime < expiredTime) {
+        // out of time window, clear queryInfo
+        coordinatorMemoryBlock.release(RamUsageEstimator.sizeOfObject(queryInfo));
+        unrecordInHistogram(queryInfo.costTime);
+        queryInfo = currentQueriesInfo.poll();
+      } else {
+        // the head of the queue is not expired, add back
+        currentQueriesInfo.addFirst(queryInfo);
+        //  there is no more candidate to clear
+        return;
+      }
+    }
+  }
+
+  public List<StatedQueriesInfo> getCurrentQueriesInfo() {
+    List<IQueryExecution> runningQueries = getAllQueryExecutions();
+    Set<String> runningQueryIdSet =
+        runningQueries.stream().map(IQueryExecution::getQueryId).collect(Collectors.toSet());
+    List<StatedQueriesInfo> result = new ArrayList<>();
+
+    // add History queries (satisfy the time window) info
+    Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
+    Set<String> repetitionQueryIdSet = new HashSet<>();
+    long currentTime = System.currentTimeMillis();
+    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
+    while (historyQueriesIterator.hasNext()) {
+      QueryInfo queryInfo = historyQueriesIterator.next();
+      if (queryInfo.endTime < needRecordTime) {
+        // out of time window, ignore it
+      } else {
+        if (runningQueryIdSet.contains(queryInfo.queryId)) {
+          repetitionQueryIdSet.add(queryInfo.queryId);
+        }
+        result.add(new StatedQueriesInfo(QueryState.FINISHED, queryInfo));
+      }
+    }
+
+    // add Running queries info after remove the repetitions which has recorded in History queries
+    result.addAll(
+        runningQueries.stream()
+            .filter(queryExecution -> !repetitionQueryIdSet.contains(queryExecution.getQueryId()))
+            .map(
+                queryExecution ->
+                    new StatedQueriesInfo(
+                        QueryState.RUNNING,
+                        queryExecution.getQueryId(),
+                        queryExecution.getStartExecutionTime(),
+                        DEFAULT_END_TIME,
+                        (currentTime - queryExecution.getStartExecutionTime()) / 1000,
+                        queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+                        queryExecution.getUser(),
+                        queryExecution.getClientHostname()))
+            .collect(Collectors.toList()));
+    return result;
+  }
+
+  public int[] getCurrentQueriesCostHistogram() {
+    return Arrays.stream(currentQueriesCostHistogram).mapToInt(AtomicInteger::get).toArray();
+  }
+
+  public static class QueryInfo implements Accountable {
+    public static final long DEFAULT_END_TIME = -1L;
+    private static final long INSTANCE_SIZE = shallowSizeOfInstance(QueryInfo.class);
+
+    private final String queryId;
+
+    // unit: millisecond
+    private final long startTime;
+    private final long endTime;
+    // unit: second
+    private final float costTime;
+
+    private final String statement;
+    private final String user;
+    private final String clientHost;
+
+    public QueryInfo(
+        String queryId,
+        long startTime,
+        long endTime,
+        float costTime,
+        String statement,
+        String user,
+        String clientHost) {
+      this.queryId = queryId;
+      this.startTime = startTime;
+      this.endTime = endTime;
+      this.costTime = costTime;
+      this.statement = statement;
+      this.user = user;
+      this.clientHost = clientHost;
+    }
+
+    public String getClientHost() {
+      return clientHost;
+    }
+
+    public String getUser() {
+      return user;
+    }
+
+    public long getStartTime() {
+      return startTime;
+    }
+
+    public long getEndTime() {
+      return endTime;
+    }
+
+    public float getCostTime() {
+      return costTime;
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+
+    public String getStatement() {
+      return statement;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return INSTANCE_SIZE
+          + sizeOfCharArray(statement.length())
+          + sizeOfCharArray(user.length())
+          + sizeOfCharArray(clientHost.length());
+    }
+  }
+
+  public static class StatedQueriesInfo extends QueryInfo {
+    private final QueryState queryState;
+
+    private StatedQueriesInfo(QueryState queryState, QueryInfo queryInfo) {
+      super(
+          queryInfo.queryId,
+          queryInfo.startTime,
+          queryInfo.endTime,
+          queryInfo.costTime,
+          queryInfo.statement,
+          queryInfo.user,
+          queryInfo.clientHost);
+      this.queryState = queryState;
+    }
+
+    private StatedQueriesInfo(
+        QueryState queryState,
+        String queryId,
+        long startTime,
+        long endTime,
+        long costTime,
+        String statement,
+        String user,
+        String clientHost) {
+      super(queryId, startTime, endTime, costTime, statement, user, clientHost);
+      this.queryState = queryState;
+    }
+
+    public String getQueryState() {
+      return queryState.name();
+    }
   }
 }
