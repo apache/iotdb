@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
+package org.apache.iotdb.commons.disk.strategy;
 
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
 public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 

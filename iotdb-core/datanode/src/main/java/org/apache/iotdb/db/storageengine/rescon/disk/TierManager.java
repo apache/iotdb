@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
