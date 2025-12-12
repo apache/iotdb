@@ -49,7 +49,7 @@ public class AINodeConcurrentForecastIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeConcurrentForecastIT.class);
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
-      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time, forecast_length=>%d)";
+      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time,s FROM root.AI) ORDER BY time, output_length=>%d)";
 
   @BeforeClass
   public static void setUp() throws Exception {

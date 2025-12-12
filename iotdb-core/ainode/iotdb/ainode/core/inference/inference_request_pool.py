@@ -120,7 +120,9 @@ class InferenceRequestPool(mp.Process):
         grouped_requests = list(grouped_requests.values())
 
         for requests in grouped_requests:
-            batch_inputs = self._batcher.batch_request(requests).to(self.device)
+            batch_inputs = self._batcher.batch_request(requests).to(
+                "cpu"
+            )  # The input data should first load to CPU in current version
             if isinstance(self._inference_pipeline, ForecastPipeline):
                 batch_output = self._inference_pipeline.forecast(
                     batch_inputs,
