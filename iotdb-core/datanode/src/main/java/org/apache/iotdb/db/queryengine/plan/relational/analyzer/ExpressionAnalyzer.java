@@ -1722,7 +1722,7 @@ public class ExpressionAnalyzer {
           statementAnalyzerFactory.apply(node, ctx.getContext().getCorrelationSupport());
       Scope subqueryScope = Scope.builder().withParent(ctx.getContext().getScope()).build();
       Scope queryScope = analyzer.analyze(node.getQuery(), subqueryScope);
-      context.getSubQueryTables().put(node.getQuery(), queryScope.getTables());
+      context.addSubQueryTables(node.getQuery(), queryScope.getTables());
 
       ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
       for (int i = 0; i < queryScope.getRelationType().getAllFieldCount(); i++) {

@@ -947,7 +947,7 @@ public class StatementAnalyzer {
           }
 
           withScopeBuilder.withNamedQuery(name, withQuery);
-          queryContext.getSubQueryTables().put(withQuery.getQuery(), queryScope.getTables());
+          queryContext.addSubQueryTables(withQuery.getQuery(), queryScope.getTables());
         }
       }
       Scope withScope = withScopeBuilder.build();
@@ -3635,8 +3635,8 @@ public class StatementAnalyzer {
       Scope right = process(node.getRight(), rightScope);
 
       if (scope.isPresent()) {
-        leftScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
-        rightScope.ifPresent(l -> scope.get().getTables().addAll(l.getTables()));
+        leftScope.ifPresent(l -> scope.get().addTables(l.getTables()));
+        rightScope.ifPresent(l -> scope.get().addTables(l.getTables()));
       }
 
       if (criteria instanceof JoinUsing) {

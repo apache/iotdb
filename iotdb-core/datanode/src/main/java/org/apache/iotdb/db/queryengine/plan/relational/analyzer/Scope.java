@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,12 +83,16 @@ public class Scope {
     tables.add(new Identifier(table.getName().getSuffix()));
   }
 
+  public void addTables(List<Identifier> tables) {
+    this.tables.addAll(tables);
+  }
+
   public Scope copy() {
     return builder().like(this).build();
   }
 
   public List<Identifier> getTables() {
-    return tables;
+    return Collections.unmodifiableList(tables);
   }
 
   public Scope withRelationType(RelationType relationType) {
