@@ -38,7 +38,7 @@ import java.util.TimeZone;
 
 public abstract class IClientSession {
 
-  private volatile long id;
+  private long id;
 
   private ClientVersion clientVersion;
 
@@ -46,11 +46,11 @@ public abstract class IClientSession {
 
   private TimeZone timeZone;
 
-  private volatile long userId;
+  private long userId;
 
-  private volatile String username;
+  private String username;
 
-  private volatile boolean login = false;
+  private boolean login = false;
 
   private long logInTime;
 
@@ -58,7 +58,7 @@ public abstract class IClientSession {
 
   @Nullable private String databaseName;
 
-  private volatile long lastActiveTime = CommonDateTimeUtils.currentTime();
+  private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
   public abstract String getClientAddress();
 
