@@ -33,14 +33,24 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -82,7 +92,11 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  private boolean isExplainAnalyze = false;
+  // Previously, the boolean value 'isExplainAnalyze' was needed to determine whether query
+  // statistics should be recorded during the query process. Now 'explainType' is used to
+  // determine whether query statistics or query plan should be recorded during the query process.
+  private ExplainType explainType = ExplainType.NONE;
+  private boolean isVerbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
 
@@ -102,6 +116,19 @@ public class MPPQueryContext implements IAuditEntity {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
+  private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
+  // table -> (maxLineLength, 'explain' or 'explain analyze' result)
+  // Max line length of each CTE should be remembered because we need to standardize
+  // the output format of main query and CTE query.
+  private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+      new LinkedHashMap<>();
+  // Do not release CTE query result if it is a subquery.
+  private boolean subquery = false;
+
+  // Tables in the subquery
+  private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -282,12 +309,28 @@ public class MPPQueryContext implements IAuditEntity {
     return session.getZoneId();
   }
 
-  public void setExplainAnalyze(boolean explainAnalyze) {
-    isExplainAnalyze = explainAnalyze;
+  public void setExplainType(ExplainType explainType) {
+    this.explainType = explainType;
+  }
+
+  public ExplainType getExplainType() {
+    return explainType;
   }
 
   public boolean isExplainAnalyze() {
-    return isExplainAnalyze;
+    return explainType == ExplainType.EXPLAIN_ANALYZE;
+  }
+
+  public boolean isExplain() {
+    return explainType == ExplainType.EXPLAIN;
+  }
+
+  public void setVerbose(boolean verbose) {
+    isVerbose = verbose;
+  }
+
+  public boolean isVerbose() {
+    return isVerbose;
   }
 
   public long getAnalyzeCost() {
@@ -433,6 +476,58 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isSubquery() {
+    return subquery;
+  }
+
+  public void setSubquery(boolean subquery) {
+    this.subquery = subquery;
+  }
+
+  public void addCteMaterializationCost(Table table, long cost) {
+    cteMaterializationCosts.put(NodeRef.of(table), cost);
+  }
+
+  public Map<NodeRef<Table>, Long> getCteMaterializationCosts() {
+    return cteMaterializationCosts;
+  }
+
+  public void addCteQuery(Table table, Query query) {
+    cteQueries.put(NodeRef.of(table), query);
+  }
+
+  public Map<NodeRef<Table>, Query> getCteQueries() {
+    return cteQueries;
+  }
+
+  public CteDataStore getCteDataStore(Table table) {
+    Query query = cteQueries.get(NodeRef.of(table));
+    if (query == null) {
+      return null;
+    }
+    return query.getCteDataStore();
+  }
+
+  public void setCteQueries(Map<NodeRef<Table>, Query> cteQueries) {
+    this.cteQueries = cteQueries;
+  }
+
+  public void addSubQueryTables(Query query, List<Identifier> tables) {
+    subQueryTables.put(NodeRef.of(query), tables);
+  }
+
+  public List<Identifier> getTables(Query query) {
+    return subQueryTables.getOrDefault(NodeRef.of(query), ImmutableList.of());
+  }
+
+  public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
+    cteExplainResults.put(NodeRef.of(table), cteExplainResult);
+  }
+
+  public Map<NodeRef<Table>, Pair<Integer, List<String>>> getCteExplainResults() {
+    return cteExplainResults;
   }
 
   // ================= Authentication Interfaces =========================

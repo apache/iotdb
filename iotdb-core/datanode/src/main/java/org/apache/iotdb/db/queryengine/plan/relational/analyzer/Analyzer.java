@@ -80,6 +80,11 @@ public class Analyzer {
             warningCollector);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+    // Register CTE passed by parent query.
+    context
+        .getCteQueries()
+        .forEach((tableRef, query) -> analysis.registerNamedQuery(tableRef.getNode(), query));
+
     Statement innerStatement =
         rewrittenStatement instanceof PipeEnriched
             ? ((PipeEnriched) rewrittenStatement).getInnerStatement()
