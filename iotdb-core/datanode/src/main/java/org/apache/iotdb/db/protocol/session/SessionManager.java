@@ -497,8 +497,8 @@ public class SessionManager implements SessionManagerMBean {
     session.setUsername(username);
     session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
-    session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setLogin(true);
   }
 
   public void closeDataset(
@@ -581,7 +581,7 @@ public class SessionManager implements SessionManagerMBean {
 
   public List<ConnectionInfo> getAllSessionConnectionInfo() {
     return sessions.keySet().stream()
-        .filter(s -> StringUtils.isNotEmpty(s.getUsername()))
+        .filter(s -> StringUtils.isNotEmpty(s.getUsername()) && s.isLogin())
         .map(IClientSession::convertToConnectionInfo)
         .sorted(Comparator.comparingLong(ConnectionInfo::getLastActiveTime))
         .collect(Collectors.toList());
