@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,6 +31,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class NotExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NotExpression.class);
 
   private final Expression value;
 
@@ -93,5 +97,12 @@ public class NotExpression extends Expression {
   public NotExpression(ByteBuffer byteBuffer) {
     super(null);
     this.value = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
   }
 }

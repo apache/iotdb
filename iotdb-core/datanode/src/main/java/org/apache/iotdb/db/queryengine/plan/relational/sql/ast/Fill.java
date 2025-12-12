@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.List;
@@ -33,6 +34,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class Fill extends Node {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Fill.class);
+
   private final FillPolicy fillMethod;
 
   // used for constant fill
@@ -164,5 +167,25 @@ public class Fill extends Node {
         && Objects.equals(timeBound, fill.timeBound)
         && Objects.equals(timeColumnIndex, fill.timeColumnIndex)
         && Objects.equals(fillGroupingElements, fill.fillGroupingElements);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    if (fillValue != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fillValue);
+    }
+    if (timeColumnIndex != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(timeColumnIndex);
+    }
+    if (fillGroupingElements != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(fillGroupingElements);
+    }
+    // TimeDuration is a simple object, estimate its size
+    if (timeBound != null) {
+      size += RamUsageEstimator.shallowSizeOfInstance(TimeDuration.class);
+    }
+    return size;
   }
 }

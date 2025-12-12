@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static java.util.Objects.requireNonNull;
 
 /** DEALLOCATE PREPARE statement AST node. Example: DEALLOCATE PREPARE stmt1 */
 public final class Deallocate extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Deallocate.class);
 
   private final Identifier statementName;
 
@@ -75,5 +79,13 @@ public final class Deallocate extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("statementName", statementName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(statementName);
+    return size;
   }
 }

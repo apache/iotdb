@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,6 +29,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AlterPipe extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlterPipe.class);
 
   private final String pipeName;
   private final boolean ifExistsCondition;
@@ -139,5 +144,31 @@ public class AlterPipe extends PipeStatement {
         .add("isReplaceAllProcessorAttributes", isReplaceAllProcessorAttributes)
         .add("isReplaceAllConnectorAttributes", isReplaceAllConnectorAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pipeName);
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            new ArrayList<>(extractorAttributes.entrySet()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            new ArrayList<>(extractorAttributes.values()));
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            new ArrayList<>(processorAttributes.entrySet()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            new ArrayList<>(processorAttributes.values()));
+    size +=
+        AstMemoryEstimationHelper.getShallowSizeOfList(
+            new ArrayList<>(connectorAttributes.entrySet()));
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
+            new ArrayList<>(connectorAttributes.values()));
+    return size;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +29,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public final class Except extends SetOperation {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Except.class);
+
   private final Relation left;
   private final Relation right;
 
@@ -103,5 +106,14 @@ public final class Except extends SetOperation {
     }
 
     return this.isDistinct() == ((Except) other).isDistinct();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
+    return size;
   }
 }

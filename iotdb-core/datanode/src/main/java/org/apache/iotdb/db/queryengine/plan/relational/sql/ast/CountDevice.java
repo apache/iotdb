@@ -22,14 +22,18 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 
 public class CountDevice extends AbstractQueryDeviceWithCache {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountDevice.class);
 
   public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
 
@@ -64,5 +68,30 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   @Override
   public String toString() {
     return "CountDevice" + toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
+    size += AstMemoryEstimationHelper.getShallowSizeOfList(tagDeterminedFilterList);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
+    size += AstMemoryEstimationHelper.getShallowSizeOfList(columnHeaderList);
+    if (getAttributeColumns() != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
+    }
+    if (results != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
+      for (ShowDevicesResult result : results) {
+        if (result != null) {
+          size += result.ramBytesUsed();
+        }
+      }
+    }
+    return size;
   }
 }

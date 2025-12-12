@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,6 +34,9 @@ import static java.util.Objects.requireNonNull;
 
 @Immutable
 public class Extract extends Expression {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Extract.class);
+
   private final Expression expression;
   private final Field field;
 
@@ -135,5 +139,12 @@ public class Extract extends Expression {
 
     Extract otherExtract = (Extract) other;
     return field.equals(otherExtract.field);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
   }
 }

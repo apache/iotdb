@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -36,6 +38,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class LoadTsFile extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
 
   private String filePath;
 
@@ -323,5 +328,60 @@ public class LoadTsFile extends Statement {
         .add("filePath", filePath)
         .add("loadAttributes", loadAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    if (filePath != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(filePath);
+    }
+    if (database != null) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
+    }
+    if (loadAttributes != null && !loadAttributes.isEmpty()) {
+      for (Map.Entry<String, String> entry : loadAttributes.entrySet()) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfString(entry.getKey());
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfString(entry.getValue());
+      }
+      // Map overhead
+      size +=
+          AstMemoryEstimationHelper.getShallowSizeOfList(
+              new ArrayList<>(loadAttributes.entrySet()));
+    }
+    if (tsFiles != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(tsFiles);
+      for (File file : tsFiles) {
+        if (file != null) {
+          size += RamUsageEstimator.shallowSizeOfInstance(File.class);
+        }
+      }
+    }
+    if (resources != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(resources);
+      for (TsFileResource resource : resources) {
+        if (resource != null) {
+          size += resource.calculateRamSize();
+        }
+      }
+    }
+    if (writePointCountList != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(writePointCountList);
+      for (Long count : writePointCountList) {
+        if (count != null) {
+          size += RamUsageEstimator.shallowSizeOfInstance(Long.class);
+        }
+      }
+    }
+    if (isTableModel != null) {
+      size += AstMemoryEstimationHelper.getShallowSizeOfList(isTableModel);
+      for (Boolean bool : isTableModel) {
+        if (bool != null) {
+          size += RamUsageEstimator.shallowSizeOfInstance(Boolean.class);
+        }
+      }
+    }
+    return size;
   }
 }

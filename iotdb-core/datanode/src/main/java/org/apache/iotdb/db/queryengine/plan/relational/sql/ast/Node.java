@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.Accountable;
+
 import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Optional;
 
-public abstract class Node {
+public abstract class Node implements Accountable {
 
   @Nullable private final NodeLocation location;
 
@@ -39,6 +41,11 @@ public abstract class Node {
 
   public Optional<NodeLocation> getLocation() {
     return Optional.ofNullable(location);
+  }
+
+  @Nullable
+  protected NodeLocation getLocationInternal() {
+    return location;
   }
 
   public abstract List<? extends Node> getChildren();

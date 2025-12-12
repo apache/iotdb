@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -32,6 +33,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public final class BetweenPredicate extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(BetweenPredicate.class);
 
   private final Expression value;
   private final Expression min;
@@ -124,5 +128,14 @@ public final class BetweenPredicate extends Expression {
     this.value = Expression.deserialize(byteBuffer);
     this.min = Expression.deserialize(byteBuffer);
     this.max = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(min)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(max);
   }
 }

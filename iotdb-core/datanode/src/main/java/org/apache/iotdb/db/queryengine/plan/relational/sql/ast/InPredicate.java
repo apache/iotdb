@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,6 +31,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class InPredicate extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InPredicate.class);
 
   private final Expression value;
   private final Expression valueList;
@@ -102,5 +106,13 @@ public class InPredicate extends Expression {
     super(null);
     this.value = Expression.deserialize(byteBuffer);
     this.valueList = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(valueList);
   }
 }

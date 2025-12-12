@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class NaturalJoin extends JoinCriteria {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NaturalJoin.class);
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -47,5 +51,10 @@ public class NaturalJoin extends JoinCriteria {
   @Override
   public List<Node> getNodes() {
     return ImmutableList.of();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

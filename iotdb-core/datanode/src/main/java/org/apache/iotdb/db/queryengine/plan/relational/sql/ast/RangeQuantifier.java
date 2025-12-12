@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class RangeQuantifier extends PatternQuantifier {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RangeQuantifier.class);
+
   private final Optional<LongLiteral> atLeast;
   private final Optional<LongLiteral> atMost;
 
@@ -89,5 +93,20 @@ public class RangeQuantifier extends PatternQuantifier {
         .add("atMost", atMost)
         .add("greedy", isGreedy())
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    if (atLeast.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += atLeast.get() == null ? 0L : atLeast.get().ramBytesUsed();
+    }
+    if (atMost.isPresent()) {
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += atMost.get() == null ? 0L : atMost.get().ramBytesUsed();
+    }
+    return size;
   }
 }
