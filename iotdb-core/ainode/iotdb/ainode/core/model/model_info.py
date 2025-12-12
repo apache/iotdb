@@ -129,4 +129,14 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
         },
     ),
+    "chronos2": ModelInfo(
+        model_id="chronos2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="t5",
+        config_cls="config.Chronos2ForecastingConfig",
+        model_cls="models.Chronos2Model",
+        pipeline_cls="pipeline_chronos2.Chronos2Pipeline",
+        repo_id="amazon/chronos2-2",
+    ),
 }
