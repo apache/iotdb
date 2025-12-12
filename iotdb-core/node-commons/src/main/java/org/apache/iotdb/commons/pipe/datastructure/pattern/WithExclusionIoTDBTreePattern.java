@@ -46,8 +46,6 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
-
-    TreePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   public WithExclusionIoTDBTreePattern(

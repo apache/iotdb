@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -53,6 +54,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   public UnionIoTDBTreePattern(final IoTDBTreePattern pattern) {
     super(true);
     this.patterns = Collections.singletonList(pattern);
+  }
+
+  @TestOnly
+  public List<IoTDBTreePattern> getPatterns() {
+    return patterns;
   }
 
   //////////////////////////// Tree Pattern Operations ////////////////////////////
