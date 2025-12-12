@@ -26,13 +26,6 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Base class for all AST nodes. All subclasses must implement {@link Accountable#ramBytesUsed()}
- * for memory estimation.
- *
- * <p>Subclasses should use {@link AstMemoryEstimationHelper} for calculating memory usage of their
- * fields.
- */
 public abstract class Node implements Accountable {
 
   @Nullable private final NodeLocation location;

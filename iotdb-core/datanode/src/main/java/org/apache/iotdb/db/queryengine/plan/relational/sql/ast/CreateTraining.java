@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -118,11 +119,10 @@ public class CreateTraining extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfString(existingModelId);
     if (parameters != null) {
       size +=
-          AstMemoryEstimationHelper.getShallowSizeOfList(
-              parameters.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+          AstMemoryEstimationHelper.getShallowSizeOfList(new ArrayList<>(parameters.entrySet()));
       size +=
           AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-              parameters.values().stream().collect(java.util.stream.Collectors.toList()));
+              new ArrayList<>(parameters.values()));
     }
     return size;
   }

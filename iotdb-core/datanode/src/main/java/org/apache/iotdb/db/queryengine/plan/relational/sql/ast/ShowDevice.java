@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -159,7 +160,11 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     // AbstractQueryDeviceWithCache fields
     if (results != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
-      // ShowDevicesResult objects are not Accountable, so we only estimate list overhead
+      for (ShowDevicesResult result : results) {
+        if (result != null) {
+          size += result.ramBytesUsed();
+        }
+      }
     }
     return size;
   }

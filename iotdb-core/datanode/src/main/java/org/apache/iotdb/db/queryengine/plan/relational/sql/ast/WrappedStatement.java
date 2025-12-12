@@ -21,16 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
-import org.apache.tsfile.utils.RamUsageEstimator;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class WrappedStatement extends Statement {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(WrappedStatement.class);
-
   protected org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
   protected MPPQueryContext context;
 
@@ -88,13 +83,6 @@ public abstract class WrappedStatement extends Statement {
 
   @Override
   public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (innerTreeStatement != null
-        && innerTreeStatement instanceof org.apache.tsfile.utils.Accountable) {
-      size += ((org.apache.tsfile.utils.Accountable) innerTreeStatement).ramBytesUsed();
-    }
-    // MPPQueryContext is typically not Accountable, so we don't estimate its size
-    return size;
+    throw new UnsupportedOperationException();
   }
 }

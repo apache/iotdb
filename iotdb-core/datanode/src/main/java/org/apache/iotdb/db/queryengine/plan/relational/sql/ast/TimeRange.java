@@ -114,7 +114,6 @@ public class TimeRange extends Node {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    // long (8 bytes) + long (8 bytes) + boolean (1 byte, but typically aligned to 8 bytes)
     return size;
   }
 }

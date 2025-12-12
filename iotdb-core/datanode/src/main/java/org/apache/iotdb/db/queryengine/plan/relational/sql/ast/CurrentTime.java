@@ -119,7 +119,9 @@ public class CurrentTime extends Expression {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    // Integer (4 bytes, but typically aligned to 8 bytes if not null)
+    if (precision != null) {
+      size += RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+    }
     return size;
   }
 }

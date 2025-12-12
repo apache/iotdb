@@ -291,11 +291,10 @@ public class LoadTsFile extends Statement {
       // Map overhead
       size +=
           AstMemoryEstimationHelper.getShallowSizeOfList(
-              new java.util.ArrayList<>(loadAttributes.entrySet()));
+              new ArrayList<>(loadAttributes.entrySet()));
     }
     if (tsFiles != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(tsFiles);
-      // File objects are typically small, we estimate shallow size only
       for (File file : tsFiles) {
         if (file != null) {
           size += RamUsageEstimator.shallowSizeOfInstance(File.class);
@@ -304,16 +303,14 @@ public class LoadTsFile extends Statement {
     }
     if (resources != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(resources);
-      // TsFileResource objects may implement Accountable
       for (TsFileResource resource : resources) {
-        if (resource != null && resource instanceof org.apache.tsfile.utils.Accountable) {
-          size += ((org.apache.tsfile.utils.Accountable) resource).ramBytesUsed();
+        if (resource != null) {
+          size += resource.calculateRamSize();
         }
       }
     }
     if (writePointCountList != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(writePointCountList);
-      // Long objects are typically cached by JVM for small values
       for (Long count : writePointCountList) {
         if (count != null) {
           size += RamUsageEstimator.shallowSizeOfInstance(Long.class);
@@ -322,7 +319,6 @@ public class LoadTsFile extends Statement {
     }
     if (isTableModel != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(isTableModel);
-      // Boolean objects are typically cached by JVM
       for (Boolean bool : isTableModel) {
         if (bool != null) {
           size += RamUsageEstimator.shallowSizeOfInstance(Boolean.class);

@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.stream.Collectors.toList;
 
 public class ClearCache extends Statement {
   private static final long INSTANCE_SIZE =
@@ -91,7 +92,7 @@ public class ClearCache extends Statement {
     if (options != null) {
       size +=
           AstMemoryEstimationHelper.getShallowSizeOfList(
-              options.stream().map(Enum::ordinal).collect(java.util.stream.Collectors.toList()));
+              options.stream().map(Enum::ordinal).collect(toList()));
     }
     return size;
   }

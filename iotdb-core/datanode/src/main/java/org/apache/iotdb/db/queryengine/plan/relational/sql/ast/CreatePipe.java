@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
@@ -122,22 +123,22 @@ public class CreatePipe extends PipeStatement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pipeName);
     size +=
         AstMemoryEstimationHelper.getShallowSizeOfList(
-            extractorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(extractorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            extractorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(extractorAttributes.values()));
     size +=
         AstMemoryEstimationHelper.getShallowSizeOfList(
-            processorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(processorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            processorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(processorAttributes.values()));
     size +=
         AstMemoryEstimationHelper.getShallowSizeOfList(
-            connectorAttributes.entrySet().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(connectorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            connectorAttributes.values().stream().collect(java.util.stream.Collectors.toList()));
+            new ArrayList<>(connectorAttributes.values()));
     return size;
   }
 }

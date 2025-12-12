@@ -22,13 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-import org.apache.tsfile.utils.RamUsageEstimator;
-
 public class ShowConfiguration extends WrappedStatement {
-
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(ShowConfiguration.class);
-
   public ShowConfiguration(Statement innerTreeStatement, MPPQueryContext context) {
     super(innerTreeStatement, context);
   }
@@ -36,13 +30,5 @@ public class ShowConfiguration extends WrappedStatement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitShowConfiguration(this, context);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    // innerTreeStatement and context are not Node types, so we don't estimate them here
-    return size;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -101,12 +102,11 @@ public class CreateView extends CreateTable {
   @Override
   public long ramBytesUsed() {
     long size = super.ramBytesUsed();
-    // Subtract CreateTable's INSTANCE_SIZE and add CreateView's INSTANCE_SIZE
+    // super.ramBytesUsed() includes CreateTable's INSTANCE_SIZE, but we need CreateView's
     size -= RamUsageEstimator.shallowSizeOfInstance(CreateTable.class);
     size += INSTANCE_SIZE;
     if (prefixPath != null) {
-      // PartialPath is not a Node, estimate its size
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(prefixPath.getFullPath());
+      size += MemoryEstimationHelper.getEstimatedSizeOfPartialPath(prefixPath);
     }
     return size;
   }

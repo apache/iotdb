@@ -172,15 +172,7 @@ public class Join extends Relation {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
-    if (criteria != null) {
-      // JoinCriteria is not Accountable, so we calculate its memory manually
-      size += RamUsageEstimator.shallowSizeOfInstance(criteria.getClass());
-      // Calculate memory for nodes in criteria
-      List<Node> criteriaNodes = criteria.getNodes();
-      if (criteriaNodes != null) {
-        size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(criteriaNodes);
-      }
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(criteria);
     return size;
   }
 }

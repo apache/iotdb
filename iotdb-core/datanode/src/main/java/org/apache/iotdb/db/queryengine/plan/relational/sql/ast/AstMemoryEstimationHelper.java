@@ -30,9 +30,6 @@ import java.util.Optional;
 /**
  * Helper class for estimating memory usage of AST nodes. This class provides utility methods that
  * can be used by Node subclasses to calculate their memory footprint.
- *
- * <p>Similar to {@link org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper} for
- * Operators.
  */
 public final class AstMemoryEstimationHelper {
 
@@ -108,27 +105,5 @@ public final class AstMemoryEstimationHelper {
       }
     }
     return size;
-  }
-
-  public static long getEstimatedSizeOfAccountableList(
-      @Nullable final List<? extends org.apache.tsfile.utils.Accountable> list) {
-    if (list == null || list.isEmpty()) {
-      return 0L;
-    }
-    long size = RamUsageEstimator.shallowSizeOf(list);
-    for (org.apache.tsfile.utils.Accountable item : list) {
-      if (item != null) {
-        size += item.ramBytesUsed();
-      }
-    }
-    return size;
-  }
-
-  public static long getEstimatedSizeOfGenericList(@Nullable final List<?> list) {
-    if (list == null || list.isEmpty()) {
-      return 0L;
-    }
-    // Only calculate the list overhead, not the elements
-    return RamUsageEstimator.shallowSizeOf(list);
   }
 }
