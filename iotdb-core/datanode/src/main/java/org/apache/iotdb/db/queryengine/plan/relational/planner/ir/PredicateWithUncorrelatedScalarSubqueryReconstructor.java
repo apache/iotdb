@@ -48,7 +48,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -113,8 +112,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       Query query = subqueryExpression.getQuery();
       Query q = query;
       if (with != null) {
-        List<Identifier> tables =
-            context.getSubQueryTables().getOrDefault(query, ImmutableList.of());
+        List<Identifier> tables = context.getTables(query);
         List<WithQuery> withQueries =
             with.getQueries().stream()
                 .filter(

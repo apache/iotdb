@@ -240,7 +240,11 @@ public class IoTExplainAnalyzeIT {
       Pattern pattern = Pattern.compile(regex);
       Matcher matcher = pattern.matcher(line);
       if (matcher.find()) {
-        return Long.parseLong(matcher.group(1));
+        try {
+          return Long.parseLong(matcher.group(1));
+        } catch (NumberFormatException e) {
+          return 0;
+        }
       }
       return 0;
     };
