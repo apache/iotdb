@@ -484,7 +484,7 @@ public class FragmentInstanceStatisticsDrawer {
       addLineWithValueCheck(
           singleFragmentInstanceArea,
           indentNum + 2,
-          "Estimated Memory Size: ",
+          "Estimated Memory Size",
           operatorStatistic.getMemoryUsage());
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {

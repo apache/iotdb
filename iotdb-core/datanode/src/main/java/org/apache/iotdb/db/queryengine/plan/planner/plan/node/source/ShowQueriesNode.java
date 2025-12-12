@@ -105,8 +105,8 @@ public class ShowQueriesNode extends VirtualSourceNode {
   }
 
   public static ShowQueriesNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     String allowedUsername = ReadWriteIOUtils.readString(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new ShowQueriesNode(planNodeId, null, allowedUsername);
   }
 
