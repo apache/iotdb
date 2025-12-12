@@ -118,15 +118,22 @@ public class AINodeTestUtils {
                       }
                       if (expectedOutputLength != outputCnt) {
                         allPass.set(false);
+                        fail(
+                            "Output count mismatch for SQL: "
+                                + sql
+                                + ". Expected: "
+                                + expectedOutputLength
+                                + ", but got: "
+                                + outputCnt);
                       }
                     } catch (SQLException e) {
-                      fail(e.getMessage());
                       allPass.set(false);
+                      fail(e.getMessage());
                     }
                   }
                 } catch (Exception e) {
-                  fail(e.getMessage());
                   allPass.set(false);
+                  fail(e.getMessage());
                 }
               });
       threads[i].start();
@@ -136,8 +143,8 @@ public class AINodeTestUtils {
       if (thread.isAlive()) {
         fail("Thread timeout after 10 minutes");
       }
-      Assert.assertTrue(allPass.get());
     }
+    Assert.assertTrue(allPass.get());
   }
 
   public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
