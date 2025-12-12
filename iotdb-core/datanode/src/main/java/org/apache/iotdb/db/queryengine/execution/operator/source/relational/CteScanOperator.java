@@ -24,7 +24,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSourceOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
@@ -35,22 +35,25 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CteScanOperator extends AbstractSourceOperator {
+public class CteScanOperator implements SourceOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteScanOperator.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CteScanOperator.class);
 
+  private final OperatorContext operatorContext;
+  private final PlanNodeId sourceId;
+
   private final CteDataStore dataStore;
+  private final CteDataReader dataReader;
   private final int dataStoreRefCount;
-  private CteDataReader dataReader;
 
   public CteScanOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.dataStore = dataStore;
+    this.dataReader = new MemoryReader(dataStore.getCachedData());
     this.dataStoreRefCount = dataStore.increaseRefCount();
-    prepareReader();
   }
 
   @Override
@@ -104,10 +107,9 @@ public class CteScanOperator extends AbstractSourceOperator {
   @Override
   public long ramBytesUsed() {
     long bytes =
-        INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
-    if (dataReader != null) {
-      bytes += dataReader.bytesUsed();
-    }
+        INSTANCE_SIZE
+            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+            + dataReader.bytesUsed();
     if (dataStoreRefCount == 1) {
       bytes += dataStore.getCachedBytes();
     }
@@ -115,10 +117,14 @@ public class CteScanOperator extends AbstractSourceOperator {
     return bytes;
   }
 
-  private void prepareReader() {
-    if (dataStore.getCachedBytes() != 0) {
-      dataReader = new MemoryReader(dataStore.getCachedData());
-    }
+  @Override
+  public OperatorContext getOperatorContext() {
+    return operatorContext;
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return sourceId;
   }
 
   @TestOnly
