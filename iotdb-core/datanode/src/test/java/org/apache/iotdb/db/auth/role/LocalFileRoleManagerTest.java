@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import io.jsonwebtoken.lang.Assert;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -171,8 +170,8 @@ public class LocalFileRoleManagerTest {
         }
       }
     }
-    Assert.isTrue(manager.getRole("test").getPathPrivilegeList().size() == 4);
-    Assert.isTrue(!manager.getRole("test").getServiceReady());
+    assertEquals(4, manager.getRole("test").getPathPrivilegeList().size());
+    assertFalse(manager.getRole("test").getServiceReady());
     manager.checkAndRefreshPathPri();
 
     // after refresh. we will have three path:
@@ -217,17 +216,17 @@ public class LocalFileRoleManagerTest {
       PartialPath path2 = new PartialPath("root.d.a");
       for (PrivilegeType pri : item.getSubPri()) {
         if (pri.isPathRelevant()) {
-          Assert.isTrue(manager.getRole("test").checkPathPrivilege(path1, pri.ordinal()));
-          Assert.isTrue(manager.getRole("test").checkPathPrivilege(path2, pri.ordinal()));
+          assertTrue(manager.getRole("test").checkPathPrivilege(path1, pri.ordinal()));
+          assertTrue(manager.getRole("test").checkPathPrivilege(path2, pri.ordinal()));
           manager.getRole("test").removePathPrivilege(path1, pri.ordinal());
           manager.getRole("test").removePathPrivilege(path2, pri.ordinal());
         } else {
-          Assert.isTrue(manager.getRole("test").checkSysPrivilege(pri.ordinal()));
+          assertTrue(manager.getRole("test").checkSysPrivilege(pri.ordinal()));
           manager.getRole("test").removeSysPrivilege(pri.ordinal());
         }
       }
-      Assert.isTrue(manager.getRole("test").getPathPrivilegeList().isEmpty());
-      Assert.isTrue(manager.getRole("test").getSysPrivilege().isEmpty());
+      assertTrue(manager.getRole("test").getPathPrivilegeList().isEmpty());
+      assertTrue(manager.getRole("test").getSysPrivilege().isEmpty());
     }
   }
 }
