@@ -44,7 +44,14 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 public class AINodeForecastIT {
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
-      "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time, s%d FROM db.AI) ORDER BY time)";
+          "SELECT * FROM FORECAST(" +
+                  "model_id=>'%s', " +
+                  "targets=>(SELECT time, s%d FROM db.AI), " +
+                  "output_start_time=>%d, " +
+                  "output_length=>%d, " +
+                  "output_interval=>'%s', " +
+                  "timecol=>'%s'" +
+                  ")";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -84,7 +91,11 @@ public class AINodeForecastIT {
     // Invoke forecast table function for specified models, there should exist result.
     for (int i = 0; i < 4; i++) {
       String forecastTableFunctionSQL =
-          String.format(FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), i);
+              String.format(
+                      FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                      modelInfo.getModelId(),
+                      i, 2880, 96, "1s", "time"
+              );
       try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQL)) {
         int count = 0;
         while (resultSet.next()) {
@@ -95,4 +106,59 @@ public class AINodeForecastIT {
       }
     }
   }
+
+    @Test
+    public void forecastTableFunctionErrorTest() throws SQLException {
+        for (AINodeTestUtils.FakeModelInfo modelInfo : BUILTIN_MODEL_MAP.values()) {
+            try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+                 Statement statement = connection.createStatement()) {
+                forecastTableFunctionErrorTest(statement, modelInfo);
+            }
+        }
+    }
+    public void forecastTableFunctionErrorTest(
+            Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) throws SQLException {
+        // OUTPUT_START_TIME error
+        String invalidOutputStartTimeSQL = String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0, 2879, 96, "1s", "time"
+        );
+        errorTest(statement, invalidOutputStartTimeSQL,
+                "The OUTPUT_START_TIME should be greater than the maximum timestamp of target time series. Expected greater than [2879] but found [2879].");
+
+        // OUTPUT_LENGTH error
+        String invalidOutputLengthSQL = String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0, 2880, 0, "1s", "time"
+        );
+        errorTest(statement, invalidOutputLengthSQL, "OUTPUT_LENGTH should be greater than 0");
+
+        // OUTPUT_INTERVAL error
+        String invalidOutputIntervalSQL = String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0, 2880, 96, "0s", "time"
+        );
+        errorTest(statement, invalidOutputIntervalSQL, "OUTPUT_INTERVAL should be greater than 0");
+
+        // TIMECOL error-1
+        String invalidTimecolSQL1 = String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0, 2880, 96, "1s", "nonexistent_column"
+        );
+        errorTest(statement, invalidTimecolSQL1,
+                "Required column [nonexistent_column] not found in the source table argument.");
+
+        // TIMECOL error-2
+        String invalidTimecolSQL2 = String.format(
+                FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+                modelInfo.getModelId(),
+                0, 2880, 96, "1s", "s0"
+        );
+        errorTest(statement, invalidTimecolSQL2, "The type of the column s0 is not as expected.");
+    }
+
 }
