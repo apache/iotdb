@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
   private static final Logger logger =
@@ -42,13 +41,13 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // manage wal folders
-  protected AtomicReference<FolderManager> folderManager = new AtomicReference<>();
+  protected FolderManager folderManager;
 
   protected AbstractNodeAllocationStrategy() {
     try {
-      folderManager.set(
+      folderManager =
           new FolderManager(
-              Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+              Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Fail to create wal node allocation strategy because all disks of wal folders are full.",
@@ -56,18 +55,15 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     }
   }
 
-  protected IWALNode createWALNode(String identifier) {
+  protected synchronized IWALNode createWALNode(String identifier) {
     try {
-      // already in lock, so no need to synchronized
-      if (folderManager.get() == null) {
-        folderManager.set(
+      if (folderManager == null) {
+        folderManager =
             new FolderManager(
-                Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+                Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
       }
-      return folderManager
-          .get()
-          .getNextWithRetry(
-              folder -> new WALNode(identifier, folder + File.separator + identifier));
+      return folderManager.getNextWithRetry(
+          folder -> new WALNode(identifier, folder + File.separator + identifier));
     } catch (DiskSpaceInsufficientException e) {
       logger.error("Fail to create wal node because all disks of wal folders are full.", e);
       return WALFakeNode.getFailureInstance(e);
@@ -76,15 +72,6 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       return WALFakeNode.getFailureInstance(
           new IOException(
               "Failed to create WAL node after retries for identifier: " + identifier, e));
-    }
-  }
-
-  protected IWALNode createWALNode(String identifier, String folder) {
-    try {
-      return new WALNode(identifier, folder);
-    } catch (IOException e) {
-      logger.error("Meet exception when creating wal node", e);
-      return WALFakeNode.getFailureInstance(e);
     }
   }
 
