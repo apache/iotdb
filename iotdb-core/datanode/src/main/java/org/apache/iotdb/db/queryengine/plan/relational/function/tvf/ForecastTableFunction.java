@@ -269,10 +269,14 @@ public class ForecastTableFunction implements TableFunction {
     String timeColumn =
         ((String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue())
             .toLowerCase(Locale.ENGLISH);
-
     if (timeColumn.isEmpty()) {
       throw new SemanticException(
           String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+    }
+
+    long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
+    if (outputInterval <= 0) {
+      throw new SemanticException(String.format("%s should be greater than 0", OUTPUT_INTERVAL));
     }
 
     // predicated columns should never contain partition by columns and time column
@@ -323,7 +327,6 @@ public class ForecastTableFunction implements TableFunction {
     }
 
     long outputStartTime = (long) ((ScalarArgument) arguments.get(OUTPUT_START_TIME)).getValue();
-    long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
     String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
 
     ForecastTableFunctionHandle functionHandle =
