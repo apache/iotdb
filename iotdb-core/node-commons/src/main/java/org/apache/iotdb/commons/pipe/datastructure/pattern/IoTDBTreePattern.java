@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -64,6 +65,31 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   //////////////////////////// Tree Pattern Operations ////////////////////////////
+
+  public static <T> List<T> applyReversedIndexesOnList(
+      final List<Integer> filteredIndexes, final List<T> originalList) {
+    // No need to sort, the caller guarantees that the filtered sequence == original sequence
+    final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
+    int filteredIndexPos = 0;
+    int processingIndex = 0;
+    for (; processingIndex < originalList.size(); processingIndex++) {
+      if (filteredIndexPos >= filteredIndexes.size()) {
+        // all filteredIndexes processed, add remaining to the filteredList
+        filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
+        break;
+      } else {
+        int filteredIndex = filteredIndexes.get(filteredIndexPos);
+        if (filteredIndex == processingIndex) {
+          // the index is filtered, move to the next filtered pos
+          filteredIndexPos++;
+        } else {
+          // the index is not filtered, add to the filteredList
+          filteredList.add(originalList.get(processingIndex));
+        }
+      }
+    }
+    return filteredList;
+  }
 
   @Override
   public String getPattern() {

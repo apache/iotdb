@@ -43,7 +43,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConnectorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -52,7 +51,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExtractorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
@@ -4054,8 +4052,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
+    final String pipeName;
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      pipeName = parseIdentifier(ctx.pipeName.getText());
+      createPipeStatement.setPipeName(pipeName);
     } else {
       throw new SemanticException(
           "Not support for this sql in CREATE PIPE, please enter pipe name.");
@@ -4064,12 +4064,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     createPipeStatement.setIfNotExists(
         ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
-    if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
-              ctx.extractorAttributesClause().extractorAttributeClause()));
+    if (ctx.sourceAttributesClause() != null) {
+      createPipeStatement.setSourceAttributes(
+          parseSourceAttributesClause(ctx.sourceAttributesClause().sourceAttributeClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      createPipeStatement.setSourceAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -4078,15 +4077,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesClause().connectorAttributeClause()));
+    if (ctx.sinkAttributesClause() != null) {
+      createPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(ctx.sinkAttributesClause().sinkAttributeClause()));
     } else {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
+      createPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(
+              ctx.sinkAttributesWithoutWithSinkClause().sinkAttributeClause()));
     }
+
     return createPipeStatement;
   }
 
@@ -4103,15 +4102,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     alterPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
-    if (ctx.alterExtractorAttributesClause() != null) {
-      alterPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
-              ctx.alterExtractorAttributesClause().extractorAttributeClause()));
-      alterPipeStatement.setReplaceAllExtractorAttributes(
-          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
+    if (ctx.alterSourceAttributesClause() != null) {
+      alterPipeStatement.setSourceAttributes(
+          parseSourceAttributesClause(ctx.alterSourceAttributesClause().sourceAttributeClause()));
+      alterPipeStatement.setReplaceAllSourceAttributes(
+          Objects.nonNull(ctx.alterSourceAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setExtractorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllExtractorAttributes(false);
+      alterPipeStatement.setSourceAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSourceAttributes(false);
     }
 
     if (ctx.alterProcessorAttributesClause() != null) {
@@ -4125,27 +4123,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
 
-    if (ctx.alterConnectorAttributesClause() != null) {
-      alterPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.alterConnectorAttributesClause().connectorAttributeClause()));
-      alterPipeStatement.setReplaceAllConnectorAttributes(
-          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
+    if (ctx.alterSinkAttributesClause() != null) {
+      alterPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(ctx.alterSinkAttributesClause().sinkAttributeClause()));
+      alterPipeStatement.setReplaceAllSinkAttributes(
+          Objects.nonNull(ctx.alterSinkAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setConnectorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllConnectorAttributes(false);
+      alterPipeStatement.setSinkAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSinkAttributes(false);
     }
 
     return alterPipeStatement;
   }
 
-  private Map<String, String> parseExtractorAttributesClause(
-      List<ExtractorAttributeClauseContext> contexts) {
+  private Map<String, String> parseSourceAttributesClause(
+      List<IoTDBSqlParser.SourceAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ExtractorAttributeClauseContext context : contexts) {
+    for (IoTDBSqlParser.SourceAttributeClauseContext context : contexts) {
       collectorMap.put(
-          parseStringLiteral(context.extractorKey.getText()),
-          parseStringLiteral(context.extractorValue.getText()));
+          parseStringLiteral(context.sourceKey.getText()),
+          parseStringLiteral(context.sourceValue.getText()));
     }
     return collectorMap;
   }
@@ -4161,15 +4158,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return processorMap;
   }
 
-  private Map<String, String> parseConnectorAttributesClause(
-      List<ConnectorAttributeClauseContext> contexts) {
-    final Map<String, String> connectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ConnectorAttributeClauseContext context : contexts) {
-      connectorMap.put(
-          parseStringLiteral(context.connectorKey.getText()),
-          parseStringLiteral(context.connectorValue.getText()));
+  private Map<String, String> parseSinkAttributesClause(
+      List<IoTDBSqlParser.SinkAttributeClauseContext> contexts) {
+    final Map<String, String> SinkMap = new HashMap<>();
+    for (IoTDBSqlParser.SinkAttributeClauseContext context : contexts) {
+      SinkMap.put(
+          parseStringLiteral(context.sinkKey.getText()),
+          parseStringLiteral(context.sinkValue.getText()));
     }
-    return connectorMap;
+    return SinkMap;
   }
 
   @Override
@@ -4220,7 +4217,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipesStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
+    showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
   }

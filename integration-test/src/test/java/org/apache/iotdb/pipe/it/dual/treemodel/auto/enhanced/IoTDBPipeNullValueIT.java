@@ -215,24 +215,26 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       if (withParsing) {
-        extractorAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
-        extractorAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
-        extractorAttributes.put("extractor.pattern", "root.sg.d1");
+        sourceAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
+        sourceAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
+        sourceAttributes.put("source.pattern", "root.sg.d1");
       }
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("test", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("test", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
