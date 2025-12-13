@@ -44,7 +44,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 public class AINodeForecastIT {
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
-      "SELECT * FROM FORECAST(model_id=>'%s', input=>(SELECT time, s%d FROM db.AI) ORDER BY time)";
+      "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time, s%d FROM db.AI) ORDER BY time)";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -81,7 +81,7 @@ public class AINodeForecastIT {
 
   public void forecastTableFunctionTest(
       Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) throws SQLException {
-    // Invoke call inference for specified models, there should exist result.
+    // Invoke forecast table function for specified models, there should exist result.
     for (int i = 0; i < 4; i++) {
       String forecastTableFunctionSQL =
           String.format(FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), i);
@@ -90,7 +90,7 @@ public class AINodeForecastIT {
         while (resultSet.next()) {
           count++;
         }
-        // Ensure the call inference return results
+        // Ensure the forecast sentence return results
         Assert.assertTrue(count > 0);
       }
     }

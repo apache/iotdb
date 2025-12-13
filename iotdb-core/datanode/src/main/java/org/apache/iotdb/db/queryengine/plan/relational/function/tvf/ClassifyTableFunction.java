@@ -344,6 +344,7 @@ public class ClassifyTableFunction implements TableFunction {
 
     private TsBlock classify() {
       int outputLength = inputRecords.size();
+      // construct inputTSBlock for AINode
       while (!inputRecords.isEmpty()) {
         Record row = inputRecords.removeFirst();
         inputTsBlockBuilder.getTimeColumnBuilder().writeLong(row.getLong(0));
