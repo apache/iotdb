@@ -49,6 +49,8 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
           new FolderManager(
               Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
+      // folderManager remains null when disk space is insufficient during initialization
+      // It will be lazily initialized later when disk space becomes available
       logger.error(
           "Fail to create wal node allocation strategy because all disks of wal folders are full.",
           e);
@@ -57,6 +59,9 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
 
   protected synchronized IWALNode createWALNode(String identifier) {
     try {
+      // Lazy initialization of folderManager: if it was null during constructor
+      // (due to insufficient disk space), try to initialize it now when disk space
+      // might have become available
       if (folderManager == null) {
         folderManager =
             new FolderManager(
