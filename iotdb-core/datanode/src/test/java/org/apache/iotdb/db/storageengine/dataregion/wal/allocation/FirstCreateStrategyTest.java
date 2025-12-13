@@ -158,9 +158,9 @@ public class FirstCreateStrategyTest {
         };
 
     String[] originalWalDirs = commonConfig.getWalDirs();
-    commonConfig.setWalDirs(testWalDirs);
 
     try {
+      commonConfig.setWalDirs(testWalDirs);
       // Create strategy with valid directories first
       FirstCreateStrategy strategy = new FirstCreateStrategy();
 
