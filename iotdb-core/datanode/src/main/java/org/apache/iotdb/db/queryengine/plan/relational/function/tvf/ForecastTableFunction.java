@@ -292,7 +292,7 @@ public class ForecastTableFunction implements TableFunction {
 
     List<Type> targetColumnTypes = new ArrayList<>();
     List<Optional<String>> allInputColumnsName = targets.getFieldNames();
-    List<Type> allTargetColumnsType = targets.getFieldTypes();
+    List<Type> allInputColumnsType = targets.getFieldTypes();
 
     // predicated columns = all input columns except timecol / partition by columns
     for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
@@ -302,11 +302,18 @@ public class ForecastTableFunction implements TableFunction {
         continue;
       }
 
-      Type columnType = allTargetColumnsType.get(i);
+      Type columnType = allInputColumnsType.get(i);
       targetColumnTypes.add(columnType);
       checkType(columnType, fieldName.get());
       requiredIndexList.add(i);
       properColumnSchemaBuilder.addField(fieldName.get(), columnType);
+    }
+
+    if (targetColumnTypes.size() > 1) {
+      throw new SemanticException(
+          String.format(
+              "%s should not contain more than one target column, found [%s] target columns.",
+              TARGETS_PARAMETER_NAME, targetColumnTypes.size()));
     }
 
     boolean keepInput =
@@ -478,6 +485,12 @@ public class ForecastTableFunction implements TableFunction {
       }
       long outputTime =
           (outputStartTime == Long.MIN_VALUE) ? (inputEndTime + interval) : outputStartTime;
+      if (outputTime <= inputEndTime) {
+        throw new SemanticException(
+            String.format(
+                "The %s should be greater than the maximum timestamp of target time series. Expected greater than [%s] but found [%s].",
+                OUTPUT_START_TIME, inputEndTime, outputTime));
+      }
       for (int i = 0; i < outputLength; i++) {
         properColumnBuilders.get(0).writeLong(outputTime + interval * i);
       }
@@ -517,6 +530,7 @@ public class ForecastTableFunction implements TableFunction {
     }
 
     private TsBlock forecast() {
+      // construct inputTSBlock for AINode
       while (!inputRecords.isEmpty()) {
         Record row = inputRecords.removeFirst();
         inputTsBlockBuilder.getTimeColumnBuilder().writeLong(row.getLong(0));
