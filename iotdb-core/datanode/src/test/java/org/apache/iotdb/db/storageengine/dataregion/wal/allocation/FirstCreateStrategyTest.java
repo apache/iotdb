@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -39,10 +41,13 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class FirstCreateStrategyTest {
@@ -144,15 +149,14 @@ public class FirstCreateStrategyTest {
 
   @Test
   public void testReInitializeAfterDiskSpaceCleaned() throws IllegalPathException, IOException {
-    // Create temporary directories for testing
-    File tempDir = new File(System.getProperty("java.io.tmpdir"), "iotdb_wal_reinit_test");
-    tempDir.mkdirs();
+    // Create unique temporary directory for testing
+    Path tempDir = Files.createTempDirectory("iotdb_wal_reinit_test_");
 
     String[] testWalDirs =
         new String[] {
-          new File(tempDir, "wal_reinit_test1").getAbsolutePath(),
-          new File(tempDir, "wal_reinit_test2").getAbsolutePath(),
-          new File(tempDir, "wal_reinit_test3").getAbsolutePath()
+          tempDir.resolve("wal_reinit_test1").toString(),
+          tempDir.resolve("wal_reinit_test2").toString(),
+          tempDir.resolve("wal_reinit_test3").toString()
         };
 
     String[] originalWalDirs = commonConfig.getWalDirs();
@@ -176,6 +180,11 @@ public class FirstCreateStrategyTest {
       // Now apply for WAL node, should successfully re-initialize folderManager
       IWALNode walNode = strategy.applyForWALNode("test_reinit_identifier");
       assertNotNull("WAL node should be created after re-initialization", walNode);
+
+      // Verify that re-initialization actually occurred - should return WALNode, not WALFakeNode
+      assertTrue(
+          "Returned node should be WALNode instance after successful re-initialization",
+          walNode instanceof WALNode);
 
       // Verify that WAL node was created successfully by logging data
       walNode.log(1, getInsertRowNode());
@@ -209,7 +218,61 @@ public class FirstCreateStrategyTest {
         EnvironmentUtils.cleanDir(walDir);
       }
       // Clean up temp directory
-      EnvironmentUtils.cleanDir(tempDir.getAbsolutePath());
+      EnvironmentUtils.cleanDir(tempDir.toString());
+      // Restore original WAL directories
+      commonConfig.setWalDirs(originalWalDirs);
+    }
+  }
+
+  @Test
+  public void testReInitializeFailsWhenDiskStillFull() throws IllegalPathException, IOException {
+    // Create unique temporary directory for testing
+    Path tempDir = Files.createTempDirectory("iotdb_wal_reinit_fail_test_");
+
+    // Use non-existent directories that will cause re-initialization to fail
+    String[] nonExistentWalDirs =
+        new String[] {
+          tempDir.resolve("non_existent_dir1").toString(),
+          tempDir.resolve("non_existent_dir2").toString(),
+          tempDir.resolve("non_existent_dir3").toString()
+        };
+
+    String[] originalWalDirs = commonConfig.getWalDirs();
+    commonConfig.setWalDirs(nonExistentWalDirs);
+
+    try {
+      // Create strategy - this will fail to initialize folderManager
+      FirstCreateStrategy strategy = new FirstCreateStrategy();
+
+      // Verify that folderManager is null due to initialization failure
+      try {
+        java.lang.reflect.Field folderManagerField =
+            AbstractNodeAllocationStrategy.class.getDeclaredField("folderManager");
+        folderManagerField.setAccessible(true);
+        Object folderManager = folderManagerField.get(strategy);
+        assertNull("folderManager should be null due to initialization failure", folderManager);
+      } catch (NoSuchFieldException | IllegalAccessException e) {
+        throw new RuntimeException("Failed to access folderManager field", e);
+      }
+
+      // Now apply for WAL node - re-initialization should also fail and return WALFakeNode
+      IWALNode walNode = strategy.applyForWALNode("test_reinit_fail_identifier");
+
+      // Verify that WALFakeNode is returned when re-initialization fails
+      assertNotNull("WAL node should be returned even when re-initialization fails", walNode);
+      assertTrue(
+          "Should return WALFakeNode when re-initialization fails", walNode instanceof WALFakeNode);
+
+      // WALFakeNode should be the failure instance
+      WALFakeNode fakeNode = (WALFakeNode) walNode;
+      assertTrue(
+          "WALFakeNode should contain failure information",
+          fakeNode.toString().contains("DiskSpaceInsufficientException")
+              || fakeNode.toString().contains("Failed to create WAL node"));
+
+    } finally {
+      // Clean up temp directory
+      EnvironmentUtils.cleanDir(tempDir.toString());
       // Restore original WAL directories
       commonConfig.setWalDirs(originalWalDirs);
     }
