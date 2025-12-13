@@ -148,7 +148,7 @@ public class FirstCreateStrategyTest {
     File tempDir = new File(System.getProperty("java.io.tmpdir"), "iotdb_wal_reinit_test");
     tempDir.mkdirs();
 
-    String[] walDirs =
+    String[] testWalDirs =
         new String[] {
           new File(tempDir, "wal_reinit_test1").getAbsolutePath(),
           new File(tempDir, "wal_reinit_test2").getAbsolutePath(),
@@ -156,7 +156,7 @@ public class FirstCreateStrategyTest {
         };
 
     String[] originalWalDirs = commonConfig.getWalDirs();
-    commonConfig.setWalDirs(walDirs);
+    commonConfig.setWalDirs(testWalDirs);
 
     try {
       // Create strategy with valid directories first
@@ -182,7 +182,7 @@ public class FirstCreateStrategyTest {
 
       // Verify that WAL files were created in at least one directory
       boolean walFileCreated = false;
-      for (String walDir : walDirs) {
+      for (String walDir : testWalDirs) {
         File walDirFile = new File(walDir);
         if (walDirFile.exists()) {
           File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
@@ -205,7 +205,7 @@ public class FirstCreateStrategyTest {
       walNode.close();
     } finally {
       // Clean up the test directories
-      for (String walDir : walDirs) {
+      for (String walDir : testWalDirs) {
         EnvironmentUtils.cleanDir(walDir);
       }
       // Clean up temp directory
