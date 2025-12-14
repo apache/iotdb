@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
