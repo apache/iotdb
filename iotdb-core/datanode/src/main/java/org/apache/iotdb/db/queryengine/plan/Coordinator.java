@@ -865,6 +865,39 @@ public class Coordinator {
     }
   }
 
+  public List<StatedQueriesInfo> getRunningQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    return getAllQueryExecutions().stream()
+        .map(
+            queryExecution ->
+                new StatedQueriesInfo(
+                    QueryState.RUNNING,
+                    queryExecution.getQueryId(),
+                    queryExecution.getStartExecutionTime(),
+                    DEFAULT_END_TIME,
+                    (currentTime - queryExecution.getStartExecutionTime()) / 1000,
+                    queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+                    queryExecution.getUser(),
+                    queryExecution.getClientHostname()))
+        .collect(Collectors.toList());
+  }
+
+  public List<StatedQueriesInfo> getFinishedQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    List<StatedQueriesInfo> result = new ArrayList<>();
+    Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
+    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
+    while (historyQueriesIterator.hasNext()) {
+      QueryInfo queryInfo = historyQueriesIterator.next();
+      if (queryInfo.endTime < needRecordTime) {
+        // out of time window, ignore it
+      } else {
+        result.add(new StatedQueriesInfo(QueryState.FINISHED, queryInfo));
+      }
+    }
+    return result;
+  }
+
   public List<StatedQueriesInfo> getCurrentQueriesInfo() {
     List<IQueryExecution> runningQueries = getAllQueryExecutions();
     Set<String> runningQueryIdSet =
