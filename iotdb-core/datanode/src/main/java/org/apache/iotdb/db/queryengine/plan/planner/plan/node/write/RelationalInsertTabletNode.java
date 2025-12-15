@@ -55,6 +55,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.apache.iotdb.db.utils.ObjectTypeUtils.generateObjectBinary;
+
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
   // deviceId cache for Table-view insertion
@@ -478,11 +480,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       objectNode.setDataRegionReplicaSet(entry.getKey());
       result.add(objectNode);
       if (isEoF) {
-        ByteBuffer valueBytes =
-            ByteBuffer.allocate(relativePath.getSerializeSizeToObjectValue() + Long.BYTES);
-        valueBytes.putLong(offset + content.length);
-        relativePath.serializeToObjectValue(valueBytes);
-        ((Binary[]) columns[column])[j] = new Binary(valueBytes.array());
+        ((Binary[]) columns[column])[j] =
+            generateObjectBinary(offset + content.length, relativePath);
       } else {
         ((Binary[]) columns[column])[j] = null;
         if (bitMaps == null) {

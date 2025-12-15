@@ -78,7 +78,7 @@ public class RecordObjectTypeTest {
         Files.delete(file.toPath());
       }
     }
-    config.setRestrictObjectLimit(true);
+    config.setRestrictObjectLimit(false);
   }
 
   @Test
