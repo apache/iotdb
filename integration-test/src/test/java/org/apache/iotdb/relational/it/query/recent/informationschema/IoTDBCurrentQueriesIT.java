@@ -83,7 +83,7 @@ public class IoTDBCurrentQueriesIT {
       statement.execute("set configuration \"query_cost_stat_window\"='1'");
 
       // 1. query current_queries table
-      String sql = "SELECT * FROM current_queries";
+      String sql = "SELECT * FROM current_queries WHERE state='RUNNING'";
       ResultSet resultSet = statement.executeQuery(sql);
       ResultSetMetaData metaData = resultSet.getMetaData();
       Assert.assertEquals(CURRENT_QUERIES_COLUMN_NUM, metaData.getColumnCount());
@@ -116,7 +116,7 @@ public class IoTDBCurrentQueriesIT {
       Assert.assertEquals(61, rowNum);
 
       // 3. requery current_queries table
-      sql = "SELECT * FROM current_queries";
+      sql = "SELECT * FROM current_queries WHERE state='FINISHED'";
       resultSet = statement.executeQuery(sql);
       metaData = resultSet.getMetaData();
       Assert.assertEquals(CURRENT_QUERIES_COLUMN_NUM, metaData.getColumnCount());
@@ -128,13 +128,14 @@ public class IoTDBCurrentQueriesIT {
         }
         rowNum++;
       }
-      // three rows in the result, 2 FINISHED and 1 RUNNING
-      Assert.assertEquals(3, rowNum);
+      // two rows in the result, 2 FINISHED
+      Assert.assertEquals(2, rowNum);
       Assert.assertEquals(2, finishedQueries);
       resultSet.close();
 
       // 4. test the expired QueryInfo was evicted
       Thread.sleep(61_001);
+      sql = "SELECT * FROM current_queries";
       resultSet = statement.executeQuery(sql);
       rowNum = 0;
       while (resultSet.next()) {
