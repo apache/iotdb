@@ -42,6 +42,7 @@ class Chronos2Pipeline(ForecastPipeline):
             raise InferenceModelInternalException(
                 f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
             )
+        inputs = inputs.unsqueeze(0)
         return inputs
 
     @property
@@ -239,7 +240,7 @@ class Chronos2Pipeline(ForecastPipeline):
             )
             logger.warning(msg)
 
-        context_length = len(inputs)
+        context_length = inputs.shape[-1]
         if context_length > self.model_context_length:
             logger.warning(
                 f"The specified context_length {context_length} is greater than the model's default context length {self.model_context_length}. "
@@ -391,4 +392,4 @@ class Chronos2Pipeline(ForecastPipeline):
         return prediction
 
     def _postprocess(self, output: torch.Tensor):
-        return output
+        return output[0].mean(dim=1)
