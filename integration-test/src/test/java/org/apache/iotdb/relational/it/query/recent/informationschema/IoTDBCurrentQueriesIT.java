@@ -128,7 +128,7 @@ public class IoTDBCurrentQueriesIT {
         }
         rowNum++;
       }
-      // three rows in the result, 2 FINISHED
+      // two rows in the result, 2 FINISHED
       Assert.assertEquals(2, rowNum);
       Assert.assertEquals(2, finishedQueries);
       resultSet.close();

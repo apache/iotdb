@@ -472,9 +472,13 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                   ? expressions.get(0)
                   : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
         }
+        return node;
       }
 
-      return node;
+      FilterNode filterNode =
+          new FilterNode(queryId.genPlanNodeId(), node, context.inheritedPredicate);
+      context.inheritedPredicate = TRUE_LITERAL;
+      return filterNode;
     }
 
     private SplitExpression splitCurrentQueriesPredicate(Expression predicate) {
