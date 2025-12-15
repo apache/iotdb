@@ -37,9 +37,7 @@ class TimerPipeline(ForecastPipeline):
         predict_length = infer_kwargs.get("predict_length", 96)
         revin = infer_kwargs.get("revin", True)
 
-        output = self.model.generate(
-            inputs, max_new_tokens=predict_length, revin=revin
-        )
+        output = self.model.generate(inputs, max_new_tokens=predict_length, revin=revin)
         return output
 
     def postprocess(self, output: torch.Tensor):

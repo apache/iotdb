@@ -43,7 +43,7 @@ logger = Logger()
 
 
 def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
-    if model_info.auto_map is not None:
+    if model_info.config_cls and model_info.model_cls:
         model = load_model_from_transformers(model_info, **model_kwargs)
     else:
         if model_info.model_type == "sktime":

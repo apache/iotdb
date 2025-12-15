@@ -21,7 +21,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from huggingface_hub import hf_hub_download
 from transformers import AutoConfig, AutoModelForCausalLM
@@ -50,6 +50,7 @@ from iotdb.ainode.core.model.utils import (
     _fetch_model_from_hf_repo,
     _fetch_model_from_local,
     ensure_init_file,
+    extract_config_and_model_cls,
     get_parsed_uri,
     import_class_from_path,
     load_model_config_in_json,
@@ -198,7 +199,7 @@ class ModelStorage:
                             config = json.load(f)
                         if model_info.model_type == "":
                             model_info.model_type = config.get("model_type", "")
-                        model_info.auto_map = config.get("auto_map", None)
+                        # Builtin models use hardcoded config_cls and model_cls, no need to read auto_map
                     logger.info(
                         f"Model {model_id} downloaded successfully and is ready to use."
                     )
@@ -217,13 +218,16 @@ class ModelStorage:
         """Handling the discovery logic for a user-defined model directory."""
         config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
         model_type = ""
-        auto_map = {}
+        config_cls = ""
+        model_cls = ""
         pipeline_cls = ""
         if os.path.exists(config_path):
             config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
-            auto_map = config.get("auto_map", None)
             pipeline_cls = config.get("pipeline_cls", "")
+            # Convert auto_map to config_cls and model_cls if exists
+            auto_map = config.get("auto_map", None)
+            config_cls, model_cls = extract_config_and_model_cls(auto_map)
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -231,8 +235,9 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
+                config_cls=config_cls,
+                model_cls=model_cls,
                 pipeline_cls=pipeline_cls,
-                auto_map=auto_map,
                 _transformers_registered=False,  # Lazy registration
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
@@ -273,8 +278,10 @@ class ModelStorage:
         config_path, _ = validate_model_files(model_dir)
         config = load_model_config_in_json(config_path)
         model_type = config.get("model_type", "")
-        auto_map = config.get("auto_map")
         pipeline_cls = config.get("pipeline_cls", "")
+        # Convert auto_map to config_cls and model_cls if exists
+        auto_map = config.get("auto_map")
+        config_cls, model_cls = extract_config_and_model_cls(auto_map)
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -282,13 +289,14 @@ class ModelStorage:
                 model_type=model_type,
                 category=ModelCategory.USER_DEFINED,
                 state=ModelStates.ACTIVE,
+                config_cls=config_cls,
+                model_cls=model_cls,
                 pipeline_cls=pipeline_cls,
-                auto_map=auto_map,
                 _transformers_registered=False,  # Register later
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
-        if auto_map:
+        if config_cls and model_cls:
             # Transformers model: immediately register to Transformers autoloading mechanism
             success = self._register_transformers_model(model_info)
             if success:
@@ -308,12 +316,8 @@ class ModelStorage:
         """
         Register Transformers model to autoloading mechanism (internal method)
         """
-        auto_map = model_info.auto_map
-        if not auto_map:
+        if not model_info.config_cls or not model_info.model_cls:
             return False
-
-        auto_config_path = auto_map.get("AutoConfig")
-        auto_model_path = auto_map.get("AutoModelForCausalLM")
 
         try:
             model_path = os.path.join(
@@ -322,24 +326,24 @@ class ModelStorage:
             module_parent = str(Path(model_path).parent.absolute())
             with temporary_sys_path(module_parent):
                 config_class = import_class_from_path(
-                    model_info.model_id, auto_config_path
+                    model_info.model_id, model_info.config_cls
                 )
                 AutoConfig.register(model_info.model_type, config_class)
                 logger.info(
-                    f"Registered AutoConfig: {model_info.model_type} -> {auto_config_path}"
+                    f"Registered AutoConfig: {model_info.model_type} -> {model_info.config_cls}"
                 )
 
                 model_class = import_class_from_path(
-                    model_info.model_id, auto_model_path
+                    model_info.model_id, model_info.model_cls
                 )
                 AutoModelForCausalLM.register(config_class, model_class)
                 logger.info(
-                    f"Registered AutoModelForCausalLM: {config_class.__name__} -> {auto_model_path}"
+                    f"Registered AutoModelForCausalLM: {config_class.__name__} -> {model_info.model_cls}"
                 )
             return True
         except Exception as e:
             logger.warning(
-                f"Failed to register Transformers model {model_info.model_id}: {e}. Model may still work via auto_map, but ensure module path is correct."
+                f"Failed to register Transformers model {model_info.model_id}: {e}. Model may still work via config_cls and model_cls, but ensure module path is correct."
             )
             return False
 
@@ -373,9 +377,10 @@ class ModelStorage:
             if model_info._transformers_registered:
                 return model_info
 
-            # If no auto_map, not a Transformers model, mark as registered (avoid duplicate checks)
+            # If no config_cls/model_cls, not a Transformers model, mark as registered (avoid duplicate checks)
             if (
-                not model_info.auto_map
+                not model_info.config_cls
+                or not model_info.model_cls
                 or model_id in BUILTIN_HF_TRANSFORMERS_MODEL_MAP.keys()
             ):
                 model_info._transformers_registered = True

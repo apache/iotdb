@@ -23,7 +23,7 @@ import shutil
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from huggingface_hub import snapshot_download
 
@@ -67,6 +67,19 @@ def temporary_sys_path(path: str):
 def load_model_config_in_json(config_path: str) -> Dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def extract_config_and_model_cls(auto_map: Optional[Dict]) -> Tuple[str, str]:
+    if not auto_map:
+        return "", ""
+
+    config_cls = auto_map.get("AutoConfig", "")
+    model_cls = ""
+    for key, value in auto_map.items():
+        if "AutoModelFor" in key:
+            model_cls = value
+            break
+    return config_cls, model_cls
 
 
 def validate_model_files(model_dir: str) -> Tuple[str, str]:
