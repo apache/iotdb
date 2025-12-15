@@ -69,11 +69,15 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
@@ -130,7 +134,10 @@ public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
 
   public static Iterator<TsBlock> getSupplier(
-      final String tableName, final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      final String tableName,
+      final List<TSDataType> dataTypes,
+      Expression predicate,
+      final UserEntity userEntity) {
     try {
       switch (tableName) {
         case InformationSchema.QUERIES:
@@ -168,7 +175,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.CONNECTIONS:
           return new ConnectionsSupplier(dataTypes, userEntity);
         case InformationSchema.CURRENT_QUERIES:
-          return new CurrentQueriesSupplier(dataTypes, userEntity);
+          return new CurrentQueriesSupplier(dataTypes, predicate, userEntity);
         case InformationSchema.QUERIES_COSTS_HISTOGRAM:
           return new QueriesCostsHistogramSupplier(dataTypes, userEntity);
         default:
@@ -1188,9 +1195,24 @@ public class InformationSchemaContentSupplierFactory {
     private int nextConsumedIndex;
     private List<Coordinator.StatedQueriesInfo> queriesInfo;
 
-    private CurrentQueriesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+    private CurrentQueriesSupplier(
+        final List<TSDataType> dataTypes, Expression predicate, final UserEntity userEntity) {
       super(dataTypes);
-      queriesInfo = Coordinator.getInstance().getCurrentQueriesInfo();
+
+      if (predicate == null) {
+        queriesInfo = Coordinator.getInstance().getCurrentQueriesInfo();
+      } else if (QueryState.RUNNING
+          .toString()
+          .equals(((StringLiteral) ((ComparisonExpression) predicate).getRight()).getValue())) {
+        queriesInfo = Coordinator.getInstance().getRunningQueriesInfos();
+      } else if (QueryState.FINISHED
+          .toString()
+          .equals(((StringLiteral) ((ComparisonExpression) predicate).getRight()).getValue())) {
+        queriesInfo = Coordinator.getInstance().getFinishedQueriesInfos();
+      } else {
+        queriesInfo = Collections.emptyList();
+      }
+
       try {
         accessControl.checkUserGlobalSysPrivilege(userEntity);
       } catch (final AccessDeniedException e) {

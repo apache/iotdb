@@ -20,6 +20,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschem
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
@@ -40,8 +43,10 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_T
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.infoSchemaTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class CurrentQueriesTest {
   private final PlanTester planTester = new PlanTester();
@@ -78,6 +83,78 @@ public class CurrentQueriesTest {
     assertPlan(
         planTester.getFragmentPlan(2),
         infoSchemaTableScan("information_schema.current_queries", Optional.of(2)));
+  }
+
+  @Test
+  public void testCurrentQueriesFilterPushDown() {
+    // Normal case
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(
+            "select * from information_schema.current_queries where state='RUNNING'");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            infoSchemaTableScan(
+                "information_schema.current_queries",
+                Optional.empty(),
+                ImmutableList.of(
+                    QUERY_ID_TABLE_MODEL,
+                    STATE_TABLE_MODEL,
+                    START_TIME_TABLE_MODEL,
+                    END_TIME_TABLE_MODEL,
+                    DATA_NODE_ID_TABLE_MODEL,
+                    COST_TIME,
+                    STATEMENT_TABLE_MODEL,
+                    USER_TABLE_MODEL,
+                    CLIENT_IP))));
+
+    // mixed push down and cannot push down term
+    logicalQueryPlan =
+        planTester.createPlan(
+            "select * from information_schema.current_queries where state='RUNNING' and query_id='1'");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            filter(
+                new ComparisonExpression(
+                    EQUAL, new SymbolReference(QUERY_ID_TABLE_MODEL), new StringLiteral("1")),
+                infoSchemaTableScan(
+                    "information_schema.current_queries",
+                    Optional.empty(),
+                    ImmutableList.of(
+                        QUERY_ID_TABLE_MODEL,
+                        STATE_TABLE_MODEL,
+                        START_TIME_TABLE_MODEL,
+                        END_TIME_TABLE_MODEL,
+                        DATA_NODE_ID_TABLE_MODEL,
+                        COST_TIME,
+                        STATEMENT_TABLE_MODEL,
+                        USER_TABLE_MODEL,
+                        CLIENT_IP)))));
+
+    // More than one state='xxx' terms
+    logicalQueryPlan =
+        planTester.createPlan(
+            "select * from information_schema.current_queries where state='RUNNING' and state='xx'");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            filter(
+                new ComparisonExpression(
+                    EQUAL, new SymbolReference(STATE_TABLE_MODEL), new StringLiteral("xx")),
+                infoSchemaTableScan(
+                    "information_schema.current_queries",
+                    Optional.empty(),
+                    ImmutableList.of(
+                        QUERY_ID_TABLE_MODEL,
+                        STATE_TABLE_MODEL,
+                        START_TIME_TABLE_MODEL,
+                        END_TIME_TABLE_MODEL,
+                        DATA_NODE_ID_TABLE_MODEL,
+                        COST_TIME,
+                        STATEMENT_TABLE_MODEL,
+                        USER_TABLE_MODEL,
+                        CLIENT_IP)))));
   }
 
   @Test
