@@ -29,31 +29,33 @@ class BasicPipeline(ABC):
         self.device = model_kwargs.get("device", "cpu")
         self.model = load_model(model_info, device_map=self.device, **model_kwargs)
 
-    def _preprocess(self, inputs):
+    @abstractmethod
+    def preprocess(self, inputs):
         """
         Preprocess the input before inference, including shape validation and value transformation.
         """
-        return inputs
+        raise NotImplementedError("preprocess not implemented")
 
-    def _postprocess(self, output: torch.Tensor):
+    @abstractmethod
+    def postprocess(self, output: torch.Tensor):
         """
         Post-process the outputs after the entire inference task.
         """
-        return output
+        raise NotImplementedError("postprocess not implemented")
 
 
 class ForecastPipeline(BasicPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
+    def preprocess(self, inputs):
         return inputs
 
     @abstractmethod
     def forecast(self, inputs, **infer_kwargs):
         pass
 
-    def _postprocess(self, output: torch.Tensor):
+    def postprocess(self, output: torch.Tensor):
         return output
 
 
@@ -61,14 +63,14 @@ class ClassificationPipeline(BasicPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
+    def preprocess(self, inputs):
         return inputs
 
     @abstractmethod
     def classify(self, inputs, **kwargs):
         pass
 
-    def _postprocess(self, output: torch.Tensor):
+    def postprocess(self, output: torch.Tensor):
         return output
 
 
@@ -76,12 +78,12 @@ class ChatPipeline(BasicPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
+    def preprocess(self, inputs):
         return inputs
 
     @abstractmethod
     def chat(self, inputs, **kwargs):
         pass
 
-    def _postprocess(self, output: torch.Tensor):
+    def postprocess(self, output: torch.Tensor):
         return output

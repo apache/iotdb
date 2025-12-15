@@ -215,6 +215,7 @@ class InferenceManager:
             else:
                 model_info = self._model_manager.get_model_info(model_id)
                 inference_pipeline = load_pipeline(model_info, device="cpu")
+                inputs = inference_pipeline.preprocess(inputs)
                 if isinstance(inference_pipeline, ForecastPipeline):
                     outputs = inference_pipeline.forecast(
                         inputs, predict_length=output_length, **inference_attrs
@@ -224,7 +225,9 @@ class InferenceManager:
                 elif isinstance(inference_pipeline, ChatPipeline):
                     outputs = inference_pipeline.chat(inputs)
                 else:
+                    outputs = None
                     logger.error("[Inference] Unsupported pipeline type.")
+                outputs = inference_pipeline.postprocess(outputs)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
 
             # construct response

@@ -123,6 +123,7 @@ class InferenceRequestPool(mp.Process):
             batch_inputs = self._batcher.batch_request(requests).to(
                 "cpu"
             )  # The input data should first load to CPU in current version
+            batch_inputs = self._inference_pipeline.preprocess(batch_inputs)
             if isinstance(self._inference_pipeline, ForecastPipeline):
                 batch_output = self._inference_pipeline.forecast(
                     batch_inputs,
@@ -140,7 +141,10 @@ class InferenceRequestPool(mp.Process):
                     # more infer kwargs can be added here
                 )
             else:
+                batch_output = None
                 self._logger.error("[Inference] Unsupported pipeline type.")
+            batch_output = self._inference_pipeline.postprocess(batch_output)
+
             offset = 0
             for request in requests:
                 request.output_tensor = request.output_tensor.to(self.device)

@@ -28,41 +28,40 @@ class SktimePipeline(ForecastPipeline):
         model_kwargs.pop("device", None)  # sktime models run on CPU
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
+    def preprocess(self, inputs):
         return inputs
 
     def forecast(self, inputs, **infer_kwargs):
         predict_length = infer_kwargs.get("predict_length", 96)
-        input_ids = self._preprocess(inputs)
 
         # Convert to pandas Series for sktime (sktime expects Series or DataFrame)
         # Handle batch dimension: if batch_size > 1, process each sample separately
-        if len(input_ids.shape) == 2 and input_ids.shape[0] > 1:
+        if len(inputs.shape) == 2 and inputs.shape[0] > 1:
             # Batch processing: convert each row to Series
             outputs = []
-            for i in range(input_ids.shape[0]):
+            for i in range(inputs.shape[0]):
                 series = pd.Series(
-                    input_ids[i].cpu().numpy()
-                    if isinstance(input_ids, torch.Tensor)
-                    else input_ids[i]
+                    inputs[i].cpu().numpy()
+                    if isinstance(inputs, torch.Tensor)
+                    else inputs[i]
                 )
                 output = self.model.generate(series, predict_length=predict_length)
                 outputs.append(output)
             output = np.array(outputs)
         else:
             # Single sample: convert to Series
-            if isinstance(input_ids, torch.Tensor):
-                series = pd.Series(input_ids.squeeze().cpu().numpy())
+            if isinstance(inputs, torch.Tensor):
+                series = pd.Series(inputs.squeeze().cpu().numpy())
             else:
-                series = pd.Series(input_ids.squeeze())
+                series = pd.Series(inputs.squeeze())
             output = self.model.generate(series, predict_length=predict_length)
             # Add batch dimension if needed
             if len(output.shape) == 1:
                 output = output[np.newaxis, :]
 
-        return self._postprocess(output)
+        return output
 
-    def _postprocess(self, output):
+    def postprocess(self, output):
         if isinstance(output, np.ndarray):
             return torch.from_numpy(output).float()
         return output
