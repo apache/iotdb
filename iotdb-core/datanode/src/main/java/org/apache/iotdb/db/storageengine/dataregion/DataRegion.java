@@ -2751,8 +2751,8 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      TableDeviceSchemaCache.getInstance()
-          .invalidateLastCache(getDatabaseName(), modEntries.get(0).getTableName());
+      String tableName = modEntries.get(0).getTableName();
+      TableDeviceSchemaCache.getInstance().invalidateLastCache(getDatabaseName(), tableName);
       List<WALFlushListener> walListeners = logDeletionInWAL(node);
 
       for (WALFlushListener walFlushListener : walListeners) {
@@ -2760,6 +2760,10 @@ public class DataRegion implements IDataRegionForQuery {
           logger.error("Fail to log delete to wal.", walFlushListener.getCause());
           throw walFlushListener.getCause();
         }
+      }
+
+      if (TierManager.getInstance().checkObjectPathExist(dataRegionIdString, tableName)) {
+        deleteObjectFiles(tableName, modEntries);
       }
 
       List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
@@ -2928,6 +2932,12 @@ public class DataRegion implements IDataRegionForQuery {
                       walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode)));
     }
     return walFlushListeners;
+  }
+
+  private void deleteObjectFiles(String tableName, List<TableDeletionEntry> modEntries) {
+    for (TableDeletionEntry modEntry : modEntries) {
+
+    }
   }
 
   /**
