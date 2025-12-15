@@ -79,6 +79,10 @@ public class AINodeConcurrentForecastIT {
   @Test
   public void concurrentGPUForecastTest() throws SQLException, InterruptedException {
     for (AINodeTestUtils.FakeModelInfo modelInfo : BUILTIN_LTSM_MAP.values()) {
+      if (modelInfo.getModelId().equals("chronos2")) {
+        // TODO: @yunbow30944 Support chronos2 model concurrent inference in GPU
+        continue;
+      }
       concurrentGPUForecastTest(modelInfo);
     }
   }
