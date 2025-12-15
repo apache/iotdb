@@ -26,7 +26,7 @@ class SundialPipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
+    def preprocess(self, inputs):
         if len(inputs.shape) != 2:
             raise InferenceModelInternalException(
                 f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
@@ -38,14 +38,13 @@ class SundialPipeline(ForecastPipeline):
         num_samples = infer_kwargs.get("num_samples", 10)
         revin = infer_kwargs.get("revin", True)
 
-        input_ids = self._preprocess(inputs)
         output = self.model.generate(
-            input_ids,
+            inputs,
             max_new_tokens=predict_length,
             num_samples=num_samples,
             revin=revin,
         )
-        return self._postprocess(output)
+        return output
 
-    def _postprocess(self, output: torch.Tensor):
+    def postprocess(self, output: torch.Tensor):
         return output.mean(dim=1)
