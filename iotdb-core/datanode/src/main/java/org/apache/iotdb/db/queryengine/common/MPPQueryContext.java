@@ -64,6 +64,13 @@ public class MPPQueryContext implements IAuditEntity {
   private String sql;
   private final QueryId queryId;
 
+  /** The type of explanation for a query. */
+  public enum ExplainType {
+    NONE,
+    EXPLAIN,
+    EXPLAIN_ANALYZE,
+  }
+
   // LocalQueryId is kept to adapt to the old client, it's unique in current datanode.
   // Now it's only be used by EXPLAIN ANALYZE to get queryExecution.
   private long localQueryId;
