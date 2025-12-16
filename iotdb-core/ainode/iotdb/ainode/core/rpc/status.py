@@ -16,9 +16,9 @@
 # under the License.
 #
 
-from ainode.core.constant import TSStatusCode
-from ainode.core.log import Logger
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.ainode.core.constant import TSStatusCode
+from iotdb.ainode.core.log import Logger
+from iotdb.thrift.common.ttypes import TSStatus
 
 
 def get_status(status_code: TSStatusCode, message: str = None) -> TSStatus:

@@ -26,14 +26,14 @@ import sys
 import threading
 from logging.handlers import TimedRotatingFileHandler
 
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     AINODE_LOG_DIR,
     AINODE_LOG_FILE_LEVELS,
     AINODE_LOG_FILE_NAME_PREFIX,
     DEFAULT_LOG_LEVEL,
     LOG_FILE_TYPE,
 )
-from ainode.core.util.decorator import singleton
+from iotdb.ainode.core.util.decorator import singleton
 
 
 class BaseLogger:

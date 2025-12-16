@@ -19,10 +19,10 @@
 import struct
 import warnings
 
-from .TemplateNode import TemplateNode
 from ..tsfile.common.constant.tsfile_constant import TsFileConstant
 from ..tsfile.utils.pair import Pair
 from ..tsfile.utils.read_write_io_utils import ReadWriteUtils
+from .TemplateNode import TemplateNode
 
 warnings.simplefilter("always", DeprecationWarning)
 

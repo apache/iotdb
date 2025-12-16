@@ -19,7 +19,7 @@ import sys
 from collections import OrderedDict
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.util.decorator import singleton
+from iotdb.ainode.core.util.decorator import singleton
 
 
 def _estimate_size_in_byte(obj):

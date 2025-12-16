@@ -23,12 +23,12 @@ import numpy as np
 import pandas as pd
 from thrift.transport import TTransport
 
-from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
+from iotdb.thrift.rpc.IClientRPCService import TSCloseOperationReq, TSFetchResultsReq
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.rpc_utils import verify_success, convert_to_timestamp
+from iotdb.utils.rpc_utils import convert_to_timestamp, verify_success
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"

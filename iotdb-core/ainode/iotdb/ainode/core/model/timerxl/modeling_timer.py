@@ -29,9 +29,9 @@ from transformers.modeling_outputs import (
     MoeModelOutputWithPast,
 )
 
-from ainode.core.log import Logger
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
-from ainode.core.model.timerxl.ts_generation_mixin import TSGenerationMixin
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
+from iotdb.ainode.core.model.timerxl.ts_generation_mixin import TSGenerationMixin
 
 logger = Logger()
 

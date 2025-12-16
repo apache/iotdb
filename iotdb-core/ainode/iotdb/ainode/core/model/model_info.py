@@ -18,7 +18,7 @@
 import glob
 import os
 
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_CONFIG_FILE_IN_YAML,
     MODEL_WEIGHTS_FILE_IN_PT,

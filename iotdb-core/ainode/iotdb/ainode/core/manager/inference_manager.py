@@ -15,54 +15,58 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import threading
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict
 
 import pandas as pd
 import torch
 import torch.multiprocessing as mp
-from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.constant import TSStatusCode
+from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.exception import (
     InferenceModelInternalError,
     InvalidWindowArgumentError,
     NumericalRangeException,
     runtime_error_extractor,
 )
-from ainode.core.inference.inference_request import (
+from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
 )
-from iotdb.ainode.core.inference.inference_request_pool import InferenceRequestPool
-from iotdb.ainode.core.inference.strategy import (
+from iotdb.ainode.core.inference.pool_controller import PoolController
+from iotdb.ainode.core.inference.strategy.timer_sundial_inference_pipeline import (
     TimerSundialInferencePipeline,
 )
-from iotdb.ainode.core.inference.strategy import (
+from iotdb.ainode.core.inference.strategy.timerxl_inference_pipeline import (
     TimerXLInferencePipeline,
 )
-from ainode.core.inference.utils import generate_req_id
-from ainode.core.log import Logger
-from ainode.core.manager.model_manager import ModelManager
-from ainode.core.manager.utils import (
-    _estimate_pool_size,
-    _measure_model_memory,
-)
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
-from ainode.core.model.sundial.modeling_sundial import SundialForPrediction
-from ainode.core.model.timerxl.configuration_timer import TimerConfig
+from iotdb.ainode.core.inference.utils import generate_req_id
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_enums import BuiltInModelType
+from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
+from iotdb.ainode.core.model.sundial.modeling_sundial import SundialForPrediction
+from iotdb.ainode.core.model.timerxl.configuration_timer import TimerConfig
 from iotdb.ainode.core.model.timerxl.modeling_timer import TimerForPrediction
-from ainode.core.rpc.status import get_status
+from iotdb.ainode.core.rpc.status import get_status
+from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.ainode.core.util.serde import convert_to_binary
-from ainode.thrift.ainode.ttypes import (
+from iotdb.thrift.ainode.ttypes import (
     TForecastReq,
     TForecastResp,
     TInferenceReq,
     TInferenceResp,
+    TLoadModelReq,
+    TShowLoadedModelsReq,
+    TShowLoadedModelsResp,
+    TUnloadModelReq,
 )
+from iotdb.thrift.common.ttypes import TSStatus
+from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 logger = Logger()
 
@@ -145,95 +149,79 @@ class RegisteredStrategy(InferenceStrategy):
 
 
 class InferenceManager:
-    ACCELERATE_MODEL_ID = ["sundial", "timer_xl"]
-    DEFAULT_DEVICE = "cpu"
-    # DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     WAITING_INTERVAL_IN_MS = (
         AINodeDescriptor().get_config().get_ain_inference_batch_interval_in_ms()
     )  # How often to check for requests in the result queue
 
     def __init__(self):
         self._model_manager = ModelManager()
+        self._model_mem_usage_map: Dict[str, int] = (
+            {}
+        )  # store model memory usage for each model
         self._result_queue = mp.Queue()
         self._result_wrapper_map = {}
         self._result_wrapper_lock = threading.RLock()
-        # structure: {model_id: [(InferenceRequestPool, request_queue), ...]}
-        self._request_pool_map: Dict[str, List[(InferenceRequestPool, mp.Queue)]] = {}
+
         self._stop_event = mp.Event()
         self._result_handler_thread = threading.Thread(
             target=self._handle_results, daemon=True
         )
         self._result_handler_thread.start()
-        self._model_mem_usage_map: Dict[str, int] = (
-            {}
-        )  # store model memory usage for each model
-        # self._preload_model_benchmarks()
+        self._pool_controller = PoolController(self._result_queue)
 
-    def _preload_model_benchmarks(self):
-        if "cuda" in str(self.DEFAULT_DEVICE):
-            for model_id in self.ACCELERATE_MODEL_ID:
-                mem_usage = _measure_model_memory(self.DEFAULT_DEVICE, model_id)
-                self._model_mem_usage_map[model_id] = mem_usage
-                logger.info(
-                    f"[Inference] Preloaded benchmark for {model_id}, mem_usage={mem_usage/1024**2:.2f} MB"
-                )
-        else:
-            logger.warning(
-                f"[Inference] Skipped preloading benchmarks for {self.DEFAULT_DEVICE}, only supports CUDA currently"
-            )
-
-    def _first_pool_init(self, model_id: str):
-        if model_id == "sundial":
-            config = SundialConfig()
-        elif model_id == "timer_xl":
-            config = TimerConfig()
-        first_queue = mp.Queue()
-        ready_event = mp.Event()
-        first_pool = InferenceRequestPool(
-            pool_id=0,
-            model_id=model_id,
-            config=config,
-            request_queue=first_queue,
-            result_queue=self._result_queue,
-            ready_event=ready_event,
-        )
-        first_pool.start()
-        if not ready_event.wait(timeout=30):
-            logger.error(
-                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] First pool failed to be ready in time"
-            )
-        else:
-            self._request_pool_map[model_id] = [(first_pool, first_queue)]
-            logger.info(
-                f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-0] Initialized inference request pool for model {model_id}"
-            )
-
-    def _expand_pools(self, model_id, start_idx, count):
-        for idx in range(count):
-            queue = mp.Queue()
-            if model_id == "sundial":
-                config = SundialConfig()
-            elif model_id == "timer_xl":
-                config = TimerConfig()
-            pool = InferenceRequestPool(
-                pool_id=start_idx + idx,
-                model_id=model_id,
-                config=config,
-                request_queue=queue,
-                result_queue=self._result_queue,
-                ready_event=mp.Event(),
-            )
-            pool.start()
-            if not pool.ready_event.wait(timeout=30):
-                logger.error(
-                    f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{start_idx + idx}] Pool failed to be ready in time"
-                )
-                continue
+    def load_model(self, req: TLoadModelReq) -> TSStatus:
+        devices_to_be_processed = []
+        devices_not_to_be_processed = []
+        for device_id in req.deviceIdList:
+            if self._pool_controller.has_request_pools(
+                model_id=req.existingModelId, device_id=device_id
+            ):
+                devices_not_to_be_processed.append(device_id)
             else:
-                self._request_pool_map[model_id].append((pool, queue))
-                logger.info(
-                    f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool.pool_id}] New inference request pool started for model {model_id}"
-                )
+                devices_to_be_processed.append(device_id)
+        if len(devices_to_be_processed) > 0:
+            self._pool_controller.load_model(
+                model_id=req.existingModelId, device_id_list=devices_to_be_processed
+            )
+        logger.info(
+            f"[Inference] Start loading model [{req.existingModelId}] to devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they have already loaded this model."
+        )
+        return TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message='Successfully submitted load model task, please use "SHOW LOADED MODELS" to check progress.',
+        )
+
+    def unload_model(self, req: TUnloadModelReq) -> TSStatus:
+        devices_to_be_processed = []
+        devices_not_to_be_processed = []
+        for device_id in req.deviceIdList:
+            if self._pool_controller.has_request_pools(
+                model_id=req.modelId, device_id=device_id
+            ):
+                devices_to_be_processed.append(device_id)
+            else:
+                devices_not_to_be_processed.append(device_id)
+        if len(devices_to_be_processed) > 0:
+            self._pool_controller.unload_model(
+                model_id=req.modelId, device_id_list=req.deviceIdList
+            )
+        logger.info(
+            f"[Inference] Start unloading model [{req.modelId}] from devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they haven't loaded this model."
+        )
+        return TSStatus(
+            code=TSStatusCode.SUCCESS_STATUS.value,
+            message='Successfully submitted unload model task, please use "SHOW LOADED MODELS" to check progress.',
+        )
+
+    def show_loaded_models(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
+        return TShowLoadedModelsResp(
+            status=get_status(TSStatusCode.SUCCESS_STATUS),
+            deviceLoadedModelsMap=self._pool_controller.show_loaded_models(
+                req.deviceIdList
+                if len(req.deviceIdList) > 0
+                else get_available_devices()
+            ),
+        )
 
     def _handle_results(self):
         while not self._stop_event.is_set():
@@ -246,12 +234,29 @@ class InferenceManager:
                     infer_req.get_final_output()
                 )
 
+    def _process_request(self, req):
+        req_id = req.req_id
+        infer_proxy = InferenceRequestProxy(req_id)
+        with self._result_wrapper_lock:
+            self._result_wrapper_map[req_id] = infer_proxy
+        try:
+            # dispatch request to the pool
+            self._pool_controller.add_request(req, infer_proxy)
+            outputs = infer_proxy.wait_for_result()
+            return outputs
+        except Exception as e:
+            logger.error(e)
+            raise InferenceModelInternalError(str(e))
+        finally:
+            with self._result_wrapper_lock:
+                del self._result_wrapper_map[req_id]
+
     def _get_strategy(self, model_id, model):
         if isinstance(model, TimerForPrediction):
             return TimerXLStrategy(model)
         if isinstance(model, SundialForPrediction):
             return SundialStrategy(model)
-        if self._model_manager.model_storage._is_built_in_or_fine_tuned(model_id):
+        if self._model_manager.model_storage.is_built_in_or_fine_tuned(model_id):
             return BuiltInStrategy(model)
         return RegisteredStrategy(model)
 
@@ -284,26 +289,8 @@ class InferenceManager:
                     predict_length,
                 )
 
-            if model_id in self.ACCELERATE_MODEL_ID and "cuda" in str(
-                self.DEFAULT_DEVICE
-            ):
-                # lazy initialization for first request
-                if model_id not in self._request_pool_map:
-                    pool_num = _estimate_pool_size(self.DEFAULT_DEVICE, model_id)
-                    if pool_num <= 0:
-                        raise InferenceModelInternalError(
-                            f"Not enough memory to run model {model_id}."
-                        )
-                    # initialize the first pool
-                    self._first_pool_init(model_id)
-                    # start a background thread to expand pools
-                    expand_thread = threading.Thread(
-                        target=self._expand_pools,
-                        args=(model_id, 1, pool_num - 1),
-                        daemon=True,
-                    )
-                    expand_thread.start()
-                # TODO: Logic in this branch shall handle all LTSM inferences
+            if self._pool_controller.has_request_pools(model_id):
+                # use request pool to accelerate inference when the model instance is already loaded.
                 # TODO: TSBlock -> Tensor codes should be unified
                 data = full_data[1][0]
                 if data.dtype.byteorder not in ("=", "|"):
@@ -311,30 +298,24 @@ class InferenceManager:
                     data = np_data.view(np_data.dtype.newbyteorder())
                 # the inputs should be on CPU before passing to the inference request
                 inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
-                if model_id == "sundial":
+                model_type = self._model_manager.get_model_info(model_id).model_type
+                if model_type == BuiltInModelType.SUNDIAL.value:
                     inference_pipeline = TimerSundialInferencePipeline(SundialConfig())
-                elif model_id == "timer_xl":
+                elif model_type == BuiltInModelType.TIMER_XL.value:
                     inference_pipeline = TimerXLInferencePipeline(TimerConfig())
+                else:
+                    raise InferenceModelInternalError(
+                        f"Unsupported model_id: {model_id}"
+                    )
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
+                    model_id=model_id,
                     inputs=inputs,
                     inference_pipeline=inference_pipeline,
                     max_new_tokens=predict_length,
                 )
-                infer_proxy = InferenceRequestProxy(infer_req.req_id)
-                with self._result_wrapper_lock:
-                    self._result_wrapper_map[infer_req.req_id] = infer_proxy
-                pool_idx = hash(infer_req.req_id) % len(
-                    self._request_pool_map[model_id]
-                )
-                self._request_pool_map[model_id][pool_idx][1].put(infer_req)
-                logger.debug(
-                    f"[Inference][Device-{self.DEFAULT_DEVICE}][Pool-{pool_idx}][ID-{infer_req.req_id}] Request is queued for inference"
-                )
-                outputs = infer_proxy.wait_for_completion()
+                outputs = self._process_request(infer_req)
                 outputs = convert_to_binary(pd.DataFrame(outputs[0]))
-                with self._result_wrapper_lock:
-                    del self._result_wrapper_map[infer_req.req_id]
             else:
                 # load model
                 accel = str(inference_attrs.get("acceleration", "")).lower() == "true"
@@ -385,16 +366,9 @@ class InferenceManager:
             single_output=False,
         )
 
-    def shutdown(self):
+    def stop(self):
         self._stop_event.set()
-        for model_id, pools in self._request_pool_map.items():
-            for requestPool, requestQueue in pools:
-                requestPool.stop()
-                while not requestQueue.empty():
-                    requestQueue.get_nowait()
-                requestQueue.close()
-            for requestPool, _ in pools:
-                requestPool.join(timeout=10)
+        self._pool_controller.stop()
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()

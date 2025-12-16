@@ -22,20 +22,20 @@ from urllib.parse import urljoin
 
 import yaml
 
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_YAML,
     MODEL_WEIGHTS_FILE_IN_PT,
 )
 from iotdb.ainode.core.exception import BadConfigValueError, InvalidUriError
-from ainode.core.log import Logger
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_enums import ModelFileType
-from ainode.core.model.uri_utils import (
+from iotdb.ainode.core.model.uri_utils import (
     UriType,
     download_file,
     download_snapshot_from_hf,
 )
 from iotdb.ainode.core.util.serde import get_data_type_byte_from_str
-from ainode.thrift.ainode.ttypes import TConfigs
+from iotdb.thrift.ainode.ttypes import TConfigs
 
 logger = Logger()
 

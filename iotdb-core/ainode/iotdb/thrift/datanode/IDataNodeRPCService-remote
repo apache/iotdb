@@ -7,14 +7,16 @@
 #  options string: py
 #
 
-import sys
 import pprint
+import sys
+
 if sys.version_info[0] > 2:
     from urllib.parse import urlparse
 else:
     from urlparse import urlparse
-from thrift.transport import TTransport, TSocket, TSSLSocket, THttpClient
+
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.transport import THttpClient, TSocket, TSSLSocket, TTransport
 
 from iotdb.thrift.datanode import IDataNodeRPCService
 from iotdb.thrift.datanode.ttypes import *
@@ -61,7 +63,6 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSStatus updateTriggerLocation(TUpdateTriggerLocationReq req)')
     print('  TFireTriggerResp fireTrigger(TFireTriggerReq req)')
     print('  TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)')
-    print('  TSStatus enableSeparationOfAdminPower()')
     print('  TSStatus createPipePlugin(TCreatePipePluginInstanceReq req)')
     print('  TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)')
     print('  TSStatus merge()')
@@ -71,11 +72,10 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSStatus stopRepairData()')
     print('  TSStatus clearCache( cacheClearOptions)')
     print('  TShowConfigurationResp showConfiguration()')
-    print('  TShowAppliedConfigurationsResp showAppliedConfigurations()')
     print('  TSStatus setConfiguration(TSetConfigurationReq req)')
     print('  TSStatus loadConfiguration()')
     print('  TSStatus setSystemStatus(string status)')
-    print('  TSStatus killQueryInstance(TKillQueryInstanceReq req)')
+    print('  TSStatus killQueryInstance(string queryId)')
     print('  TSStatus setTTL(TSetTTLReq req)')
     print('  TSStatus updateTemplate(TUpdateTemplateReq req)')
     print('  TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req)')
@@ -123,7 +123,6 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TTestConnectionResp submitInternalTestConnectionTask(TNodeLocations nodeLocations)')
     print('  TSStatus testConnectionEmptyRPC()')
     print('  TSStatus insertRecord(TSInsertRecordReq req)')
-    print('  TSStatus writeAuditLog(TAuditLogReq req)')
     print('')
     sys.exit(0)
 
@@ -425,12 +424,6 @@ elif cmd == 'invalidatePermissionCache':
         sys.exit(1)
     pp.pprint(client.invalidatePermissionCache(eval(args[0]),))
 
-elif cmd == 'enableSeparationOfAdminPower':
-    if len(args) != 0:
-        print('enableSeparationOfAdminPower requires 0 args')
-        sys.exit(1)
-    pp.pprint(client.enableSeparationOfAdminPower())
-
 elif cmd == 'createPipePlugin':
     if len(args) != 1:
         print('createPipePlugin requires 1 args')
@@ -485,12 +478,6 @@ elif cmd == 'showConfiguration':
         sys.exit(1)
     pp.pprint(client.showConfiguration())
 
-elif cmd == 'showAppliedConfigurations':
-    if len(args) != 0:
-        print('showAppliedConfigurations requires 0 args')
-        sys.exit(1)
-    pp.pprint(client.showAppliedConfigurations())
-
 elif cmd == 'setConfiguration':
     if len(args) != 1:
         print('setConfiguration requires 1 args')
@@ -513,7 +500,7 @@ elif cmd == 'killQueryInstance':
     if len(args) != 1:
         print('killQueryInstance requires 1 args')
         sys.exit(1)
-    pp.pprint(client.killQueryInstance(eval(args[0]),))
+    pp.pprint(client.killQueryInstance(args[0],))
 
 elif cmd == 'setTTL':
     if len(args) != 1:
@@ -796,12 +783,6 @@ elif cmd == 'insertRecord':
         print('insertRecord requires 1 args')
         sys.exit(1)
     pp.pprint(client.insertRecord(eval(args[0]),))
-
-elif cmd == 'writeAuditLog':
-    if len(args) != 1:
-        print('writeAuditLog requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.writeAuditLog(eval(args[0]),))
 
 else:
     print('Unrecognized method %s' % cmd)

@@ -22,9 +22,10 @@ import psutil
 import torch
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.log import Logger
-from ainode.core.manager.model_manager import ModelManager
-from ainode.core.model.model_info import BUILT_IN_LTSM_MAP
+from iotdb.ainode.core.exception import ModelNotExistError
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_info import BUILT_IN_LTSM_MAP
 
 logger = Logger()
 
@@ -39,7 +40,7 @@ INFERENCE_EXTRA_MEMORY_RATIO = (
 )  # the overhead ratio for inference, used to estimate the pool size
 
 
-def _measure_model_memory(device: torch.device, model_id: str) -> int:
+def measure_model_memory(device: torch.device, model_id: str) -> int:
     # TODO: support CPU in the future
     # TODO: we can estimate the memory usage by running a dummy inference
     torch.cuda.empty_cache()
@@ -62,7 +63,7 @@ def _measure_model_memory(device: torch.device, model_id: str) -> int:
     return final
 
 
-def _evaluate_system_resources(device: torch.device) -> dict:
+def evaluate_system_resources(device: torch.device) -> dict:
     if torch.cuda.is_available():
         free_mem, total_mem = torch.cuda.mem_get_info()
         logger.info(
@@ -70,7 +71,6 @@ def _evaluate_system_resources(device: torch.device) -> dict:
         )
         return {"device": "cuda", "free_mem": free_mem, "total_mem": total_mem}
     else:
-        # TODO: test cpu in the future
         free_mem = psutil.virtual_memory().available
         total_mem = psutil.virtual_memory().total
         logger.info(
@@ -79,21 +79,20 @@ def _evaluate_system_resources(device: torch.device) -> dict:
         return {"device": "cpu", "free_mem": free_mem, "total_mem": total_mem}
 
 
-def _estimate_pool_size(device: torch.device, model_id: str) -> int:
+def estimate_pool_size(device: torch.device, model_id: str) -> int:
     model_info = BUILT_IN_LTSM_MAP.get(model_id, None)
-    if model_info is None:
-        logger.error(f"[Inference][Device-{device}] Model {model_id} not found")
-        return 0
+    if model_info is None or model_info.model_type not in MODEL_MEM_USAGE_MAP:
+        logger.error(
+            f"[Inference] Cannot estimate inference pool size on device: {device}, because model: {model_id} is not supported."
+        )
+        raise ModelNotExistError(model_id)
 
-    model_type = model_info.model_type
-    if model_type not in MODEL_MEM_USAGE_MAP:
-        logger.error(f"[Inference][Device-{device}] Model {model_id} not supported now")
-        return 0
-
-    system_res = _evaluate_system_resources(device)
+    system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
-    mem_usage = MODEL_MEM_USAGE_MAP[model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    mem_usage = (
+        MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+    )
     size = int((free_mem * INFERENCE_MEMORY_USAGE_RATIO) // mem_usage)
     if size <= 0:
         logger.error(

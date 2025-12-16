@@ -17,17 +17,17 @@
 #
 import numpy as np
 import torch
+from torch.utils.data import Dataset
+
+from iotdb.ainode.core.config import AINodeDescriptor
+from iotdb.ainode.core.ingress.dataset import BasicDatabaseForecastDataset
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.util.cache import MemoryLRUCache
+from iotdb.ainode.core.util.decorator import singleton
 from iotdb.Session import Session
 from iotdb.table_session import TableSession, TableSessionConfig
 from iotdb.utils.Field import Field
 from iotdb.utils.IoTDBConstants import TSDataType
-from torch.utils.data import Dataset
-
-from iotdb.ainode.core.config import AINodeDescriptor
-from iotdb.ainode.core.ingress import BasicDatabaseForecastDataset
-from ainode.core.log import Logger
-from ainode.core.util.cache import MemoryLRUCache
-from ainode.core.util.decorator import singleton
 
 logger = Logger()
 
@@ -91,6 +91,10 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             user=username,
             password=password,
             zone_id=time_zone,
+            use_ssl=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_enabled(),
+            ca_certs=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
         )
         self.session.open(False)
         self.use_rate = use_rate
@@ -269,6 +273,10 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
             username=username,
             password=password,
             time_zone=time_zone,
+            use_ssl=AINodeDescriptor()
+            .get_config()
+            .get_ain_cluster_ingress_ssl_enabled(),
+            ca_certs=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
         )
         self.session = TableSession(table_session_config)
         self.use_rate = use_rate

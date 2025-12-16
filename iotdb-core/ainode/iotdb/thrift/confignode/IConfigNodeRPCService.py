@@ -6,15 +6,23 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import logging
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TProcessor,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
-import logging
 from .ttypes import *
-from thrift.Thrift import TProcessor
-from thrift.transport import TTransport
+
 all_structs = []
 
 
@@ -87,6 +95,13 @@ class Iface(object):
         """
         Parameters:
          - aiNodeId
+
+        """
+        pass
+
+    def getAINodeLocation(self):
+        """
+        Return a reachable AINode location.
 
         """
         pass
@@ -766,16 +781,6 @@ class Iface(object):
         """
         pass
 
-    def showAppliedConfigurations(self, nodeId):
-        """
-        Show applied configurations by TsBlock
-
-        Parameters:
-         - nodeId
-
-        """
-        pass
-
     def startRepairData(self):
         """
         Check and repair unsorted tsfile by compaction
@@ -858,14 +863,13 @@ class Iface(object):
         """
         pass
 
-    def killQuery(self, queryId, dataNodeId, allowedUsername):
+    def killQuery(self, queryId, dataNodeId):
         """
         Kill query
 
         Parameters:
          - queryId
          - dataNodeId
-         - allowedUsername
 
         """
         pass
@@ -1406,57 +1410,6 @@ class Iface(object):
         """
         pass
 
-    def showModel(self, req):
-        """
-        Return the model table
-
-        Parameters:
-         - req
-
-        """
-        pass
-
-    def showLoadedModel(self, req):
-        """
-        Return the loaded model table
-
-        Parameters:
-         - req
-
-        """
-        pass
-
-    def showAIDevices(self):
-        """
-        Return the available ai devices
-
-        """
-        pass
-
-    def loadModel(self, req):
-        """
-        Load an existing model to specific devices
-
-        @return SUCCESS_STATUS if the model loading task was submitted successfully
-
-        Parameters:
-         - req
-
-        """
-        pass
-
-    def unloadModel(self, req):
-        """
-        Unload an existing model to specific devices
-
-        @return SUCCESS_STATUS if the model unloading task was submitted successfully
-
-        Parameters:
-         - req
-
-        """
-        pass
-
     def getModelInfo(self, req):
         """
         Return the model info by model_id
@@ -1468,14 +1421,6 @@ class Iface(object):
         pass
 
     def updateModelInfo(self, req):
-        """
-        Parameters:
-         - req
-
-        """
-        pass
-
-    def createTraining(self, req):
         """
         Parameters:
          - req
@@ -1882,6 +1827,36 @@ class Client(Iface):
         if result.success is not None:
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "getAINodeConfiguration failed: unknown result")
+
+    def getAINodeLocation(self):
+        """
+        Return a reachable AINode location.
+
+        """
+        self.send_getAINodeLocation()
+        return self.recv_getAINodeLocation()
+
+    def send_getAINodeLocation(self):
+        self._oprot.writeMessageBegin('getAINodeLocation', TMessageType.CALL, self._seqid)
+        args = getAINodeLocation_args()
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_getAINodeLocation(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = getAINodeLocation_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        if result.success is not None:
+            return result.success
+        raise TApplicationException(TApplicationException.MISSING_RESULT, "getAINodeLocation failed: unknown result")
 
     def getSystemConfiguration(self):
         """
@@ -3992,40 +3967,6 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "showConfiguration failed: unknown result")
 
-    def showAppliedConfigurations(self, nodeId):
-        """
-        Show applied configurations by TsBlock
-
-        Parameters:
-         - nodeId
-
-        """
-        self.send_showAppliedConfigurations(nodeId)
-        return self.recv_showAppliedConfigurations()
-
-    def send_showAppliedConfigurations(self, nodeId):
-        self._oprot.writeMessageBegin('showAppliedConfigurations', TMessageType.CALL, self._seqid)
-        args = showAppliedConfigurations_args()
-        args.nodeId = nodeId
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_showAppliedConfigurations(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = showAppliedConfigurations_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "showAppliedConfigurations failed: unknown result")
-
     def startRepairData(self):
         """
         Check and repair unsorted tsfile by compaction
@@ -4344,25 +4285,23 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "removeRegion failed: unknown result")
 
-    def killQuery(self, queryId, dataNodeId, allowedUsername):
+    def killQuery(self, queryId, dataNodeId):
         """
         Kill query
 
         Parameters:
          - queryId
          - dataNodeId
-         - allowedUsername
 
         """
-        self.send_killQuery(queryId, dataNodeId, allowedUsername)
+        self.send_killQuery(queryId, dataNodeId)
         return self.recv_killQuery()
 
-    def send_killQuery(self, queryId, dataNodeId, allowedUsername):
+    def send_killQuery(self, queryId, dataNodeId):
         self._oprot.writeMessageBegin('killQuery', TMessageType.CALL, self._seqid)
         args = killQuery_args()
         args.queryId = queryId
         args.dataNodeId = dataNodeId
-        args.allowedUsername = allowedUsername
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -6295,176 +6234,6 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "dropModel failed: unknown result")
 
-    def showModel(self, req):
-        """
-        Return the model table
-
-        Parameters:
-         - req
-
-        """
-        self.send_showModel(req)
-        return self.recv_showModel()
-
-    def send_showModel(self, req):
-        self._oprot.writeMessageBegin('showModel', TMessageType.CALL, self._seqid)
-        args = showModel_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_showModel(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = showModel_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "showModel failed: unknown result")
-
-    def showLoadedModel(self, req):
-        """
-        Return the loaded model table
-
-        Parameters:
-         - req
-
-        """
-        self.send_showLoadedModel(req)
-        return self.recv_showLoadedModel()
-
-    def send_showLoadedModel(self, req):
-        self._oprot.writeMessageBegin('showLoadedModel', TMessageType.CALL, self._seqid)
-        args = showLoadedModel_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_showLoadedModel(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = showLoadedModel_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "showLoadedModel failed: unknown result")
-
-    def showAIDevices(self):
-        """
-        Return the available ai devices
-
-        """
-        self.send_showAIDevices()
-        return self.recv_showAIDevices()
-
-    def send_showAIDevices(self):
-        self._oprot.writeMessageBegin('showAIDevices', TMessageType.CALL, self._seqid)
-        args = showAIDevices_args()
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_showAIDevices(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = showAIDevices_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "showAIDevices failed: unknown result")
-
-    def loadModel(self, req):
-        """
-        Load an existing model to specific devices
-
-        @return SUCCESS_STATUS if the model loading task was submitted successfully
-
-        Parameters:
-         - req
-
-        """
-        self.send_loadModel(req)
-        return self.recv_loadModel()
-
-    def send_loadModel(self, req):
-        self._oprot.writeMessageBegin('loadModel', TMessageType.CALL, self._seqid)
-        args = loadModel_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_loadModel(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = loadModel_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "loadModel failed: unknown result")
-
-    def unloadModel(self, req):
-        """
-        Unload an existing model to specific devices
-
-        @return SUCCESS_STATUS if the model unloading task was submitted successfully
-
-        Parameters:
-         - req
-
-        """
-        self.send_unloadModel(req)
-        return self.recv_unloadModel()
-
-    def send_unloadModel(self, req):
-        self._oprot.writeMessageBegin('unloadModel', TMessageType.CALL, self._seqid)
-        args = unloadModel_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_unloadModel(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = unloadModel_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "unloadModel failed: unknown result")
-
     def getModelInfo(self, req):
         """
         Return the model info by model_id
@@ -6530,38 +6299,6 @@ class Client(Iface):
         if result.success is not None:
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "updateModelInfo failed: unknown result")
-
-    def createTraining(self, req):
-        """
-        Parameters:
-         - req
-
-        """
-        self.send_createTraining(req)
-        return self.recv_createTraining()
-
-    def send_createTraining(self, req):
-        self._oprot.writeMessageBegin('createTraining', TMessageType.CALL, self._seqid)
-        args = createTraining_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_createTraining(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = createTraining_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "createTraining failed: unknown result")
 
     def setSpaceQuota(self, req):
         """
@@ -7090,6 +6827,7 @@ class Processor(Iface, TProcessor):
         self._processMap["removeAINode"] = Processor.process_removeAINode
         self._processMap["showAINodes"] = Processor.process_showAINodes
         self._processMap["getAINodeConfiguration"] = Processor.process_getAINodeConfiguration
+        self._processMap["getAINodeLocation"] = Processor.process_getAINodeLocation
         self._processMap["getSystemConfiguration"] = Processor.process_getSystemConfiguration
         self._processMap["removeDataNode"] = Processor.process_removeDataNode
         self._processMap["reportDataNodeShutdown"] = Processor.process_reportDataNodeShutdown
@@ -7150,7 +6888,6 @@ class Processor(Iface, TProcessor):
         self._processMap["clearCache"] = Processor.process_clearCache
         self._processMap["setConfiguration"] = Processor.process_setConfiguration
         self._processMap["showConfiguration"] = Processor.process_showConfiguration
-        self._processMap["showAppliedConfigurations"] = Processor.process_showAppliedConfigurations
         self._processMap["startRepairData"] = Processor.process_startRepairData
         self._processMap["stopRepairData"] = Processor.process_stopRepairData
         self._processMap["submitLoadConfigurationTask"] = Processor.process_submitLoadConfigurationTask
@@ -7220,14 +6957,8 @@ class Processor(Iface, TProcessor):
         self._processMap["showCQ"] = Processor.process_showCQ
         self._processMap["createModel"] = Processor.process_createModel
         self._processMap["dropModel"] = Processor.process_dropModel
-        self._processMap["showModel"] = Processor.process_showModel
-        self._processMap["showLoadedModel"] = Processor.process_showLoadedModel
-        self._processMap["showAIDevices"] = Processor.process_showAIDevices
-        self._processMap["loadModel"] = Processor.process_loadModel
-        self._processMap["unloadModel"] = Processor.process_unloadModel
         self._processMap["getModelInfo"] = Processor.process_getModelInfo
         self._processMap["updateModelInfo"] = Processor.process_updateModelInfo
-        self._processMap["createTraining"] = Processor.process_createTraining
         self._processMap["setSpaceQuota"] = Processor.process_setSpaceQuota
         self._processMap["showSpaceQuota"] = Processor.process_showSpaceQuota
         self._processMap["getSpaceQuota"] = Processor.process_getSpaceQuota
@@ -7446,6 +7177,29 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.EXCEPTION
             result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
         oprot.writeMessageBegin("getAINodeConfiguration", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
+    def process_getAINodeLocation(self, seqid, iprot, oprot):
+        args = getAINodeLocation_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = getAINodeLocation_result()
+        try:
+            result.success = self._handler.getAINodeLocation()
+            msg_type = TMessageType.REPLY
+        except TTransport.TTransportException:
+            raise
+        except TApplicationException as ex:
+            logging.exception('TApplication exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = ex
+        except Exception:
+            logging.exception('Unexpected exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("getAINodeLocation", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
@@ -8830,29 +8584,6 @@ class Processor(Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
-    def process_showAppliedConfigurations(self, seqid, iprot, oprot):
-        args = showAppliedConfigurations_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = showAppliedConfigurations_result()
-        try:
-            result.success = self._handler.showAppliedConfigurations(args.nodeId)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("showAppliedConfigurations", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process_startRepairData(self, seqid, iprot, oprot):
         args = startRepairData_args()
         args.read(iprot)
@@ -9089,7 +8820,7 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = killQuery_result()
         try:
-            result.success = self._handler.killQuery(args.queryId, args.dataNodeId, args.allowedUsername)
+            result.success = self._handler.killQuery(args.queryId, args.dataNodeId)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -10440,121 +10171,6 @@ class Processor(Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
-    def process_showModel(self, seqid, iprot, oprot):
-        args = showModel_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = showModel_result()
-        try:
-            result.success = self._handler.showModel(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("showModel", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_showLoadedModel(self, seqid, iprot, oprot):
-        args = showLoadedModel_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = showLoadedModel_result()
-        try:
-            result.success = self._handler.showLoadedModel(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("showLoadedModel", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_showAIDevices(self, seqid, iprot, oprot):
-        args = showAIDevices_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = showAIDevices_result()
-        try:
-            result.success = self._handler.showAIDevices()
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("showAIDevices", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_loadModel(self, seqid, iprot, oprot):
-        args = loadModel_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = loadModel_result()
-        try:
-            result.success = self._handler.loadModel(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("loadModel", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_unloadModel(self, seqid, iprot, oprot):
-        args = unloadModel_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = unloadModel_result()
-        try:
-            result.success = self._handler.unloadModel(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("unloadModel", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process_getModelInfo(self, seqid, iprot, oprot):
         args = getModelInfo_args()
         args.read(iprot)
@@ -10597,29 +10213,6 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.EXCEPTION
             result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
         oprot.writeMessageBegin("updateModelInfo", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_createTraining(self, seqid, iprot, oprot):
-        args = createTraining_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = createTraining_result()
-        try:
-            result.success = self._handler.createTraining(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("createTraining", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
@@ -11933,6 +11526,111 @@ class getAINodeConfiguration_result(object):
 all_structs.append(getAINodeConfiguration_result)
 getAINodeConfiguration_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [TAINodeConfigurationResp, None], None, ),  # 0
+)
+
+
+class getAINodeLocation_args(object):
+
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('getAINodeLocation_args')
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(getAINodeLocation_args)
+getAINodeLocation_args.thrift_spec = (
+)
+
+
+class getAINodeLocation_result(object):
+    """
+    Attributes:
+     - success
+
+    """
+
+
+    def __init__(self, success=None,):
+        self.success = success
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 0:
+                if ftype == TType.STRUCT:
+                    self.success = TGetAINodeLocationResp()
+                    self.success.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('getAINodeLocation_result')
+        if self.success is not None:
+            oprot.writeFieldBegin('success', TType.STRUCT, 0)
+            self.success.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(getAINodeLocation_result)
+getAINodeLocation_result.thrift_spec = (
+    (0, TType.STRUCT, 'success', [TGetAINodeLocationResp, None], None, ),  # 0
 )
 
 
@@ -13770,17 +13468,17 @@ class getSchemaPartitionTableWithSlots_args(object):
             if fid == -1:
                 if ftype == TType.MAP:
                     self.dbSlotMap = {}
-                    (_ktype957, _vtype958, _size956) = iprot.readMapBegin()
-                    for _i960 in range(_size956):
-                        _key961 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        _val962 = []
-                        (_etype966, _size963) = iprot.readListBegin()
-                        for _i967 in range(_size963):
-                            _elem968 = iotdb.thrift.common.ttypes.TSeriesPartitionSlot()
-                            _elem968.read(iprot)
-                            _val962.append(_elem968)
+                    (_ktype856, _vtype857, _size855) = iprot.readMapBegin()
+                    for _i859 in range(_size855):
+                        _key860 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                        _val861 = []
+                        (_etype865, _size862) = iprot.readListBegin()
+                        for _i866 in range(_size862):
+                            _elem867 = iotdb.thrift.common.ttypes.TSeriesPartitionSlot()
+                            _elem867.read(iprot)
+                            _val861.append(_elem867)
                         iprot.readListEnd()
-                        self.dbSlotMap[_key961] = _val962
+                        self.dbSlotMap[_key860] = _val861
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
@@ -13797,11 +13495,11 @@ class getSchemaPartitionTableWithSlots_args(object):
         if self.dbSlotMap is not None:
             oprot.writeFieldBegin('dbSlotMap', TType.MAP, -1)
             oprot.writeMapBegin(TType.STRING, TType.LIST, len(self.dbSlotMap))
-            for kiter969, viter970 in self.dbSlotMap.items():
-                oprot.writeString(kiter969.encode('utf-8') if sys.version_info[0] == 2 else kiter969)
-                oprot.writeListBegin(TType.STRUCT, len(viter970))
-                for iter971 in viter970:
-                    iter971.write(oprot)
+            for kiter868, viter869 in self.dbSlotMap.items():
+                oprot.writeString(kiter868.encode('utf-8') if sys.version_info[0] == 2 else kiter868)
+                oprot.writeListBegin(TType.STRUCT, len(viter869))
+                for iter870 in viter869:
+                    iter870.write(oprot)
                 oprot.writeListEnd()
             oprot.writeMapEnd()
             oprot.writeFieldEnd()
@@ -14032,17 +13730,17 @@ class getOrCreateSchemaPartitionTableWithSlots_args(object):
             if fid == -1:
                 if ftype == TType.MAP:
                     self.dbSlotMap = {}
-                    (_ktype973, _vtype974, _size972) = iprot.readMapBegin()
-                    for _i976 in range(_size972):
-                        _key977 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        _val978 = []
-                        (_etype982, _size979) = iprot.readListBegin()
-                        for _i983 in range(_size979):
-                            _elem984 = iotdb.thrift.common.ttypes.TSeriesPartitionSlot()
-                            _elem984.read(iprot)
-                            _val978.append(_elem984)
+                    (_ktype872, _vtype873, _size871) = iprot.readMapBegin()
+                    for _i875 in range(_size871):
+                        _key876 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                        _val877 = []
+                        (_etype881, _size878) = iprot.readListBegin()
+                        for _i882 in range(_size878):
+                            _elem883 = iotdb.thrift.common.ttypes.TSeriesPartitionSlot()
+                            _elem883.read(iprot)
+                            _val877.append(_elem883)
                         iprot.readListEnd()
-                        self.dbSlotMap[_key977] = _val978
+                        self.dbSlotMap[_key876] = _val877
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
@@ -14059,11 +13757,11 @@ class getOrCreateSchemaPartitionTableWithSlots_args(object):
         if self.dbSlotMap is not None:
             oprot.writeFieldBegin('dbSlotMap', TType.MAP, -1)
             oprot.writeMapBegin(TType.STRING, TType.LIST, len(self.dbSlotMap))
-            for kiter985, viter986 in self.dbSlotMap.items():
-                oprot.writeString(kiter985.encode('utf-8') if sys.version_info[0] == 2 else kiter985)
-                oprot.writeListBegin(TType.STRUCT, len(viter986))
-                for iter987 in viter986:
-                    iter987.write(oprot)
+            for kiter884, viter885 in self.dbSlotMap.items():
+                oprot.writeString(kiter884.encode('utf-8') if sys.version_info[0] == 2 else kiter884)
+                oprot.writeListBegin(TType.STRUCT, len(viter885))
+                for iter886 in viter885:
+                    iter886.write(oprot)
                 oprot.writeListEnd()
             oprot.writeMapEnd()
             oprot.writeFieldEnd()
@@ -18843,10 +18541,10 @@ class clearCache_args(object):
             if fid == -1:
                 if ftype == TType.SET:
                     self.cacheClearOptions = set()
-                    (_etype991, _size988) = iprot.readSetBegin()
-                    for _i992 in range(_size988):
-                        _elem993 = iprot.readI32()
-                        self.cacheClearOptions.add(_elem993)
+                    (_etype890, _size887) = iprot.readSetBegin()
+                    for _i891 in range(_size887):
+                        _elem892 = iprot.readI32()
+                        self.cacheClearOptions.add(_elem892)
                     iprot.readSetEnd()
                 else:
                     iprot.skip(ftype)
@@ -18863,8 +18561,8 @@ class clearCache_args(object):
         if self.cacheClearOptions is not None:
             oprot.writeFieldBegin('cacheClearOptions', TType.SET, -1)
             oprot.writeSetBegin(TType.I32, len(self.cacheClearOptions))
-            for iter994 in self.cacheClearOptions:
-                oprot.writeI32(iter994)
+            for iter893 in self.cacheClearOptions:
+                oprot.writeI32(iter893)
             oprot.writeSetEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -19192,130 +18890,6 @@ class showConfiguration_result(object):
 all_structs.append(showConfiguration_result)
 showConfiguration_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TShowConfigurationResp, None], None, ),  # 0
-)
-
-
-class showAppliedConfigurations_args(object):
-    """
-    Attributes:
-     - nodeId
-
-    """
-
-
-    def __init__(self, nodeId=None,):
-        self.nodeId = nodeId
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.I32:
-                    self.nodeId = iprot.readI32()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAppliedConfigurations_args')
-        if self.nodeId is not None:
-            oprot.writeFieldBegin('nodeId', TType.I32, 1)
-            oprot.writeI32(self.nodeId)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAppliedConfigurations_args)
-showAppliedConfigurations_args.thrift_spec = (
-    None,  # 0
-    (1, TType.I32, 'nodeId', None, None, ),  # 1
-)
-
-
-class showAppliedConfigurations_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TShowAppliedConfigurationsResp()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAppliedConfigurations_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAppliedConfigurations_result)
-showAppliedConfigurations_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TShowAppliedConfigurationsResp, None], None, ),  # 0
 )
 
 
@@ -20475,15 +20049,13 @@ class killQuery_args(object):
     Attributes:
      - queryId
      - dataNodeId
-     - allowedUsername
 
     """
 
 
-    def __init__(self, queryId=None, dataNodeId=None, allowedUsername=None,):
+    def __init__(self, queryId=None, dataNodeId=None,):
         self.queryId = queryId
         self.dataNodeId = dataNodeId
-        self.allowedUsername = allowedUsername
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -20504,11 +20076,6 @@ class killQuery_args(object):
                     self.dataNodeId = iprot.readI32()
                 else:
                     iprot.skip(ftype)
-            elif fid == -3:
-                if ftype == TType.STRING:
-                    self.allowedUsername = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -20519,10 +20086,6 @@ class killQuery_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('killQuery_args')
-        if self.allowedUsername is not None:
-            oprot.writeFieldBegin('allowedUsername', TType.STRING, -3)
-            oprot.writeString(self.allowedUsername.encode('utf-8') if sys.version_info[0] == 2 else self.allowedUsername)
-            oprot.writeFieldEnd()
         if self.dataNodeId is not None:
             oprot.writeFieldBegin('dataNodeId', TType.I32, -2)
             oprot.writeI32(self.dataNodeId)
@@ -27427,599 +26990,6 @@ dropModel_result.thrift_spec = (
 )
 
 
-class showModel_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TShowModelReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showModel_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showModel_args)
-showModel_args.thrift_spec = ()
-
-
-class showModel_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = TShowModelResp()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showModel_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showModel_result)
-showModel_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [TShowModelResp, None], None, ),  # 0
-)
-
-
-class showLoadedModel_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TShowLoadedModelReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showLoadedModel_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showLoadedModel_args)
-showLoadedModel_args.thrift_spec = ()
-
-
-class showLoadedModel_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = TShowLoadedModelResp()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showLoadedModel_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showLoadedModel_result)
-showLoadedModel_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [TShowLoadedModelResp, None], None, ),  # 0
-)
-
-
-class showAIDevices_args(object):
-
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAIDevices_args')
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAIDevices_args)
-showAIDevices_args.thrift_spec = (
-)
-
-
-class showAIDevices_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = TShowAIDevicesResp()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAIDevices_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAIDevices_result)
-showAIDevices_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [TShowAIDevicesResp, None], None, ),  # 0
-)
-
-
-class loadModel_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TLoadModelReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('loadModel_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(loadModel_args)
-loadModel_args.thrift_spec = ()
-
-
-class loadModel_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TSStatus()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('loadModel_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(loadModel_result)
-loadModel_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
-)
-
-
-class unloadModel_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TUnloadModelReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('unloadModel_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(unloadModel_args)
-unloadModel_args.thrift_spec = ()
-
-
-class unloadModel_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TSStatus()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('unloadModel_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(unloadModel_result)
-unloadModel_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
-)
-
-
 class getModelInfo_args(object):
     """
     Attributes:
@@ -28264,128 +27234,6 @@ updateModelInfo_result.thrift_spec = (
 )
 
 
-class createTraining_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TCreateTrainingReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('createTraining_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(createTraining_args)
-createTraining_args.thrift_spec = ()
-
-
-class createTraining_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TSStatus()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('createTraining_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(createTraining_result)
-createTraining_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
-)
-
-
 class setSpaceQuota_args(object):
     """
     Attributes:
@@ -28531,10 +27379,10 @@ class showSpaceQuota_args(object):
             if fid == -1:
                 if ftype == TType.LIST:
                     self.databases = []
-                    (_etype998, _size995) = iprot.readListBegin()
-                    for _i999 in range(_size995):
-                        _elem1000 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        self.databases.append(_elem1000)
+                    (_etype897, _size894) = iprot.readListBegin()
+                    for _i898 in range(_size894):
+                        _elem899 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                        self.databases.append(_elem899)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -28551,8 +27399,8 @@ class showSpaceQuota_args(object):
         if self.databases is not None:
             oprot.writeFieldBegin('databases', TType.LIST, -1)
             oprot.writeListBegin(TType.STRING, len(self.databases))
-            for iter1001 in self.databases:
-                oprot.writeString(iter1001.encode('utf-8') if sys.version_info[0] == 2 else iter1001)
+            for iter900 in self.databases:
+                oprot.writeString(iter900.encode('utf-8') if sys.version_info[0] == 2 else iter900)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -29975,16 +28823,16 @@ class fetchTables_args(object):
             if fid == -1:
                 if ftype == TType.MAP:
                     self.fetchTableMap = {}
-                    (_ktype1003, _vtype1004, _size1002) = iprot.readMapBegin()
-                    for _i1006 in range(_size1002):
-                        _key1007 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        _val1008 = set()
-                        (_etype1012, _size1009) = iprot.readSetBegin()
-                        for _i1013 in range(_size1009):
-                            _elem1014 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                            _val1008.add(_elem1014)
+                    (_ktype902, _vtype903, _size901) = iprot.readMapBegin()
+                    for _i905 in range(_size901):
+                        _key906 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                        _val907 = set()
+                        (_etype911, _size908) = iprot.readSetBegin()
+                        for _i912 in range(_size908):
+                            _elem913 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                            _val907.add(_elem913)
                         iprot.readSetEnd()
-                        self.fetchTableMap[_key1007] = _val1008
+                        self.fetchTableMap[_key906] = _val907
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
@@ -30001,11 +28849,11 @@ class fetchTables_args(object):
         if self.fetchTableMap is not None:
             oprot.writeFieldBegin('fetchTableMap', TType.MAP, -1)
             oprot.writeMapBegin(TType.STRING, TType.SET, len(self.fetchTableMap))
-            for kiter1015, viter1016 in self.fetchTableMap.items():
-                oprot.writeString(kiter1015.encode('utf-8') if sys.version_info[0] == 2 else kiter1015)
-                oprot.writeSetBegin(TType.STRING, len(viter1016))
-                for iter1017 in viter1016:
-                    oprot.writeString(iter1017.encode('utf-8') if sys.version_info[0] == 2 else iter1017)
+            for kiter914, viter915 in self.fetchTableMap.items():
+                oprot.writeString(kiter914.encode('utf-8') if sys.version_info[0] == 2 else kiter914)
+                oprot.writeSetBegin(TType.STRING, len(viter915))
+                for iter916 in viter915:
+                    oprot.writeString(iter916.encode('utf-8') if sys.version_info[0] == 2 else iter916)
                 oprot.writeSetEnd()
             oprot.writeMapEnd()
             oprot.writeFieldEnd()

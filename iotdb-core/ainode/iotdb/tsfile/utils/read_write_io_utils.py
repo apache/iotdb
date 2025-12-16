@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
+from iotdb.utils.IoTDBConstants import Compressor, TSDataType, TSEncoding
 
 
 class ReadWriteUtils:

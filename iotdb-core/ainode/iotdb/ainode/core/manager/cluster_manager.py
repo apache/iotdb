@@ -17,8 +17,8 @@
 #
 import psutil
 
-from ainode.thrift.ainode.ttypes import TAIHeartbeatReq, TAIHeartbeatResp
-from ainode.thrift.common.ttypes import TLoadSample
+from iotdb.thrift.ainode.ttypes import TAIHeartbeatReq, TAIHeartbeatResp
+from iotdb.thrift.common.ttypes import TLoadSample
 
 
 class ClusterManager:
@@ -42,5 +42,6 @@ class ClusterManager:
             )
         else:
             return TAIHeartbeatResp(
-                heartbeatTimestamp=req.heartbeatTimestamp, status="Running"
+                heartbeatTimestamp=req.heartbeatTimestamp,
+                status="Running",
             )

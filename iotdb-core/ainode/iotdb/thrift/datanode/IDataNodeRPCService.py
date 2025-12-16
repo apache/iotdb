@@ -6,15 +6,23 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import logging
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TProcessor,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
-import logging
 from .ttypes import *
-from thrift.Thrift import TProcessor
-from thrift.transport import TTransport
+
 all_structs = []
 
 
@@ -430,14 +438,6 @@ class Iface(object):
         """
         pass
 
-    def enableSeparationOfAdminPower(self):
-        """
-        Enable separation of admin powers in datanode
-
-
-        """
-        pass
-
     def createPipePlugin(self, req):
         """
         Config node will create a pipe plugin on a list of data nodes.
@@ -500,9 +500,6 @@ class Iface(object):
     def showConfiguration(self):
         pass
 
-    def showAppliedConfigurations(self):
-        pass
-
     def setConfiguration(self, req):
         """
         Parameters:
@@ -522,10 +519,10 @@ class Iface(object):
         """
         pass
 
-    def killQueryInstance(self, req):
+    def killQueryInstance(self, queryId):
         """
         Parameters:
-         - req
+         - queryId
 
         """
         pass
@@ -980,16 +977,6 @@ class Iface(object):
     def insertRecord(self, req):
         """
         to write audit log or other events as time series *
-
-        Parameters:
-         - req
-
-        """
-        pass
-
-    def writeAuditLog(self, req):
-        """
-        Write an audit log entry to the DataNode's AuditEventLogger
 
         Parameters:
          - req
@@ -2303,37 +2290,6 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "invalidatePermissionCache failed: unknown result")
 
-    def enableSeparationOfAdminPower(self):
-        """
-        Enable separation of admin powers in datanode
-
-
-        """
-        self.send_enableSeparationOfAdminPower()
-        return self.recv_enableSeparationOfAdminPower()
-
-    def send_enableSeparationOfAdminPower(self):
-        self._oprot.writeMessageBegin('enableSeparationOfAdminPower', TMessageType.CALL, self._seqid)
-        args = enableSeparationOfAdminPower_args()
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_enableSeparationOfAdminPower(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = enableSeparationOfAdminPower_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "enableSeparationOfAdminPower failed: unknown result")
-
     def createPipePlugin(self, req):
         """
         Config node will create a pipe plugin on a list of data nodes.
@@ -2608,32 +2564,6 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "showConfiguration failed: unknown result")
 
-    def showAppliedConfigurations(self):
-        self.send_showAppliedConfigurations()
-        return self.recv_showAppliedConfigurations()
-
-    def send_showAppliedConfigurations(self):
-        self._oprot.writeMessageBegin('showAppliedConfigurations', TMessageType.CALL, self._seqid)
-        args = showAppliedConfigurations_args()
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_showAppliedConfigurations(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = showAppliedConfigurations_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "showAppliedConfigurations failed: unknown result")
-
     def setConfiguration(self, req):
         """
         Parameters:
@@ -2724,19 +2654,19 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "setSystemStatus failed: unknown result")
 
-    def killQueryInstance(self, req):
+    def killQueryInstance(self, queryId):
         """
         Parameters:
-         - req
+         - queryId
 
         """
-        self.send_killQueryInstance(req)
+        self.send_killQueryInstance(queryId)
         return self.recv_killQueryInstance()
 
-    def send_killQueryInstance(self, req):
+    def send_killQueryInstance(self, queryId):
         self._oprot.writeMessageBegin('killQueryInstance', TMessageType.CALL, self._seqid)
         args = killQueryInstance_args()
-        args.req = req
+        args.queryId = queryId
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -4340,40 +4270,6 @@ class Client(Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "insertRecord failed: unknown result")
 
-    def writeAuditLog(self, req):
-        """
-        Write an audit log entry to the DataNode's AuditEventLogger
-
-        Parameters:
-         - req
-
-        """
-        self.send_writeAuditLog(req)
-        return self.recv_writeAuditLog()
-
-    def send_writeAuditLog(self, req):
-        self._oprot.writeMessageBegin('writeAuditLog', TMessageType.CALL, self._seqid)
-        args = writeAuditLog_args()
-        args.req = req
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_writeAuditLog(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = writeAuditLog_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "writeAuditLog failed: unknown result")
-
 
 class Processor(Iface, TProcessor):
     def __init__(self, handler):
@@ -4416,7 +4312,6 @@ class Processor(Iface, TProcessor):
         self._processMap["updateTriggerLocation"] = Processor.process_updateTriggerLocation
         self._processMap["fireTrigger"] = Processor.process_fireTrigger
         self._processMap["invalidatePermissionCache"] = Processor.process_invalidatePermissionCache
-        self._processMap["enableSeparationOfAdminPower"] = Processor.process_enableSeparationOfAdminPower
         self._processMap["createPipePlugin"] = Processor.process_createPipePlugin
         self._processMap["dropPipePlugin"] = Processor.process_dropPipePlugin
         self._processMap["merge"] = Processor.process_merge
@@ -4426,7 +4321,6 @@ class Processor(Iface, TProcessor):
         self._processMap["stopRepairData"] = Processor.process_stopRepairData
         self._processMap["clearCache"] = Processor.process_clearCache
         self._processMap["showConfiguration"] = Processor.process_showConfiguration
-        self._processMap["showAppliedConfigurations"] = Processor.process_showAppliedConfigurations
         self._processMap["setConfiguration"] = Processor.process_setConfiguration
         self._processMap["loadConfiguration"] = Processor.process_loadConfiguration
         self._processMap["setSystemStatus"] = Processor.process_setSystemStatus
@@ -4478,7 +4372,6 @@ class Processor(Iface, TProcessor):
         self._processMap["submitInternalTestConnectionTask"] = Processor.process_submitInternalTestConnectionTask
         self._processMap["testConnectionEmptyRPC"] = Processor.process_testConnectionEmptyRPC
         self._processMap["insertRecord"] = Processor.process_insertRecord
-        self._processMap["writeAuditLog"] = Processor.process_writeAuditLog
         self._on_message_begin = None
 
     def on_message_begin(self, func):
@@ -5352,29 +5245,6 @@ class Processor(Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
-    def process_enableSeparationOfAdminPower(self, seqid, iprot, oprot):
-        args = enableSeparationOfAdminPower_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = enableSeparationOfAdminPower_result()
-        try:
-            result.success = self._handler.enableSeparationOfAdminPower()
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("enableSeparationOfAdminPower", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process_createPipePlugin(self, seqid, iprot, oprot):
         args = createPipePlugin_args()
         args.read(iprot)
@@ -5582,29 +5452,6 @@ class Processor(Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
-    def process_showAppliedConfigurations(self, seqid, iprot, oprot):
-        args = showAppliedConfigurations_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = showAppliedConfigurations_result()
-        try:
-            result.success = self._handler.showAppliedConfigurations()
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("showAppliedConfigurations", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process_setConfiguration(self, seqid, iprot, oprot):
         args = setConfiguration_args()
         args.read(iprot)
@@ -5680,7 +5527,7 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = killQueryInstance_result()
         try:
-            result.success = self._handler.killQueryInstance(args.req)
+            result.success = self._handler.killQueryInstance(args.queryId)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -6774,29 +6621,6 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.EXCEPTION
             result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
         oprot.writeMessageBegin("insertRecord", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_writeAuditLog(self, seqid, iprot, oprot):
-        args = writeAuditLog_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = writeAuditLog_result()
-        try:
-            result.success = self._handler.writeAuditLog(args.req)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception('Unexpected exception in handler')
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("writeAuditLog", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
@@ -11299,111 +11123,6 @@ invalidatePermissionCache_result.thrift_spec = (
 )
 
 
-class enableSeparationOfAdminPower_args(object):
-
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('enableSeparationOfAdminPower_args')
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(enableSeparationOfAdminPower_args)
-enableSeparationOfAdminPower_args.thrift_spec = (
-)
-
-
-class enableSeparationOfAdminPower_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TSStatus()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('enableSeparationOfAdminPower_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(enableSeparationOfAdminPower_result)
-enableSeparationOfAdminPower_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
-)
-
-
 class createPipePlugin_args(object):
     """
     Attributes:
@@ -12441,111 +12160,6 @@ showConfiguration_result.thrift_spec = (
 )
 
 
-class showAppliedConfigurations_args(object):
-
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAppliedConfigurations_args')
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAppliedConfigurations_args)
-showAppliedConfigurations_args.thrift_spec = (
-)
-
-
-class showAppliedConfigurations_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TShowAppliedConfigurationsResp()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('showAppliedConfigurations_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(showAppliedConfigurations_result)
-showAppliedConfigurations_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TShowAppliedConfigurationsResp, None], None, ),  # 0
-)
-
-
 class setConfiguration_args(object):
     """
     Attributes:
@@ -12897,13 +12511,13 @@ setSystemStatus_result.thrift_spec = (
 class killQueryInstance_args(object):
     """
     Attributes:
-     - req
+     - queryId
 
     """
 
 
-    def __init__(self, req=None,):
-        self.req = req
+    def __init__(self, queryId=None,):
+        self.queryId = queryId
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -12915,9 +12529,8 @@ class killQueryInstance_args(object):
             if ftype == TType.STOP:
                 break
             if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TKillQueryInstanceReq()
-                    self.req.read(iprot)
+                if ftype == TType.STRING:
+                    self.queryId = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
                 else:
                     iprot.skip(ftype)
             else:
@@ -12930,9 +12543,9 @@ class killQueryInstance_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('killQueryInstance_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
+        if self.queryId is not None:
+            oprot.writeFieldBegin('queryId', TType.STRING, -1)
+            oprot.writeString(self.queryId.encode('utf-8') if sys.version_info[0] == 2 else self.queryId)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -18732,128 +18345,6 @@ class insertRecord_result(object):
         return not (self == other)
 all_structs.append(insertRecord_result)
 insertRecord_result.thrift_spec = (
-    (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
-)
-
-
-class writeAuditLog_args(object):
-    """
-    Attributes:
-     - req
-
-    """
-
-
-    def __init__(self, req=None,):
-        self.req = req
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == -1:
-                if ftype == TType.STRUCT:
-                    self.req = TAuditLogReq()
-                    self.req.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('writeAuditLog_args')
-        if self.req is not None:
-            oprot.writeFieldBegin('req', TType.STRUCT, -1)
-            self.req.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(writeAuditLog_args)
-writeAuditLog_args.thrift_spec = ()
-
-
-class writeAuditLog_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-
-    def __init__(self, success=None,):
-        self.success = success
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = iotdb.thrift.common.ttypes.TSStatus()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('writeAuditLog_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-all_structs.append(writeAuditLog_result)
-writeAuditLog_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [iotdb.thrift.common.ttypes.TSStatus, None], None, ),  # 0
 )
 fix_spec(all_structs)

@@ -15,13 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import logging
 import os
 from enum import Enum
 from typing import List
 
 from iotdb.ainode.core.model.model_enums import BuiltInModelType
-from ainode.thrift.common.ttypes import TEndPoint
+from iotdb.thrift.common.ttypes import TEndPoint
 
 IOTDB_AINODE_HOME = os.getenv("IOTDB_AINODE_HOME", "")
 AINODE_VERSION_INFO = "UNKNOWN"
@@ -40,7 +41,7 @@ AINODE_RPC_PORT = 10810
 AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
 AINODE_CLUSTER_INGRESS_PORT = 6667
 AINODE_CLUSTER_INGRESS_USERNAME = "root"
-AINODE_CLUSTER_INGRESS_PASSWORD = "root"
+AINODE_CLUSTER_INGRESS_PASSWORD = "TimechoDB@2021"
 AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
 
 # RPC config
@@ -76,6 +77,9 @@ DEFAULT_LOG_LEVEL = logging.INFO
 INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE = (
     "log_inference_rank_{}_"  # example: log_inference_rank_0_all.log
 )
+TRAINING_LOG_FILE_NAME_PREFIX_TEMPLATE = (
+    "log_training_rank_{}_"  # example: log_training_rank_0_all.log
+)
 
 # AINode model management
 MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
@@ -95,6 +99,10 @@ class TSStatusCode(Enum):
     INVALID_URI_ERROR = 1511
     INVALID_INFERENCE_CONFIG = 1512
     INFERENCE_INTERNAL_ERROR = 1520
+
+    # Training status codes
+    INVALID_TRAINING_CONFIG = 1550
+    TRAINING_INTERNAL_ERROR = 1551
 
     def get_status_code(self) -> int:
         return self.value

@@ -30,7 +30,7 @@ from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     AttributeName,
@@ -43,21 +43,21 @@ from iotdb.ainode.core.exception import (
     StringRangeException,
     WrongAttributeTypeError,
 )
-from ainode.core.log import Logger
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_enums import BuiltInModelType
-from ainode.core.model.model_info import TIMER_REPO_ID
-from ainode.core.model.sundial import modeling_sundial
+from iotdb.ainode.core.model.model_info import TIMER_REPO_ID
+from iotdb.ainode.core.model.sundial import modeling_sundial
 from iotdb.ainode.core.model.timerxl import modeling_timer
 
 logger = Logger()
 
 
-def _download_file_from_hf_if_necessary(
-    file_path: str, local_dir: str, repo_id: str
-) -> bool:
-    if not os.path.exists(file_path):
+def _download_file_from_hf_if_necessary(local_dir: str, repo_id: str) -> bool:
+    weights_path = os.path.join(local_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+    config_path = os.path.join(local_dir, MODEL_CONFIG_FILE_IN_JSON)
+    if not os.path.exists(weights_path):
         logger.info(
-            f"Model file not found at {file_path}, downloading from HuggingFace..."
+            f"Model weights file not found at {weights_path}, downloading from HuggingFace..."
         )
         try:
             hf_hub_download(
@@ -65,9 +65,27 @@ def _download_file_from_hf_if_necessary(
                 filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
                 local_dir=local_dir,
             )
-            logger.info(f"Got file to {file_path}")
+            logger.info(f"Got file to {weights_path}")
         except Exception as e:
-            logger.error(f"Failed to download model file to {local_dir} due to {e}")
+            logger.error(
+                f"Failed to download model weights file to {local_dir} due to {e}"
+            )
+            return False
+    if not os.path.exists(config_path):
+        logger.info(
+            f"Model config file not found at {config_path}, downloading from HuggingFace..."
+        )
+        try:
+            hf_hub_download(
+                repo_id=repo_id,
+                filename=MODEL_CONFIG_FILE_IN_JSON,
+                local_dir=local_dir,
+            )
+            logger.info(f"Got file to {config_path}")
+        except Exception as e:
+            logger.error(
+                f"Failed to download model config file to {local_dir} due to {e}"
+            )
             return False
     return True
 
@@ -82,11 +100,7 @@ def download_built_in_ltsm_from_hf_if_necessary(
         bool: True if the model is existed or downloaded successfully, False otherwise.
     """
     repo_id = TIMER_REPO_ID[model_type]
-    weights_path = os.path.join(local_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
-    if not _download_file_from_hf_if_necessary(weights_path, local_dir, repo_id):
-        return False
-    config_path = os.path.join(local_dir, MODEL_CONFIG_FILE_IN_JSON)
-    if not _download_file_from_hf_if_necessary(config_path, local_dir, repo_id):
+    if not _download_file_from_hf_if_necessary(local_dir, repo_id):
         return False
     return True
 

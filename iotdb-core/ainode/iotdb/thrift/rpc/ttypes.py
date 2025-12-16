@@ -6,14 +6,21 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
 import iotdb.thrift.common.ttypes
 
-from thrift.transport import TTransport
 all_structs = []
 
 
@@ -4811,6 +4818,207 @@ class TSAggregationQueryReq(object):
         return not (self == other)
 
 
+class TSGroupByQueryIntervalReq(object):
+    """
+    Attributes:
+     - sessionId
+     - statementId
+     - device
+     - measurement
+     - dataType
+     - aggregationType
+     - database
+     - startTime
+     - endTime
+     - interval
+     - fetchSize
+     - timeout
+     - isAligned
+
+    """
+
+
+    def __init__(self, sessionId=None, statementId=None, device=None, measurement=None, dataType=None, aggregationType=None, database=None, startTime=None, endTime=None, interval=None, fetchSize=None, timeout=None, isAligned=None,):
+        self.sessionId = sessionId
+        self.statementId = statementId
+        self.device = device
+        self.measurement = measurement
+        self.dataType = dataType
+        self.aggregationType = aggregationType
+        self.database = database
+        self.startTime = startTime
+        self.endTime = endTime
+        self.interval = interval
+        self.fetchSize = fetchSize
+        self.timeout = timeout
+        self.isAligned = isAligned
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.I64:
+                    self.sessionId = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.I64:
+                    self.statementId = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.STRING:
+                    self.device = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 4:
+                if ftype == TType.STRING:
+                    self.measurement = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 5:
+                if ftype == TType.I32:
+                    self.dataType = iprot.readI32()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 6:
+                if ftype == TType.I32:
+                    self.aggregationType = iprot.readI32()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 7:
+                if ftype == TType.STRING:
+                    self.database = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 8:
+                if ftype == TType.I64:
+                    self.startTime = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 9:
+                if ftype == TType.I64:
+                    self.endTime = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 10:
+                if ftype == TType.I64:
+                    self.interval = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 11:
+                if ftype == TType.I32:
+                    self.fetchSize = iprot.readI32()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 12:
+                if ftype == TType.I64:
+                    self.timeout = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 13:
+                if ftype == TType.BOOL:
+                    self.isAligned = iprot.readBool()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('TSGroupByQueryIntervalReq')
+        if self.sessionId is not None:
+            oprot.writeFieldBegin('sessionId', TType.I64, 1)
+            oprot.writeI64(self.sessionId)
+            oprot.writeFieldEnd()
+        if self.statementId is not None:
+            oprot.writeFieldBegin('statementId', TType.I64, 2)
+            oprot.writeI64(self.statementId)
+            oprot.writeFieldEnd()
+        if self.device is not None:
+            oprot.writeFieldBegin('device', TType.STRING, 3)
+            oprot.writeString(self.device.encode('utf-8') if sys.version_info[0] == 2 else self.device)
+            oprot.writeFieldEnd()
+        if self.measurement is not None:
+            oprot.writeFieldBegin('measurement', TType.STRING, 4)
+            oprot.writeString(self.measurement.encode('utf-8') if sys.version_info[0] == 2 else self.measurement)
+            oprot.writeFieldEnd()
+        if self.dataType is not None:
+            oprot.writeFieldBegin('dataType', TType.I32, 5)
+            oprot.writeI32(self.dataType)
+            oprot.writeFieldEnd()
+        if self.aggregationType is not None:
+            oprot.writeFieldBegin('aggregationType', TType.I32, 6)
+            oprot.writeI32(self.aggregationType)
+            oprot.writeFieldEnd()
+        if self.database is not None:
+            oprot.writeFieldBegin('database', TType.STRING, 7)
+            oprot.writeString(self.database.encode('utf-8') if sys.version_info[0] == 2 else self.database)
+            oprot.writeFieldEnd()
+        if self.startTime is not None:
+            oprot.writeFieldBegin('startTime', TType.I64, 8)
+            oprot.writeI64(self.startTime)
+            oprot.writeFieldEnd()
+        if self.endTime is not None:
+            oprot.writeFieldBegin('endTime', TType.I64, 9)
+            oprot.writeI64(self.endTime)
+            oprot.writeFieldEnd()
+        if self.interval is not None:
+            oprot.writeFieldBegin('interval', TType.I64, 10)
+            oprot.writeI64(self.interval)
+            oprot.writeFieldEnd()
+        if self.fetchSize is not None:
+            oprot.writeFieldBegin('fetchSize', TType.I32, 11)
+            oprot.writeI32(self.fetchSize)
+            oprot.writeFieldEnd()
+        if self.timeout is not None:
+            oprot.writeFieldBegin('timeout', TType.I64, 12)
+            oprot.writeI64(self.timeout)
+            oprot.writeFieldEnd()
+        if self.isAligned is not None:
+            oprot.writeFieldBegin('isAligned', TType.BOOL, 13)
+            oprot.writeBool(self.isAligned)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        if self.sessionId is None:
+            raise TProtocolException(message='Required field sessionId is unset!')
+        if self.statementId is None:
+            raise TProtocolException(message='Required field statementId is unset!')
+        if self.device is None:
+            raise TProtocolException(message='Required field device is unset!')
+        if self.measurement is None:
+            raise TProtocolException(message='Required field measurement is unset!')
+        if self.dataType is None:
+            raise TProtocolException(message='Required field dataType is unset!')
+        if self.aggregationType is None:
+            raise TProtocolException(message='Required field aggregationType is unset!')
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class TSCreateMultiTimeseriesReq(object):
     """
     Attributes:
@@ -7198,6 +7406,23 @@ TSAggregationQueryReq.thrift_spec = (
     (9, TType.I32, 'fetchSize', None, None, ),  # 9
     (10, TType.I64, 'timeout', None, None, ),  # 10
     (11, TType.BOOL, 'legalPathNodes', None, None, ),  # 11
+)
+all_structs.append(TSGroupByQueryIntervalReq)
+TSGroupByQueryIntervalReq.thrift_spec = (
+    None,  # 0
+    (1, TType.I64, 'sessionId', None, None, ),  # 1
+    (2, TType.I64, 'statementId', None, None, ),  # 2
+    (3, TType.STRING, 'device', 'UTF8', None, ),  # 3
+    (4, TType.STRING, 'measurement', 'UTF8', None, ),  # 4
+    (5, TType.I32, 'dataType', None, None, ),  # 5
+    (6, TType.I32, 'aggregationType', None, None, ),  # 6
+    (7, TType.STRING, 'database', 'UTF8', None, ),  # 7
+    (8, TType.I64, 'startTime', None, None, ),  # 8
+    (9, TType.I64, 'endTime', None, None, ),  # 9
+    (10, TType.I64, 'interval', None, None, ),  # 10
+    (11, TType.I32, 'fetchSize', None, None, ),  # 11
+    (12, TType.I64, 'timeout', None, None, ),  # 12
+    (13, TType.BOOL, 'isAligned', None, None, ),  # 13
 )
 all_structs.append(TSCreateMultiTimeseriesReq)
 TSCreateMultiTimeseriesReq.thrift_spec = (

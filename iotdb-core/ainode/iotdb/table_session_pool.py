@@ -16,7 +16,7 @@
 # under the License.
 #
 from iotdb.Session import Session
-from iotdb.SessionPool import SessionPool, PoolConfig
+from iotdb.SessionPool import PoolConfig, SessionPool
 from iotdb.table_session import TableSession
 
 

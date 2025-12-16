@@ -19,25 +19,26 @@ import time
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.Thrift import TException
-from thrift.transport import TSocket, TTransport
+from thrift.transport import TSocket, TSSLSocket, TTransport
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.constant import TSStatusCode
-from ainode.core.log import Logger
-from ainode.core.rpc.status import verify_success
-from ainode.core.util.decorator import singleton
-from ainode.thrift.common.ttypes import (
+from iotdb.ainode.core.constant import TSStatusCode
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.rpc.status import verify_success
+from iotdb.ainode.core.util.decorator import singleton
+from iotdb.thrift.common.ttypes import (
     TAINodeConfiguration,
     TAINodeLocation,
     TEndPoint,
     TSStatus,
 )
-from ainode.thrift.confignode import IConfigNodeRPCService
-from ainode.thrift.confignode.ttypes import (
+from iotdb.thrift.confignode import IConfigNodeRPCService
+from iotdb.thrift.confignode.ttypes import (
     TAINodeRegisterReq,
     TAINodeRemoveReq,
     TAINodeRestartReq,
     TNodeVersionInfo,
+    TSystemConfigurationResp,
     TUpdateModelInfoReq,
 )
 
@@ -109,9 +110,31 @@ class ConfigNodeClient(object):
         raise TException(self._MSG_RECONNECTION_FAIL)
 
     def _connect(self, target_config_node: TEndPoint) -> None:
-        transport = TTransport.TFramedTransport(
-            TSocket.TSocket(target_config_node.ip, target_config_node.port)
-        )
+        if AINodeDescriptor().get_config().get_ain_internal_ssl_enabled():
+            import ssl
+            import sys
+
+            if sys.version_info >= (3, 10):
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            else:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False
+            context.load_verify_locations(
+                cafile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file()
+            )
+            context.load_cert_chain(
+                certfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_cert_file(),
+                keyfile=AINodeDescriptor().get_config().get_ain_thrift_ssl_key_file(),
+            )
+            socket = TSSLSocket.TSSLSocket(
+                host=target_config_node.ip,
+                port=target_config_node.port,
+                ssl_context=context,
+            )
+        else:
+            socket = TSocket.TSocket(target_config_node.ip, target_config_node.port)
+        transport = TTransport.TFramedTransport(socket)
         if not transport.isOpen():
             try:
                 transport.open()
@@ -148,6 +171,24 @@ class ConfigNodeClient(object):
                 self._config_leader = None
             return True
         return False
+
+    def getSystemConfiguration(self) -> TSystemConfigurationResp:
+        for _ in range(0, self._RETRY_NUM):
+            try:
+                resp = self._client.getSystemConfiguration()
+                if not self._update_config_node_leader(resp.status):
+                    verify_success(
+                        resp.status,
+                        "An error occurs when calling getSystemConfiguration()",
+                    )
+                    return resp
+            except TTransport.TException:
+                logger.warning(
+                    "Failed to connect to ConfigNode {} from AINode when executing getSystemConfiguration()",
+                    self._config_leader,
+                )
+                self._config_leader = None
+            self._wait_and_reconnect()
 
     def node_register(
         self,

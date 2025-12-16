@@ -6,14 +6,21 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
 import iotdb.thrift.common.ttypes
 
-from thrift.transport import TTransport
 all_structs = []
 
 

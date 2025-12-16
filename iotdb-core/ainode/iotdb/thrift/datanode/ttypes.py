@@ -6,15 +6,22 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
 import iotdb.thrift.common.ttypes
 import iotdb.thrift.rpc.ttypes
 
-from thrift.transport import TTransport
 all_structs = []
 
 
@@ -3557,15 +3564,13 @@ class TInvalidatePermissionCacheReq(object):
     Attributes:
      - username
      - roleName
-     - needDisconnect
 
     """
 
 
-    def __init__(self, username=None, roleName=None, needDisconnect=None,):
+    def __init__(self, username=None, roleName=None,):
         self.username = username
         self.roleName = roleName
-        self.needDisconnect = needDisconnect
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -3586,11 +3591,6 @@ class TInvalidatePermissionCacheReq(object):
                     self.roleName = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
                 else:
                     iprot.skip(ftype)
-            elif fid == 3:
-                if ftype == TType.BOOL:
-                    self.needDisconnect = iprot.readBool()
-                else:
-                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -3608,10 +3608,6 @@ class TInvalidatePermissionCacheReq(object):
         if self.roleName is not None:
             oprot.writeFieldBegin('roleName', TType.STRING, 2)
             oprot.writeString(self.roleName.encode('utf-8') if sys.version_info[0] == 2 else self.roleName)
-            oprot.writeFieldEnd()
-        if self.needDisconnect is not None:
-            oprot.writeFieldBegin('needDisconnect', TType.BOOL, 3)
-            oprot.writeBool(self.needDisconnect)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -3653,12 +3649,11 @@ class TDataNodeHeartbeatReq(object):
      - topology
      - logicalClock
      - currentRegionOperations
-     - booleanVariables1
 
     """
 
 
-    def __init__(self, heartbeatTimestamp=None, needJudgeLeader=None, needSamplingLoad=None, timeSeriesQuotaRemain=None, schemaRegionIds=None, dataRegionIds=None, spaceQuotaUsage=None, needPipeMetaList=None, deviceQuotaRemain=None, activation=None, configNodeEndPoints=None, dataNodes=None, topology=None, logicalClock=None, currentRegionOperations=None, booleanVariables1=None,):
+    def __init__(self, heartbeatTimestamp=None, needJudgeLeader=None, needSamplingLoad=None, timeSeriesQuotaRemain=None, schemaRegionIds=None, dataRegionIds=None, spaceQuotaUsage=None, needPipeMetaList=None, deviceQuotaRemain=None, activation=None, configNodeEndPoints=None, dataNodes=None, topology=None, logicalClock=None, currentRegionOperations=None,):
         self.heartbeatTimestamp = heartbeatTimestamp
         self.needJudgeLeader = needJudgeLeader
         self.needSamplingLoad = needSamplingLoad
@@ -3674,7 +3669,6 @@ class TDataNodeHeartbeatReq(object):
         self.topology = topology
         self.logicalClock = logicalClock
         self.currentRegionOperations = currentRegionOperations
-        self.booleanVariables1 = booleanVariables1
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -3808,11 +3802,6 @@ class TDataNodeHeartbeatReq(object):
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
-            elif fid == 16:
-                if ftype == TType.BYTE:
-                    self.booleanVariables1 = iprot.readByte()
-                else:
-                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -3909,10 +3898,6 @@ class TDataNodeHeartbeatReq(object):
             for iter147 in self.currentRegionOperations:
                 iter147.write(oprot)
             oprot.writeListEnd()
-            oprot.writeFieldEnd()
-        if self.booleanVariables1 is not None:
-            oprot.writeFieldBegin('booleanVariables1', TType.BYTE, 16)
-            oprot.writeByte(self.booleanVariables1)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -9251,195 +9236,6 @@ class TFetchTimeseriesResp(object):
         return not (self == other)
 
 
-class TAuditLogReq(object):
-    """
-    Attributes:
-     - username
-     - userId
-     - cliHostname
-     - auditEventType
-     - operationType
-     - privilegeType
-     - result
-     - database
-     - sqlString
-     - log
-     - cnId
-
-    """
-
-
-    def __init__(self, username=None, userId=None, cliHostname=None, auditEventType=None, operationType=None, privilegeType=None, result=None, database=None, sqlString=None, log=None, cnId=None,):
-        self.username = username
-        self.userId = userId
-        self.cliHostname = cliHostname
-        self.auditEventType = auditEventType
-        self.operationType = operationType
-        self.privilegeType = privilegeType
-        self.result = result
-        self.database = database
-        self.sqlString = sqlString
-        self.log = log
-        self.cnId = cnId
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.STRING:
-                    self.username = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.I64:
-                    self.userId = iprot.readI64()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 3:
-                if ftype == TType.STRING:
-                    self.cliHostname = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 4:
-                if ftype == TType.STRING:
-                    self.auditEventType = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 5:
-                if ftype == TType.STRING:
-                    self.operationType = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 6:
-                if ftype == TType.STRING:
-                    self.privilegeType = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 7:
-                if ftype == TType.BOOL:
-                    self.result = iprot.readBool()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 8:
-                if ftype == TType.STRING:
-                    self.database = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 9:
-                if ftype == TType.STRING:
-                    self.sqlString = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 10:
-                if ftype == TType.STRING:
-                    self.log = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 11:
-                if ftype == TType.I32:
-                    self.cnId = iprot.readI32()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('TAuditLogReq')
-        if self.username is not None:
-            oprot.writeFieldBegin('username', TType.STRING, 1)
-            oprot.writeString(self.username.encode('utf-8') if sys.version_info[0] == 2 else self.username)
-            oprot.writeFieldEnd()
-        if self.userId is not None:
-            oprot.writeFieldBegin('userId', TType.I64, 2)
-            oprot.writeI64(self.userId)
-            oprot.writeFieldEnd()
-        if self.cliHostname is not None:
-            oprot.writeFieldBegin('cliHostname', TType.STRING, 3)
-            oprot.writeString(self.cliHostname.encode('utf-8') if sys.version_info[0] == 2 else self.cliHostname)
-            oprot.writeFieldEnd()
-        if self.auditEventType is not None:
-            oprot.writeFieldBegin('auditEventType', TType.STRING, 4)
-            oprot.writeString(self.auditEventType.encode('utf-8') if sys.version_info[0] == 2 else self.auditEventType)
-            oprot.writeFieldEnd()
-        if self.operationType is not None:
-            oprot.writeFieldBegin('operationType', TType.STRING, 5)
-            oprot.writeString(self.operationType.encode('utf-8') if sys.version_info[0] == 2 else self.operationType)
-            oprot.writeFieldEnd()
-        if self.privilegeType is not None:
-            oprot.writeFieldBegin('privilegeType', TType.STRING, 6)
-            oprot.writeString(self.privilegeType.encode('utf-8') if sys.version_info[0] == 2 else self.privilegeType)
-            oprot.writeFieldEnd()
-        if self.result is not None:
-            oprot.writeFieldBegin('result', TType.BOOL, 7)
-            oprot.writeBool(self.result)
-            oprot.writeFieldEnd()
-        if self.database is not None:
-            oprot.writeFieldBegin('database', TType.STRING, 8)
-            oprot.writeString(self.database.encode('utf-8') if sys.version_info[0] == 2 else self.database)
-            oprot.writeFieldEnd()
-        if self.sqlString is not None:
-            oprot.writeFieldBegin('sqlString', TType.STRING, 9)
-            oprot.writeString(self.sqlString.encode('utf-8') if sys.version_info[0] == 2 else self.sqlString)
-            oprot.writeFieldEnd()
-        if self.log is not None:
-            oprot.writeFieldBegin('log', TType.STRING, 10)
-            oprot.writeString(self.log.encode('utf-8') if sys.version_info[0] == 2 else self.log)
-            oprot.writeFieldEnd()
-        if self.cnId is not None:
-            oprot.writeFieldBegin('cnId', TType.I32, 11)
-            oprot.writeI32(self.cnId)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        if self.username is None:
-            raise TProtocolException(message='Required field username is unset!')
-        if self.userId is None:
-            raise TProtocolException(message='Required field userId is unset!')
-        if self.cliHostname is None:
-            raise TProtocolException(message='Required field cliHostname is unset!')
-        if self.auditEventType is None:
-            raise TProtocolException(message='Required field auditEventType is unset!')
-        if self.operationType is None:
-            raise TProtocolException(message='Required field operationType is unset!')
-        if self.privilegeType is None:
-            raise TProtocolException(message='Required field privilegeType is unset!')
-        if self.result is None:
-            raise TProtocolException(message='Required field result is unset!')
-        if self.database is None:
-            raise TProtocolException(message='Required field database is unset!')
-        if self.sqlString is None:
-            raise TProtocolException(message='Required field sqlString is unset!')
-        if self.log is None:
-            raise TProtocolException(message='Required field log is unset!')
-        if self.cnId is None:
-            raise TProtocolException(message='Required field cnId is unset!')
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
 class TOperatorStatistics(object):
     """
     BEGIN: Used for EXPLAIN ANALYZE
@@ -10484,74 +10280,6 @@ class TFetchFragmentInstanceStatisticsResp(object):
 
     def __ne__(self, other):
         return not (self == other)
-
-
-class TKillQueryInstanceReq(object):
-    """
-    Attributes:
-     - queryId
-     - allowedUsername
-
-    """
-
-
-    def __init__(self, queryId=None, allowedUsername=None,):
-        self.queryId = queryId
-        self.allowedUsername = allowedUsername
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.STRING:
-                    self.queryId = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.STRING:
-                    self.allowedUsername = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('TKillQueryInstanceReq')
-        if self.queryId is not None:
-            oprot.writeFieldBegin('queryId', TType.STRING, 1)
-            oprot.writeString(self.queryId.encode('utf-8') if sys.version_info[0] == 2 else self.queryId)
-            oprot.writeFieldEnd()
-        if self.allowedUsername is not None:
-            oprot.writeFieldBegin('allowedUsername', TType.STRING, 2)
-            oprot.writeString(self.allowedUsername.encode('utf-8') if sys.version_info[0] == 2 else self.allowedUsername)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
 all_structs.append(TCreateSchemaRegionReq)
 TCreateSchemaRegionReq.thrift_spec = (
     None,  # 0
@@ -10841,7 +10569,6 @@ TInvalidatePermissionCacheReq.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'username', 'UTF8', None, ),  # 1
     (2, TType.STRING, 'roleName', 'UTF8', None, ),  # 2
-    (3, TType.BOOL, 'needDisconnect', None, None, ),  # 3
 )
 all_structs.append(TDataNodeHeartbeatReq)
 TDataNodeHeartbeatReq.thrift_spec = (
@@ -10861,7 +10588,6 @@ TDataNodeHeartbeatReq.thrift_spec = (
     (13, TType.MAP, 'topology', (TType.I32, None, TType.SET, (TType.I32, None, False), False), None, ),  # 13
     (14, TType.I64, 'logicalClock', None, None, ),  # 14
     (15, TType.LIST, 'currentRegionOperations', (TType.STRUCT, [iotdb.thrift.common.ttypes.TConsensusGroupId, None], False), None, ),  # 15
-    (16, TType.BYTE, 'booleanVariables1', None, None, ),  # 16
 )
 all_structs.append(TDataNodeActivation)
 TDataNodeActivation.thrift_spec = (
@@ -11265,21 +10991,6 @@ TFetchTimeseriesResp.thrift_spec = (
     (6, TType.LIST, 'tsDataset', (TType.STRING, 'BINARY', False), None, ),  # 6
     (7, TType.BOOL, 'hasMoreData', None, None, ),  # 7
 )
-all_structs.append(TAuditLogReq)
-TAuditLogReq.thrift_spec = (
-    None,  # 0
-    (1, TType.STRING, 'username', 'UTF8', None, ),  # 1
-    (2, TType.I64, 'userId', None, None, ),  # 2
-    (3, TType.STRING, 'cliHostname', 'UTF8', None, ),  # 3
-    (4, TType.STRING, 'auditEventType', 'UTF8', None, ),  # 4
-    (5, TType.STRING, 'operationType', 'UTF8', None, ),  # 5
-    (6, TType.STRING, 'privilegeType', 'UTF8', None, ),  # 6
-    (7, TType.BOOL, 'result', None, None, ),  # 7
-    (8, TType.STRING, 'database', 'UTF8', None, ),  # 8
-    (9, TType.STRING, 'sqlString', 'UTF8', None, ),  # 9
-    (10, TType.STRING, 'log', 'UTF8', None, ),  # 10
-    (11, TType.I32, 'cnId', None, None, ),  # 11
-)
 all_structs.append(TOperatorStatistics)
 TOperatorStatistics.thrift_spec = (
     None,  # 0
@@ -11369,12 +11080,6 @@ TFetchFragmentInstanceStatisticsResp.thrift_spec = (
     (15, TType.STRING, 'ip', 'UTF8', None, ),  # 15
     (16, TType.STRING, 'state', 'UTF8', None, ),  # 16
     (17, TType.I32, 'initDataQuerySourceRetryCount', None, None, ),  # 17
-)
-all_structs.append(TKillQueryInstanceReq)
-TKillQueryInstanceReq.thrift_spec = (
-    None,  # 0
-    (1, TType.STRING, 'queryId', 'UTF8', None, ),  # 1
-    (2, TType.STRING, 'allowedUsername', 'UTF8', None, ),  # 2
 )
 fix_spec(all_structs)
 del all_structs
