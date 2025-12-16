@@ -99,9 +99,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  // Previously, the boolean value 'isExplainAnalyze' was needed to determine whether query
-  // statistics should be recorded during the query process. Now 'explainType' is used to
-  // determine whether query statistics or query plan should be recorded during the query process.
+  // Determines the explanation mode for the query:
+  // - NONE: Normal query execution without explanation
+  // - EXPLAIN: Show the logical and physical query plan without execution
+  // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
   private ExplainType explainType = ExplainType.NONE;
   private boolean isVerbose = false;
 
@@ -124,14 +125,19 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
-  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
-  // table -> (maxLineLength, 'explain' or 'explain analyze' result)
-  // Max line length of each CTE should be remembered because we need to standardize
-  // the output format of main query and CTE query.
+
+  // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
+  // Key: CTE table reference
+  // Value: Pair containing (max line length of the explain output, list of formatted explain lines)
+  // This ensures consistent formatting between the main query and its CTE sub-queries
   private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
       new LinkedHashMap<>();
-  // Do not release CTE query result if it is a subquery.
+  // Tracks the materialization time cost (in nanoseconds) for each CTE to help optimize query
+  // planning
+  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
+
+  // Never materialize CTE in a subquery.
   private boolean subquery = false;
 
   // Tables in the subquery
