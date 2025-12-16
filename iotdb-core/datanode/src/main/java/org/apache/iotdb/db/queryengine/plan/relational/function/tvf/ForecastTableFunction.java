@@ -58,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -275,7 +276,7 @@ public class ForecastTableFunction implements TableFunction {
     }
 
     long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
-    if (outputInterval <= 0) {
+    if (outputInterval < 0) {
       throw new SemanticException(String.format("%s should be greater than 0", OUTPUT_INTERVAL));
     }
 
@@ -469,6 +470,9 @@ public class ForecastTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
 
       int columnSize = properColumnBuilders.size();
+
+      // sort inputRecords in ascending order by timestamp
+      inputRecords.sort(Comparator.comparingLong(record -> record.getLong(0)));
 
       // time column
       long inputStartTime = inputRecords.getFirst().getLong(0);
