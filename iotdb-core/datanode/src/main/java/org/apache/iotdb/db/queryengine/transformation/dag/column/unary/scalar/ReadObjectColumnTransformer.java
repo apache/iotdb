@@ -100,7 +100,8 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   }
 
   private Binary readObject(Binary binary) {
-    Pair<Long, String> objectLengthPathPair = ObjectTypeUtils.parseObjectBinary(binary);
+    Pair<Long, String> objectLengthPathPair =
+        ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(binary);
     long fileLength = objectLengthPathPair.getLeft();
     String relativePath = objectLengthPathPair.getRight();
     int actualReadSize =

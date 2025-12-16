@@ -3584,7 +3584,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void writeObject(ObjectNode objectNode) throws Exception {
     writeLock("writeObject");
     try {
-      String relativeTmpPathString = objectNode.getFilePath() + ".tmp";
+      String relativeTmpPathString = objectNode.getFilePathString() + ".tmp";
       String objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
       File objectTmpFile =
           FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
@@ -3596,9 +3596,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
       if (objectNode.isEOF()) {
         File objectFile =
-            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePath());
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
         if (objectFile.exists()) {
-          String relativeBackPathString = objectNode.getFilePath() + ".back";
+          String relativeBackPathString = objectNode.getFilePathString() + ".back";
           File objectBackFile =
               FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
           Files.move(
