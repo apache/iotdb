@@ -47,10 +47,10 @@ public class AINodeForecastIT {
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
       "SELECT * FROM FORECAST("
           + "model_id=>'%s', "
-          + "targets=>(SELECT time, s%d FROM db.AI), "
+          + "targets=>(SELECT time, s%d FROM db.AI WHERE time<%d ORDER BY time DESC LIMIT %d) ORDER BY time, "
           + "output_start_time=>%d, "
           + "output_length=>%d, "
-          + "output_interval=>'%s', "
+          + "output_interval=>%d, "
           + "timecol=>'%s'"
           + ")";
 
@@ -63,7 +63,7 @@ public class AINodeForecastIT {
       statement.execute("CREATE DATABASE db");
       statement.execute(
           "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)");
-      for (int i = 0; i < 2880; i++) {
+      for (int i = 0; i < 5760; i++) {
         statement.execute(
             String.format(
                 "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
@@ -96,9 +96,11 @@ public class AINodeForecastIT {
               FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
               modelInfo.getModelId(),
               i,
+              5760,
               2880,
+              5760,
               96,
-              "1s",
+              1,
               "time");
       try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQL)) {
         int count = 0;
@@ -129,20 +131,30 @@ public class AINodeForecastIT {
             FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
             modelInfo.getModelId(),
             0,
-            2879,
+            5760,
+            2880,
+            5759,
             96,
-            "1s",
+            1,
             "time");
     errorTest(
         statement,
         invalidOutputStartTimeSQL,
-        "The OUTPUT_START_TIME should be greater than the maximum timestamp of target time series. Expected greater than [2879] but found [2879].");
+        "701: The OUTPUT_START_TIME should be greater than the maximum timestamp of target time series. Expected greater than [5759] but found [5759].");
 
     // OUTPUT_LENGTH error
     String invalidOutputLengthSQL =
         String.format(
-            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), 0, 2880, 0, "1s", "time");
-    errorTest(statement, invalidOutputLengthSQL, "OUTPUT_LENGTH should be greater than 0");
+            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+            modelInfo.getModelId(),
+            0,
+            5760,
+            2880,
+            5760,
+            0,
+            1,
+            "time");
+    errorTest(statement, invalidOutputLengthSQL, "701: OUTPUT_LENGTH should be greater than 0");
 
     // OUTPUT_INTERVAL error
     String invalidOutputIntervalSQL =
@@ -150,31 +162,27 @@ public class AINodeForecastIT {
             FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
             modelInfo.getModelId(),
             0,
+            5760,
             2880,
+            5760,
             96,
-            "0s",
+            -1,
             "time");
-    errorTest(statement, invalidOutputIntervalSQL, "OUTPUT_INTERVAL should be greater than 0");
+    errorTest(statement, invalidOutputIntervalSQL, "701: OUTPUT_INTERVAL should be greater than 0");
 
-    // TIMECOL error-1
-    String invalidTimecolSQL1 =
+    // TIMECOL error
+    String invalidTimecolSQL2 =
         String.format(
             FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
             modelInfo.getModelId(),
             0,
+            5760,
             2880,
+            5760,
             96,
-            "1s",
-            "nonexistent_column");
+            1,
+            "s0");
     errorTest(
-        statement,
-        invalidTimecolSQL1,
-        "Required column [nonexistent_column] not found in the source table argument.");
-
-    // TIMECOL error-2
-    String invalidTimecolSQL2 =
-        String.format(
-            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), 0, 2880, 96, "1s", "s0");
-    errorTest(statement, invalidTimecolSQL2, "The type of the column s0 is not as expected.");
+        statement, invalidTimecolSQL2, "701: The type of the column [s0] is not as expected.");
   }
 }
