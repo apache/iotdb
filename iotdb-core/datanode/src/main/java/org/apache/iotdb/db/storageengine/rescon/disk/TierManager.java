@@ -274,7 +274,8 @@ public class TierManager {
     return Optional.empty();
   }
 
-  public boolean checkObjectPathExist(String regionIdStr, String... path) {
+  public List<File> getAllMatchedObjectDirs(String regionIdStr, String... path) {
+    List<File> matchedDirs = new ArrayList<>();
     StringBuilder objectPath = new StringBuilder();
     objectPath.append(regionIdStr);
     for (String str : path) {
@@ -288,12 +289,13 @@ public class TierManager {
                       .encode(str.getBytes(StandardCharsets.UTF_8)));
     }
     for (String objectDir : objectDirs) {
-      File objectFilePath = FSFactoryProducer.getFSFactory().getFile(objectDir, objectPath.toString());
+      File objectFilePath =
+          FSFactoryProducer.getFSFactory().getFile(objectDir, objectPath.toString());
       if (objectFilePath.exists()) {
-        return true;
+        matchedDirs.add(objectFilePath);
       }
     }
-    return false;
+    return matchedDirs;
   }
 
   public int getTiersNum() {

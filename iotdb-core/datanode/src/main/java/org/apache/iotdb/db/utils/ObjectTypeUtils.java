@@ -294,6 +294,27 @@ public class ObjectTypeUtils {
     }
   }
 
+  public static void deleteObjectPath(File file) {
+    File tmpFile = new File(file.getPath() + ".tmp");
+    File bakFile = new File(file.getPath() + ".back");
+    for (int i = 0; i < 2; i++) {
+      if (file.exists()) {
+        FileMetrics.getInstance().decreaseObjectFileNum(1);
+        FileMetrics.getInstance().decreaseObjectFileSize(file.length());
+      }
+      try {
+        deleteObjectFile(file);
+        deleteObjectFile(tmpFile);
+        deleteObjectFile(bakFile);
+      } catch (IOException e) {
+        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+      }
+    }
+    if (file.getParentFile().exists()) {
+
+    }
+  }
+
   private static void deleteObjectFile(File file) throws IOException {
     if (file.exists()) {
       logger.info("Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());

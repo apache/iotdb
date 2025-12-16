@@ -158,6 +158,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -165,11 +166,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
@@ -186,6 +189,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -2762,8 +2766,10 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
-      if (TierManager.getInstance().checkObjectPathExist(dataRegionIdString, tableName)) {
-        deleteObjectFiles(tableName, modEntries);
+      List<File> matchedObjectDirs =
+          TierManager.getInstance().getAllMatchedObjectDirs(dataRegionIdString, tableName);
+      if (!matchedObjectDirs.isEmpty()) {
+        deleteObjectFiles(matchedObjectDirs, modEntries);
       }
 
       List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
@@ -2934,9 +2940,58 @@ public class DataRegion implements IDataRegionForQuery {
     return walFlushListeners;
   }
 
-  private void deleteObjectFiles(String tableName, List<TableDeletionEntry> modEntries) {
-    for (TableDeletionEntry modEntry : modEntries) {
-
+  private void deleteObjectFiles(List<File> matchedObjectDirs, List<TableDeletionEntry> modEntries)
+      throws IOException {
+    for (File matchedObjectDir : matchedObjectDirs) {
+      try (Stream<Path> paths = Files.walk(matchedObjectDir.toPath())) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(
+                path -> {
+                  String name = path.getFileName().toString();
+                  return name.endsWith(".bin");
+                })
+            .forEach(
+                path -> {
+                  Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
+                  String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
+                  for (int i = 0; i < ideviceIdSegments.length; i++) {
+                    ideviceIdSegments[i] =
+                        config.getRestrictObjectLimit()
+                            ? relativePath.getName(i).toString()
+                            : new String(
+                                BaseEncoding.base32()
+                                    .omitPadding()
+                                    .decode(relativePath.getName(i).toString()),
+                                StandardCharsets.UTF_8);
+                  }
+                  IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
+                  String measurementId =
+                      config.getRestrictObjectLimit()
+                          ? relativePath.getName(relativePath.getNameCount() - 2).toString()
+                          : new String(
+                              BaseEncoding.base32()
+                                  .omitPadding()
+                                  .decode(
+                                      relativePath
+                                          .getName(relativePath.getNameCount() - 2)
+                                          .toString()),
+                              StandardCharsets.UTF_8);
+                  String fileName = path.getFileName().toString();
+                  long timestamp = Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
+                  logger.info(
+                      "timestamp {}, measurementId {}, ideviceId {}",
+                      timestamp,
+                      measurementId,
+                      iDeviceID);
+                  for (TableDeletionEntry modEntry : modEntries) {
+                    if (modEntry.affects(iDeviceID, timestamp, timestamp)
+                        && modEntry.affects(measurementId)) {
+                      ObjectTypeUtils.deleteObjectPath(path.toFile());
+                    }
+                  }
+                });
+      }
     }
   }
 
