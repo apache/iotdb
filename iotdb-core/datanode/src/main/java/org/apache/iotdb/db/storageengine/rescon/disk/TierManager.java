@@ -39,6 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -173,6 +174,16 @@ public class TierManager {
         objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
       } catch (DiskSpaceInsufficientException e) {
         logger.error("All disks of tier {} are full.", tierLevel, e);
+      }
+      // try to remove empty objectDirs
+      for (String dir : objectDirs) {
+        File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+        if (dirFile.isDirectory() && Objects.requireNonNull(dirFile.list()).length == 0) {
+          try {
+            Files.delete(dirFile.toPath());
+          } catch (IOException ignore) {
+          }
+        }
       }
     }
 

@@ -55,6 +55,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class ObjectTypeUtils {
@@ -310,8 +311,18 @@ public class ObjectTypeUtils {
         logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
       }
     }
-    if (file.getParentFile().exists()) {
+    deleteEmptyParentDir(file);
+  }
 
+  private static void deleteEmptyParentDir(File file) {
+    File dir = file.getParentFile();
+    if (dir.isDirectory() && Objects.requireNonNull(dir.list()).length == 0) {
+      try {
+        Files.deleteIfExists(dir.toPath());
+        deleteEmptyParentDir(dir);
+      } catch (IOException e) {
+        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
+      }
     }
   }
 
