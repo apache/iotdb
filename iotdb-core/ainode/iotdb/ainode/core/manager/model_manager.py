@@ -20,25 +20,22 @@ from typing import Callable, Dict
 from torch import nn
 from yaml import YAMLError
 
-from ainode.core.constant import TSStatusCode
-from iotdb.ainode.core.exception import (
-    BadConfigValueError,
-    InvalidUriError,
-)
-from ainode.core.log import Logger
+from iotdb.ainode.core.constant import TSStatusCode
+from iotdb.ainode.core.exception import BadConfigValueError, InvalidUriError
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_enums import BuiltInModelType, ModelStates
-from ainode.core.model.model_info import ModelInfo
-from ainode.core.model.model_storage import ModelStorage
-from ainode.core.rpc.status import get_status
-from ainode.core.util.decorator import singleton
-from ainode.thrift.ainode.ttypes import (
+from iotdb.ainode.core.model.model_info import ModelInfo
+from iotdb.ainode.core.model.model_storage import ModelStorage
+from iotdb.ainode.core.rpc.status import get_status
+from iotdb.ainode.core.util.decorator import singleton
+from iotdb.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TRegisterModelReq,
     TRegisterModelResp,
     TShowModelsReq,
     TShowModelsResp,
 )
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

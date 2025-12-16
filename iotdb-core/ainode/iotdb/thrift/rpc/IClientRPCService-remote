@@ -7,14 +7,16 @@
 #  options string: py
 #
 
-import sys
 import pprint
+import sys
+
 if sys.version_info[0] > 2:
     from urllib.parse import urlparse
 else:
     from urlparse import urlparse
-from thrift.transport import TTransport, TSocket, TSSLSocket, THttpClient
+
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.transport import THttpClient, TSocket, TSSLSocket, TTransport
 
 from iotdb.thrift.rpc import IClientRPCService
 from iotdb.thrift.rpc.ttypes import *
@@ -32,6 +34,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSExecuteStatementResp executeFastLastDataQueryForOnePrefixPath(TSFastLastDataQueryForOnePrefixPathReq req)')
     print('  TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(TSFastLastDataQueryForOneDeviceReq req)')
     print('  TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req)')
+    print('  TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)')
     print('  TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req)')
     print('  TSOpenSessionResp openSession(TSOpenSessionReq req)')
     print('  TSStatus closeSession(TSCloseSessionReq req)')
@@ -216,6 +219,12 @@ elif cmd == 'executeAggregationQueryV2':
         print('executeAggregationQueryV2 requires 1 args')
         sys.exit(1)
     pp.pprint(client.executeAggregationQueryV2(eval(args[0]),))
+
+elif cmd == 'executeGroupByQueryIntervalQuery':
+    if len(args) != 1:
+        print('executeGroupByQueryIntervalQuery requires 1 args')
+        sys.exit(1)
+    pp.pprint(client.executeGroupByQueryIntervalQuery(eval(args[0]),))
 
 elif cmd == 'fetchResultsV2':
     if len(args) != 1:

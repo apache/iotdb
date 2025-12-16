@@ -18,46 +18,48 @@
 
 import logging
 import random
-import sys
 import struct
+import sys
 import warnings
+
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 from tzlocal import get_localzone_name
 
 from iotdb.utils.SessionDataSet import SessionDataSet
+
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
 from .thrift.common.ttypes import TEndPoint
 from .thrift.rpc.IClientRPCService import (
     Client,
-    TSCreateTimeseriesReq,
+    TSAppendSchemaTemplateReq,
+    TSCloseSessionReq,
     TSCreateAlignedTimeseriesReq,
+    TSCreateMultiTimeseriesReq,
+    TSCreateSchemaTemplateReq,
+    TSCreateTimeseriesReq,
+    TSDropSchemaTemplateReq,
+    TSExecuteStatementReq,
     TSInsertRecordReq,
+    TSInsertRecordsOfOneDeviceReq,
+    TSInsertRecordsReq,
     TSInsertStringRecordReq,
     TSInsertTabletReq,
-    TSExecuteStatementReq,
-    TSOpenSessionReq,
-    TSCreateMultiTimeseriesReq,
-    TSCloseSessionReq,
     TSInsertTabletsReq,
-    TSInsertRecordsReq,
-    TSInsertRecordsOfOneDeviceReq,
-    TSCreateSchemaTemplateReq,
-    TSDropSchemaTemplateReq,
-    TSAppendSchemaTemplateReq,
+    TSOpenSessionReq,
     TSPruneSchemaTemplateReq,
+    TSQueryTemplateReq,
     TSSetSchemaTemplateReq,
     TSUnsetSchemaTemplateReq,
-    TSQueryTemplateReq,
 )
 from .thrift.rpc.ttypes import (
     TSDeleteDataReq,
-    TSProtocolVersion,
-    TSSetTimeZoneReq,
-    TSRawDataQueryReq,
-    TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
+    TSLastDataQueryReq,
+    TSProtocolVersion,
+    TSRawDataQueryReq,
+    TSSetTimeZoneReq,
 )
 from .tsfile.utils.date_utils import parse_date_to_int
 from .utils import rpc_utils
@@ -245,6 +247,7 @@ class Session(object):
     def __get_transport(self, endpoint):
         if self.__use_ssl:
             import ssl
+
             from thrift.transport import TSSLSocket
 
             if sys.version_info >= (3, 10):

@@ -17,14 +17,14 @@
 #
 import logging
 
+import pandas as pd
+
 from iotdb.utils.Field import Field
+from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 from iotdb.utils.RowRecord import RowRecord
-
-import pandas as pd
 
 logger = logging.getLogger("IoTDB")
 

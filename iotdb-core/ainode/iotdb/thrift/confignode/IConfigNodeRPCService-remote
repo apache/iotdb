@@ -7,14 +7,16 @@
 #  options string: py
 #
 
-import sys
 import pprint
+import sys
+
 if sys.version_info[0] > 2:
     from urllib.parse import urlparse
 else:
     from urlparse import urlparse
-from thrift.transport import TTransport, TSocket, TSSLSocket, THttpClient
+
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.transport import THttpClient, TSocket, TSSLSocket, TTransport
 
 from iotdb.thrift.confignode import IConfigNodeRPCService
 from iotdb.thrift.confignode.ttypes import *
@@ -32,6 +34,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSStatus removeAINode(TAINodeRemoveReq req)')
     print('  TShowAINodesResp showAINodes()')
     print('  TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)')
+    print('  TGetAINodeLocationResp getAINodeLocation()')
     print('  TSystemConfigurationResp getSystemConfiguration()')
     print('  TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)')
     print('  TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation)')
@@ -92,7 +95,6 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSStatus clearCache( cacheClearOptions)')
     print('  TSStatus setConfiguration(TSetConfigurationReq req)')
     print('  TShowConfigurationResp showConfiguration(i32 nodeId)')
-    print('  TShowAppliedConfigurationsResp showAppliedConfigurations(i32 nodeId)')
     print('  TSStatus startRepairData()')
     print('  TSStatus stopRepairData()')
     print('  TSStatus submitLoadConfigurationTask()')
@@ -103,7 +105,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TSStatus reconstructRegion(TReconstructRegionReq req)')
     print('  TSStatus extendRegion(TExtendRegionReq req)')
     print('  TSStatus removeRegion(TRemoveRegionReq req)')
-    print('  TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)')
+    print('  TSStatus killQuery(string queryId, i32 dataNodeId)')
     print('  TGetDataNodeLocationsResp getReadableDataNodeLocations()')
     print('  TShowClusterResp showCluster()')
     print('  TShowVariablesResp showVariables()')
@@ -162,14 +164,8 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  TShowCQResp showCQ()')
     print('  TSStatus createModel(TCreateModelReq req)')
     print('  TSStatus dropModel(TDropModelReq req)')
-    print('  TShowModelResp showModel(TShowModelReq req)')
-    print('  TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req)')
-    print('  TShowAIDevicesResp showAIDevices()')
-    print('  TSStatus loadModel(TLoadModelReq req)')
-    print('  TSStatus unloadModel(TUnloadModelReq req)')
     print('  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)')
     print('  TSStatus updateModelInfo(TUpdateModelInfoReq req)')
-    print('  TSStatus createTraining(TCreateTrainingReq req)')
     print('  TSStatus setSpaceQuota(TSetSpaceQuotaReq req)')
     print('  TSpaceQuotaResp showSpaceQuota( databases)')
     print('  TSpaceQuotaResp getSpaceQuota()')
@@ -312,6 +308,12 @@ elif cmd == 'getAINodeConfiguration':
         print('getAINodeConfiguration requires 1 args')
         sys.exit(1)
     pp.pprint(client.getAINodeConfiguration(eval(args[0]),))
+
+elif cmd == 'getAINodeLocation':
+    if len(args) != 0:
+        print('getAINodeLocation requires 0 args')
+        sys.exit(1)
+    pp.pprint(client.getAINodeLocation())
 
 elif cmd == 'getSystemConfiguration':
     if len(args) != 0:
@@ -673,12 +675,6 @@ elif cmd == 'showConfiguration':
         sys.exit(1)
     pp.pprint(client.showConfiguration(eval(args[0]),))
 
-elif cmd == 'showAppliedConfigurations':
-    if len(args) != 1:
-        print('showAppliedConfigurations requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.showAppliedConfigurations(eval(args[0]),))
-
 elif cmd == 'startRepairData':
     if len(args) != 0:
         print('startRepairData requires 0 args')
@@ -740,10 +736,10 @@ elif cmd == 'removeRegion':
     pp.pprint(client.removeRegion(eval(args[0]),))
 
 elif cmd == 'killQuery':
-    if len(args) != 3:
-        print('killQuery requires 3 args')
+    if len(args) != 2:
+        print('killQuery requires 2 args')
         sys.exit(1)
-    pp.pprint(client.killQuery(args[0], eval(args[1]), args[2],))
+    pp.pprint(client.killQuery(args[0], eval(args[1]),))
 
 elif cmd == 'getReadableDataNodeLocations':
     if len(args) != 0:
@@ -1093,36 +1089,6 @@ elif cmd == 'dropModel':
         sys.exit(1)
     pp.pprint(client.dropModel(eval(args[0]),))
 
-elif cmd == 'showModel':
-    if len(args) != 1:
-        print('showModel requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.showModel(eval(args[0]),))
-
-elif cmd == 'showLoadedModel':
-    if len(args) != 1:
-        print('showLoadedModel requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.showLoadedModel(eval(args[0]),))
-
-elif cmd == 'showAIDevices':
-    if len(args) != 0:
-        print('showAIDevices requires 0 args')
-        sys.exit(1)
-    pp.pprint(client.showAIDevices())
-
-elif cmd == 'loadModel':
-    if len(args) != 1:
-        print('loadModel requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.loadModel(eval(args[0]),))
-
-elif cmd == 'unloadModel':
-    if len(args) != 1:
-        print('unloadModel requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.unloadModel(eval(args[0]),))
-
 elif cmd == 'getModelInfo':
     if len(args) != 1:
         print('getModelInfo requires 1 args')
@@ -1134,12 +1100,6 @@ elif cmd == 'updateModelInfo':
         print('updateModelInfo requires 1 args')
         sys.exit(1)
     pp.pprint(client.updateModelInfo(eval(args[0]),))
-
-elif cmd == 'createTraining':
-    if len(args) != 1:
-        print('createTraining requires 1 args')
-        sys.exit(1)
-    pp.pprint(client.createTraining(eval(args[0]),))
 
 elif cmd == 'setSpaceQuota':
     if len(args) != 1:

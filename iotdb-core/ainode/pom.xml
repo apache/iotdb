@@ -73,7 +73,7 @@
                             <directory>dist</directory>
                         </fileset>
                         <fileset>
-                            <directory>ainode</directory>
+                            <directory>iotdb</directory>
                             <includes>
                                 <include>ainode/conf/</include>
                                 <include>dbapi/</include>

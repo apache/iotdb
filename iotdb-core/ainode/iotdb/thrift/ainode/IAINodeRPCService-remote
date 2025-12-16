@@ -7,14 +7,16 @@
 #  options string: py
 #
 
-import sys
 import pprint
+import sys
+
 if sys.version_info[0] > 2:
     from urllib.parse import urlparse
 else:
     from urlparse import urlparse
-from thrift.transport import TTransport, TSocket, TSSLSocket, THttpClient
+
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol
+from thrift.transport import THttpClient, TSocket, TSSLSocket, TTransport
 
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import *

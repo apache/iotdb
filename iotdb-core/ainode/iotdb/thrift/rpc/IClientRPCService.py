@@ -6,15 +6,23 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
+import logging
+import sys
+
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TProcessor,
+    TType,
+)
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
-import logging
 from .ttypes import *
-from thrift.Thrift import TProcessor
-from thrift.transport import TTransport
+
 all_structs = []
 
 
@@ -76,6 +84,14 @@ class Iface(object):
         pass
 
     def executeAggregationQueryV2(self, req):
+        """
+        Parameters:
+         - req
+
+        """
+        pass
+
+    def executeGroupByQueryIntervalQuery(self, req):
         """
         Parameters:
          - req
@@ -793,6 +809,38 @@ class Client(Iface):
         if result.success is not None:
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "executeAggregationQueryV2 failed: unknown result")
+
+    def executeGroupByQueryIntervalQuery(self, req):
+        """
+        Parameters:
+         - req
+
+        """
+        self.send_executeGroupByQueryIntervalQuery(req)
+        return self.recv_executeGroupByQueryIntervalQuery()
+
+    def send_executeGroupByQueryIntervalQuery(self, req):
+        self._oprot.writeMessageBegin('executeGroupByQueryIntervalQuery', TMessageType.CALL, self._seqid)
+        args = executeGroupByQueryIntervalQuery_args()
+        args.req = req
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_executeGroupByQueryIntervalQuery(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = executeGroupByQueryIntervalQuery_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        if result.success is not None:
+            return result.success
+        raise TApplicationException(TApplicationException.MISSING_RESULT, "executeGroupByQueryIntervalQuery failed: unknown result")
 
     def fetchResultsV2(self, req):
         """
@@ -2645,6 +2693,7 @@ class Processor(Iface, TProcessor):
         self._processMap["executeFastLastDataQueryForOnePrefixPath"] = Processor.process_executeFastLastDataQueryForOnePrefixPath
         self._processMap["executeFastLastDataQueryForOneDeviceV2"] = Processor.process_executeFastLastDataQueryForOneDeviceV2
         self._processMap["executeAggregationQueryV2"] = Processor.process_executeAggregationQueryV2
+        self._processMap["executeGroupByQueryIntervalQuery"] = Processor.process_executeGroupByQueryIntervalQuery
         self._processMap["fetchResultsV2"] = Processor.process_fetchResultsV2
         self._processMap["openSession"] = Processor.process_openSession
         self._processMap["closeSession"] = Processor.process_closeSession
@@ -2905,6 +2954,29 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.EXCEPTION
             result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
         oprot.writeMessageBegin("executeAggregationQueryV2", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
+    def process_executeGroupByQueryIntervalQuery(self, seqid, iprot, oprot):
+        args = executeGroupByQueryIntervalQuery_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = executeGroupByQueryIntervalQuery_result()
+        try:
+            result.success = self._handler.executeGroupByQueryIntervalQuery(args.req)
+            msg_type = TMessageType.REPLY
+        except TTransport.TTransportException:
+            raise
+        except TApplicationException as ex:
+            logging.exception('TApplication exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = ex
+        except Exception:
+            logging.exception('Unexpected exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("executeGroupByQueryIntervalQuery", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
@@ -5242,6 +5314,131 @@ class executeAggregationQueryV2_result(object):
         return not (self == other)
 all_structs.append(executeAggregationQueryV2_result)
 executeAggregationQueryV2_result.thrift_spec = (
+    (0, TType.STRUCT, 'success', [TSExecuteStatementResp, None], None, ),  # 0
+)
+
+
+class executeGroupByQueryIntervalQuery_args(object):
+    """
+    Attributes:
+     - req
+
+    """
+
+
+    def __init__(self, req=None,):
+        self.req = req
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRUCT:
+                    self.req = TSGroupByQueryIntervalReq()
+                    self.req.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('executeGroupByQueryIntervalQuery_args')
+        if self.req is not None:
+            oprot.writeFieldBegin('req', TType.STRUCT, 1)
+            self.req.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(executeGroupByQueryIntervalQuery_args)
+executeGroupByQueryIntervalQuery_args.thrift_spec = (
+    None,  # 0
+    (1, TType.STRUCT, 'req', [TSGroupByQueryIntervalReq, None], None, ),  # 1
+)
+
+
+class executeGroupByQueryIntervalQuery_result(object):
+    """
+    Attributes:
+     - success
+
+    """
+
+
+    def __init__(self, success=None,):
+        self.success = success
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 0:
+                if ftype == TType.STRUCT:
+                    self.success = TSExecuteStatementResp()
+                    self.success.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('executeGroupByQueryIntervalQuery_result')
+        if self.success is not None:
+            oprot.writeFieldBegin('success', TType.STRUCT, 0)
+            self.success.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(executeGroupByQueryIntervalQuery_result)
+executeGroupByQueryIntervalQuery_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [TSExecuteStatementResp, None], None, ),  # 0
 )
 

@@ -6,13 +6,19 @@
 #  options string: py
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.TRecursive import fix_spec
-
 import sys
 
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import (
+    TApplicationException,
+    TException,
+    TFrozenDict,
+    TMessageType,
+    TType,
+)
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
+
 all_structs = []
 
 
@@ -163,7 +169,6 @@ class TAggregationType(object):
     COUNT_ALL = 29
     APPROX_COUNT_DISTINCT = 30
     APPROX_MOST_FREQUENT = 31
-    APPROX_PERCENTILE = 32
 
     _VALUES_TO_NAMES = {
         0: "COUNT",
@@ -198,7 +203,6 @@ class TAggregationType(object):
         29: "COUNT_ALL",
         30: "APPROX_COUNT_DISTINCT",
         31: "APPROX_MOST_FREQUENT",
-        32: "APPROX_PERCENTILE",
     }
 
     _NAMES_TO_VALUES = {
@@ -234,7 +238,6 @@ class TAggregationType(object):
         "COUNT_ALL": 29,
         "APPROX_COUNT_DISTINCT": 30,
         "APPROX_MOST_FREQUENT": 31,
-        "APPROX_PERCENTILE": 32,
     }
 
 
@@ -3227,87 +3230,6 @@ class TShowConfigurationResp(object):
 
     def __ne__(self, other):
         return not (self == other)
-
-
-class TShowAppliedConfigurationsResp(object):
-    """
-    Attributes:
-     - status
-     - data
-
-    """
-
-
-    def __init__(self, status=None, data=None,):
-        self.status = status
-        self.data = data
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.STRUCT:
-                    self.status = TSStatus()
-                    self.status.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.MAP:
-                    self.data = {}
-                    (_ktype131, _vtype132, _size130) = iprot.readMapBegin()
-                    for _i134 in range(_size130):
-                        _key135 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        _val136 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
-                        self.data[_key135] = _val136
-                    iprot.readMapEnd()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('TShowAppliedConfigurationsResp')
-        if self.status is not None:
-            oprot.writeFieldBegin('status', TType.STRUCT, 1)
-            self.status.write(oprot)
-            oprot.writeFieldEnd()
-        if self.data is not None:
-            oprot.writeFieldBegin('data', TType.MAP, 2)
-            oprot.writeMapBegin(TType.STRING, TType.STRING, len(self.data))
-            for kiter137, viter138 in self.data.items():
-                oprot.writeString(kiter137.encode('utf-8') if sys.version_info[0] == 2 else kiter137)
-                oprot.writeString(viter138.encode('utf-8') if sys.version_info[0] == 2 else viter138)
-            oprot.writeMapEnd()
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        if self.status is None:
-            raise TProtocolException(message='Required field status is unset!')
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
 all_structs.append(TEndPoint)
 TEndPoint.thrift_spec = (
     None,  # 0
@@ -3539,12 +3461,6 @@ TShowConfigurationResp.thrift_spec = (
     None,  # 0
     (1, TType.STRUCT, 'status', [TSStatus, None], None, ),  # 1
     (2, TType.STRING, 'content', 'UTF8', None, ),  # 2
-)
-all_structs.append(TShowAppliedConfigurationsResp)
-TShowAppliedConfigurationsResp.thrift_spec = (
-    None,  # 0
-    (1, TType.STRUCT, 'status', [TSStatus, None], None, ),  # 1
-    (2, TType.MAP, 'data', (TType.STRING, 'UTF8', TType.STRING, 'UTF8', False), None, ),  # 2
 )
 fix_spec(all_structs)
 del all_structs

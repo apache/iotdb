@@ -23,15 +23,15 @@ from huggingface_hub import snapshot_download
 from requests import Session
 from requests.adapters import HTTPAdapter
 
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_RECONNECT_TIMEOUT,
     DEFAULT_RECONNECT_TIMES,
 )
 from iotdb.ainode.core.exception import UnsupportedError
-from ainode.core.log import Logger
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_enums import ModelFileType
-from ainode.core.model.model_info import get_model_file_type
+from iotdb.ainode.core.model.model_info import get_model_file_type
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"

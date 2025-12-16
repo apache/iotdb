@@ -16,9 +16,8 @@
 # under the License.
 #
 
-from sqlalchemy.sql.compiler import SQLCompiler
-from sqlalchemy.sql.compiler import OPERATORS
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.compiler import OPERATORS, SQLCompiler
 
 
 class IoTDBSQLCompiler(SQLCompiler):

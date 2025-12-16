@@ -16,7 +16,8 @@
 # under the License.
 #
 from datetime import date
-from enum import unique, IntEnum
+from enum import IntEnum, unique
+
 import numpy as np
 
 

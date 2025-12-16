@@ -27,7 +27,7 @@ import torch
 from torch import nn
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.constant import (
+from iotdb.ainode.core.constant import (
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_WEIGHTS_FILE_IN_PT,
     TSStatusCode,
@@ -37,8 +37,8 @@ from iotdb.ainode.core.exception import (
     ModelNotExistError,
     UnsupportedError,
 )
-from ainode.core.log import Logger
-from ainode.core.model.built_in_model_factory import (
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.built_in_model_factory import (
     download_built_in_ltsm_from_hf_if_necessary,
     fetch_built_in_model,
 )
@@ -49,17 +49,17 @@ from iotdb.ainode.core.model.model_enums import (
     ModelStates,
 )
 from iotdb.ainode.core.model.model_factory import fetch_model_by_uri
-from ainode.core.model.model_info import (
+from iotdb.ainode.core.model.model_info import (
     BUILT_IN_LTSM_MAP,
     BUILT_IN_MACHINE_LEARNING_MODEL_MAP,
     ModelInfo,
     get_built_in_model_type,
     get_model_file_type,
 )
-from ainode.core.model.uri_utils import get_model_register_strategy
-from ainode.core.util.lock import ModelLockPool
-from ainode.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
-from ainode.thrift.common.ttypes import TSStatus
+from iotdb.ainode.core.model.uri_utils import get_model_register_strategy
+from iotdb.ainode.core.util.lock import ModelLockPool
+from iotdb.thrift.ainode.ttypes import TShowModelsReq, TShowModelsResp
+from iotdb.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

@@ -23,18 +23,19 @@ from datetime import datetime
 import psutil
 
 from iotdb.ainode.core.config import AINodeDescriptor
-from ainode.core.constant import AINODE_SYSTEM_FILE_NAME
-from ainode.core.log import Logger
-from ainode.core.rpc.client import ClientManager
-from ainode.core.rpc.handler import AINodeRPCServiceHandler
-from ainode.core.rpc.service import AINodeRPCService
-from ainode.thrift.common.ttypes import (
+from iotdb.ainode.core.constant import AINODE_SYSTEM_FILE_NAME
+from iotdb.ainode.core.exception import MissingConfigError
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.rpc.client import ClientManager
+from iotdb.ainode.core.rpc.handler import AINodeRPCServiceHandler
+from iotdb.ainode.core.rpc.service import AINodeRPCService
+from iotdb.thrift.common.ttypes import (
     TAINodeConfiguration,
     TAINodeLocation,
     TEndPoint,
     TNodeResource,
 )
-from ainode.thrift.confignode.ttypes import TNodeVersionInfo
+from iotdb.thrift.confignode.ttypes import TNodeVersionInfo
 
 logger = Logger()
 

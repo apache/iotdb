@@ -29,9 +29,9 @@ from transformers.modeling_outputs import (
     MoeModelOutputWithPast,
 )
 
-from ainode.core.log import Logger
-from ainode.core.model.sundial.configuration_sundial import SundialConfig
-from ainode.core.model.sundial.flow_loss import FlowLoss
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
+from iotdb.ainode.core.model.sundial.flow_loss import FlowLoss
 from iotdb.ainode.core.model.sundial.ts_generation_mixin import TSGenerationMixin
 
 logger = Logger()
@@ -554,7 +554,10 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             loss_masks = loss_masks.reshape(bsz * L).repeat(
                 self.config.diffusion_batch_mul
             )
-            mask_y = mask_y.repeat(L * self.config.diffusion_batch_mul, 1)
+            if mask_y is not None:
+                mask_y = mask_y.repeat(L * self.config.diffusion_batch_mul, 1)
+            else:
+                mask_y = None
 
             loss = self.flow_loss(shift_labels, hidden_states, loss_masks, mask_y)
         else:

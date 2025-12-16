@@ -16,12 +16,14 @@
 # under the License.
 #
 
-# for package
-from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.tsfile.utils.date_utils import parse_int_to_date
-from iotdb.utils.rpc_utils import convert_to_timestamp, isoformat
 import numpy as np
 import pandas as pd
+
+from iotdb.tsfile.utils.date_utils import parse_int_to_date
+
+# for package
+from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.rpc_utils import convert_to_timestamp, isoformat
 
 
 class Field(object):

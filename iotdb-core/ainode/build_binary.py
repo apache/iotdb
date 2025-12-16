@@ -31,7 +31,7 @@ from pathlib import Path
 def get_venv_base_dir():
     """
     Get the base directory for virtual environments outside the project.
-    
+
     Returns:
         Path: Base directory path
         - Linux/macOS: ~/.cache/iotdb-ainode-build/
@@ -51,13 +51,13 @@ def get_venv_base_dir():
 def setup_venv():
     """
     Create virtual environment outside the project directory.
-    
+
     The virtual environment is created in a platform-specific location:
     - Linux/macOS: ~/.cache/iotdb-ainode-build/<project-name>/
     - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\<project-name>\\
-    
+
     The same venv is reused across multiple builds of the same project.
-    
+
     Returns:
         Path: Path to the virtual environment directory
     """
