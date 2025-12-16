@@ -207,15 +207,16 @@ public class IoTDBCurrentQueriesIT {
     }
   }
 
-  @Test
-  public void testMoreConfigurations() {
+  private void testMoreConfigurations() {
     try {
       Connection connection =
-              EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
+          EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
       Statement statement = connection.createStatement();
       statement.execute("USE information_schema");
 
       statement.execute("set configuration \"query_cost_stat_window\"='0'");
+      Thread.sleep(1_001);
+
       // query_cost_stat_window = 0, history queries are cleared
       String sql = "SELECT * FROM current_queries WHERE state='FINISHED'";
       ResultSet resultSet = statement.executeQuery(sql);
@@ -249,10 +250,12 @@ public class IoTDBCurrentQueriesIT {
       try {
         statement.execute("set configuration \"query_cost_stat_window\"='10400000000'");
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("query_cost_stat_window"));
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("java.lang.NumberFormatException: For input string: \"10400000000\""));
       }
-    }  catch (Exception e) {
-      fail(e.getMessage().concat("java.lang.NumberFormatException: For input string: \"10400000000\""));
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 }
