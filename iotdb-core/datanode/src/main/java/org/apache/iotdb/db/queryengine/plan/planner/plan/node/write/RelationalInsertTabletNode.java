@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,7 +41,6 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -50,12 +49,13 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static org.apache.iotdb.db.utils.ObjectTypeUtils.generateObjectBinary;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
@@ -465,24 +465,23 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       Map.Entry<TRegionReplicaSet, List<Integer>> entry,
       List<WritePlanNode> result) {
     for (int j = startRow; j < endRow; j++) {
+      if (((Binary[]) columns[column])[j] == null) {
+        continue;
+      }
       byte[] binary = ((Binary[]) columns[column])[j].getValues();
       ByteBuffer buffer = ByteBuffer.wrap(binary);
       boolean isEoF = buffer.get() == 1;
       long offset = buffer.getLong();
       byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
-      String relativePath =
-          TsFileNameGenerator.generateObjectFilePath(
+      IObjectPath relativePath =
+          IObjectPath.Factory.FACTORY.create(
               entry.getKey().getRegionId().getId(), times[j], getDeviceID(j), measurements[column]);
       ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
       objectNode.setDataRegionReplicaSet(entry.getKey());
       result.add(objectNode);
       if (isEoF) {
-        byte[] filePathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
-        byte[] valueBytes = new byte[filePathBytes.length + Long.BYTES];
-        System.arraycopy(
-            BytesUtils.longToBytes(offset + content.length), 0, valueBytes, 0, Long.BYTES);
-        System.arraycopy(filePathBytes, 0, valueBytes, Long.BYTES, filePathBytes.length);
-        ((Binary[]) columns[column])[j] = new Binary(valueBytes);
+        ((Binary[]) columns[column])[j] =
+            generateObjectBinary(offset + content.length, relativePath);
       } else {
         ((Binary[]) columns[column])[j] = null;
         if (bitMaps == null) {

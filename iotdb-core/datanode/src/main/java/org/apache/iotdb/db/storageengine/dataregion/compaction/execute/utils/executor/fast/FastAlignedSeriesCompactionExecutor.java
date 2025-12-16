@@ -284,7 +284,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             readerCacheMap.get(resource),
             alignedChunkMetadataList,
             Collections.singletonList(ttlDeletion),
-            valueModifications.stream().map(v -> emptyList).collect(Collectors.toList()));
+            valueModifications.stream().map(v -> emptyList).collect(Collectors.toList()),
+            resource.getTsFileID().regionId);
       }
 
       // modify aligned chunk metadatas

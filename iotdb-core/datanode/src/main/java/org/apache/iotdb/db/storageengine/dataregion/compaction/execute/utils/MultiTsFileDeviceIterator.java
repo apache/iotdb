@@ -489,7 +489,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           readerMap.get(tsFileResource),
           alignedChunkMetadataList,
           Collections.singletonList(ttlDeletion),
-          modificationForValueColumns.stream().map(v -> emptyList).collect(Collectors.toList()));
+          modificationForValueColumns.stream().map(v -> emptyList).collect(Collectors.toList()),
+          tsFileResource.getTsFileID().regionId);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
