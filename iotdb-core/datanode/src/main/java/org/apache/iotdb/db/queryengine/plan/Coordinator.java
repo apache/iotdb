@@ -837,12 +837,12 @@ public class Coordinator {
 
   private void clearExpiredQueriesInfoTask() {
     int queryCostStatWindow = CONFIG.getQueryCostStatWindow();
-    if (queryCostStatWindow <= 0) {
+    if (queryCostStatWindow <= 0 && currentQueriesInfo.isEmpty()) {
       return;
     }
 
     // the QueryInfo smaller than expired time will be cleared
-    long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000L;
+    long expiredTime = System.currentTimeMillis() - 1_000L * 60 * queryCostStatWindow;
     // peek head, the head QueryInfo is in the time window, return directly
     QueryInfo queryInfo = currentQueriesInfo.peekFirst();
     if (queryInfo == null || queryInfo.endTime >= expiredTime) {
@@ -886,7 +886,7 @@ public class Coordinator {
     long currentTime = System.currentTimeMillis();
     List<StatedQueriesInfo> result = new ArrayList<>();
     Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
-    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
     while (historyQueriesIterator.hasNext()) {
       QueryInfo queryInfo = historyQueriesIterator.next();
       if (queryInfo.endTime < needRecordTime) {
@@ -908,7 +908,7 @@ public class Coordinator {
     Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
     Set<String> repetitionQueryIdSet = new HashSet<>();
     long currentTime = System.currentTimeMillis();
-    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
     while (historyQueriesIterator.hasNext()) {
       QueryInfo queryInfo = historyQueriesIterator.next();
       if (queryInfo.endTime < needRecordTime) {
