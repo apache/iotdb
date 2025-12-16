@@ -219,6 +219,9 @@ public class ObjectTypeUtils {
   }
 
   public static int getActualReadSize(String filePath, long fileSize, long offset, long length) {
+    if (offset < 0) {
+      throw new SemanticException(String.format("offset %d is less than 0.", offset));
+    }
     if (offset >= fileSize) {
       throw new SemanticException(
           String.format(
