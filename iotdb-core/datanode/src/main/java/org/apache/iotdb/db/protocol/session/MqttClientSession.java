@@ -97,7 +97,6 @@ public class MqttClientSession extends IClientSession {
 
   @Override
   public Set<String> getPreparedStatementNames() {
-    throw new UnsupportedOperationException(
-        "MQTT client session does not support PREPARE statement.");
+    return Collections.emptySet();
   }
 }
