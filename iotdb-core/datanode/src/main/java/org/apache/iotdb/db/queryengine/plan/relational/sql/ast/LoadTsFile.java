@@ -337,20 +337,18 @@ public class LoadTsFile extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(filePath);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
+    size += RamUsageEstimator.sizeOf(filePath);
+    size += RamUsageEstimator.sizeOf(database);
     if (loadAttributes != null && !loadAttributes.isEmpty()) {
       for (Map.Entry<String, String> entry : loadAttributes.entrySet()) {
-        size += AstMemoryEstimationHelper.getEstimatedSizeOfString(entry.getKey());
-        size += AstMemoryEstimationHelper.getEstimatedSizeOfString(entry.getValue());
+        size += RamUsageEstimator.sizeOf(entry.getKey());
+        size += RamUsageEstimator.sizeOf(entry.getValue());
       }
       // Map overhead
-      size +=
-          AstMemoryEstimationHelper.getShallowSizeOfList(
-              new ArrayList<>(loadAttributes.entrySet()));
+      size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(loadAttributes.entrySet()));
     }
     if (tsFiles != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(tsFiles);
+      size += RamUsageEstimator.shallowSizeOf(tsFiles);
       for (File file : tsFiles) {
         if (file != null) {
           size += FILE_INSTANCE_SIZE;
@@ -358,7 +356,7 @@ public class LoadTsFile extends Statement {
       }
     }
     if (resources != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(resources);
+      size += RamUsageEstimator.shallowSizeOf(resources);
       for (TsFileResource resource : resources) {
         if (resource != null) {
           size += resource.calculateRamSize();
@@ -366,7 +364,7 @@ public class LoadTsFile extends Statement {
       }
     }
     if (writePointCountList != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(writePointCountList);
+      size += RamUsageEstimator.shallowSizeOf(writePointCountList);
       for (Long count : writePointCountList) {
         if (count != null) {
           size += Long.BYTES;
@@ -374,7 +372,7 @@ public class LoadTsFile extends Statement {
       }
     }
     if (isTableModel != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(isTableModel);
+      size += RamUsageEstimator.shallowSizeOf(isTableModel);
     }
     return size;
   }

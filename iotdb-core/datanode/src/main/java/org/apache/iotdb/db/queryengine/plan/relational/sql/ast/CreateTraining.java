@@ -114,12 +114,11 @@ public class CreateTraining extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(modelId);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(targetSql);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(existingModelId);
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += RamUsageEstimator.sizeOf(targetSql);
+    size += RamUsageEstimator.sizeOf(existingModelId);
     if (parameters != null) {
-      size +=
-          AstMemoryEstimationHelper.getShallowSizeOfList(new ArrayList<>(parameters.entrySet()));
+      size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(parameters.entrySet()));
       size +=
           AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
               new ArrayList<>(parameters.values()));

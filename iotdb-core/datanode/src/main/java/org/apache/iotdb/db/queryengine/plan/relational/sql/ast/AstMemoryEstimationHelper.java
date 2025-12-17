@@ -47,18 +47,6 @@ public final class AstMemoryEstimationHelper {
     return accountable == null ? 0 : accountable.ramBytesUsed();
   }
 
-  public static long getEstimatedSizeOfString(@Nullable final String str) {
-    return str == null ? 0L : RamUsageEstimator.sizeOf(str);
-  }
-
-  public static long getEstimatedSizeOfByteArray(@Nullable final byte[] bytes) {
-    return bytes == null ? 0L : RamUsageEstimator.sizeOf(bytes);
-  }
-
-  public static long getShallowSizeOfList(@Nullable final List<?> list) {
-    return list == null ? 0L : RamUsageEstimator.shallowSizeOf(list);
-  }
-
   public static long getEstimatedSizeOfNodeLocation(@Nullable final NodeLocation location) {
     if (location != null) {
       return NODE_LOCATION_INSTANCE_SIZE;

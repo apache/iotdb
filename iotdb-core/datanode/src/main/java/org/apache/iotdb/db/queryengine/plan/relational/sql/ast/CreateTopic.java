@@ -94,9 +94,8 @@ public class CreateTopic extends SubscriptionStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(topicName);
-    size +=
-        AstMemoryEstimationHelper.getShallowSizeOfList(new ArrayList<>(topicAttributes.entrySet()));
+    size += RamUsageEstimator.sizeOf(topicName);
+    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(topicAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
             new ArrayList<>(topicAttributes.values()));

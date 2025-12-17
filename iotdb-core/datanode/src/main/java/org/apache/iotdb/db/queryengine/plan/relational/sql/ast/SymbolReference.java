@@ -93,6 +93,6 @@ public class SymbolReference extends Expression {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfString(name);
+        + RamUsageEstimator.sizeOf(name);
   }
 }

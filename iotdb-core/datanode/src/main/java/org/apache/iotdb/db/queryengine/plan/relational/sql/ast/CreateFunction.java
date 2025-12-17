@@ -109,9 +109,9 @@ public class CreateFunction extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(udfName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(className);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(uriString);
+    size += RamUsageEstimator.sizeOf(udfName);
+    size += RamUsageEstimator.sizeOf(className);
+    size += RamUsageEstimator.sizeOf(uriString);
     return size;
   }
 }

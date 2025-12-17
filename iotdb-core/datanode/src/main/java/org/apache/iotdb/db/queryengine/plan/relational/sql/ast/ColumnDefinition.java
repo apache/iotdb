@@ -141,8 +141,8 @@ public class ColumnDefinition extends Node {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(type);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(charsetName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
     return size;
   }
 }

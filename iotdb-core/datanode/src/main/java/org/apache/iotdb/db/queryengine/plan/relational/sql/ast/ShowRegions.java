@@ -100,10 +100,8 @@ public class ShowRegions extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    if (nodeIds != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(nodeIds);
-    }
+    size += RamUsageEstimator.sizeOf(database);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(nodeIds);
     return size;
   }
 }

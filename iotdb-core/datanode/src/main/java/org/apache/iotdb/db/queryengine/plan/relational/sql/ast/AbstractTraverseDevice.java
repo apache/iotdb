@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonP
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.List;
@@ -252,8 +253,8 @@ public abstract class AbstractTraverseDevice extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
     return size;
   }
 }

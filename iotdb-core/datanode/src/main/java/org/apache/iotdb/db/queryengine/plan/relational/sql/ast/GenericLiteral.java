@@ -138,7 +138,7 @@ public class GenericLiteral extends Literal {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfString(type)
-        + AstMemoryEstimationHelper.getEstimatedSizeOfString(value);
+        + RamUsageEstimator.sizeOf(type)
+        + RamUsageEstimator.sizeOf(value);
   }
 }

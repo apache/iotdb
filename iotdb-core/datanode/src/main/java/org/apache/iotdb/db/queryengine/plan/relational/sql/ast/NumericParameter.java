@@ -93,7 +93,7 @@ public class NumericParameter extends DataTypeParameter {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(value);
+    size += RamUsageEstimator.sizeOf(value);
     return size;
   }
 }

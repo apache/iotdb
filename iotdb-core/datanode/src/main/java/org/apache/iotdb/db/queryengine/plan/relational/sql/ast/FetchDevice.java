@@ -115,17 +115,16 @@ public class FetchDevice extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
-    size += AstMemoryEstimationHelper.getShallowSizeOfList(deviceIdList);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.shallowSizeOf(deviceIdList);
     for (Object[] deviceId : deviceIdList) {
       if (deviceId != null) {
-        size +=
-            AstMemoryEstimationHelper.getEstimatedSizeOfByteArray(deviceId.toString().getBytes());
+        size += RamUsageEstimator.sizeOf(deviceId.toString().getBytes());
       }
     }
     if (partitionKeyList != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(partitionKeyList);
+      size += RamUsageEstimator.shallowSizeOf(partitionKeyList);
       for (IDeviceID deviceID : partitionKeyList) {
         size += deviceID == null ? 0L : deviceID.ramBytesUsed();
       }

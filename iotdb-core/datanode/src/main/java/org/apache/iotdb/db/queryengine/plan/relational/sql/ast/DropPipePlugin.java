@@ -81,7 +81,7 @@ public class DropPipePlugin extends PipeStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pluginName);
+    size += RamUsageEstimator.sizeOf(pluginName);
     return size;
   }
 }

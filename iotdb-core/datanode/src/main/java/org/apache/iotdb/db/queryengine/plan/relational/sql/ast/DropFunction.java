@@ -79,7 +79,7 @@ public class DropFunction extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(udfName);
+    size += RamUsageEstimator.sizeOf(udfName);
     return size;
   }
 }

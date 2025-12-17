@@ -82,7 +82,7 @@ public class ExtendRegion extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getShallowSizeOfList(regionIds);
+    size += RamUsageEstimator.shallowSizeOf(regionIds);
     return size;
   }
 }

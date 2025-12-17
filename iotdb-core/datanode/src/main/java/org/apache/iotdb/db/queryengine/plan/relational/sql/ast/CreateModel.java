@@ -78,8 +78,8 @@ public class CreateModel extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(modelId);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(uri);
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += RamUsageEstimator.sizeOf(uri);
     return size;
   }
 }

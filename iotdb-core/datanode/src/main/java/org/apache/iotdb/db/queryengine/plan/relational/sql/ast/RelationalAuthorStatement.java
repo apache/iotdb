@@ -465,20 +465,18 @@ public class RelationalAuthorStatement extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(userName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(roleName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(password);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(oldPassword);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(newUsername);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(loginAddr);
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(userName);
+    size += RamUsageEstimator.sizeOf(roleName);
+    size += RamUsageEstimator.sizeOf(password);
+    size += RamUsageEstimator.sizeOf(oldPassword);
+    size += RamUsageEstimator.sizeOf(newUsername);
+    size += RamUsageEstimator.sizeOf(loginAddr);
     if (privilegeType != null) {
       size +=
-          AstMemoryEstimationHelper.getShallowSizeOfList(
-              privilegeType.stream()
-                  .map(Enum::ordinal)
-                  .collect(java.util.stream.Collectors.toList()));
+          RamUsageEstimator.shallowSizeOf(
+              privilegeType.stream().map(Enum::ordinal).collect(Collectors.toList()));
     }
     return size;
   }

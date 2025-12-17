@@ -87,7 +87,7 @@ public class KillQuery extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(queryId);
+    size += RamUsageEstimator.sizeOf(queryId);
     return size;
   }
 }

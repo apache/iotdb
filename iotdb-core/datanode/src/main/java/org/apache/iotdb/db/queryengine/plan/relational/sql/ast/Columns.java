@@ -101,7 +101,7 @@ public final class Columns extends Expression {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pattern);
+    size += RamUsageEstimator.sizeOf(pattern);
     return size;
   }
 }

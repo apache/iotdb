@@ -184,6 +184,6 @@ public class Identifier extends Expression {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfString(value);
+        + RamUsageEstimator.sizeOf(value);
   }
 }

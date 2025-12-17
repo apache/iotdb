@@ -76,14 +76,14 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
-    size += AstMemoryEstimationHelper.getShallowSizeOfList(tagDeterminedFilterList);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.shallowSizeOf(tagDeterminedFilterList);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
-    size += AstMemoryEstimationHelper.getShallowSizeOfList(columnHeaderList);
+    size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
     if (results != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
+      size += RamUsageEstimator.shallowSizeOf(results);
       for (ShowDevicesResult result : results) {
         if (result != null) {
           size += result.ramBytesUsed();

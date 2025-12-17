@@ -109,6 +109,6 @@ public class DecimalLiteral extends Literal {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfString(value);
+        + RamUsageEstimator.sizeOf(value);
   }
 }

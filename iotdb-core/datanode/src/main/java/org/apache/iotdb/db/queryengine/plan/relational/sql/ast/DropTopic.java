@@ -81,7 +81,7 @@ public class DropTopic extends SubscriptionStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(topicName);
+    size += RamUsageEstimator.sizeOf(topicName);
     return size;
   }
 }

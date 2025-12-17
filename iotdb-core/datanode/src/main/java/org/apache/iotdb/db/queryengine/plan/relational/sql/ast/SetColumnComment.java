@@ -123,7 +123,7 @@ public class SetColumnComment extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += table == null ? 0L : table.ramBytesUsed();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(field);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
+    size += RamUsageEstimator.sizeOf(comment);
     return size;
   }
 }

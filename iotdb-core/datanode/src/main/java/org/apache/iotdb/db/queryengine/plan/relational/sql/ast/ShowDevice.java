@@ -157,7 +157,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     }
     // AbstractQueryDeviceWithCache fields
     if (results != null) {
-      size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
+      size += RamUsageEstimator.shallowSizeOf(results);
       for (ShowDevicesResult result : results) {
         if (result != null) {
           size += result.ramBytesUsed();

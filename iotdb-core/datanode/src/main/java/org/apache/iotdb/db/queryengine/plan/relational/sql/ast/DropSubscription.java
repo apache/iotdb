@@ -81,7 +81,7 @@ public class DropSubscription extends SubscriptionStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(subscriptionId);
+    size += RamUsageEstimator.sizeOf(subscriptionId);
     return size;
   }
 }

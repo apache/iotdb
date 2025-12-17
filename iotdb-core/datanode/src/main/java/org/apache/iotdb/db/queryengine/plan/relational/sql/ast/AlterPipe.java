@@ -150,22 +150,16 @@ public class AlterPipe extends PipeStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pipeName);
-    size +=
-        AstMemoryEstimationHelper.getShallowSizeOfList(
-            new ArrayList<>(extractorAttributes.entrySet()));
+    size += RamUsageEstimator.sizeOf(pipeName);
+    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(extractorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
             new ArrayList<>(extractorAttributes.values()));
-    size +=
-        AstMemoryEstimationHelper.getShallowSizeOfList(
-            new ArrayList<>(processorAttributes.entrySet()));
+    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(processorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
             new ArrayList<>(processorAttributes.values()));
-    size +=
-        AstMemoryEstimationHelper.getShallowSizeOfList(
-            new ArrayList<>(connectorAttributes.entrySet()));
+    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(connectorAttributes.entrySet()));
     size +=
         AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
             new ArrayList<>(connectorAttributes.values()));

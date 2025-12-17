@@ -119,7 +119,7 @@ public class GroupingSets extends GroupingElement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getShallowSizeOfList(sets);
+    size += RamUsageEstimator.shallowSizeOf(sets);
     for (List<Expression> set : sets) {
       size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(set);
     }

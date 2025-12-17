@@ -91,8 +91,7 @@ public class ClearCache extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     if (options != null) {
       size +=
-          AstMemoryEstimationHelper.getShallowSizeOfList(
-              options.stream().map(Enum::ordinal).collect(toList()));
+          RamUsageEstimator.shallowSizeOf(options.stream().map(Enum::ordinal).collect(toList()));
     }
     return size;
   }

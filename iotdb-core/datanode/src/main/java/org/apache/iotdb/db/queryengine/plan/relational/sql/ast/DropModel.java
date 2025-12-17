@@ -70,7 +70,7 @@ public class DropModel extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(modelId);
+    size += RamUsageEstimator.sizeOf(modelId);
     return size;
   }
 }

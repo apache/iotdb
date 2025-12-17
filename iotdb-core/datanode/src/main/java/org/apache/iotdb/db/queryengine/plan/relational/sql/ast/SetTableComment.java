@@ -113,7 +113,7 @@ public class SetTableComment extends Statement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += tableName == null ? 0L : tableName.ramBytesUsed();
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
+    size += RamUsageEstimator.sizeOf(comment);
     return size;
   }
 }

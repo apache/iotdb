@@ -83,7 +83,7 @@ public class ShowPipes extends PipeStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(pipeName);
+    size += RamUsageEstimator.sizeOf(pipeName);
     return size;
   }
 }

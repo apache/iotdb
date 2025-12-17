@@ -151,6 +151,6 @@ public class BinaryLiteral extends Literal {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfByteArray(value);
+        + RamUsageEstimator.sizeOf(value);
   }
 }

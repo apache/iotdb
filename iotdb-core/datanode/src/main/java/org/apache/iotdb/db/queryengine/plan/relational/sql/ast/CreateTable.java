@@ -135,8 +135,8 @@ public class CreateTable extends Statement {
     size += name == null ? 0L : name.ramBytesUsed();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(elements);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(charsetName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
     return size;
   }
 
@@ -145,8 +145,8 @@ public class CreateTable extends Statement {
     size += name == null ? 0L : name.ramBytesUsed();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(elements);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(charsetName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
     return size;
   }
 }
