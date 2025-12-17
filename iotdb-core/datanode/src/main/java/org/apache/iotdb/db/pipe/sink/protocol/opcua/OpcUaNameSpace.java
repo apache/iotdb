@@ -72,8 +72,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
 
-  OpcUaNameSpace(
-      final OpcUaServer server, final OpcUaServerBuilder builder) {
+  OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.builder = builder;
 
@@ -145,7 +144,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         folderSegments[0] = sink.unQualifiedDatabaseName;
 
         for (int j = 0; j < segments.length; ++j) {
-          folderSegments[j + 1] = Objects.isNull(segments[j]) ? sink.placeHolder : (String) segments[j];
+          folderSegments[j + 1] =
+              Objects.isNull(segments[j]) ? sink.placeHolder : (String) segments[j];
         }
 
         final int finalI = i;
