@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -524,6 +525,54 @@ public class MTreeBelowSGMemoryImpl {
       }
     }
     return failingMeasurementMap;
+  }
+
+  public boolean alterTimeSeriesDataType(
+      final MeasurementPath measurementPath, final String measurement, TSDataType newDataType)
+      throws MetadataException {
+    boolean result = false;
+    try (final MeasurementUpdater<IMemMNode> collector =
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, measurementPath, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node)
+              throws MetadataException {
+            if (node.isLogicalView()) {
+              throw new MetadataException("View table is not allowed.");
+            }
+            if (node.isPreDeleted()) {
+              throw new MeasurementInBlackListException(
+                  measurementPath.concatAsMeasurementPath(measurement));
+            }
+            //            if (node.isPreAltered()) {
+            //              throw new MetadataException("Alter is doing.");
+            //            }
+            if (!MetadataUtils.canAlter(
+                measurementPath.getMeasurementSchema().getType(), newDataType)) {
+              throw new MetadataException(
+                  String.format(
+                      "The timeseries %s used new type %s is not compatible with the existing one %s",
+                      measurementPath.getFullPath(),
+                      newDataType,
+                      measurementPath.getMeasurementSchema().getType()));
+            }
+
+            final IMeasurementSchema schema = node.getSchema();
+            //            node.setPreAltered(true);
+            node.setSchema(
+                new MeasurementSchema(
+                    schema.getMeasurementName(),
+                    newDataType,
+                    schema.getEncodingType(),
+                    schema.getCompressor(),
+                    schema.getProps()));
+            //            node.setPreAltered(false);
+          }
+        }) {
+      collector.traverse();
+      result = true;
+    }
+    return result;
   }
 
   public boolean changeAlias(final String alias, final PartialPath fullPath)

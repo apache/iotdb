@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -296,5 +298,10 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public int hashCode() {
     return insertNode.hashCode();
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    insertNode.checkDataType(memTable);
   }
 }

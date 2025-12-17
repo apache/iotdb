@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -1122,6 +1123,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.alterLogicalView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterTimeSeriesDataType(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -233,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;

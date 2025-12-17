@@ -57,6 +57,7 @@ import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -139,6 +140,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -2329,6 +2331,22 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      switch (AlterTimeSeriesOperationType.getType(req.operationType)) {
+        case ALTER_DATA_TYPE:
+          return procedureManager.alterTimeSeriesDataType(req);
+        default:
+          throw new IllegalArgumentException(
+              AlterOrDropTableOperationType.getType(req.operationType).toString());
+      }
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -2815,6 +2833,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case ALTER_COLUMN_DATA_TYPE:
+          return procedureManager.alterTableColumnDataType(req);
         case COMMENT_TABLE:
           return clusterSchemaManager.setTableComment(
               req.getDatabase(),
@@ -2832,7 +2852,8 @@ public class ConfigManager implements IManager {
         case RENAME_TABLE:
           return procedureManager.renameTable(req);
         default:
-          throw new IllegalArgumentException();
+          throw new IllegalArgumentException(
+              AlterOrDropTableOperationType.getType(req.operationType).toString());
       }
     } else {
       return status;

@@ -77,6 +77,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -94,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -249,6 +251,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -336,6 +339,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -2135,7 +2139,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
-    // and history are true), the pipe is split into history-only and realtime–only modes.
+    // and history are true), the pipe is split into history-only and realtime?only modes.
     final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getExtractorAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
@@ -3161,6 +3165,72 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
+      final String queryId, final AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Will only occur if no permission
+    if (alterTimeSeriesStatement.getPath() == null) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      alterTimeSeriesStatement.getPath().serialize(dataOutputStream);
+    } catch (final IOException ignored) {
+      // memory operation, won't happen
+    }
+
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(alterTimeSeriesStatement.getDataType(), stream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+
+    final TAlterTimeSeriesReq req =
+        new TAlterTimeSeriesReq(
+            queryId,
+            ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+            AlterTimeSeriesOperationType.ALTER_DATA_TYPE.getTypeValue(),
+            ByteBuffer.wrap(stream.toByteArray()));
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.alterTimeSeriesDataType(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      return future;
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+      return future;
+    }
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> getRegionId(
       final GetRegionIdStatement getRegionIdStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -4151,7 +4221,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else if (Boolean.FALSE.equals(isShowCreateView)) {
         ShowCreateTableTask.buildTsBlock(table, future);
       } else if (isDetails) {
-        DescribeTableDetailsTask.buildTsBlock(table, resp.getPreDeletedColumns(), future);
+        DescribeTableDetailsTask.buildTsBlock(
+            table, resp.getPreDeletedColumns(), resp.preAlteredColumns, future);
       } else {
         DescribeTableTask.buildTsBlock(table, future);
       }
@@ -4275,6 +4346,45 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
           || (TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
               && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterColumnDataType(
+      String database,
+      String tableName,
+      String columnName,
+      TSDataType newType,
+      String queryId,
+      boolean ifTableExists,
+      boolean ifColumnExists,
+      final boolean isView) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterOrDropTableOperationType.ALTER_COLUMN_DATA_TYPE,
+              TsTableColumnSchemaUtil.serialize(columnName, newType),
+              isView,
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifTableExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && ifColumnExists)) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else {
         future.setException(

@@ -627,9 +627,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
       alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
-      // Set
-      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
-      setMap(ctx, alterMap);
+      if (ctx.DATA() != null && ctx.TYPE() != null) {
+        // Set data type
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE);
+        setMap(ctx, alterMap);
+        if (ctx.attributeValue() != null) {
+          alterTimeSeriesStatement.setDataType(parseDataTypeAttribute(ctx.attributeValue()));
+        }
+      } else {
+        // Set
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
+        setMap(ctx, alterMap);
+      }
     } else if (ctx.DROP() != null) {
       // Drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
@@ -644,7 +653,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // Add attribute
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
-    } else {
+    } else if (ctx.UPSERT() != null) {
       // Upsert
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
       if (ctx.aliasClause() != null) {
@@ -665,6 +674,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
       alterTimeSeriesStatement.setAlias(parseAliasNode(ctx.alias()));
     }
+  }
+
+  private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeValueContext ctx) {
+    TSDataType dataType = null;
+    if (ctx != null) {
+      String dataTypeString = parseAttributeValue(ctx);
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        }
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+      }
+    }
+    return dataType;
   }
 
   @Override
