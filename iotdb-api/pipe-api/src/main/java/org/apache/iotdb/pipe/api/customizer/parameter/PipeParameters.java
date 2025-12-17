@@ -384,15 +384,18 @@ public class PipeParameters {
       if (key == null) {
         return null;
       }
-      final String lowerCaseKey = key.toLowerCase();
+      String lowerCaseKey = key.toLowerCase();
       for (final String prefix : FIRST_PREFIXES) {
         if (lowerCaseKey.startsWith(prefix)) {
           key = key.substring(prefix.length());
+          lowerCaseKey = lowerCaseKey.substring(prefix.length());
+          break;
         }
       }
       for (final String prefix : SECOND_PREFIXES) {
         if (lowerCaseKey.startsWith(prefix)) {
           key = key.substring(prefix.length());
+          break;
         }
       }
       return key;

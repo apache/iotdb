@@ -226,8 +226,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
 
     final String currentFolder = currentStr.toString();
+
     StatusCode currentQuality =
         Objects.isNull(sink.valueName) ? StatusCode.GOOD : StatusCode.UNCERTAIN;
+    UaVariableNode valueNode = null;
+    Object value = null;
+    long timestamp = 0;
+
     for (int i = 0; i < measurementSchemas.size(); ++i) {
       if (Objects.isNull(values.get(i))) {
         continue;
@@ -283,15 +288,30 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
-      if (Objects.isNull(measurementNode.getValue())
-          || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-              < utcTimestamp) {
-        measurementNode.setValue(
+      if (Objects.isNull(sink.valueName)) {
+        if (Objects.isNull(measurementNode.getValue())
+            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
+                < utcTimestamp) {
+          measurementNode.setValue(
+              new DataValue(
+                  new Variant(values.get(i)),
+                  currentQuality,
+                  new DateTime(utcTimestamp),
+                  new DateTime()));
+        }
+      } else {
+        valueNode = measurementNode;
+        value = values.get(i);
+        timestamp = utcTimestamp;
+      }
+    }
+    if (Objects.nonNull(valueNode)) {
+      if (Objects.isNull(valueNode.getValue())
+          || Objects.requireNonNull(valueNode.getValue().getSourceTime()).getUtcTime()
+              < timestamp) {
+        valueNode.setValue(
             new DataValue(
-                new Variant(values.get(i)),
-                currentQuality,
-                new DateTime(utcTimestamp),
-                new DateTime()));
+                new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()));
       }
     }
   }
