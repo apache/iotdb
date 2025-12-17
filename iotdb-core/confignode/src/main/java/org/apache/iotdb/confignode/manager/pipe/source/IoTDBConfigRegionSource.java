@@ -188,7 +188,6 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
                         .getCode()
                     == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       case SCHEMA:
-        // Currently do not check tree model mTree
         return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
                 && (permissionManager
                             .checkUserPrivileges(
