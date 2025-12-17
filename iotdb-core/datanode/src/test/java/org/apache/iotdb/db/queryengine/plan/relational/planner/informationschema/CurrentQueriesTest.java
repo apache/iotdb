@@ -167,7 +167,7 @@ public class CurrentQueriesTest {
             infoSchemaTableScan(
                 "information_schema.queries_costs_histogram",
                 Optional.empty(),
-                ImmutableList.of(BIN, NUMS))));
+                ImmutableList.of(BIN, NUMS, DATA_NODE_ID_TABLE_MODEL))));
 
     //                  - Exchange
     // Output - Collect - Exchange
