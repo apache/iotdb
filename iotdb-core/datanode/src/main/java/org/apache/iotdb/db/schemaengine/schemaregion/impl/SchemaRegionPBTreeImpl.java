@@ -1378,6 +1378,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException {
+    throw new UnsupportedOperationException(
+        "PBTree does not support altering timeseries data type.");
+  }
+
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(IMeasurementMNode<ICachedMNode> node) throws IOException {

@@ -147,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
@@ -209,6 +210,7 @@ import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
@@ -358,6 +360,7 @@ import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -840,6 +843,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       req.isIfExists(),
                       SerializeUtils.deserializeEncodingNullable(req.getEncoding()),
                       SerializeUtils.deserializeCompressorNullable(req.getCompressor())))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req) throws TException {
+    final MeasurementPath measurementPath =
+        MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          final String database =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          final RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new AlterTimeSeriesNode(
+                      new PlanNodeId(""),
+                      measurementPath,
+                      SET_DATA_TYPE,
+                      false,
+                      TSDataType.deserialize(req.updateInfo.get())))
               .getStatus();
         });
   }

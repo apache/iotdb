@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -86,6 +87,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedur
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterTimeSeriesDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
@@ -132,6 +134,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -467,6 +470,21 @@ public class ProcedureManager {
                 req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
         this.executor.submitProcedure(procedure);
       }
+    }
+    return waitingProcedureFinished(procedure);
+  }
+
+  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+    AlterTimeSeriesDataTypeProcedure procedure;
+    synchronized (this) {
+      procedure =
+          new AlterTimeSeriesDataTypeProcedure(
+              req.getQueryId(),
+              MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
+              req.getOperationType(),
+              TSDataType.deserialize(req.updateInfo.get()),
+              false);
+      this.executor.submitProcedure(procedure);
     }
     return waitingProcedureFinished(procedure);
   }

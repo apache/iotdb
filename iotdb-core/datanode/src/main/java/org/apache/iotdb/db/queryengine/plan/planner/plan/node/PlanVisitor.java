@@ -503,6 +503,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitAlterTimeSeriesDataType(AlterTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
     return visitPlan(node, context);
   }

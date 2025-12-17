@@ -473,6 +473,14 @@ struct TAlterEncodingCompressorReq {
   5: optional byte compressor
 }
 
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
+}
+
 struct TConstructSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
@@ -1085,6 +1093,11 @@ service IDataNodeRPCService {
    * Alter matched timeseries to specific encoding and compressor in target schemaRegions
    */
   common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template

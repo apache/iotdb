@@ -74,6 +74,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -91,6 +92,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -248,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -2133,7 +2136,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
-    // and history are true), the pipe is split into history-only and realtime–only modes.
+    // and history are true), the pipe is split into history-only and realtime?only modes.
     final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getExtractorAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
@@ -3156,6 +3159,72 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       tsStatus.setMessage(e.toString());
     }
     return tsStatus;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
+      final String queryId, final AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Will only occur if no permission
+    if (alterTimeSeriesStatement.getPath() == null) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      alterTimeSeriesStatement.getPath().serialize(dataOutputStream);
+    } catch (final IOException ignored) {
+      // memory operation, won't happen
+    }
+
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(alterTimeSeriesStatement.getDataType(), stream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+
+    final TAlterTimeSeriesReq req =
+        new TAlterTimeSeriesReq(
+            queryId,
+            ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+            AlterTimeSeriesOperationType.ALTER_DATA_TYPE.getTypeValue(),
+            ByteBuffer.wrap(stream.toByteArray()));
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.alterTimeSeriesDataType(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      return future;
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+      return future;
+    }
   }
 
   @Override

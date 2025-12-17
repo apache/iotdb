@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -256,6 +257,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
+
+  SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
+      String queryId, AlterTimeSeriesStatement alterTimeSeriesStatement);
 
   TSStatus alterLogicalViewByPipe(
       AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);

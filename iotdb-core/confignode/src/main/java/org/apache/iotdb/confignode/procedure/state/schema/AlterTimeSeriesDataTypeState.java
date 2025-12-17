@@ -16,38 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.schema.node.info;
 
-import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
-
-public interface IMeasurementInfo {
-
-  IMeasurementSchema getSchema();
-
-  void setSchema(IMeasurementSchema schema);
-
-  TSDataType getDataType();
-
-  String getAlias();
-
-  void setAlias(String alias);
-
-  long getOffset();
-
-  void setOffset(long offset);
-
-  boolean isPreDeleted();
-
-  void setPreDeleted(boolean preDeleted);
-
-  boolean isPreAltered();
-
-  void setPreAltered(boolean preAltered);
-
-  int estimateSize();
-
-  void moveDataToNewMNode(IMeasurementMNode<?> newMNode);
+public enum AlterTimeSeriesDataTypeState {
+  CHECK_AND_INVALIDATE_SERIES,
+  ALTER_TIME_SERIES_DATA_TYPE,
+  CLEAR_CACHE
 }

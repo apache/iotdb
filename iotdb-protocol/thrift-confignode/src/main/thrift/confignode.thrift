@@ -943,6 +943,13 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TAlterTimeSeriesReq {
+  1: required string queryId
+  2: required binary measurementPath
+  3: required byte operationType
+  4: required binary updateInfo
+}
+
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1880,6 +1887,11 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 
