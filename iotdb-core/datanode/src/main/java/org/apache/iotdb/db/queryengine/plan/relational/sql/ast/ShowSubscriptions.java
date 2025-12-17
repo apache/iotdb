@@ -71,9 +71,7 @@ public class ShowSubscriptions extends SubscriptionStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (topicName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(topicName);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(topicName);
     return size;
   }
 }

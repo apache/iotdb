@@ -149,9 +149,6 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     if (path != null) {
       size += RamUsageEstimator.sizeOf(path);
     }
-    if (isAligned != null) {
-      size += RamUsageEstimator.shallowSizeOfInstance(Boolean.class);
-    }
     if (rawNodes != null) {
       size += RamUsageEstimator.shallowSizeOf(rawNodes);
       for (String node : rawNodes) {

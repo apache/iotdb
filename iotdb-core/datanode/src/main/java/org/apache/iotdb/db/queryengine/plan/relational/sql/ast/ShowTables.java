@@ -96,9 +96,7 @@ public class ShowTables extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (dbName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(dbName);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(dbName);
     return size;
   }
 }

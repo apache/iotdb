@@ -73,9 +73,7 @@ public class ShowLoadedModels extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (deviceIdList != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
     return size;
   }
 }

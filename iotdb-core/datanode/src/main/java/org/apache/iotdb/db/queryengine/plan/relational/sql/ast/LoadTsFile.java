@@ -42,6 +42,9 @@ public class LoadTsFile extends Statement {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
 
+  private static final long FILE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(File.class);
+
   private String filePath;
 
   private int databaseLevel; // For loading to tree-model only
@@ -350,7 +353,7 @@ public class LoadTsFile extends Statement {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(tsFiles);
       for (File file : tsFiles) {
         if (file != null) {
-          size += RamUsageEstimator.shallowSizeOfInstance(File.class);
+          size += FILE_INSTANCE_SIZE;
         }
       }
     }
@@ -366,17 +369,12 @@ public class LoadTsFile extends Statement {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(writePointCountList);
       for (Long count : writePointCountList) {
         if (count != null) {
-          size += RamUsageEstimator.shallowSizeOfInstance(Long.class);
+          size += Long.BYTES;
         }
       }
     }
     if (isTableModel != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(isTableModel);
-      for (Boolean bool : isTableModel) {
-        if (bool != null) {
-          size += RamUsageEstimator.shallowSizeOfInstance(Boolean.class);
-        }
-      }
     }
     return size;
   }

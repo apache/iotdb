@@ -97,11 +97,9 @@ public final class AstMemoryEstimationHelper {
       return 0L;
     }
     long size = RamUsageEstimator.shallowSizeOf(integers);
-    // Integer objects are typically cached by JVM for small values, but we estimate
-    // the overhead for Integer objects (16 bytes each)
     for (Integer integer : integers) {
       if (integer != null) {
-        size += RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+        size += Integer.BYTES;
       }
     }
     return size;

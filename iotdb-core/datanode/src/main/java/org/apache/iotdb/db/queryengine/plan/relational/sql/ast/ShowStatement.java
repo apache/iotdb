@@ -122,9 +122,7 @@ public class ShowStatement extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (tableName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
     if (where.isPresent()) {
       size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
       size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.get());
