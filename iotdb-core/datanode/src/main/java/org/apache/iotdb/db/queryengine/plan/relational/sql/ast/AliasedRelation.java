@@ -120,9 +120,7 @@ public class AliasedRelation extends Relation {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(relation);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(alias);
-    if (columnNames != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
     return size;
   }
 }

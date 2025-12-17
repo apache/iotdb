@@ -157,12 +157,8 @@ public class DereferenceExpression extends Expression {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (base != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(base);
-    }
-    if (field != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(field);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(base);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(field);
     return size;
   }
 }

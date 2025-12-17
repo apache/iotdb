@@ -61,7 +61,7 @@ public final class AstMemoryEstimationHelper {
 
   public static long getEstimatedSizeOfNodeLocation(@Nullable final NodeLocation location) {
     if (location != null) {
-      return OPTIONAL_INSTANCE_SIZE + NODE_LOCATION_INSTANCE_SIZE;
+      return NODE_LOCATION_INSTANCE_SIZE;
     }
     return 0L;
   }

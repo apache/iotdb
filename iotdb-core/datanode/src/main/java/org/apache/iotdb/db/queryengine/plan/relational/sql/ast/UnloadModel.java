@@ -79,12 +79,8 @@ public class UnloadModel extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (modelId != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(modelId);
-    }
-    if (deviceIdList != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(modelId);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
     return size;
   }
 }

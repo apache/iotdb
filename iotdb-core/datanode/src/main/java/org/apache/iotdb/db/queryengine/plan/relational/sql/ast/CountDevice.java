@@ -81,9 +81,7 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
     size += AstMemoryEstimationHelper.getShallowSizeOfList(tagDeterminedFilterList);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
     size += AstMemoryEstimationHelper.getShallowSizeOfList(columnHeaderList);
-    if (getAttributeColumns() != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
     if (results != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(results);
       for (ShowDevicesResult result : results) {

@@ -173,15 +173,9 @@ public class Fill extends Node {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (fillValue != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fillValue);
-    }
-    if (timeColumnIndex != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(timeColumnIndex);
-    }
-    if (fillGroupingElements != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(fillGroupingElements);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fillValue);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(timeColumnIndex);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(fillGroupingElements);
     // TimeDuration is a simple object, estimate its size
     if (timeBound != null) {
       size += RamUsageEstimator.shallowSizeOfInstance(TimeDuration.class);

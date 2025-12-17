@@ -63,9 +63,7 @@ public class CreateDB extends DatabaseStatement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (dbName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(dbName);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(dbName);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
     return size;
   }

@@ -36,11 +36,11 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public final class Insert extends Statement {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Insert.class);
+
   public static final String ROWS = "rows";
   public static final Type ROWS_TYPE = LongType.INT64;
   public static final TsTableColumnCategory ROWS_CATEGORY = TsTableColumnCategory.FIELD;
-
-  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Insert.class);
 
   private final Table table;
   private final Query query;
@@ -121,9 +121,7 @@ public final class Insert extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
-    if (columns != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columns);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columns);
     return size;
   }
 }

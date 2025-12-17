@@ -147,9 +147,7 @@ public class Trim extends Expression {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trimSource);
-    if (trimCharacter != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trimCharacter);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trimCharacter);
     return size;
   }
 }

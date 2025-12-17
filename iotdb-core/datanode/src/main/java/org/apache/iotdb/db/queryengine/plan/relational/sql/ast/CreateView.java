@@ -101,13 +101,9 @@ public class CreateView extends CreateTable {
 
   @Override
   public long ramBytesUsed() {
-    long size = super.ramBytesUsed();
-    // super.ramBytesUsed() includes CreateTable's INSTANCE_SIZE, but we need CreateView's
-    size -= RamUsageEstimator.shallowSizeOfInstance(CreateTable.class);
-    size += INSTANCE_SIZE;
-    if (prefixPath != null) {
-      size += MemoryEstimationHelper.getEstimatedSizeOfPartialPath(prefixPath);
-    }
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedExcludingInstanceSize();
+    size += MemoryEstimationHelper.getEstimatedSizeOfPartialPath(prefixPath);
     return size;
   }
 }

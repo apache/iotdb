@@ -87,23 +87,8 @@ public class Update extends AbstractTraverseDevice {
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (table != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
-    }
-    if (where != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
-    }
-    if (tagFuzzyPredicate != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
-    }
+    size += ramBytesUsedForCommonFields();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(assignments);
-    if (database != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    }
-    if (tableName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
-    }
     return size;
   }
 }

@@ -156,9 +156,7 @@ public class SearchedCaseExpression extends Expression {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(whenClauses);
-    if (defaultValue != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(defaultValue);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(defaultValue);
     return size;
   }
 }

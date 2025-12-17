@@ -334,12 +334,8 @@ public class LoadTsFile extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (filePath != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(filePath);
-    }
-    if (database != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(filePath);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
     if (loadAttributes != null && !loadAttributes.isEmpty()) {
       for (Map.Entry<String, String> entry : loadAttributes.entrySet()) {
         size += AstMemoryEstimationHelper.getEstimatedSizeOfString(entry.getKey());

@@ -113,9 +113,7 @@ public class IfExpression extends Expression {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(condition);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trueValue);
-    if (falseValue != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(falseValue);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(falseValue);
     return size;
   }
 }

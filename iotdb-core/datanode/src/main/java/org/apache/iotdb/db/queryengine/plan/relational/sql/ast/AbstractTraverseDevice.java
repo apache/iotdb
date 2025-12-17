@@ -245,4 +245,15 @@ public abstract class AbstractTraverseDevice extends Statement {
         + tagFuzzyPredicate
         + '}';
   }
+
+  protected long ramBytesUsedForCommonFields() {
+    long size = 0;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(database);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(tableName);
+    return size;
+  }
 }

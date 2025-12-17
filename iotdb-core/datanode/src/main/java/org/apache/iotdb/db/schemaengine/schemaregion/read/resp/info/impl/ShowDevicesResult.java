@@ -36,6 +36,9 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo, Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDevicesResult.class);
+
   private Boolean isAligned;
   private int templateId;
 
@@ -142,7 +145,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
 
   @Override
   public long ramBytesUsed() {
-    long size = RamUsageEstimator.shallowSizeOfInstance(ShowDevicesResult.class);
+    long size = INSTANCE_SIZE;
     if (path != null) {
       size += RamUsageEstimator.sizeOf(path);
     }

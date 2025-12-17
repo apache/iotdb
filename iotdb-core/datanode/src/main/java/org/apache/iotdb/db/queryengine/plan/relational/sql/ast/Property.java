@@ -126,9 +126,7 @@ public class Property extends Node {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
-    if (value != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
     return size;
   }
 }

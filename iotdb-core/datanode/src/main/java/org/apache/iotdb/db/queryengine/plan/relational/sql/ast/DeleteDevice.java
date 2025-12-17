@@ -264,9 +264,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
     size += AstMemoryEstimationHelper.getShallowSizeOfList(tagDeterminedFilterList);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
     size += AstMemoryEstimationHelper.getShallowSizeOfList(columnHeaderList);
-    if (getAttributeColumns() != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
     if (modEntries != null) {
       size += AstMemoryEstimationHelper.getShallowSizeOfList(modEntries);
       for (TableDeletionEntry entry : modEntries) {

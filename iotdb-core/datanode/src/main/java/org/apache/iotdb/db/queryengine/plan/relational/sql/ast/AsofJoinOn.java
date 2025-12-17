@@ -166,10 +166,8 @@ public class AsofJoinOn extends JoinOn {
 
   @Override
   public long ramBytesUsed() {
-    long size = super.ramBytesUsed();
-    // Subtract JoinOn's INSTANCE_SIZE and add AsofJoinOn's INSTANCE_SIZE
-    size -= RamUsageEstimator.shallowSizeOfInstance(JoinOn.class);
-    size += INSTANCE_SIZE;
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedExcludingInstanceSize();
     if (asofExpression != null) {
       size += asofExpression.ramBytesUsed();
     }

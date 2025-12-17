@@ -140,15 +140,9 @@ public class ColumnDefinition extends Node {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
-    if (type != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(type);
-    }
-    if (charsetName != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(charsetName);
-    }
-    if (comment != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(type);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(charsetName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfString(comment);
     return size;
   }
 }

@@ -108,7 +108,7 @@ public class DescribeTable extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += table == null ? 0L : table.ramBytesUsed();
     if (isShowCreateView != null) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+      size += RamUsageEstimator.shallowSizeOfInstance(Boolean.class);
     }
     return size;
   }

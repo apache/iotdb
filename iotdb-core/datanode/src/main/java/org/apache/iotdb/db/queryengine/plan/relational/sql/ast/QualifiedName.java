@@ -44,8 +44,6 @@ public class QualifiedName implements Accountable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(QualifiedName.class);
-  private static final long OPTIONAL_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Optional.class);
 
   private final List<Identifier> originalParts;
   private final List<String> parts;
@@ -248,21 +246,15 @@ public class QualifiedName implements Accountable {
     if (parts != null) {
       size += RamUsageEstimator.shallowSizeOf(parts);
       for (String part : parts) {
-        if (part != null) {
-          size += RamUsageEstimator.sizeOf(part);
-        }
+        size += RamUsageEstimator.sizeOf(part);
       }
     }
-    if (name != null) {
-      size += RamUsageEstimator.sizeOf(name);
-    }
+    size += RamUsageEstimator.sizeOf(name);
     if (prefix != null) {
-      size += OPTIONAL_INSTANCE_SIZE;
+      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
       size += prefix.ramBytesUsed();
     }
-    if (suffix != null) {
-      size += RamUsageEstimator.sizeOf(suffix);
-    }
+    size += RamUsageEstimator.sizeOf(suffix);
     return size;
   }
 }

@@ -79,4 +79,11 @@ public class JoinOn extends JoinCriteria {
     }
     return size;
   }
+
+  protected long ramBytesUsedExcludingInstanceSize() {
+    if (expression != null) {
+      return expression.ramBytesUsed();
+    }
+    return 0L;
+  }
 }

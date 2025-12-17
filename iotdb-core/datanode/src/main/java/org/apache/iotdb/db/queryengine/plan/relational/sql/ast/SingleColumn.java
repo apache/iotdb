@@ -149,12 +149,8 @@ public class SingleColumn extends SelectItem {
     if (alias != null) {
       size += alias.ramBytesUsed();
     }
-    if (expandedExpressions != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(expandedExpressions);
-    }
-    if (accordingColumnNames != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(accordingColumnNames);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(expandedExpressions);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(accordingColumnNames);
     return size;
   }
 }

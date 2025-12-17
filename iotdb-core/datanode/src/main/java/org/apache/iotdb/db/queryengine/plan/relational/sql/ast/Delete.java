@@ -138,9 +138,7 @@ public class Delete extends Statement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
-    if (where != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
     return size;
   }
 }

@@ -138,9 +138,7 @@ public class WithQuery extends Node {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
-    if (columnNames != null) {
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
     return size;
   }
 }
