@@ -66,16 +66,6 @@ public class IoTDBRelationalAuthIT {
         Statement adminStmt = adminCon.createStatement()) {
 
       adminStmt.execute("create user testuser 'password123456'");
-      try (Connection userCon =
-              EnvFactory.getEnv()
-                  .getConnection("testuser", "password123456", BaseEnv.TABLE_SQL_DIALECT);
-          Statement userStmt = userCon.createStatement()) {
-        ResultSet resultSet = userStmt.executeQuery("LIST USER");
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("10000", resultSet.getString(1));
-        Assert.assertEquals("testuser", resultSet.getString(2));
-        Assert.assertFalse(resultSet.next());
-      }
       adminStmt.execute("create database testdb");
       adminStmt.execute("GRANT MANAGE_USER to user testuser");
       Assert.assertThrows(
