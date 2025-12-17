@@ -225,7 +225,7 @@ public class OpcUaSink implements PipeConnector {
                                 .setSecurityDir(securityDir)
                                 .setEnableAnonymousAccess(enableAnonymousAccess);
                         final OpcUaServer newServer = builder.build();
-                        nameSpace = new OpcUaNameSpace(newServer, builder, placeHolder);
+                        nameSpace = new OpcUaNameSpace(newServer, builder);
                         nameSpace.startup();
                         newServer.startup().get();
                         return new Pair<>(new AtomicInteger(0), nameSpace);

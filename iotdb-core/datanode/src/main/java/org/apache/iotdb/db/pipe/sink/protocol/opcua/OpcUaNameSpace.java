@@ -71,13 +71,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
-  private final String placeHolder;
 
   OpcUaNameSpace(
-      final OpcUaServer server, final OpcUaServerBuilder builder, final String placeHolder) {
+      final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.builder = builder;
-    this.placeHolder = placeHolder;
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -147,7 +145,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         folderSegments[0] = sink.unQualifiedDatabaseName;
 
         for (int j = 0; j < segments.length; ++j) {
-          folderSegments[j + 1] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
+          folderSegments[j + 1] = Objects.isNull(segments[j]) ? sink.placeHolder : (String) segments[j];
         }
 
         final int finalI = i;
@@ -351,7 +349,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
-              .append(Objects.isNull(segment) ? placeHolder : segment);
+              .append(Objects.isNull(segment) ? sink.placeHolder : segment);
         }
         sourceNameList.add(idBuilder.toString());
       }
