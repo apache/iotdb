@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.source.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
@@ -106,14 +108,14 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             .getParameters()
             .getBooleanOrDefault(
                 Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                    PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+                    PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                    PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+                PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     if (!forwardingPipeRequests) {
       throw new PipeParameterNotValidException(
           String.format(
               "The parameter %s cannot be set to false.",
-              PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
+              PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
     }
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
@@ -259,7 +261,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     if (!(pipeName != null
         && (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)
             || pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)))) {
-      realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
+      realtimeExtractor = new PipeRealtimeDataRegionTsFileSource();
       return;
     }
 

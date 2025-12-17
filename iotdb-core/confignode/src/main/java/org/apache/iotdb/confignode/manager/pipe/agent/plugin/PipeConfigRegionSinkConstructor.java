@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothingSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
-import org.apache.iotdb.confignode.manager.pipe.sink.protocol.IoTDBConfigRegionAirGapSink;
 import org.apache.iotdb.confignode.manager.pipe.sink.protocol.IoTDBConfigRegionSink;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
