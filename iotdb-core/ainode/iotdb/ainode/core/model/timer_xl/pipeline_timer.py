@@ -26,22 +26,31 @@ class TimerPipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
-        if len(inputs.shape) != 2:
+    def preprocess(self, inputs):
+        """
+        The inputs shape should be 3D, but Timer-XL only supports 2D tensor: [batch_size, sequence_length],
+        we need to squeeze the target_count dimension.
+        """
+        inputs = super().preprocess(inputs)
+        if inputs.shape[1] != 1:
             raise InferenceModelInternalException(
-                f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
+                f"[Inference] Model timer_xl only supports univarate forecast, but receives {inputs.shape[1]} target variables."
             )
+        inputs = inputs.squeeze(1)
         return inputs
 
     def forecast(self, inputs, **infer_kwargs):
         predict_length = infer_kwargs.get("predict_length", 96)
         revin = infer_kwargs.get("revin", True)
 
-        input_ids = self._preprocess(inputs)
-        output = self.model.generate(
-            input_ids, max_new_tokens=predict_length, revin=revin
+        outputs = self.model.generate(
+            inputs, max_new_tokens=predict_length, revin=revin
         )
-        return self._postprocess(output)
+        return outputs
 
-    def _postprocess(self, output: torch.Tensor):
-        return output
+    def postprocess(self, outputs: torch.Tensor):
+        """
+        The outputs shape should be 3D, so we need to expand dims.
+        """
+        outputs = super().postprocess(outputs.unsqueeze(1))
+        return outputs
