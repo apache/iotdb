@@ -41,7 +41,6 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
 
-
 /** This class stores information of each user. */
 public abstract class BasicUserManager extends BasicRoleManager {
 

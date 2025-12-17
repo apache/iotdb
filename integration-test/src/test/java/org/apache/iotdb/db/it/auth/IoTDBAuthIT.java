@@ -97,13 +97,9 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("LIST PRIVILEGES OF USER root"));
 
-        ResultSet resultSet = userStmt.executeQuery("LIST USER");
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("10000", resultSet.getString(1));
-        Assert.assertEquals("tempuser", resultSet.getString(2));
-        Assert.assertFalse(resultSet.next());
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
 
-        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER tempuser");
+        ResultSet resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER tempuser");
         Assert.assertFalse(resultSet.next());
 
         //  2. admin grant all privileges to user tempuser, So tempuser can do anything.
@@ -872,13 +868,11 @@ public class IoTDBAuthIT {
     try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
         Statement userStmt = userCon.createStatement()) {
       try {
-        String ans = "10010,tempuser,\n";
-        ResultSet resultSet = userStmt.executeQuery("LIST USER");
-        validateResultSet(resultSet, ans);
+        Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
         // with list user privilege
-        adminStmt.execute("GRANT SECURITY on root.** TO USER tempuser");
-        resultSet = userStmt.executeQuery("LIST USER");
-        ans =
+        adminStmt.execute("GRANT MANAGE_USER on root.** TO USER tempuser");
+        ResultSet resultSet = userStmt.executeQuery("LIST USER");
+        String ans =
             "0,root,\n"
                 + "10010,tempuser,\n"
                 + "10000,user0,\n"
