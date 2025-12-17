@@ -1099,6 +1099,12 @@ public class IoTDBTableIT {
         assertEquals("701: The system view does not support show create.", e.getMessage());
       }
       try {
+        statement.execute("show create table information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The system view does not support show create.", e.getMessage());
+      }
+      try {
         statement.execute("create or replace view a () as root.b.**");
         fail();
       } catch (final SQLException e) {

@@ -1294,6 +1294,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         getSupplier(
             node.getQualifiedObjectName().getObjectName(),
             dataTypes,
+            node.getPushDownPredicate(),
             context
                 .getDriverContext()
                 .getFragmentInstanceContext()

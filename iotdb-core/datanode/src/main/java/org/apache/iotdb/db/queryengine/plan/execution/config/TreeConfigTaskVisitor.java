@@ -68,7 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTuningTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
@@ -925,7 +925,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     for (PartialPath partialPath : partialPathList) {
       targetPathPatterns.add(partialPath.getFullPath());
     }
-    return new CreateTrainingTask(
+    return new CreateTuningTask(
         createTrainingStatement.getModelId(),
         createTrainingStatement.getParameters(),
         createTrainingStatement.getTargetTimeRanges(),

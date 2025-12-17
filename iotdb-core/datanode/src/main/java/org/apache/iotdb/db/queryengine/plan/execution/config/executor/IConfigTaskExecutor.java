@@ -443,7 +443,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> unloadModel(String existingModelId, List<String> deviceIdList);
 
-  SettableFuture<ConfigTaskResult> createTraining(
+  SettableFuture<ConfigTaskResult> createTuningTask(
       String modelId,
       boolean isTableModel,
       Map<String, String> parameters,

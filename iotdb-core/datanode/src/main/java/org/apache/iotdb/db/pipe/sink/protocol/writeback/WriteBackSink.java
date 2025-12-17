@@ -363,9 +363,9 @@ public class WriteBackSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (session != null && SESSION_MANAGER.getCurrSession() == session) {
+    if (session != null) {
       SESSION_MANAGER.removeCurrSession();
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
     }
   }
 

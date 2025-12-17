@@ -813,6 +813,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
+    conf.setQueryCostStatWindow(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_cost_stat_window", String.valueOf(conf.getQueryCostStatWindow()))));
+
     conf.setDataRegionNum(
         Integer.parseInt(
             properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
@@ -2029,6 +2034,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("slow_query_threshold"))));
+      // update query_cost_stat_window
+      conf.setQueryCostStatWindow(
+          Integer.parseInt(
+              properties.getProperty(
+                  "query_cost_stat_window",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("query_cost_stat_window"))));
       // update select into operation max buffer size
       conf.setIntoOperationBufferSizeInByte(
           Long.parseLong(
