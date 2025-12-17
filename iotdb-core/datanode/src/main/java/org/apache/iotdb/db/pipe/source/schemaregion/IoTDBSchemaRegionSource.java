@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -53,9 +55,13 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -167,9 +173,20 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       if (PathUtils.isTableModelDatabase(database)) {
         AuthorityChecker.getAccessControl()
             .checkCanSelectFromDatabase4Pipe(userName, database, userEntity);
+        return true;
       }
-      return true;
-    } catch (final AccessDeniedException e) {
+      return AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilege4Pipe(
+                  userEntity,
+                  Collections.singletonList(
+                      new PartialPath(
+                          database
+                              + TsFileConstant.PATH_SEPARATOR
+                              + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)),
+                  PrivilegeType.READ_SCHEMA)
+              .getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    } catch (final AccessDeniedException | IllegalPathException e) {
       return false;
     }
   }
