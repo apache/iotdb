@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.model.model_loader import load_model
 
 
@@ -37,7 +38,7 @@ class BasicPipeline(ABC):
         raise NotImplementedError("preprocess not implemented")
 
     @abstractmethod
-    def postprocess(self, output: torch.Tensor):
+    def postprocess(self, outputs: torch.Tensor):
         """
         Post-process the outputs after the entire inference task.
         """
@@ -49,14 +50,28 @@ class ForecastPipeline(BasicPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def preprocess(self, inputs):
+        """
+        The inputs should be 3D tensor: [batch_size, target_count, sequence_length].
+        """
+        if len(inputs.shape) != 3:
+            raise InferenceModelInternalException(
+                f"[Inference] Input must be: [batch_size, target_count, sequence_length], but receives {inputs.shape}"
+            )
         return inputs
 
     @abstractmethod
     def forecast(self, inputs, **infer_kwargs):
         pass
 
-    def postprocess(self, output: torch.Tensor):
-        return output
+    def postprocess(self, outputs: torch.Tensor):
+        """
+        The outputs should be 3D tensor: [batch_size, target_count, predict_length].
+        """
+        if len(outputs.shape) != 3:
+            raise InferenceModelInternalException(
+                f"[Inference] Output must be: [batch_size, target_count, predict_length], but receives {outputs.shape}"
+            )
+        return outputs
 
 
 class ClassificationPipeline(BasicPipeline):
@@ -70,8 +85,8 @@ class ClassificationPipeline(BasicPipeline):
     def classify(self, inputs, **kwargs):
         pass
 
-    def postprocess(self, output: torch.Tensor):
-        return output
+    def postprocess(self, outputs: torch.Tensor):
+        return outputs
 
 
 class ChatPipeline(BasicPipeline):
@@ -85,5 +100,5 @@ class ChatPipeline(BasicPipeline):
     def chat(self, inputs, **kwargs):
         pass
 
-    def postprocess(self, output: torch.Tensor):
-        return output
+    def postprocess(self, outputs: torch.Tensor):
+        return outputs

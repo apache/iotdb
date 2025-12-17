@@ -20,8 +20,10 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+import torch
 
 from iotdb.ainode.core.exception import BadConfigValueException
+from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 
 class TSDataType(Enum):
@@ -55,9 +57,25 @@ TIMESTAMP_STR = "Time"
 START_INDEX = 2
 
 
-# convert dataFrame to tsBlock in binary
-# input shouldn't contain time column
-def convert_to_binary(data_frame: pd.DataFrame):
+# Full data deserialized from iotdb tsblock is composed of [timestampList, multiple valueList, None, length].
+# We only get valueList currently.
+def convert_tsblock_to_tensor(tsblock_data: bytes):
+    full_data = deserialize(tsblock_data)
+    # ensure the byteorder is correct.
+    for i, data in enumerate(full_data[1]):
+        if data.dtype.byteorder not in ("=", "|"):
+            np_data = data.byteswap()
+            full_data[1][i] = np_data.view(np_data.dtype.newbyteorder())
+    # the size should be [batch_size, target_count, sequence_length]
+    tensor_data = torch.from_numpy(np.stack(full_data[1], axis=0)).unsqueeze(0).float()
+    # data should be on CPU before passing to the inference request
+    return tensor_data.to("cpu")
+
+
+# Convert DataFrame to TsBlock in binary, input shouldn't contain time column.
+# Maybe contain multiple value columns.
+def convert_tensor_to_tsblock(data_tensor: torch.Tensor):
+    data_frame = pd.DataFrame(data_tensor).T
     data_shape = data_frame.shape
     value_column_size = data_shape[1]
     position_count = data_shape[0]

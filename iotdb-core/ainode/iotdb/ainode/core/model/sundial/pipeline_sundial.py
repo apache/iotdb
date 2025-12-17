@@ -27,10 +27,16 @@ class SundialPipeline(ForecastPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def preprocess(self, inputs):
-        if len(inputs.shape) != 2:
+        """
+        The inputs shape should be 3D, but Sundial only supports 2D tensor: [batch_size, sequence_length],
+        we need to squeeze the target_count dimension.
+        """
+        inputs = super().preprocess(inputs)
+        if inputs.shape[1] != 1:
             raise InferenceModelInternalException(
-                f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
+                f"[Inference] Model sundial only supports univarate forecast, but receives {inputs.shape[1]} target variables."
             )
+        inputs = inputs.squeeze(1)
         return inputs
 
     def forecast(self, inputs, **infer_kwargs):
@@ -38,13 +44,18 @@ class SundialPipeline(ForecastPipeline):
         num_samples = infer_kwargs.get("num_samples", 10)
         revin = infer_kwargs.get("revin", True)
 
-        output = self.model.generate(
+        outputs = self.model.generate(
             inputs,
             max_new_tokens=predict_length,
             num_samples=num_samples,
             revin=revin,
         )
-        return output
+        return outputs
 
-    def postprocess(self, output: torch.Tensor):
-        return output.mean(dim=1)
+    def postprocess(self, outputs: torch.Tensor):
+        """
+        The outputs shape should be 3D, we need to take the mean value across num_samples dimension and expand dims.
+        """
+        outputs = outputs.mean(dim=1).unsqueeze(1)
+        outputs = super().postprocess(outputs)
+        return outputs

@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
 
@@ -29,6 +30,12 @@ class SktimePipeline(ForecastPipeline):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
     def preprocess(self, inputs):
+        inputs = super().preprocess(inputs)
+        if inputs.shape[1] != 1:
+            raise InferenceModelInternalException(
+                f"[Inference] Sktime model only supports univarate forecast, but receives {inputs.shape[1]} target variables."
+            )
+        inputs = inputs.squeeze(1)
         return inputs
 
     def forecast(self, inputs, **infer_kwargs):
@@ -47,21 +54,22 @@ class SktimePipeline(ForecastPipeline):
                 )
                 output = self.model.generate(series, predict_length=predict_length)
                 outputs.append(output)
-            output = np.array(outputs)
+            outputs = np.array(outputs)
         else:
             # Single sample: convert to Series
             if isinstance(inputs, torch.Tensor):
                 series = pd.Series(inputs.squeeze().cpu().numpy())
             else:
                 series = pd.Series(inputs.squeeze())
-            output = self.model.generate(series, predict_length=predict_length)
+            outputs = self.model.generate(series, predict_length=predict_length)
             # Add batch dimension if needed
-            if len(output.shape) == 1:
-                output = output[np.newaxis, :]
+            if len(outputs.shape) == 1:
+                outputs = outputs[np.newaxis, :]
 
-        return output
+        return outputs
 
-    def postprocess(self, output):
-        if isinstance(output, np.ndarray):
-            return torch.from_numpy(output).float()
-        return output
+    def postprocess(self, outputs):
+        if isinstance(outputs, np.ndarray):
+            outputs = torch.from_numpy(outputs).float()
+        outputs = super().postprocess(outputs.unsqueeze(1))
+        return outputs
