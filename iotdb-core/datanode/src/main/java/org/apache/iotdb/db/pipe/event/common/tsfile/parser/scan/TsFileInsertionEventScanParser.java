@@ -104,7 +104,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
     super(
         pipeName,
@@ -115,7 +116,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         endTime,
         pipeTaskMeta,
         sourceEvent,
-        null); // tsFileResource will be obtained from sourceEvent
+        null,
+        notOnlyNeedObject); // tsFileResource will be obtained from sourceEvent
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -159,9 +161,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, isWithMod);
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod,
+        notOnlyNeedObject);
   }
 
   @Override
@@ -342,6 +355,26 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
+  @Override
+  public Iterable<Binary> getObjectTypeData() {
+    return createObjectTypeDataIterator();
+  }
+
+  @Override
+  protected ObjectTypeDataIteratorState createObjectTypeDataIteratorState() {
+    return new ObjectTypeDataIteratorState() {
+      @Override
+      public boolean hasMoreDataSources() {
+        return !Objects.isNull(chunkReader);
+      }
+
+      @Override
+      public Tablet getNextTablet() throws Exception {
+        return getNextTablet();
+      }
+    };
+  }
+
   private void prepareData() throws IOException {
     do {
       do {
@@ -497,6 +530,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               break;
             }
 
+            if (!notOnlyNeedObject && chunkHeader.getDataType() != TSDataType.OBJECT) {
+              tsFileSequenceReader.position(nextMarkerOffset);
+              break;
+            }
+
             // Skip the chunk if it is fully deleted by mods
             if (!currentModifications.isEmpty()) {
               final Statistics statistics =
@@ -551,6 +589,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               if (Objects.isNull(currentDevice)
                   || !treePattern.matchesMeasurement(
                       currentDevice, chunkHeader.getMeasurementID())) {
+                tsFileSequenceReader.position(nextMarkerOffset);
+                break;
+              }
+
+              if (!notOnlyNeedObject && chunkHeader.getDataType() != TSDataType.OBJECT) {
                 tsFileSequenceReader.position(nextMarkerOffset);
                 break;
               }

@@ -79,6 +79,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
 
+  private final boolean notOnlyNeedObject;
+
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
 
@@ -120,7 +122,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
-      final long endTime)
+      final long endTime,
+      final boolean notOnlyNeedObject)
       throws IOException {
 
     this.startTime = startTime;
@@ -140,6 +143,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.allocatedMemoryBlockForChunk = allocatedMemoryBlockForChunk;
     this.allocatedMemoryBlockForChunkMeta = allocatedMemoryBlockForChunkMeta;
     this.allocatedMemoryBlockForTableSchema = allocatedMemoryBlockForTableSchema;
+
+    this.notOnlyNeedObject = notOnlyNeedObject;
 
     long tableSchemaSize = fileMetadata.getBloomFilter().getRetainedSizeInBytes();
     for (Map.Entry<String, TableSchema> tableSchemaEntry : tableSchemaList) {
@@ -218,6 +223,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 while (iChunkMetadataIterator.hasNext()) {
                   IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
                   if (iChunkMetadata == null) {
+                    iChunkMetadataIterator.remove();
+                    continue;
+                  }
+
+                  if (!notOnlyNeedObject && iChunkMetadata.getDataType() == TSDataType.OBJECT) {
                     iChunkMetadataIterator.remove();
                     continue;
                   }

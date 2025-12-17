@@ -584,7 +584,7 @@ public class TsFileInsertionEventParserTest {
             ? new TsFileInsertionEventQueryParser(
                 tsFile, pattern, startTime, endTime, tsFileInsertionEvent)
             : new TsFileInsertionEventScanParser(
-                tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent, false)) {
+                tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent, false, true)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);

@@ -33,15 +33,19 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
@@ -79,6 +83,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
+  protected final boolean notOnlyNeedObject;
+
   protected TsFileInsertionEventParser(
       final String pipeName,
       final long creationTime,
@@ -88,7 +94,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final TsFileResource tsFileResource) {
+      final TsFileResource tsFileResource,
+      final boolean notOnlyNeedObject) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
 
@@ -115,12 +122,141 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+
+    this.notOnlyNeedObject = notOnlyNeedObject;
   }
 
   /**
    * @return {@link TabletInsertionEvent} in a streaming way
    */
   public abstract Iterable<TabletInsertionEvent> toTabletInsertionEvents();
+
+  public abstract Iterable<Binary> getObjectTypeData();
+
+  /**
+   * Template method for creating ObjectTypeData iterator. Subclasses should implement
+   * createObjectTypeDataIteratorState() to provide data source specific state management.
+   */
+  protected Iterable<Binary> createObjectTypeDataIterator() {
+    return () -> {
+      final ObjectTypeDataIteratorState state = createObjectTypeDataIteratorState();
+      return new Iterator<Binary>() {
+        private Tablet tablet = null;
+        private int rowIndex = 0;
+        private int columnIndex = 0;
+
+        @Override
+        public boolean hasNext() {
+          while (true) {
+            // Process current Tablet
+            if (tablet != null) {
+              final Object[] values = tablet.getValues();
+              if (values == null || columnIndex >= values.length) {
+                resetTablet();
+                continue;
+              }
+
+              // Check if current column is Binary[] type
+              if (!(values[columnIndex] instanceof Binary[])) {
+                columnIndex++;
+                continue;
+              }
+
+              final int rowSize = tablet.getRowSize();
+
+              while (rowIndex < rowSize) {
+                if (!isRowNull(tablet, columnIndex, rowIndex)) {
+                  return true;
+                }
+                rowIndex++;
+              }
+
+              columnIndex++;
+              rowIndex = 0;
+              continue;
+            }
+
+            // Check if there are more data sources
+            if (!state.hasMoreDataSources()) {
+              return false;
+            }
+
+            // Get next Tablet from data source
+            try {
+              tablet = state.getNextTablet();
+            } catch (final Exception e) {
+              close();
+              throw new PipeException("failed to read next Tablet", e);
+            }
+
+            rowIndex = 0;
+            columnIndex = 0;
+
+            // If the fetched Tablet has no data, continue to fetch the next one
+            if (tablet == null || tablet.getRowSize() == 0) {
+              tablet = null;
+              continue;
+            }
+
+            final Object[] values = tablet.getValues();
+            if (values == null || values.length == 0) {
+              tablet = null;
+              continue;
+            }
+          }
+        }
+
+        private void resetTablet() {
+          tablet = null;
+          columnIndex = 0;
+          rowIndex = 0;
+        }
+
+        private boolean isRowNull(Tablet tablet, int colIndex, int rowIdx) {
+          final BitMap[] bitMaps = tablet.getBitMaps();
+          return bitMaps != null
+              && colIndex < bitMaps.length
+              && bitMaps[colIndex] != null
+              && bitMaps[colIndex].isMarked(rowIdx);
+        }
+
+        @Override
+        public Binary next() {
+          final Binary[] column = (Binary[]) tablet.getValues()[columnIndex];
+          return column[rowIndex++];
+        }
+      };
+    };
+  }
+
+  /**
+   * Create state object for ObjectTypeData iterator. Should be implemented by subclasses to provide
+   * data source specific state management.
+   *
+   * @return the state object for managing data source iteration
+   */
+  protected abstract ObjectTypeDataIteratorState createObjectTypeDataIteratorState();
+
+  /**
+   * State interface for ObjectTypeData iterator. Subclasses should implement this to manage their
+   * specific data source iteration state.
+   */
+  protected interface ObjectTypeDataIteratorState {
+    /**
+     * Check if there are more data sources to read from.
+     *
+     * @return true if there are more data sources, false otherwise
+     */
+    boolean hasMoreDataSources();
+
+    /**
+     * Get the next Tablet from the data source.
+     *
+     * @return the next Tablet, or null if no more data
+     * @throws Exception if an error occurs while reading
+     */
+    Tablet getNextTablet() throws Exception;
+  }
 
   /**
    * Record parse start time when hasNext() is called for the first time and returns true. Should be

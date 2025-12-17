@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -78,7 +79,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false, true);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -90,7 +91,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
     this(
         pipeName,
@@ -102,7 +104,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         sourceEvent,
         null,
-        isWithMod);
+        isWithMod,
+        notOnlyNeedObject);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -115,7 +118,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
     super(
         pipeName,
@@ -126,7 +130,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         endTime,
         pipeTaskMeta,
         sourceEvent,
-        null); // tsFileResource will be obtained from sourceEvent
+        null,
+        notOnlyNeedObject); // tsFileResource will be obtained from sourceEvent
 
     try {
       currentModifications =
@@ -339,9 +344,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     final Map<IDeviceID, List<String>> result = new HashMap<>();
 
     for (final IDeviceID device : devices) {
-      tsFileSequenceReader
-          .readDeviceMetadata(device)
-          .values()
+      tsFileSequenceReader.readDeviceMetadata(device).values().stream()
+          .filter(
+              timeseriesMetadata ->
+                  notOnlyNeedObject || timeseriesMetadata.getTsDataType() == TSDataType.OBJECT)
           .forEach(
               timeseriesMetadata ->
                   result
@@ -489,6 +495,50 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     }
 
     return tabletInsertionIterable;
+  }
+
+  @Override
+  public Iterable<Binary> getObjectTypeData() {
+    return createObjectTypeDataIterator();
+  }
+
+  @Override
+  protected ObjectTypeDataIteratorState createObjectTypeDataIteratorState() {
+    return new ObjectTypeDataIteratorState() {
+      private TsFileInsertionEventQueryParserTabletIterator tabletIterator = null;
+
+      @Override
+      public boolean hasMoreDataSources() {
+        while (tabletIterator == null || !tabletIterator.hasNext()) {
+          if (!deviceMeasurementsMapIterator.hasNext()) {
+            return false;
+          }
+
+          final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
+
+          try {
+            tabletIterator =
+                new TsFileInsertionEventQueryParserTabletIterator(
+                    tsFileReader,
+                    measurementDataTypeMap,
+                    entry.getKey(),
+                    entry.getValue(),
+                    timeFilterExpression,
+                    allocatedMemoryBlockForTablet,
+                    currentModifications);
+          } catch (final Exception e) {
+            close();
+            throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
+          }
+        }
+        return true;
+      }
+
+      @Override
+      public Tablet getNextTablet() throws Exception {
+        return tabletIterator.next();
+      }
+    };
   }
 
   @Override

@@ -37,6 +37,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
@@ -68,7 +69,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final String userName,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
     super(
         pipeName,
@@ -79,7 +81,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         endTime,
         pipeTaskMeta,
         sourceEvent,
-        null); // tsFileResource will be obtained from sourceEvent
+        null,
+        notOnlyNeedObject); // tsFileResource will be obtained from sourceEvent
 
     this.isWithMod = isWithMod;
     try {
@@ -128,7 +131,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final String userName,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean notOnlyNeedObject)
       throws IOException {
     this(
         null,
@@ -140,7 +144,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         userName,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        notOnlyNeedObject);
   }
 
   @Override
@@ -170,7 +175,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               allocatedMemoryBlockForTableSchemas,
                               currentModifications,
                               startTime,
-                              endTime);
+                              endTime,
+                              notOnlyNeedObject);
                     }
                     final boolean hasNext = tabletIterator.hasNext();
                     if (hasNext && !parseStartTimeRecorded) {
@@ -286,6 +292,61 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     }
 
     return tabletInsertionIterable;
+  }
+
+  @Override
+  public Iterable<Binary> getObjectTypeData() {
+    return createObjectTypeDataIterator();
+  }
+
+  @Override
+  protected ObjectTypeDataIteratorState createObjectTypeDataIteratorState() {
+    return new ObjectTypeDataIteratorState() {
+      private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
+
+      @Override
+      public boolean hasMoreDataSources() {
+        try {
+          if (tabletIterator == null) {
+            tabletIterator =
+                new TsFileInsertionEventTableParserTabletIterator(
+                    tsFileSequenceReader,
+                    entry ->
+                        (Objects.isNull(tablePattern) || tablePattern.matchesTable(entry.getKey()))
+                            && hasTablePrivilege(entry.getKey()),
+                    allocatedMemoryBlockForTablet,
+                    allocatedMemoryBlockForBatchData,
+                    allocatedMemoryBlockForChunk,
+                    allocatedMemoryBlockForChunkMeta,
+                    allocatedMemoryBlockForTableSchemas,
+                    currentModifications,
+                    startTime,
+                    endTime,
+                    notOnlyNeedObject);
+          }
+          return tabletIterator.hasNext();
+        } catch (Exception e) {
+          close();
+          throw new PipeException("Error while parsing tsfile insertion event", e);
+        }
+      }
+
+      @Override
+      public Tablet getNextTablet() throws Exception {
+        return tabletIterator.next();
+      }
+
+      private boolean hasTablePrivilege(final String tableName) {
+        return Objects.isNull(userName)
+            || Objects.isNull(sourceEvent)
+            || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+            || AuthorityChecker.getAccessControl()
+                .checkCanSelectFromTable4Pipe(
+                    userName,
+                    new QualifiedObjectName(sourceEvent.getTableModelDatabaseName(), tableName),
+                    new UserEntity(-1, userName, ""));
+      }
+    };
   }
 
   @Override

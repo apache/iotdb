@@ -95,7 +95,8 @@ public class TsFileInsertionEventParserProvider {
           pipeTaskMeta,
           userName,
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          true);
     }
 
     // Use scan container to save memory
@@ -111,7 +112,8 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          true);
     }
 
     if (treePattern instanceof IoTDBTreePatternOperations
@@ -131,7 +133,8 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          true);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -148,7 +151,8 @@ public class TsFileInsertionEventParserProvider {
           endTime,
           pipeTaskMeta,
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          true);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -166,7 +170,8 @@ public class TsFileInsertionEventParserProvider {
             endTime,
             pipeTaskMeta,
             sourceEvent,
-            isWithMod)
+            isWithMod,
+            true)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -177,7 +182,8 @@ public class TsFileInsertionEventParserProvider {
             pipeTaskMeta,
             sourceEvent,
             filteredDeviceIsAlignedMap,
-            isWithMod);
+            isWithMod,
+            true);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(
