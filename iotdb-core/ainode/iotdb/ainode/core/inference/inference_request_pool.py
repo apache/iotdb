@@ -144,7 +144,6 @@ class InferenceRequestPool(mp.Process):
                 batch_output = None
                 self._logger.error("[Inference] Unsupported pipeline type.")
             batch_output = self._inference_pipeline.postprocess(batch_output)
-
             offset = 0
             for request in requests:
                 request.output_tensor = request.output_tensor.to(self.device)
