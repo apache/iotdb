@@ -136,9 +136,11 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
         model_type="t5",
-        config_cls="config.Chronos2ForecastingConfig",
-        model_cls="models.Chronos2Model",
         pipeline_cls="pipeline_chronos2.Chronos2Pipeline",
-        repo_id="amazon/chronos2-2",
+        repo_id="amazon/chronos-2",
+        auto_map={
+            "AutoConfig": "config.Chronos2ForecastingConfig",
+            "AutoModelForCausalLM": "models.Chronos2Model",
+        },
     ),
 }
