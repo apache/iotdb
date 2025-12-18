@@ -2766,10 +2766,21 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
-      List<File> matchedObjectDirs =
+      List<File> objectTableDirs =
           TierManager.getInstance().getAllMatchedObjectDirs(dataRegionIdString, tableName);
-      if (!matchedObjectDirs.isEmpty()) {
-        deleteObjectFiles(matchedObjectDirs, modEntries);
+      if (!objectTableDirs.isEmpty()) {
+        boolean droppingTable = false;
+        for (TableDeletionEntry entry : modEntries) {
+          if (entry.isDroppingTable()) {
+            for (File objectTableDir : objectTableDirs) {
+              droppingTable = true;
+              FileUtils.deleteQuietly(objectTableDir);
+            }
+          }
+        }
+        if (!droppingTable) {
+          deleteObjectFiles(objectTableDirs, modEntries);
+        }
       }
 
       List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
@@ -2943,54 +2954,50 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteObjectFiles(List<File> matchedObjectDirs, List<TableDeletionEntry> modEntries)
       throws IOException {
     for (File matchedObjectDir : matchedObjectDirs) {
-      try (Stream<Path> paths = Files.walk(matchedObjectDir.toPath())) {
-        paths
-            .filter(Files::isRegularFile)
-            .filter(
-                path -> {
-                  String name = path.getFileName().toString();
-                  return name.endsWith(".bin");
-                })
-            .forEach(
-                path -> {
-                  Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
-                  String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
-                  for (int i = 0; i < ideviceIdSegments.length; i++) {
-                    ideviceIdSegments[i] =
-                        config.getRestrictObjectLimit()
-                            ? relativePath.getName(i).toString()
-                            : new String(
-                                BaseEncoding.base32()
-                                    .omitPadding()
-                                    .decode(relativePath.getName(i).toString()),
-                                StandardCharsets.UTF_8);
-                  }
-                  IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
-                  String measurementId =
-                      config.getRestrictObjectLimit()
-                          ? relativePath.getName(relativePath.getNameCount() - 2).toString()
-                          : new String(
-                              BaseEncoding.base32()
-                                  .omitPadding()
-                                  .decode(
-                                      relativePath
-                                          .getName(relativePath.getNameCount() - 2)
-                                          .toString()),
-                              StandardCharsets.UTF_8);
-                  String fileName = path.getFileName().toString();
-                  long timestamp = Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
-                  logger.info(
-                      "timestamp {}, measurementId {}, ideviceId {}",
-                      timestamp,
-                      measurementId,
-                      iDeviceID);
-                  for (TableDeletionEntry modEntry : modEntries) {
-                    if (modEntry.affects(iDeviceID, timestamp, timestamp)
-                        && modEntry.affects(measurementId)) {
-                      ObjectTypeUtils.deleteObjectPath(path.toFile());
-                    }
-                  }
-                });
+      try (Stream<Path> paths =
+          Files.find(
+              matchedObjectDir.toPath(),
+              Integer.MAX_VALUE,
+              (path, attrs) ->
+                  attrs.isRegularFile() && path.getFileName().toString().endsWith(".bin"))) {
+        paths.forEach(
+            path -> {
+              Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
+              String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
+              for (int i = 0; i < ideviceIdSegments.length; i++) {
+                ideviceIdSegments[i] =
+                    config.getRestrictObjectLimit()
+                        ? relativePath.getName(i).toString()
+                        : new String(
+                            BaseEncoding.base32()
+                                .omitPadding()
+                                .decode(relativePath.getName(i).toString()),
+                            StandardCharsets.UTF_8);
+              }
+              IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
+              String measurementId =
+                  config.getRestrictObjectLimit()
+                      ? relativePath.getName(relativePath.getNameCount() - 2).toString()
+                      : new String(
+                          BaseEncoding.base32()
+                              .omitPadding()
+                              .decode(
+                                  relativePath.getName(relativePath.getNameCount() - 2).toString()),
+                          StandardCharsets.UTF_8);
+              String fileName = path.getFileName().toString();
+              long timestamp = Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
+              logger.info(
+                  "timestamp {}, measurementId {}, ideviceId {}",
+                  timestamp,
+                  measurementId,
+                  iDeviceID);
+              for (TableDeletionEntry modEntry : modEntries) {
+                if (modEntry.affects(iDeviceID, timestamp, timestamp)
+                    && modEntry.affects(measurementId)) {
+                  ObjectTypeUtils.deleteObjectPath(path.toFile());
+                }
+              }
+            });
       }
     }
   }

@@ -287,6 +287,17 @@ public class TierManager {
 
   public List<File> getAllMatchedObjectDirs(String regionIdStr, String... path) {
     List<File> matchedDirs = new ArrayList<>();
+    boolean hasObjectDir = false;
+    for (String objectDir : objectDirs) {
+      File objectDirPath = FSFactoryProducer.getFSFactory().getFile(objectDir);
+      if (objectDirPath.exists()) {
+        hasObjectDir = true;
+        break;
+      }
+    }
+    if (!hasObjectDir) {
+      return matchedDirs;
+    }
     StringBuilder objectPath = new StringBuilder();
     objectPath.append(regionIdStr);
     for (String str : path) {
