@@ -26,15 +26,17 @@ import java.util.HashMap;
 
 public class PipeParametersTest {
 
-    @Test
-    public void keyReducerTest() {
-        final PipeParameters parameters = new PipeParameters(new HashMap<>());
-        parameters.addAttribute("sink.opcua.with-quality", "false");
+  @Test
+  public void keyReducerTest() {
+    final PipeParameters parameters = new PipeParameters(new HashMap<>());
+    parameters.addAttribute("sink.opcua.with-quality", "false");
 
-        Assert.assertEquals(false, parameters.getBoolean("with-quality"));
-        Assert.assertEquals(false, parameters.getBoolean("opcua.with-quality"));
+    Assert.assertEquals(false, parameters.getBoolean("with-quality"));
+    Assert.assertEquals(false, parameters.getBoolean("opcua.with-quality"));
 
-        // Invalid
-        parameters.addAttribute("sink.source.opcua.value-name", "false");
-    }
+    // Invalid
+    parameters.addAttribute("sink.source.opcua.value-name", "false");
+    parameters.addAttribute("opcua.sink.value-name", "false");
+    Assert.assertNull(parameters.getString("value-name"));
+  }
 }
