@@ -76,6 +76,8 @@ public class IoTDBCurrentQueriesIT {
   @Test
   public void testCurrentQueries() {
     try {
+      Assert.assertEquals(3, QUERIES_COSTS_HISTOGRAM_COLUMN_NUM);
+
       Connection connection =
           EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
       Statement statement = connection.createStatement();

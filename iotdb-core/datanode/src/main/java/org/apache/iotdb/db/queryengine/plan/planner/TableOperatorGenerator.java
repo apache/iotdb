@@ -2013,15 +2013,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitGroup(GroupNode node, LocalExecutionPlanContext context) {
-    StreamSortNode streamSortNode =
-        new StreamSortNode(
-            node.getPlanNodeId(),
-            node.getChild(),
-            node.getOrderingScheme(),
-            false,
-            false,
-            node.getPartitionKeyCount() - 1);
-    return visitStreamSort(streamSortNode, context);
+    if (node.getPartitionKeyCount() == 0) {
+      SortNode sortNode =
+          new SortNode(
+              node.getPlanNodeId(), node.getChild(), node.getOrderingScheme(), false, false);
+      return visitSort(sortNode, context);
+    } else {
+      StreamSortNode streamSortNode =
+          new StreamSortNode(
+              node.getPlanNodeId(),
+              node.getChild(),
+              node.getOrderingScheme(),
+              false,
+              false,
+              node.getPartitionKeyCount() - 1);
+      return visitStreamSort(streamSortNode, context);
+    }
   }
 
   @Override

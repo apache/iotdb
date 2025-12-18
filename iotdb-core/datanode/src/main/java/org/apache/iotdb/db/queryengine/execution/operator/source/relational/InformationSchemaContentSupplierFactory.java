@@ -1332,6 +1332,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       columnBuilders[0].writeBinary(BUCKETS[nextConsumedIndex]);
       columnBuilders[1].writeInt(currentQueriesCostHistogram[nextConsumedIndex]);
+      columnBuilders[2].writeInt(QueryId.getDataNodeId());
       resultBuilder.declarePosition();
       nextConsumedIndex++;
     }
