@@ -22,11 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -62,11 +59,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
@@ -269,24 +264,6 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                   throw new RuntimeException(e);
                 }
               });
-
-      long ttlForTable =
-          deviceId.isTableModel()
-              ? DataNodeTTLCache.getInstance()
-                  .getTTLForTable(resource.getDatabaseName(), deviceId.getTableName())
-              : Long.MAX_VALUE;
-      if (ttlForTable != Long.MAX_VALUE) {
-        ModEntry ttlDeletion =
-            CompactionUtils.convertTtlToDeletion(
-                deviceId, CommonDateTimeUtils.currentTime() - ttlForTable);
-        List<ModEntry> emptyList = Collections.emptyList();
-        CompactionUtils.removeDeletedObjectFiles(
-            readerCacheMap.get(resource),
-            alignedChunkMetadataList,
-            Collections.singletonList(ttlDeletion),
-            valueModifications.stream().map(v -> emptyList).collect(Collectors.toList()),
-            resource.getTsFileID().regionId);
-      }
 
       // modify aligned chunk metadatas
       ModificationUtils.modifyAlignedChunkMetaData(

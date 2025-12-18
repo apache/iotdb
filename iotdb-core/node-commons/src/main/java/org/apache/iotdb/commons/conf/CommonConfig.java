@@ -142,7 +142,8 @@ public class CommonConfig {
   private int ttlRuleCapacity = 1000;
 
   /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
-  private long ttlCheckInterval = 7_200_000L;
+  //  private long ttlCheckInterval = 7_200_000L;
+  private long ttlCheckInterval = 10_000L;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int cnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);

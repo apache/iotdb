@@ -65,6 +65,15 @@ public class TTLScheduleTask implements Callable<Void> {
             dataRegionListSnapshot.get(i).executeTTLCheck();
           }
         }
+        // check for object files
+        for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
+          if (Thread.interrupted()) {
+            throw new InterruptedException();
+          }
+          if (i % workerNum == workerId) {
+            dataRegionListSnapshot.get(i).executeTTLCheckForObjectFiles();
+          }
+        }
       } catch (InterruptedException ignored) {
         logger.info("[TTLCheckTask-{}] TTL checker is interrupted", workerId);
         return null;

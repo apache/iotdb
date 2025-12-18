@@ -103,6 +103,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
@@ -3426,6 +3427,20 @@ public class DataRegion implements IDataRegionForQuery {
       isCompactionSelecting.set(false);
     }
     return trySubmitCount;
+  }
+
+  public void executeTTLCheckForObjectFiles() throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    List<String> allObjectDirs = TierManager.getInstance().getAllObjectFileFolders();
+    for (String objectDir : allObjectDirs) {
+      File regionObjectDir = new File(objectDir, dataRegionIdString);
+      if (!regionObjectDir.isDirectory()) {
+        continue;
+      }
+      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
+    }
+    CompactionMetrics.getInstance()
+        .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
   }
 
   private boolean skipCurrentTTLAndModificationCheck() {
