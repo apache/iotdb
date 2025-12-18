@@ -274,6 +274,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           e.getMessage().contains("Fail to CREATE_PIPE because Authentication failed."));
     }
 
+    // Test snapshot filter
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.db", "create timeSeries root.db.device.measurement int32"),
+        null);
+
     // Use current session, user is root
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -313,9 +320,18 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
     TestUtils.executeNonQuery(senderEnv, "create database root.test");
 
-    // Shall not be transferred
+    // root.test / root.db shall not be transferred
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv, "count databases", "count,", Collections.singleton("0,"));
+
+    TestUtils.executeNonQuery(receiverEnv, "create database root.db");
+
+    // root.db.device.measurement shall not be transferred
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("0,"));
 
     // GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=usernameWithRoot
     // (grantOpt)?
