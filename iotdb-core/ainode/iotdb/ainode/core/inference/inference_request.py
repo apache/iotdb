@@ -42,7 +42,7 @@ class InferenceRequest:
         output_length: int = 96,
         **infer_kwargs,
     ):
-        if inputs.ndim == 1:
+        while inputs.ndim < 3:
             inputs = inputs.unsqueeze(0)
 
         self.req_id = req_id
@@ -54,6 +54,7 @@ class InferenceRequest:
         )
 
         self.batch_size = inputs.size(0)
+        self.variable_size = inputs.size(1)
         self.state = InferenceRequestState.WAITING
         self.cur_step_idx = 0  # Current write position in the output step index
         self.assigned_pool_id = -1  # The pool handling this request
@@ -61,8 +62,8 @@ class InferenceRequest:
 
         # Preallocate output buffer [batch_size, max_new_tokens]
         self.output_tensor = torch.zeros(
-            self.batch_size, output_length, device="cpu"
-        )  # shape: [self.batch_size, max_new_steps]
+            self.batch_size, self.variable_size, output_length, device="cpu"
+        )  # shape: [batch_size, target_count, predict_length]
 
     def mark_running(self):
         self.state = InferenceRequestState.RUNNING
@@ -77,26 +78,26 @@ class InferenceRequest:
         )
 
     def write_step_output(self, step_output: torch.Tensor):
-        if step_output.ndim == 1:
+        while step_output.ndim < 3:
             step_output = step_output.unsqueeze(0)
 
-        batch_size, step_size = step_output.shape
+        batch_size, variable_size, step_size = step_output.shape
         end_idx = self.cur_step_idx + step_size
 
         if end_idx > self.output_length:
-            self.output_tensor[:, self.cur_step_idx :] = step_output[
-                :, : self.output_length - self.cur_step_idx
+            self.output_tensor[:, :, self.cur_step_idx :] = step_output[
+                :, :, : self.output_length - self.cur_step_idx
             ]
             self.cur_step_idx = self.output_length
         else:
-            self.output_tensor[:, self.cur_step_idx : end_idx] = step_output
+            self.output_tensor[:, :, self.cur_step_idx : end_idx] = step_output
             self.cur_step_idx = end_idx
 
         if self.is_finished():
             self.mark_finished()
 
     def get_final_output(self) -> torch.Tensor:
-        return self.output_tensor[:, : self.cur_step_idx]
+        return self.output_tensor[:, :, : self.cur_step_idx]
 
 
 class InferenceRequestProxy:

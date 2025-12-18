@@ -46,7 +46,10 @@ from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.gpu_mapping import get_available_devices
-from iotdb.ainode.core.util.serde import convert_to_binary
+from iotdb.ainode.core.util.serde import (
+    convert_tensor_to_tsblock,
+    convert_tsblock_to_tensor,
+)
 from iotdb.thrift.ainode.ttypes import (
     TForecastReq,
     TForecastResp,
@@ -58,7 +61,6 @@ from iotdb.thrift.ainode.ttypes import (
     TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
-from iotdb.tsfile.utils.tsblock_serde import deserialize
 
 logger = Logger()
 
@@ -170,23 +172,14 @@ class InferenceManager:
         self,
         req,
         data_getter,
-        deserializer,
         extract_attrs,
         resp_cls,
-        single_output: bool,
+        single_batch: bool,
     ):
         model_id = req.modelId
         try:
             raw = data_getter(req)
-            # full data deserialized from iotdb is composed of [timestampList, valueList, None, length], we only get valueList currently.
-            full_data = deserializer(raw)
-            # TODO: TSBlock -> Tensor codes should be unified
-            data = full_data[1][0]  # get valueList in ndarray
-            if data.dtype.byteorder not in ("=", "|"):
-                np_data = data.byteswap()
-                data = np_data.view(np_data.dtype.newbyteorder())
-            # the inputs should be on CPU before passing to the inference request
-            inputs = torch.tensor(data).unsqueeze(0).float().to("cpu")
+            inputs = convert_tsblock_to_tensor(raw)
 
             inference_attrs = extract_attrs(req)
             output_length = int(inference_attrs.pop("output_length", 96))
@@ -211,10 +204,10 @@ class InferenceManager:
                     output_length=output_length,
                 )
                 outputs = self._process_request(infer_req)
-                outputs = convert_to_binary(pd.DataFrame(outputs[0]))
             else:
                 model_info = self._model_manager.get_model_info(model_id)
                 inference_pipeline = load_pipeline(model_info, device="cpu")
+                inputs = inference_pipeline.preprocess(inputs)
                 if isinstance(inference_pipeline, ForecastPipeline):
                     outputs = inference_pipeline.forecast(
                         inputs, predict_length=output_length, **inference_attrs
@@ -224,46 +217,49 @@ class InferenceManager:
                 elif isinstance(inference_pipeline, ChatPipeline):
                     outputs = inference_pipeline.chat(inputs)
                 else:
+                    outputs = None
                     logger.error("[Inference] Unsupported pipeline type.")
-                outputs = convert_to_binary(pd.DataFrame(outputs[0]))
+                outputs = inference_pipeline.postprocess(outputs)
 
-            # construct response
-            status = get_status(TSStatusCode.SUCCESS_STATUS)
+            # convert tensor into tsblock for the output in each batch
+            output_list = []
+            for batch_idx in range(outputs.size(0)):
+                output = convert_tensor_to_tsblock(outputs[batch_idx])
+                output_list.append(output)
 
-            if isinstance(outputs, list):
-                return resp_cls(status, outputs[0] if single_output else outputs)
-            return resp_cls(status, outputs if single_output else [outputs])
+            return resp_cls(
+                get_status(TSStatusCode.SUCCESS_STATUS),
+                output_list[0] if single_batch else output_list,
+            )
 
         except Exception as e:
             logger.error(e)
             status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
-            empty = b"" if single_output else []
+            empty = b"" if single_batch else []
             return resp_cls(status, empty)
 
     def forecast(self, req: TForecastReq):
         return self._run(
             req,
             data_getter=lambda r: r.inputData,
-            deserializer=deserialize,
             extract_attrs=lambda r: {
                 "output_length": r.outputLength,
                 **(r.options or {}),
             },
             resp_cls=TForecastResp,
-            single_output=True,
+            single_batch=True,
         )
 
     def inference(self, req: TInferenceReq):
         return self._run(
             req,
             data_getter=lambda r: r.dataset,
-            deserializer=deserialize,
             extract_attrs=lambda r: {
                 "output_length": int(r.inferenceAttributes.pop("outputLength", 96)),
                 **(r.inferenceAttributes or {}),
             },
             resp_cls=TInferenceResp,
-            single_output=False,
+            single_batch=False,
         )
 
     def stop(self):

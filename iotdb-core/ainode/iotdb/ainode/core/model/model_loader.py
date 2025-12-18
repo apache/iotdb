@@ -69,23 +69,22 @@ def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
         model_info.model_id,
     )
 
+    config_str = model_info.auto_map.get("AutoConfig", "")
+    model_str = model_info.auto_map.get("AutoModelForCausalLM", "")
+
     if model_info.category == ModelCategory.BUILTIN:
         module_name = (
             AINodeDescriptor().get_config().get_ain_models_builtin_dir()
             + "."
             + model_info.model_id
         )
-        config_cls = import_class_from_path(module_name, model_info.config_cls)
-        model_cls = import_class_from_path(module_name, model_info.model_cls)
-    elif model_info.model_cls and model_info.config_cls:
+        config_cls = import_class_from_path(module_name, config_str)
+        model_cls = import_class_from_path(module_name, model_str)
+    elif model_str and config_str:
         module_parent = str(Path(model_path).parent.absolute())
         with temporary_sys_path(module_parent):
-            config_cls = import_class_from_path(
-                model_info.model_id, model_info.config_cls
-            )
-            model_cls = import_class_from_path(
-                model_info.model_id, model_info.model_cls
-            )
+            config_cls = import_class_from_path(model_info.model_id, config_str)
+            model_cls = import_class_from_path(model_info.model_id, model_str)
     else:
         config_cls = AutoConfig.from_pretrained(model_path)
         if type(config_cls) in AutoModelForTimeSeriesPrediction._model_mapping.keys():
