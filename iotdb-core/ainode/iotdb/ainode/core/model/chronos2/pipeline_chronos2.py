@@ -37,12 +37,8 @@ class Chronos2Pipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def _preprocess(self, inputs):
-        if len(inputs.shape) != 2:
-            raise InferenceModelInternalException(
-                f"[Inference] Input shape must be: [batch_size, seq_len], but receives {inputs.shape}"
-            )
-        inputs = inputs.unsqueeze(0)
+    def preprocess(self, inputs):
+        inputs = super().preprocess(inputs)
         return inputs
 
     @property
@@ -391,5 +387,5 @@ class Chronos2Pipeline(ForecastPipeline):
 
         return prediction
 
-    def _postprocess(self, output: torch.Tensor):
+    def postprocess(self, output: torch.Tensor):
         return output[0].mean(dim=1)
