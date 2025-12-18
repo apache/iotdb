@@ -76,8 +76,6 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
-  private static final TsBlockSerde SERDE = new TsBlockSerde();
-
   public static class ForecastTableFunctionHandle implements TableFunctionHandle {
     String modelId;
     int maxInputLength;
