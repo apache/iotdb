@@ -174,6 +174,7 @@ public class SerializeUtils {
         }
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         for (int i = 0; i < length; i++) {
@@ -218,6 +219,7 @@ public class SerializeUtils {
                   values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
                   break;
                 case BLOB:
+                case OBJECT:
                 case STRING:
                 case TEXT:
                   int len = buffer.getInt();
@@ -315,6 +317,7 @@ public class SerializeUtils {
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
         case BLOB:
+        case OBJECT:
         case STRING:
         case TEXT:
           serializeTextTVPairs(timeValuePairs, dataOutputStream);
@@ -355,6 +358,7 @@ public class SerializeUtils {
       switch (dataType) {
         case STRING:
         case BLOB:
+        case OBJECT:
         case TEXT:
           dataOutputStream.writeLong(timeValuePair.getTimestamp());
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -506,6 +510,7 @@ public class SerializeUtils {
         deserializeBooleanTVPairs(buffer, ret, size, dataType);
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         deserializeTextTVPairs(buffer, ret, size, dataType);
@@ -539,6 +544,7 @@ public class SerializeUtils {
       case BOOLEAN:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1));
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         int bytesLen = buffer.getInt();

@@ -91,6 +91,7 @@ public abstract class UDTFMath implements UDTF {
       case TIMESTAMP:
       case DATE:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -119,6 +120,7 @@ public abstract class UDTFMath implements UDTF {
         return transformer.transform(row.getDouble(0));
       case DATE:
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case TEXT:
@@ -155,6 +157,7 @@ public abstract class UDTFMath implements UDTF {
       case STRING:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case DATE:
       default:
         // This will not happen.

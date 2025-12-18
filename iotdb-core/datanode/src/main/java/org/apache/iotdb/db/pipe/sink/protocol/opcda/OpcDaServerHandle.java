@@ -318,6 +318,7 @@ public class OpcDaServerHandle implements Closeable {
         // Note that "Variant" does not support "VT_BLOB" data, and not all the DA server
         // support this, thus we use "VT_BSTR" to substitute
       case BLOB:
+      case OBJECT:
         return Variant.VT_BSTR;
       default:
         throw new UnSupportedDataTypeException("UnSupported dataType " + dataType);
@@ -354,6 +355,7 @@ public class OpcDaServerHandle implements Closeable {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         bstr = OleAuto.INSTANCE.SysAllocString(((Binary[]) column)[rowIndex].toString());
         value.setValue(Variant.VT_BSTR, bstr);
         break;
