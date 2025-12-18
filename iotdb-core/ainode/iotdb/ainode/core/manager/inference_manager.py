@@ -209,11 +209,9 @@ class InferenceManager:
                 inference_pipeline = load_pipeline(model_info, device="cpu")
                 inputs = inference_pipeline.preprocess(inputs)
                 if isinstance(inference_pipeline, ForecastPipeline):
-                    inputs = inference_pipeline._preprocess(inputs)
                     outputs = inference_pipeline.forecast(
                         inputs, predict_length=output_length, **inference_attrs
                     )
-                    outputs = inference_pipeline._postprocess(outputs)
                 elif isinstance(inference_pipeline, ClassificationPipeline):
                     outputs = inference_pipeline.classify(inputs)
                 elif isinstance(inference_pipeline, ChatPipeline):
