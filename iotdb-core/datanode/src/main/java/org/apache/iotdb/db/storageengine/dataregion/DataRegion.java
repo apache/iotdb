@@ -3039,7 +3039,8 @@ public class DataRegion implements IDataRegionForQuery {
     } else {
       TreeDeletionEntry entry = (TreeDeletionEntry) deletion;
       if (entry.getPathPattern() instanceof MeasurementPath) {
-        isDropTagExist = !((MeasurementPath) entry.getPathPattern()).getTagMap().isEmpty();
+        Map<String, String> tagMap = ((MeasurementPath) entry.getPathPattern()).getTagMap();
+        isDropTagExist = (tagMap != null) && !tagMap.isEmpty();
       }
     }
 
