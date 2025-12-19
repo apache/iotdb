@@ -341,7 +341,7 @@ License: https://github.com/LMAX-Exchange/disruptor/blob/master/LICENCE.txt
 
 --------------------------------------------------------------------------------
 
-The following files include code modified from LMax Disruptor project.
+The following files include code modified from chronos-forecasting project.
 
 ./iotdb-core/ainode/iotdb/ainode/core/model/chronos2/*
 
