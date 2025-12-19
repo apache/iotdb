@@ -586,8 +586,7 @@ public class CompactionUtils {
       return;
     }
     // The rate limit may only work on filesystems like ext4, directory File.length() is
-    // block-aligned
-    // and reflects allocated directory entry blocks.
+    // block-aligned and reflects allocated directory entry blocks.
     acquireCompactionReadRate(currentFile.length());
     for (File child : children) {
       recursiveTTLCheckForTableDir(
