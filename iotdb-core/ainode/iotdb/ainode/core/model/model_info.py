@@ -140,7 +140,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         repo_id="amazon/chronos-2",
         auto_map={
             "AutoConfig": "config.Chronos2ForecastingConfig",
-            "AutoModelForCausalLM": "models.Chronos2Model",
+            "AutoModelForCausalLM": "model.Chronos2Model",
         },
     ),
 }
