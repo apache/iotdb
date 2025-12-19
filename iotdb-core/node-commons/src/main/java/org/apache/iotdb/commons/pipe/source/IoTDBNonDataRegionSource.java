@@ -244,7 +244,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                (TreePattern) treePattern,
+                treePattern,
                 tablePattern,
                 userId,
                 userName,

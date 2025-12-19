@@ -193,24 +193,26 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "schema");
+      sourceAttributes.put("extractor.inclusion", "schema");
+      sourceAttributes.put("user", "root");
+
       // Include root.ln.**
-      extractorAttributes.put("path", "root.ln.**");
+      sourceAttributes.put("path", "root.ln.**");
       // Exclude root.ln.wf02.* and root.ln.wf03.wt01.status
-      extractorAttributes.put("path.exclusion", "root.ln.wf02.**, root.ln.wf03.wt01.status");
+      sourceAttributes.put("path.exclusion", "root.ln.wf02.**, root.ln.wf03.wt01.status");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("connector", "iotdb-thrift-connector");
+      sinkAttributes.put("connector.ip", receiverIp);
+      sinkAttributes.put("connector.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
