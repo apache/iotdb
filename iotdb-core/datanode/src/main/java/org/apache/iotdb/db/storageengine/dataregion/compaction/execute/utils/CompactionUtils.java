@@ -51,6 +51,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.google.common.io.BaseEncoding;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -584,6 +585,10 @@ public class CompactionUtils {
     if (children == null) {
       return;
     }
+    // The rate limit may only work on filesystems like ext4, directory File.length() is
+    // block-aligned
+    // and reflects allocated directory entry blocks.
+    acquireCompactionReadRate(currentFile.length());
     for (File child : children) {
       recursiveTTLCheckForTableDir(
           child, depth + 1, maxObjectFileDepth, canDistinguishDirectoryByFileName, lowerBoundInMS);
@@ -618,5 +623,17 @@ public class CompactionUtils {
       logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
     } catch (Exception ignored) {
     }
+  }
+
+  private static void acquireCompactionReadRate(long size) {
+    if (size <= 0) {
+      return;
+    }
+    RateLimiter rateLimiter = CompactionTaskManager.getInstance().getCompactionReadRateLimiter();
+    while (size >= Integer.MAX_VALUE) {
+      size -= Integer.MAX_VALUE;
+      rateLimiter.acquire(Integer.MAX_VALUE);
+    }
+    rateLimiter.acquire((int) size);
   }
 }
