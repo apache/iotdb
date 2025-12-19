@@ -196,9 +196,12 @@ class ModelStorage:
                     if os.path.exists(config_path):
                         with open(config_path, "r", encoding="utf-8") as f:
                             config = json.load(f)
-                        if model_info.model_type == "":
-                            model_info.model_type = config.get("model_type", "")
-                        model_info.auto_map = config.get("auto_map", None)
+                        model_info.model_type = config.get(
+                            "model_type", model_info.model_type
+                        )
+                        model_info.auto_map = config.get(
+                            "auto_map", model_info.auto_map
+                        )
                     logger.info(
                         f"Model {model_id} downloaded successfully and is ready to use."
                     )

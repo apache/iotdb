@@ -116,6 +116,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_timer.TimerConfig",
             "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
         },
+        _transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
@@ -128,5 +129,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_sundial.SundialConfig",
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
         },
+        _transformers_registered=True,
     ),
 }

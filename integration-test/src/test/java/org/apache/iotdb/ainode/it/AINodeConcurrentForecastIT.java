@@ -36,8 +36,9 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_LTSM_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
@@ -47,6 +48,11 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 public class AINodeConcurrentForecastIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeConcurrentForecastIT.class);
+
+  private static final List<AINodeTestUtils.FakeModelInfo> MODEL_LIST =
+      Arrays.asList(
+          new AINodeTestUtils.FakeModelInfo("sundial", "sundial", "builtin", "active"),
+          new AINodeTestUtils.FakeModelInfo("timer_xl", "timer", "builtin", "active"));
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
       "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time,s FROM root.AI) ORDER BY time, output_length=>%d)";
@@ -78,7 +84,7 @@ public class AINodeConcurrentForecastIT {
 
   @Test
   public void concurrentGPUForecastTest() throws SQLException, InterruptedException {
-    for (AINodeTestUtils.FakeModelInfo modelInfo : BUILTIN_LTSM_MAP.values()) {
+    for (AINodeTestUtils.FakeModelInfo modelInfo : MODEL_LIST) {
       concurrentGPUForecastTest(modelInfo);
     }
   }
