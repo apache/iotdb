@@ -488,6 +488,58 @@ public class IoTDBDeletionIT {
     }
   }
 
+  @Test
+  public void testDropAndAlter() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.test");
+      statement.execute(
+          "CREATE TIMESERIES root.test.g_0.d3.s_10 with datatype=INT32 tags(tag1=v1, tag2=v2)");
+
+      // time=1 and time=2 are INT32 and deleted by drop column
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(1, 1)");
+
+      statement.execute("FLUSH");
+
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(2, 2)");
+
+      statement.execute("ALTER TIMESERIES root.test.g_0.d3.s_10 DROP tag1");
+
+      // time=3 and time=4 are STRING
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(3, 3)");
+
+      statement.execute("FLUSH");
+
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(4, 4)");
+
+      statement.execute("ALTER TIMESERIES root.test.g_0.d3.s_10 ADD TAGS tag1=v1");
+
+      // time=5 and time=6 are TEXT
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(5, 5)");
+
+      statement.execute("FLUSH");
+
+      statement.execute("INSERT INTO root.test.g_0.d3(timestamp, s_10) VALUES(6, 6)");
+
+      try (ResultSet dataSet =
+          statement.executeQuery("select * from root.test.g_0.d3 order by time")) {
+        // s1 is dropped but the time should remain
+        int i = 1;
+        while (dataSet.next()) {
+          assertEquals(i, dataSet.getLong(1));
+          i++;
+        }
+        Assert.assertEquals(6, i - 1);
+        assertFalse(dataSet.next());
+      }
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("DROP DATABASE root.test");
+      }
+    }
+  }
+
   private static void prepareSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

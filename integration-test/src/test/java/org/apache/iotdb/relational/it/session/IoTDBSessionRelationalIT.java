@@ -1596,7 +1596,7 @@ public class IoTDBSessionRelationalIT {
   }
 
   @SuppressWarnings("SameParameterValue")
-  private Object genValue(TSDataType dataType, int i) {
+  public static Object genValue(TSDataType dataType, int i) {
     switch (dataType) {
       case INT32:
         return i;

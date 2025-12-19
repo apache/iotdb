@@ -3030,6 +3030,19 @@ public class DataRegion implements IDataRegionForQuery {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
+    boolean isDropMeasurementExist = false;
+    boolean isDropTagExist = false;
+
+    if (deletion instanceof TableDeletionEntry) {
+      TableDeletionEntry entry = (TableDeletionEntry) deletion;
+      isDropMeasurementExist = !entry.getPredicate().getMeasurementNames().isEmpty();
+    } else {
+      TreeDeletionEntry entry = (TreeDeletionEntry) deletion;
+      if (entry.getPathPattern() instanceof MeasurementPath) {
+        isDropTagExist = !((MeasurementPath) entry.getPathPattern()).getTagMap().isEmpty();
+      }
+    }
+
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
         continue;
@@ -3126,7 +3139,7 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
-    if (!deletedByFiles.isEmpty()) {
+    if (!deletedByFiles.isEmpty() && !isDropMeasurementExist && !isDropTagExist) {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
         logger.debug(
