@@ -41,12 +41,15 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -63,6 +66,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -76,8 +80,12 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       new PipePlanTablePatternParseVisitor();
   public static final PipePlanTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
       new PipePlanTablePrivilegeParseVisitor();
-  private static final PipeStatementToPlanVisitor STATEMENT_TO_PLAN_VISITOR =
-      new PipeStatementToPlanVisitor();
+  private static final PipeTableStatementToPlanVisitor TABLE_STATEMENT_TO_PLAN_VISITOR =
+      new PipeTableStatementToPlanVisitor();
+  private static final PipeTreeStatementToPlanVisitor TREE_STATEMENT_TO_PLAN_VISITOR =
+      new PipeTreeStatementToPlanVisitor();
+  private final PipeTreeStatementToBatchVisitor batchVisitor =
+      new PipeTreeStatementToBatchVisitor();
 
   // Local for exception
   private PipePlanTreePrivilegeParseVisitor treePrivilegeParseVisitor;
@@ -85,7 +93,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
   private String database;
+  private boolean isTableModel;
   private SRStatementGenerator generator;
+  private Iterator<Statement> remainBatches;
 
   @Override
   public void customize(
@@ -132,6 +142,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     }
 
     database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
+    isTableModel = PathUtils.isTableModelDatabase(database);
     super.start();
   }
 
@@ -170,7 +181,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   @Override
   protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     try {
-      if (PathUtils.isTableModelDatabase(database)) {
+      if (isTableModel) {
         AuthorityChecker.getAccessControl()
             .checkCanSelectFromDatabase4Pipe(userName, database, userEntity);
         return true;
@@ -209,14 +220,40 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected boolean hasNextEventInCurrentSnapshot() {
-    return Objects.nonNull(generator) && generator.hasNext();
+    return Objects.nonNull(generator) && generator.hasNext()
+        || Objects.nonNull(remainBatches) && remainBatches.hasNext();
   }
 
   @Override
   protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
-    // Currently only support table model event
+    if (isTableModel) {
+      return new PipeSchemaRegionWritePlanEvent(
+          TABLE_STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
+    }
+    while (generator.hasNext()) {
+      final Optional<Statement> statement =
+          batchVisitor.process((StatementNode) generator.next(), null);
+      if (statement.isPresent()) {
+        if (!generator.hasNext()) {
+          remainBatches =
+              batchVisitor.getRemainBatches().stream()
+                  .filter(Optional::isPresent)
+                  .map(Optional::get)
+                  .iterator();
+        }
+        return new PipeSchemaRegionWritePlanEvent(
+            TREE_STATEMENT_TO_PLAN_VISITOR.process(statement.get(), null), false);
+      }
+    }
+    if (Objects.isNull(remainBatches)) {
+      remainBatches =
+          batchVisitor.getRemainBatches().stream()
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .iterator();
+    }
     return new PipeSchemaRegionWritePlanEvent(
-        STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
+        TREE_STATEMENT_TO_PLAN_VISITOR.process(remainBatches.next(), null), false);
   }
 
   @Override
