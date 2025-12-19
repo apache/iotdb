@@ -393,8 +393,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         receiverEnv,
         "select count(*) from root.vehicle.**",
         "count(root.vehicle.car.temperature),",
-        Collections.singleton("1,"),
-        20);
+        Collections.singleton("1,"));
 
     // test showing pipe
     // Create another pipe, user is root
