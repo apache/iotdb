@@ -68,9 +68,9 @@ public class TNonblockingTransportWrapper {
       String trustStorePath,
       String trustStorePwd) {
     try {
-      return new NettyTNonblockingTransport(
+      return new TNonblockingSSLSocket(
           host, port, timeout, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
-    } catch (TTransportException e) {
+    } catch (Exception e) {
       // never happen
       return null;
     }
