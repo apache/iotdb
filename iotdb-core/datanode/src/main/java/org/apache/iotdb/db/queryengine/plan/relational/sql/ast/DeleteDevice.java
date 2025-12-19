@@ -256,15 +256,7 @@ public class DeleteDevice extends AbstractTraverseDevice {
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
-    size += RamUsageEstimator.sizeOf(database);
-    size += RamUsageEstimator.sizeOf(tableName);
-    size += RamUsageEstimator.shallowSizeOf(tagDeterminedFilterList);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
-    size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
+    size += ramBytesUsedForCommonFields();
     if (modEntries != null) {
       size += RamUsageEstimator.shallowSizeOf(modEntries);
       for (TableDeletionEntry entry : modEntries) {

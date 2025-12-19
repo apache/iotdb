@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -147,19 +146,9 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   @Override
   public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
-    // AbstractQueryDeviceWithCache fields
-    if (results != null) {
-      size += RamUsageEstimator.shallowSizeOf(results);
-      for (ShowDevicesResult result : results) {
-        if (result != null) {
-          size += result.ramBytesUsed();
-        }
-      }
-    }
-    return size;
+    return INSTANCE_SIZE
+        + ramBytesUsedForCommonFields()
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
   }
 }
