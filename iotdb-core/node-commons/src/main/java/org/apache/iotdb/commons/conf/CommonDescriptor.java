@@ -284,7 +284,7 @@ public class CommonDescriptor {
     config.setRestrictObjectLimit(
         Boolean.parseBoolean(
             properties.getProperty(
-                "restrict_object_limit", String.valueOf(config.getRestrictObjectLimit()))));
+                "restrict_object_limit", String.valueOf(config.isRestrictObjectLimit()))));
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);

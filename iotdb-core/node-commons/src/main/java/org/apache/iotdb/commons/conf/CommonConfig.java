@@ -2730,7 +2730,7 @@ public class CommonConfig {
     this.auditableOperationResult = auditableOperationResult;
   }
 
-  public boolean getRestrictObjectLimit() {
+  public boolean isRestrictObjectLimit() {
     return restrictObjectLimit;
   }
 
