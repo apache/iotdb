@@ -142,6 +142,7 @@ public class PipeRowCollector implements RowCollector {
     this.tablet = null;
   }
 
+  @Override
   public List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport) {
     collectTabletInsertionEvent();
 
