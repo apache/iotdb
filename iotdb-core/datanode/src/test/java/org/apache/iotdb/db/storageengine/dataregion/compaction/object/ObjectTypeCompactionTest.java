@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.PlainObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -260,13 +261,17 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testTTLCheck() throws IOException {
+  public void testBase32ObjectPathTTLCheck() throws IOException {
     config.setRestrictObjectLimit(false);
     try {
-      File file1 = generateBase32ObjectFile(regionDir, System.currentTimeMillis() + 100000, false);
-      File file2 = generateBase32ObjectFile(regionDir, System.currentTimeMillis() + 200000, true);
-      File file3 = generateBase32ObjectFile(regionDir, System.currentTimeMillis() - 100000, true);
-      File file4 = generateBase32ObjectFile(regionDir, System.currentTimeMillis() - 200000, false);
+      File file1 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() + 100000, false);
+      File file2 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() + 200000, true);
+      File file3 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() - 100000, true);
+      File file4 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() - 200000, false);
       Assert.assertTrue(file1.exists());
       Assert.assertTrue(file2.exists());
       Assert.assertTrue(file3.exists());
@@ -279,6 +284,39 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     } finally {
       config.setRestrictObjectLimit(true);
     }
+  }
+
+  @Test
+  public void testPlainObjectPathTTLCheck() throws IOException, InterruptedException {
+    File file1 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() + 100000, false, "d1");
+    File file2 =
+        generatePlainPathObjectFile(
+            regionDir,
+            System.currentTimeMillis() + 200000,
+            true,
+            (System.currentTimeMillis() - 100000) + ".bin");
+    File file3 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() - 100000, true, "d1");
+    File file4 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() - 200000, false, "d1");
+    File file5 =
+        generatePlainPathObjectFile(
+            regionDir,
+            System.currentTimeMillis() + 300000,
+            false,
+            (System.currentTimeMillis() - 300000) + ".bin");
+    Assert.assertTrue(file1.exists());
+    Assert.assertTrue(file2.exists());
+    Assert.assertTrue(file3.exists());
+    Assert.assertTrue(file4.exists());
+    Assert.assertTrue(file5.exists());
+    new DataRegion(COMPACTION_TEST_SG, regionDir.getName()).executeTTLCheckForObjectFiles();
+    Assert.assertTrue(file1.exists());
+    Assert.assertTrue(file2.exists());
+    Assert.assertFalse(file3.exists());
+    Assert.assertFalse(file4.exists());
+    Assert.assertTrue(file5.exists());
   }
 
   @Test
@@ -375,7 +413,27 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     return new Pair<>(resource, testFile1);
   }
 
-  private File generateBase32ObjectFile(File regionDir, long timestamp, boolean internalLevel)
+  private File generatePlainPathObjectFile(
+      File regionDir, long timestamp, boolean internalLevel, String tagValue) throws IOException {
+    File dir =
+        new File(
+            regionDir.getPath()
+                + File.separator
+                + "t1"
+                + (internalLevel ? "" : (File.separator + tagValue))
+                + File.separator
+                + "s1");
+    dir.mkdirs();
+    File testFile1 = new File(dir, timestamp + ".bin");
+    byte[] content = new byte[100];
+    for (int i = 0; i < 100; i++) {
+      content[i] = (byte) i;
+    }
+    Files.write(testFile1.toPath(), content);
+    return testFile1;
+  }
+
+  private File generateBase32PathObjectFile(File regionDir, long timestamp, boolean internalLevel)
       throws IOException {
     File dir =
         new File(

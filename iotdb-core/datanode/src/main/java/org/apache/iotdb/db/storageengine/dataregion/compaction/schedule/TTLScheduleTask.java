@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -70,7 +71,9 @@ public class TTLScheduleTask implements Callable<Void> {
           if (Thread.interrupted()) {
             throw new InterruptedException();
           }
-          if (i % workerNum == workerId) {
+          DataRegion region = dataRegionListSnapshot.get(i);
+          if (i % workerNum == workerId
+              && PathUtils.isTableModelDatabase(region.getDatabaseName())) {
             dataRegionListSnapshot.get(i).executeTTLCheckForObjectFiles();
           }
         }
