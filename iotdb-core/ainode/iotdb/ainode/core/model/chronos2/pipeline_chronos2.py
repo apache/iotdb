@@ -388,4 +388,4 @@ class Chronos2Pipeline(ForecastPipeline):
         return prediction
 
     def postprocess(self, output: torch.Tensor):
-        return output[0].mean(dim=1)
+        return output[0].mean(dim=1, keepdim=True)
