@@ -55,6 +55,6 @@ public class PipeTreeStatementToPlanVisitor extends StatementVisitor<PlanNode, V
     // The value pair will not be used at the receiver
     return new BatchActivateTemplateNode(
         new PlanNodeId(""),
-        node.getPaths().stream().collect(Collectors.toMap(k -> k, k -> new Pair<>(0, 0))));
+        node.getDevicePathList().stream().collect(Collectors.toMap(k -> k, k -> new Pair<>(0, 0))));
   }
 }
