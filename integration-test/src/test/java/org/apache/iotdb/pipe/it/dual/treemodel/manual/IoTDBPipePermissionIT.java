@@ -88,8 +88,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
+    senderEnv.initClusterEnvironment(1, 1);
+    receiverEnv.initClusterEnvironment(1, 1);
   }
 
   @Test
@@ -274,13 +274,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           e.getMessage().contains("Fail to CREATE_PIPE because Authentication failed."));
     }
 
-    // Test snapshot filter
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            "create database root.db", "create timeSeries root.db.device.measurement int32"),
-        null);
-
     // Use current session, user is root
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -323,6 +316,32 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // root.test / root.db shall not be transferred
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv, "count databases", "count,", Collections.singleton("0,"));
+
+    // Test snapshot filter
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.db", "create timeSeries root.db.device.measurement int32"),
+        null);
+
+    // Transfer snapshot
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop pipe a2b");
+      statement.execute(
+          String.format(
+              "create pipe a2b"
+                  + " with source ("
+                  + "'inclusion'='all', "
+                  + "'username'='thulab', "
+                  + "'password'='passwD@123456')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Shall not fail if user and password are specified");
+    }
 
     TestUtils.executeNonQuery(receiverEnv, "create database root.db");
 
