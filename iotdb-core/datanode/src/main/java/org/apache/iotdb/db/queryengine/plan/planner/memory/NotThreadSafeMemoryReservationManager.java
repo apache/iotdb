@@ -110,8 +110,8 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   @Override
   public void reserveMemoryVirtually(
-      final long releasedBytesInReserved, final long releasedBytesInTotal) {
-    bytesToBeReserved += releasedBytesInReserved;
-    reservedBytesInTotal += releasedBytesInTotal;
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    reservedBytesInTotal += bytesAlreadyReserved;
+    reserveMemoryCumulatively(bytesToBeReserved);
   }
 }

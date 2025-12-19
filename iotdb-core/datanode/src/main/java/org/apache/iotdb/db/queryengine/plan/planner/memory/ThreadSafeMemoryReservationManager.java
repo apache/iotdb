@@ -58,7 +58,7 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
 
   @Override
   public void reserveMemoryVirtually(
-      final long releasedBytesInReserved, final long releasedBytesInTotal) {
-    super.reserveMemoryVirtually(releasedBytesInReserved, releasedBytesInTotal);
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    super.reserveMemoryVirtually(bytesToBeReserved, bytesAlreadyReserved);
   }
 }

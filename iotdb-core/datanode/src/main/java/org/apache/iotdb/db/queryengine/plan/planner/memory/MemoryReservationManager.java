@@ -54,6 +54,11 @@ public interface MemoryReservationManager {
    * <p>NOTE: When calling this method, it should be guaranteed that bytesToBeReserved +
    * reservedBytesInTotal >= size to ensure proper memory accounting and prevent negative
    * reservation values.
+   *
+   * @param size the size of memory to release virtually
+   * @return a Pair where the left element is the amount of memory released from the pending
+   *     reservation queue (bytesToBeReserved), and the right element is the amount of memory that
+   *     has already been reserved
    */
   Pair<Long, Long> releaseMemoryVirtually(final long size);
 
@@ -62,6 +67,9 @@ public interface MemoryReservationManager {
    * memory ownership from one FragmentInstances to another by reserving the memory that was
    * previously released virtually. It updates the internal reservation state without changing the
    * actual memory allocation.
+   *
+   * @param bytesToBeReserved the amount of memory that needs to be reserved cumulatively.
+   * @param bytesAlreadyReserved the amount of memory that has already been reserved
    */
-  void reserveMemoryVirtually(final long releasedBytesInReserved, final long releasedBytesInTotal);
+  void reserveMemoryVirtually(final long bytesToBeReserved, final long bytesAlreadyReserved);
 }

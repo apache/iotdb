@@ -37,10 +37,10 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
 
   @Override
   public Pair<Long, Long> releaseMemoryVirtually(final long size) {
-    return null;
+    return new Pair<>(0L, 0L);
   }
 
   @Override
   public void reserveMemoryVirtually(
-      final long releasedBytesInReserved, final long releasedBytesInTotal) {}
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {}
 }
