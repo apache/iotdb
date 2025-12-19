@@ -77,7 +77,7 @@ public class RemoveDataNode extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += RamUsageEstimator.shallowSizeOf(nodeIds);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(nodeIds);
     return size;
   }
 }

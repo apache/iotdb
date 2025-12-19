@@ -91,6 +91,19 @@ public final class AstMemoryEstimationHelper {
     return size;
   }
 
+  public static long getEstimatedSizeOfLongList(@Nullable final List<Long> longs) {
+    if (longs == null || longs.isEmpty()) {
+      return 0L;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(longs);
+    for (Long longValue : longs) {
+      if (longValue != null) {
+        size += Long.BYTES;
+      }
+    }
+    return size;
+  }
+
   public static long getEstimatedSizeOfObjectArrayList(
       @Nullable final List<Object[]> objectArrayList) {
     if (objectArrayList == null || objectArrayList.isEmpty()) {

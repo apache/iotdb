@@ -213,15 +213,12 @@ public class PatternRecognitionRelation extends Relation {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(input);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(partitionBy);
-    if (orderBy.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.get());
-    }
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(measures);
-    if (afterMatchSkipTo.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(afterMatchSkipTo.get());
-    }
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            afterMatchSkipTo.orElse(null));
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(subsets);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(variableDefinitions);

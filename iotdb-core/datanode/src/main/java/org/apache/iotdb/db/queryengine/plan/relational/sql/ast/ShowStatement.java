@@ -123,22 +123,11 @@ public class ShowStatement extends Statement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(tableName);
-    if (where.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.get());
-    }
-    if (orderBy.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.get());
-    }
-    if (offset.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.get());
-    }
-    if (limit.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.get());
-    }
+    size += 4 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.orElse(null));
     return size;
   }
 }

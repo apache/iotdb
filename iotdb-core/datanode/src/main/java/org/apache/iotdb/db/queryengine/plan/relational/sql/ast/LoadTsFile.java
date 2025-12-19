@@ -356,17 +356,8 @@ public class LoadTsFile extends Statement {
         }
       }
     }
-    if (writePointCountList != null) {
-      size += RamUsageEstimator.shallowSizeOf(writePointCountList);
-      for (Long count : writePointCountList) {
-        if (count != null) {
-          size += Long.BYTES;
-        }
-      }
-    }
-    if (isTableModel != null) {
-      size += RamUsageEstimator.shallowSizeOf(isTableModel);
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
+    size += RamUsageEstimator.shallowSizeOf(isTableModel);
     return size;
   }
 }

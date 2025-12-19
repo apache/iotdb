@@ -117,10 +117,7 @@ public class CreateIndex extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += tableName == null ? 0L : tableName.ramBytesUsed();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(indexName);
-    size += RamUsageEstimator.shallowSizeOf(columnList);
-    for (Identifier column : columnList) {
-      size += column == null ? 0L : column.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnList);
     return size;
   }
 }

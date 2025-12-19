@@ -145,10 +145,8 @@ public class FrameBound extends Node {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (value.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value.get());
-    }
+    size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value.orElse(null));
     return size;
   }
 }

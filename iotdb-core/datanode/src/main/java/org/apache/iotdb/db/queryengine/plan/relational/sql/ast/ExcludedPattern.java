@@ -84,7 +84,7 @@ public class ExcludedPattern extends RowPattern {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += pattern == null ? 0L : pattern.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern);
     return size;
   }
 }

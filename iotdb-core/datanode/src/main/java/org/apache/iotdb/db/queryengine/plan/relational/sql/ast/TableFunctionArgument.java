@@ -98,10 +98,8 @@ public class TableFunctionArgument extends Node {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (name.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name.get());
-    }
+    size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name.orElse(null));
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
     return size;
   }

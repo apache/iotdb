@@ -473,11 +473,7 @@ public class RelationalAuthorStatement extends Statement {
     size += RamUsageEstimator.sizeOf(oldPassword);
     size += RamUsageEstimator.sizeOf(newUsername);
     size += RamUsageEstimator.sizeOf(loginAddr);
-    if (privilegeType != null) {
-      size +=
-          RamUsageEstimator.shallowSizeOf(
-              privilegeType.stream().map(Enum::ordinal).collect(Collectors.toList()));
-    }
+    size += RamUsageEstimator.sizeOfCollection(privilegeType);
     return size;
   }
 }

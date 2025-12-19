@@ -99,14 +99,9 @@ public class RangeQuantifier extends PatternQuantifier {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (atLeast.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += atLeast.get() == null ? 0L : atLeast.get().ramBytesUsed();
-    }
-    if (atMost.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += atMost.get() == null ? 0L : atMost.get().ramBytesUsed();
-    }
+    size += 2 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(atLeast.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(atMost.orElse(null));
     return size;
   }
 }

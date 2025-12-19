@@ -212,20 +212,13 @@ public class WindowSpecification extends Node implements Window {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (existingWindowName.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size +=
-          AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(existingWindowName.get());
-    }
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(partitionBy);
-    if (orderBy.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.get());
-    }
-    if (frame.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(frame.get());
-    }
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            existingWindowName.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(frame.orElse(null));
     return size;
   }
 }

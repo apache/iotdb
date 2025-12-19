@@ -344,20 +344,15 @@ public class FunctionCall extends Expression {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += name == null ? 0L : name.ramBytesUsed();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(arguments);
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
     if (window.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
       Window windowValue = window.get();
       if (windowValue instanceof Node) {
         size += ((Node) windowValue).ramBytesUsed();
       }
     }
-    if (processingMode.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += processingMode.get().ramBytesUsed();
-    }
-    if (nullTreatment.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-    }
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(processingMode.orElse(null));
     return size;
   }
 }

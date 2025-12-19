@@ -88,7 +88,6 @@ public class Parameter extends Expression {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    // int (4 bytes, but typically aligned to 8 bytes)
     return size;
   }
 }

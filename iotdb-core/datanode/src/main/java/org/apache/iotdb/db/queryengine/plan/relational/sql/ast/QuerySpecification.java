@@ -195,39 +195,16 @@ public class QuerySpecification extends QueryBody {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(select);
-    if (from.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += from.get().ramBytesUsed();
-    }
-    if (where.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += where.get().ramBytesUsed();
-    }
-    if (groupBy.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += groupBy.get().ramBytesUsed();
-    }
-    if (having.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += having.get().ramBytesUsed();
-    }
-    if (fill.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += fill.get().ramBytesUsed();
-    }
+    size += 8 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(from.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(groupBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(having.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fill.orElse(null));
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(windows);
-    if (orderBy.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += orderBy.get().ramBytesUsed();
-    }
-    if (offset.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += offset.get().ramBytesUsed();
-    }
-    if (limit.isPresent()) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
-      size += limit.get().ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.orElse(null));
     return size;
   }
 }

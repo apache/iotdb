@@ -168,9 +168,7 @@ public class AsofJoinOn extends JoinOn {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += ramBytesUsedExcludingInstanceSize();
-    if (asofExpression != null) {
-      size += asofExpression.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(asofExpression);
     return size;
   }
 }

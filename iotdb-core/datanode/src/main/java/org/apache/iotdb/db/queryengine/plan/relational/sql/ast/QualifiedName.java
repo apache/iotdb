@@ -235,23 +235,10 @@ public class QualifiedName implements Accountable {
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
-    if (originalParts != null) {
-      size += RamUsageEstimator.shallowSizeOf(originalParts);
-      for (Identifier identifier : originalParts) {
-        if (identifier != null) {
-          size += identifier.ramBytesUsed();
-        }
-      }
-    }
-    if (parts != null) {
-      size += RamUsageEstimator.shallowSizeOf(parts);
-      for (String part : parts) {
-        size += RamUsageEstimator.sizeOf(part);
-      }
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(originalParts);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(parts);
     size += RamUsageEstimator.sizeOf(name);
     if (prefix != null) {
-      size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
       size += prefix.ramBytesUsed();
     }
     size += RamUsageEstimator.sizeOf(suffix);

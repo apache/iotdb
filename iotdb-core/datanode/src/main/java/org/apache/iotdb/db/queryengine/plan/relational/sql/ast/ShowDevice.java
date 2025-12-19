@@ -149,12 +149,8 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (offset != null) {
-      size += offset.ramBytesUsed();
-    }
-    if (limit != null) {
-      size += limit.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
     // AbstractQueryDeviceWithCache fields
     if (results != null) {
       size += RamUsageEstimator.shallowSizeOf(results);

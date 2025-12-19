@@ -175,9 +175,7 @@ public class SimpleCaseExpression extends Expression {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operand);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(whenClauses);
-    if (defaultValue != null) {
-      size += defaultValue.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(defaultValue);
     return size;
   }
 }

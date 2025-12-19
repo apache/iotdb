@@ -95,8 +95,8 @@ public class QuantifiedPattern extends RowPattern {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += pattern == null ? 0L : pattern.ramBytesUsed();
-    size += patternQuantifier == null ? 0L : patternQuantifier.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(patternQuantifier);
     return size;
   }
 }

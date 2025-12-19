@@ -82,7 +82,7 @@ public class RemoveRegion extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += RamUsageEstimator.shallowSizeOf(regionIds);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(regionIds);
     return size;
   }
 }

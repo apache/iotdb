@@ -29,7 +29,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.stream.Collectors.toList;
 
 public class ClearCache extends Statement {
   private static final long INSTANCE_SIZE =
@@ -89,10 +88,7 @@ public class ClearCache extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    if (options != null) {
-      size +=
-          RamUsageEstimator.shallowSizeOf(options.stream().map(Enum::ordinal).collect(toList()));
-    }
+    size += RamUsageEstimator.sizeOfCollection(options);
     return size;
   }
 }

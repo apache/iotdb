@@ -74,16 +74,11 @@ public class JoinOn extends JoinCriteria {
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
-    if (expression != null) {
-      size += expression.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
     return size;
   }
 
   protected long ramBytesUsedExcludingInstanceSize() {
-    if (expression != null) {
-      return expression.ramBytesUsed();
-    }
-    return 0L;
+    return AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
   }
 }

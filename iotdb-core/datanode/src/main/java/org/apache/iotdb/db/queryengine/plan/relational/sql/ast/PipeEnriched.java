@@ -78,7 +78,7 @@ public class PipeEnriched extends Statement {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += innerStatement == null ? 0L : innerStatement.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(innerStatement);
     return size;
   }
 }
