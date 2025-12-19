@@ -60,10 +60,6 @@ public class AlterDB extends DatabaseStatement {
 
   @Override
   public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += RamUsageEstimator.sizeOf(dbName);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
-    return size;
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
   }
 }

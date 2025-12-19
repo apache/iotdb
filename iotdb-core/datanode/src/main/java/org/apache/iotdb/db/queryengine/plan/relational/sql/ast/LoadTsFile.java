@@ -339,14 +339,7 @@ public class LoadTsFile extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(filePath);
     size += RamUsageEstimator.sizeOf(database);
-    if (loadAttributes != null && !loadAttributes.isEmpty()) {
-      for (Map.Entry<String, String> entry : loadAttributes.entrySet()) {
-        size += RamUsageEstimator.sizeOf(entry.getKey());
-        size += RamUsageEstimator.sizeOf(entry.getValue());
-      }
-      // Map overhead
-      size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(loadAttributes.entrySet()));
-    }
+    size += RamUsageEstimator.sizeOfMap(loadAttributes);
     if (tsFiles != null) {
       size += RamUsageEstimator.shallowSizeOf(tsFiles);
       for (File file : tsFiles) {

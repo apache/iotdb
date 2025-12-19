@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
@@ -95,10 +94,7 @@ public class CreateTopic extends SubscriptionStatement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(topicName);
-    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(topicAttributes.entrySet()));
-    size +=
-        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            new ArrayList<>(topicAttributes.values()));
+    size += RamUsageEstimator.sizeOfMap(topicAttributes);
     return size;
   }
 }

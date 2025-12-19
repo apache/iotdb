@@ -73,9 +73,7 @@ public final class AstMemoryEstimationHelper {
     }
     long size = RamUsageEstimator.shallowSizeOf(strings);
     for (String str : strings) {
-      if (str != null) {
-        size += RamUsageEstimator.sizeOf(str);
-      }
+      size += RamUsageEstimator.sizeOf(str);
     }
     return size;
   }
@@ -88,6 +86,23 @@ public final class AstMemoryEstimationHelper {
     for (Integer integer : integers) {
       if (integer != null) {
         size += Integer.BYTES;
+      }
+    }
+    return size;
+  }
+
+  public static long getEstimatedSizeOfObjectArrayList(
+      @Nullable final List<Object[]> objectArrayList) {
+    if (objectArrayList == null || objectArrayList.isEmpty()) {
+      return 0L;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(objectArrayList);
+    for (Object[] array : objectArrayList) {
+      if (array != null) {
+        size += RamUsageEstimator.shallowSizeOf(array);
+        for (Object element : array) {
+          size += RamUsageEstimator.sizeOfObject(element);
+        }
       }
     }
     return size;

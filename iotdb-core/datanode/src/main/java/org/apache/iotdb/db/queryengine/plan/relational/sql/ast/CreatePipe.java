@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
@@ -121,18 +120,9 @@ public class CreatePipe extends PipeStatement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(pipeName);
-    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(extractorAttributes.entrySet()));
-    size +=
-        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            new ArrayList<>(extractorAttributes.values()));
-    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(processorAttributes.entrySet()));
-    size +=
-        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            new ArrayList<>(processorAttributes.values()));
-    size += RamUsageEstimator.shallowSizeOf(new ArrayList<>(connectorAttributes.entrySet()));
-    size +=
-        AstMemoryEstimationHelper.getEstimatedSizeOfStringList(
-            new ArrayList<>(connectorAttributes.values()));
+    size += RamUsageEstimator.sizeOfMap(extractorAttributes);
+    size += RamUsageEstimator.sizeOfMap(processorAttributes);
+    size += RamUsageEstimator.sizeOfMap(connectorAttributes);
     return size;
   }
 }

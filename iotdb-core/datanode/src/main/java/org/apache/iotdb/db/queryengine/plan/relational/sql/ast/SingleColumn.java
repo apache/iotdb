@@ -146,9 +146,7 @@ public class SingleColumn extends SelectItem {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
-    if (alias != null) {
-      size += alias.ramBytesUsed();
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(alias);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(expandedExpressions);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(accordingColumnNames);
     return size;

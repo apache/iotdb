@@ -117,12 +117,7 @@ public class FetchDevice extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(database);
     size += RamUsageEstimator.sizeOf(tableName);
-    size += RamUsageEstimator.shallowSizeOf(deviceIdList);
-    for (Object[] deviceId : deviceIdList) {
-      if (deviceId != null) {
-        size += RamUsageEstimator.sizeOf(deviceId.toString().getBytes());
-      }
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(deviceIdList);
     if (partitionKeyList != null) {
       size += RamUsageEstimator.shallowSizeOf(partitionKeyList);
       for (IDeviceID deviceID : partitionKeyList) {

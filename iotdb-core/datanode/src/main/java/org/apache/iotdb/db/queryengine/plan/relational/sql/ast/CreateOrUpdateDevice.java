@@ -148,19 +148,9 @@ public class CreateOrUpdateDevice extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(database);
     size += RamUsageEstimator.sizeOf(table);
-    size += RamUsageEstimator.shallowSizeOf(deviceIdList);
-    for (Object[] deviceId : deviceIdList) {
-      if (deviceId != null) {
-        size += RamUsageEstimator.sizeOf(deviceId.toString().getBytes());
-      }
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(deviceIdList);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(attributeNameList);
-    size += RamUsageEstimator.shallowSizeOf(attributeValueList);
-    for (Object[] values : attributeValueList) {
-      if (values != null) {
-        size += RamUsageEstimator.sizeOf(values.toString().getBytes());
-      }
-    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(attributeValueList);
     return size;
   }
 }

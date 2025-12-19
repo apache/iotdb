@@ -176,9 +176,8 @@ public class Fill extends Node {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fillValue);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(timeColumnIndex);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(fillGroupingElements);
-    // TimeDuration is a simple object, estimate its size
     if (timeBound != null) {
-      size += RamUsageEstimator.shallowSizeOfInstance(TimeDuration.class);
+      size += TimeDuration.INSTANCE_SIZE;
     }
     return size;
   }
