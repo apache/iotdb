@@ -215,13 +215,16 @@ public class PipePluginInfo implements SnapshotProcessor {
       final String className = pipePluginMeta.getClassName();
       final String jarName = pipePluginMeta.getJarName();
 
-      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
-      dropPipePlugin(new DropPipePluginPlan(pluginName));
-
       if (createPipePluginPlan.getJarFile() != null) {
-        pipePluginExecutableManager.savePluginToInstallDir(
-            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
-        computeFromPluginClass(pluginName, className);
+        try {
+          pipePluginExecutableManager.savePluginToInstallDir(
+              ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
+          computeFromPluginClass(pluginName, className);
+        } catch (final Exception e) {
+          // We need to rollback if the creation has failed
+          pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);
+          throw e;
+        }
       } else {
         final String existed = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         if (Objects.nonNull(existed)) {
@@ -234,6 +237,9 @@ public class PipePluginInfo implements SnapshotProcessor {
                   pluginName));
         }
       }
+
+      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
+      dropPipePlugin(new DropPipePluginPlan(pluginName));
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
       pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
