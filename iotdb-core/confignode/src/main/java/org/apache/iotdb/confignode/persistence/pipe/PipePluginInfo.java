@@ -218,9 +218,6 @@ public class PipePluginInfo implements SnapshotProcessor {
       // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
       dropPipePlugin(new DropPipePluginPlan(pluginName));
 
-      pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
-      pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
-
       if (createPipePluginPlan.getJarFile() != null) {
         pipePluginExecutableManager.savePluginToInstallDir(
             ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
@@ -237,6 +234,9 @@ public class PipePluginInfo implements SnapshotProcessor {
                   pluginName));
         }
       }
+
+      pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
+      pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
