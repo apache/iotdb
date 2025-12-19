@@ -136,7 +136,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSeqCompactionWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 0);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 100000, 0);
     Pair<TsFileResource, File> pair2 =
         generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 100);
     tsFileManager.add(pair1.getLeft(), true);
@@ -236,7 +236,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSettleCompaction() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 3);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 100000, 3);
     Pair<TsFileResource, File> pair2 =
         generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 0);
     tsFileManager.add(pair1.getLeft(), true);
