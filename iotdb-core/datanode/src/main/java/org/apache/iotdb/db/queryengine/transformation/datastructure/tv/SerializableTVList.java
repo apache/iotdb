@@ -92,6 +92,7 @@ public class SerializableTVList implements SerializableList {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         rowLength +=
             MIN_OBJECT_HEADER_SIZE
                 + MIN_ARRAY_HEADER_SIZE

@@ -24,7 +24,9 @@ import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -92,7 +94,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                   context);
       List<Chunk> valueChunkList = new ArrayList<>();
       for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-        valueChunkList.add(
+        Chunk chunk =
             valueChunkMetadata == null
                 ? null
                 : ChunkCache.getInstance()
@@ -104,7 +106,17 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                             resource.isClosed()),
                         valueChunkMetadata.getDeleteIntervalList(),
                         valueChunkMetadata.getStatistics(),
-                        context));
+                        context);
+        final TsFileID tsFileID = getTsFileID();
+        if (chunk != null
+            && tsFileID.regionId > 0
+            && chunkMetaData.getDataType() == TSDataType.OBJECT) {
+          chunk
+              .getHeader()
+              .setReplaceDecoder(
+                  decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, tsFileID.regionId));
+        }
+        valueChunkList.add(chunk);
       }
 
       long t2 = System.nanoTime();

@@ -900,10 +900,17 @@ public class IoTDBDescriptor {
     }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+
     conf.setPipeTaskThreadCount(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
+
+    conf.setMaxObjectSizeInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
+
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -2170,6 +2177,10 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
+      conf.setMaxObjectSizeInByte(
+          Long.parseLong(
+              properties.getProperty(
+                  "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2729,6 +2740,7 @@ public class IoTDBDescriptor {
         return conf.getDefaultDoubleEncoding();
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         return conf.getDefaultTextEncoding();
@@ -2740,6 +2752,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+    conf.setRestrictObjectLimit(globalConfig.isRestrictObjectLimit());
   }
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {

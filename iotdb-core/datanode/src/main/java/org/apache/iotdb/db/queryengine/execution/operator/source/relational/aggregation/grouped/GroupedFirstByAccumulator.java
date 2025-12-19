@@ -87,6 +87,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         xBinaryValues = new BinaryBigArray();
         break;
@@ -120,6 +121,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valuesSize += xBinaryValues.sizeOf();
         break;
       case BOOLEAN:
@@ -156,6 +158,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         xBinaryValues.ensureCapacity(groupCount);
         return;
       case BOOLEAN:
@@ -192,6 +195,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         xBinaryValues.reset();
         break;
@@ -227,6 +231,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
         return;
       case BOOLEAN:
@@ -288,6 +293,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
@@ -343,6 +349,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           return bytes;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           byte[] values = xBinaryValues.get(groupId).getValues();
           intToBytes(values.length, bytes, Long.BYTES + 1);
@@ -373,6 +380,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return Double.BYTES;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return Integer.BYTES + xBinaryValues.get(groupId).getValues().length;
       case BOOLEAN:
@@ -407,6 +415,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilder.writeBinary(xBinaryValues.get(groupId));
         break;

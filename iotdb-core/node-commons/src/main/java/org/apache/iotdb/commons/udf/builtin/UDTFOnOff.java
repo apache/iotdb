@@ -145,6 +145,7 @@ public class UDTFOnOff implements UDTF {
         transformDouble(columns, builder);
         return;
       case BLOB:
+      case OBJECT:
       case DATE:
       case STRING:
       case TIMESTAMP:

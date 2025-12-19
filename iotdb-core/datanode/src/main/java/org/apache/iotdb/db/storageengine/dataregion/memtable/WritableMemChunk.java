@@ -166,6 +166,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) valueList;
         putBinaries(times, binaryValues, bitMap, start, end);
         break;

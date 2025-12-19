@@ -112,6 +112,7 @@ public class LastByAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case BOOLEAN:
@@ -173,6 +174,7 @@ public class LastByAccumulator implements TableAccumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
@@ -228,6 +230,7 @@ public class LastByAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilder.writeBinary(xResult.getBinary());
         break;
       case BOOLEAN:
@@ -287,6 +290,7 @@ public class LastByAccumulator implements TableAccumulator {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               xResult.setBinary((Binary) statistics[0].getLastValue());
               break;
             case BOOLEAN:
