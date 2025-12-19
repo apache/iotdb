@@ -24,5 +24,5 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import java.util.List;
 
 public interface DataCollector {
-    List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport);
+  List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport);
 }

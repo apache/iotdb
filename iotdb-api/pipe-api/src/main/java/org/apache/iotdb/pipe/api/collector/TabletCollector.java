@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.pipe.api.collector;
 
-import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.IOException;
 
-public interface TabletCollector extends DataCollector {
-    void collectTablet(Tablet tablet) throws IOException;
+public interface TabletCollector {
+  void collectTablet(Tablet tablet) throws IOException;
 }

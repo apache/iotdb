@@ -19,5 +19,45 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
-public class PipeTabletCollector {
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
+
+import org.apache.tsfile.write.record.Tablet;
+
+import java.io.IOException;
+
+public class PipeTabletCollector extends PipeRawTabletEventConverter implements TabletCollector {
+
+  public PipeTabletCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
+    super(pipeTaskMeta, sourceEvent);
+  }
+
+  public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel) {
+    super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
+  }
+
+  @Override
+  public void collectTablet(final Tablet tablet) {
+    final PipeInsertionEvent pipeInsertionEvent =
+        sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
+    tabletInsertionEventList.add(
+        new PipeRawTabletInsertionEvent(
+            isTableModel,
+            sourceEventDataBaseName,
+            pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
+            pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
+            tablet,
+            isAligned,
+            sourceEvent == null ? null : sourceEvent.getPipeName(),
+            sourceEvent == null ? 0 : sourceEvent.getCreationTime(),
+            pipeTaskMeta,
+            sourceEvent,
+            false));
+  }
 }
