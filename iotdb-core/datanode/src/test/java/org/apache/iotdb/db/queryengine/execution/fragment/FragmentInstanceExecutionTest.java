@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -34,16 +33,13 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -102,14 +99,10 @@ public class FragmentInstanceExecutionTest {
 
   @Test
   public void testTVListOwnerTransfer() throws InterruptedException {
-    Logger logger = (Logger) LoggerFactory.getLogger(AtomicLongMemoryBlock.class);
-    ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
-    listAppender.start();
-
-    // set log level
-    logger.setLevel(Level.WARN);
-    logger.setAdditive(false);
-    logger.addAppender(listAppender);
+    // Capture System.err to check for warning messages
+    PrintStream systemOut = System.out;
+    ByteArrayOutputStream logPrint = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(logPrint));
 
     try {
       IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
@@ -155,10 +148,15 @@ public class FragmentInstanceExecutionTest {
         instanceNotificationExecutor.shutdown();
       }
     } finally {
-      logger.detachAppender(listAppender);
+      // Restore original System.out
+      System.setErr(systemOut);
+
       // should not contain warn message: "The memory cost to be released is larger than the memory
       // cost of memory block"
-      assertEquals(0, listAppender.list.size());
+      String capturedOutput = logPrint.toString();
+      assertFalse(
+          "Should not contain warning message",
+          capturedOutput.contains("The memory cost to be released is larger than the memory"));
     }
   }
 
