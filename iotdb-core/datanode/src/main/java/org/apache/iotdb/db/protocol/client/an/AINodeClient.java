@@ -35,7 +35,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowLoadedModelsResp;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsReq;
 import org.apache.iotdb.ainode.rpc.thrift.TShowModelsResp;
-import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
+import org.apache.iotdb.ainode.rpc.thrift.TTuningReq;
 import org.apache.iotdb.ainode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -129,8 +129,8 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
   }
 
   @Override
-  public TSStatus createTrainingTask(TTrainingReq req) throws TException {
-    return executeRemoteCallWithRetry(() -> client.createTrainingTask(req));
+  public TSStatus createTuningTask(TTuningReq req) throws TException {
+    return executeRemoteCallWithRetry(() -> client.createTuningTask(req));
   }
 
   @Override

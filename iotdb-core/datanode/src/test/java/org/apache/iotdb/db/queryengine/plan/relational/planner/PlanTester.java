@@ -83,6 +83,8 @@ public class PlanTester {
         public List<TDataNodeLocation> getDataNodeLocations(String table) {
           switch (table) {
             case "queries":
+            case "current_queries":
+            case "queries_costs_histogram":
               return ImmutableList.of(
                   genDataNodeLocation(1, "192.0.1.1"), genDataNodeLocation(2, "192.0.1.2"));
             default:

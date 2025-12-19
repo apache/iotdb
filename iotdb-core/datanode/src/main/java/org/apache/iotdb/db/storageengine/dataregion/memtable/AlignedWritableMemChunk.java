@@ -696,6 +696,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               case TEXT:
               case STRING:
               case BLOB:
+              case OBJECT:
                 alignedChunkWriter.writeByColumn(
                     time,
                     isNull ? null : list.getBinaryByValueIndex(originRowIndex, columnIndex),

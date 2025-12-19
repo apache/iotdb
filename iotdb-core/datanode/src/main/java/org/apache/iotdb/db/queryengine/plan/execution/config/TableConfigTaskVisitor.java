@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -62,7 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePl
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTuningTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
@@ -571,10 +572,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
     final Set<String> sourceNameSet = new HashSet<>();
+    boolean hasObject = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
+      hasObject |= dataType.equals(TSDataType.OBJECT);
       final String comment = columnDefinition.getComment();
       if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
           && !hasTimeColumn) {
@@ -602,6 +605,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 TreeViewSchema.getSourceName(schema)));
       }
       table.addColumnSchema(schema);
+    }
+    if (hasObject) {
+      try {
+        table.checkTableNameAndObjectNames4Object();
+      } catch (final MetadataException e) {
+        throw new SemanticException(e.getMessage(), e.getErrorCode());
+      }
     }
     return new Pair<>(database, table);
   }
@@ -1520,7 +1530,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
-    return new CreateTrainingTask(
+    return new CreateTuningTask(
         node.getModelId(), node.getParameters(), node.getExistingModelId(), node.getTargetSql());
   }
 

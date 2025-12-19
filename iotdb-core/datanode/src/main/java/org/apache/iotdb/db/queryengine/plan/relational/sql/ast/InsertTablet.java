@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertTablet extends WrappedInsertStatement {
 
@@ -65,6 +68,12 @@ public class InsertTablet extends WrappedInsertStatement {
     List<Object[]> deviceIdList = new ArrayList<>();
     for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
+      if (Objects.nonNull(super.getInnerTreeStatement().getMeasurementSchemas())
+          && Arrays.stream(super.getInnerTreeStatement().getMeasurementSchemas())
+              .anyMatch(
+                  schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+        TableDeviceSchemaValidator.checkObject4DeviceId(segments);
+      }
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
     return deviceIdList;

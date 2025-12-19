@@ -131,7 +131,7 @@ public class AINodeModelManageIT {
   public void dropBuiltInModelErrorTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1510: Cannot delete built-in model: sundial");
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
     }
   }
 
@@ -139,7 +139,7 @@ public class AINodeModelManageIT {
   public void dropBuiltInModelErrorTestInTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1510: Cannot delete built-in model: sundial");
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
     }
   }
 

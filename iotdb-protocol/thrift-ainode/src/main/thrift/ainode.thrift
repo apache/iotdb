@@ -73,7 +73,7 @@ struct IDataSchema {
   2: optional list<i64> timeRange
 }
 
-struct TTrainingReq {
+struct TTuningReq {
   1: required string dbType
   2: required string modelId
   3: required string existingModelId
@@ -131,30 +131,27 @@ struct TUnloadModelReq {
 
 service IAINodeRPCService {
 
-  // -------------- For Config Node --------------
   common.TSStatus stopAINode()
+
+  TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
+
+  TShowAIDevicesResp showAIDevices()
 
   TShowModelsResp showModels(TShowModelsReq req)
 
   TShowLoadedModelsResp showLoadedModels(TShowLoadedModelsReq req)
 
-  TShowAIDevicesResp showAIDevices()
-
   common.TSStatus deleteModel(TDeleteModelReq req)
 
   TRegisterModelResp registerModel(TRegisterModelReq req)
-
-  TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
-
-  common.TSStatus createTrainingTask(TTrainingReq req)
 
   common.TSStatus loadModel(TLoadModelReq req)
 
   common.TSStatus unloadModel(TUnloadModelReq req)
 
-  // -------------- For Data Node --------------
-
   TInferenceResp inference(TInferenceReq req)
 
   TForecastResp forecast(TForecastReq req)
+
+  common.TSStatus createTuningTask(TTuningReq req)
 }

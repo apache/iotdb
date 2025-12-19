@@ -64,6 +64,7 @@ public class UDTFAbs extends UDTFMath {
         collector.putDouble(time, Math.abs(row.getDouble(0)));
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TIMESTAMP:
       case TEXT:
@@ -103,6 +104,7 @@ public class UDTFAbs extends UDTFMath {
       case TIMESTAMP:
       case STRING:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -131,6 +133,7 @@ public class UDTFAbs extends UDTFMath {
         transformDouble(columns, builder);
         return;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
       case TIMESTAMP:

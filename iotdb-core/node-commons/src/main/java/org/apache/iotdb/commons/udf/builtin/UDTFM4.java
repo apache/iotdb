@@ -138,6 +138,7 @@ public class UDTFM4 implements UDTF {
         transformDouble(rowWindow, collector);
         break;
       case BLOB:
+      case OBJECT:
       case DATE:
       case STRING:
       case TIMESTAMP:

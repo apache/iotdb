@@ -1080,6 +1080,12 @@ max_tsblock_line_number=1000
 # Datatype: long
 slow_query_threshold=10000
 
+# Time window threshold(min) for record of history queries.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+query_cost_stat_window=0
+
 # The max executing time of query. unit: ms
 # effectiveMode: restart
 # Datatype: int
@@ -1295,6 +1301,16 @@ enable_tsfile_validation=false
 # Datatype: long
 # Unit: ms
 tier_ttl_in_ms=-1
+
+# The maximum size limit for a single object file.
+# effectiveMode: hot_reload
+# Datatype: long
+max_object_file_size_in_byte=4294967296
+
+# There are no special restrictions on table names, column names, and device names of the OBJECT type.
+# effectiveMode: first_start
+# Datatype: boolean
+restrict_object_limit=false
 
 ####################
 ### Compaction Configurations

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -163,9 +164,11 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ln
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Log10ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LongToBytesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LowerColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ObjectLengthColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReadObjectColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLike2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
@@ -212,6 +215,8 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
+import javax.annotation.Nullable;
+
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -226,6 +231,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
@@ -778,9 +784,11 @@ public class ColumnTransformerBuilder
       if (children.size() == 1) {
         Type argumentType = first.getType();
         if (isCharType(argumentType)) {
-          return new LengthColumnTransformer(INT32, first);
+          return new LengthColumnTransformer(INT64, first);
+        } else if (isBlobType(argumentType)) {
+          return new BlobLengthColumnTransformer(INT64, first);
         } else {
-          return new BlobLengthColumnTransformer(INT32, first);
+          return new ObjectLengthColumnTransformer(INT64, first);
         }
       }
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
@@ -1452,6 +1460,29 @@ public class ColumnTransformerBuilder
           this.process(children.get(0), context),
           this.process(children.get(1), context),
           this.process(children.get(2), context));
+    } else if (TableBuiltinScalarFunction.READ_OBJECT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer first = this.process(children.get(0), context);
+      if (children.size() == 1) {
+        return new ReadObjectColumnTransformer(BLOB, first, context.fragmentInstanceContext);
+      } else if (children.size() == 2) {
+        return new ReadObjectColumnTransformer(
+            BLOB,
+            ((LongLiteral) children.get(1)).getParsedValue(),
+            first,
+            context.fragmentInstanceContext);
+      } else {
+        long offset = ((LongLiteral) children.get(1)).getParsedValue();
+        long length = ((LongLiteral) children.get(2)).getParsedValue();
+        checkArgument(offset >= 0 && length >= 0);
+        return new ReadObjectColumnTransformer(
+            BLOB,
+            ((LongLiteral) children.get(1)).getParsedValue(),
+            ((LongLiteral) children.get(2)).getParsedValue(),
+            first,
+            context.fragmentInstanceContext);
+      }
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
@@ -1916,6 +1947,8 @@ public class ColumnTransformerBuilder
 
     private final Metadata metadata;
 
+    private final Optional<FragmentInstanceContext> fragmentInstanceContext;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1926,7 +1959,8 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         TypeProvider typeProvider,
-        Metadata metadata) {
+        Metadata metadata,
+        @Nullable FragmentInstanceContext fragmentInstanceContext) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1937,6 +1971,7 @@ public class ColumnTransformerBuilder
       this.originSize = originSize;
       this.typeProvider = typeProvider;
       this.metadata = metadata;
+      this.fragmentInstanceContext = Optional.ofNullable(fragmentInstanceContext);
     }
 
     public Type getType(SymbolReference symbolReference) {

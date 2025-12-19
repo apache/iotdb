@@ -328,7 +328,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (dispatchFailures.isEmpty()) {
       return immediateFuture(new FragInstanceDispatchResult(true));
     }
-    if (instances.size() == 1) {
+    if (instances.size() == 1 || dispatchFailures.size() == 1) {
       return immediateFuture(new FragInstanceDispatchResult(dispatchFailures.get(0)));
     } else {
       List<TSStatus> failureStatusList = new ArrayList<>();

@@ -814,6 +814,9 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 10000;
 
+  /** time window threshold for record of history queries. Unit: minute */
+  private int queryCostStatWindow = 0;
+
   private int patternMatchingThreshold = 1000000;
 
   /**
@@ -1203,6 +1206,10 @@ public class IoTDBConfig {
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
           Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
+
+  private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
+
+  private boolean restrictObjectLimit = false;
 
   IoTDBConfig() {}
 
@@ -2625,6 +2632,14 @@ public class IoTDBConfig {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public int getQueryCostStatWindow() {
+    return queryCostStatWindow;
+  }
+
+  public void setQueryCostStatWindow(int queryCostStatWindow) {
+    this.queryCostStatWindow = queryCostStatWindow;
   }
 
   public boolean isEnableIndex() {
@@ -4314,5 +4329,21 @@ public class IoTDBConfig {
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
     return tsFileDBToEncryptMap;
+  }
+
+  public long getMaxObjectSizeInByte() {
+    return maxObjectSizeInByte;
+  }
+
+  public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
+    this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public boolean getRestrictObjectLimit() {
+    return restrictObjectLimit;
+  }
+
+  public void setRestrictObjectLimit(boolean restrictObjectLimit) {
+    this.restrictObjectLimit = restrictObjectLimit;
   }
 }

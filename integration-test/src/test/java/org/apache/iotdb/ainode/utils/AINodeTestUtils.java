@@ -20,6 +20,7 @@
 package org.apache.iotdb.ainode.utils;
 
 import com.google.common.collect.ImmutableSet;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -101,6 +103,7 @@ public class AINodeTestUtils {
   public static void concurrentInference(
       Statement statement, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
+    AtomicBoolean allPass = new AtomicBoolean(true);
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
       threads[i] =
@@ -113,12 +116,23 @@ public class AINodeTestUtils {
                       while (resultSet.next()) {
                         outputCnt++;
                       }
-                      assertEquals(expectedOutputLength, outputCnt);
+                      if (expectedOutputLength != outputCnt) {
+                        allPass.set(false);
+                        fail(
+                            "Output count mismatch for SQL: "
+                                + sql
+                                + ". Expected: "
+                                + expectedOutputLength
+                                + ", but got: "
+                                + outputCnt);
+                      }
                     } catch (SQLException e) {
+                      allPass.set(false);
                       fail(e.getMessage());
                     }
                   }
                 } catch (Exception e) {
+                  allPass.set(false);
                   fail(e.getMessage());
                 }
               });
@@ -130,6 +144,7 @@ public class AINodeTestUtils {
         fail("Thread timeout after 10 minutes");
       }
     }
+    Assert.assertTrue(allPass.get());
   }
 
   public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)

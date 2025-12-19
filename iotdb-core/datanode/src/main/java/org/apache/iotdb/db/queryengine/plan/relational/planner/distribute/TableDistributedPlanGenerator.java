@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -1004,7 +1006,11 @@ public class TableDistributedPlanGenerator
     List<TDataNodeLocation> dataNodeLocations =
         dataNodeLocationSupplier.getDataNodeLocations(
             node.getQualifiedObjectName().getObjectName());
-    checkArgument(!dataNodeLocations.isEmpty(), "DataNodeLocations shouldn't be empty");
+    if (dataNodeLocations.isEmpty()) {
+      throw new IoTDBRuntimeException(
+          "No available dataNodes, may be the cluster is closing",
+          TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode());
+    }
 
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     dataNodeLocations.forEach(

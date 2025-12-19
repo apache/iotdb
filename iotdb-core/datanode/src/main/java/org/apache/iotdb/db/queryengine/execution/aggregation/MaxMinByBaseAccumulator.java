@@ -88,6 +88,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case BOOLEAN:
+      case OBJECT:
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
     }
@@ -302,6 +303,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         columnBuilder.writeBinary(xResult.getBinary());
         break;
       case BOOLEAN:
@@ -335,6 +337,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           xResult.setBinary(xColumn.getBinary(xIndex));
           break;
         case BOOLEAN:
@@ -385,6 +388,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         String content = value.getBinary().toString();
         dataOutputStream.writeInt(content.length());
         dataOutputStream.writeBytes(content);
@@ -441,6 +445,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case BOOLEAN:
+      case OBJECT:
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
     }
@@ -471,6 +476,7 @@ public abstract class MaxMinByBaseAccumulator implements Accumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));

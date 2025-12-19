@@ -17,12 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.ainode;
+package org.apache.iotdb.commons.exception;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import static org.apache.iotdb.rpc.TSStatusCode.OBJECT_NOT_EXISTS;
 
-public class ModelNotFoundException extends ModelException {
-  public ModelNotFoundException(String message) {
-    super(message, TSStatusCode.MODEL_NOT_FOUND_ERROR);
+public class ObjectFileNotExist extends IoTDBRuntimeException {
+
+  private static final String ERROR_MSG = "Object file %s does not exist";
+
+  public ObjectFileNotExist(String relativeObjectPath) {
+    super(String.format(ERROR_MSG, relativeObjectPath), OBJECT_NOT_EXISTS.getStatusCode());
   }
 }

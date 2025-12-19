@@ -28,8 +28,6 @@ class ModelInfo:
         category: ModelCategory,
         state: ModelStates,
         model_type: str = "",
-        config_cls: str = "",
-        model_cls: str = "",
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
@@ -39,8 +37,6 @@ class ModelInfo:
         self.model_type = model_type
         self.category = category
         self.state = state
-        self.config_cls = config_cls
-        self.model_cls = model_cls
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
@@ -114,19 +110,23 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
         model_type="timer",
-        config_cls="configuration_timer.TimerConfig",
-        model_cls="modeling_timer.TimerForPrediction",
         pipeline_cls="pipeline_timer.TimerPipeline",
         repo_id="thuml/timer-base-84m",
+        auto_map={
+            "AutoConfig": "configuration_timer.TimerConfig",
+            "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
+        },
     ),
     "sundial": ModelInfo(
         model_id="sundial",
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
         model_type="sundial",
-        config_cls="configuration_sundial.SundialConfig",
-        model_cls="modeling_sundial.SundialForPrediction",
         pipeline_cls="pipeline_sundial.SundialPipeline",
         repo_id="thuml/sundial-base-128m",
+        auto_map={
+            "AutoConfig": "configuration_sundial.SundialConfig",
+            "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
+        },
     ),
 }
