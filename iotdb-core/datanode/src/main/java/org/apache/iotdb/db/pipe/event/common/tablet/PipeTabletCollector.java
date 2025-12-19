@@ -26,8 +26,6 @@ import org.apache.iotdb.pipe.api.collector.TabletCollector;
 
 import org.apache.tsfile.write.record.Tablet;
 
-import java.io.IOException;
-
 public class PipeTabletCollector extends PipeRawTabletEventConverter implements TabletCollector {
 
   public PipeTabletCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
