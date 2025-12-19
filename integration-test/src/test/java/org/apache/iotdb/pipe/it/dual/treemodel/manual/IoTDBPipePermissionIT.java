@@ -88,8 +88,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment(3, 3);
   }
 
   @Test
