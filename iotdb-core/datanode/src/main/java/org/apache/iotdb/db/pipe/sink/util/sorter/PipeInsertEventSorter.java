@@ -185,6 +185,7 @@ public class PipeInsertEventSorter {
         return deDuplicatedDoubleValues;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         final Binary[] binaryValues = (Binary[]) valueList;
         final Binary[] deDuplicatedBinaryValues = new Binary[binaryValues.length];

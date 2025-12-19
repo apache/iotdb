@@ -41,6 +41,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -774,6 +777,134 @@ public class IoTDBTableIT {
 
       insertThread.join();
       deletionThread.join();
+    }
+  }
+
+  @Test
+  public void testTableObjectCheck() throws Exception {
+    final Set<String> illegal = new HashSet<>(Arrays.asList("./", ".", "..", ".\\", "../hack"));
+    for (final String single : illegal) {
+      testObject4SingleIllegalPath(single);
+    }
+  }
+
+  private void testObject4SingleIllegalPath(final String illegal) throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      statement.execute("create database if not exists db2");
+      statement.execute("use db2");
+      statement.execute(String.format("create table \"%s\" ()", illegal));
+
+      try {
+        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      // Test auto-create
+      String testObject =
+          System.getProperty("user.dir")
+              + File.separator
+              + "target"
+              + File.separator
+              + "test-classes"
+              + File.separator
+              + "object-example.pt";
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("a", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("b", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema(illegal, TSDataType.OBJECT));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(
+              ColumnCategory.TAG,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
+      final Tablet tablet =
+          new Tablet(
+              illegal,
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              1);
+      tablet.addTimestamp(0, System.currentTimeMillis());
+      tablet.addValue(schemaList.get(0).getMeasurementName(), 0, "d1");
+      tablet.addValue(schemaList.get(1).getMeasurementName(), 0, "a1");
+      tablet.addValue(schemaList.get(2).getMeasurementName(), 0, 0);
+      tablet.addValue(0, 3, true, 0, Files.readAllBytes(Paths.get(testObject)));
+
+      try {
+        session.executeNonQueryStatement("use db2");
+        session.insert(tablet);
+      } catch (final Exception e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(String.format("create table test (\"%s\" object)", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      statement.execute("create table test (a tag, b attribute, c int32, d object)");
+
+      // Cannot auto-extend illegal column
+      tablet.setTableName("test");
+      try {
+        session.executeNonQueryStatement("use db2");
+        session.insert(tablet);
+      } catch (final Exception e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      // It's OK if you don't write object
+      statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
+      try {
+        statement.execute(
+            String.format("insert into test (a, b, c, d) values ('%s', 1, 1, 's')", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(String.format("alter table test add column \"%s\" object", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            String.format(
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                illegal),
+            e.getMessage());
+      }
+
+      statement.execute("drop database db2");
     }
   }
 

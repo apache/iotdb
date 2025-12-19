@@ -181,8 +181,7 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(unseqFiles);
         boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl = deviceIterator.getTTLForCurrentDevice();
-        sortedSourceFiles.removeIf(
-            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
+        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));

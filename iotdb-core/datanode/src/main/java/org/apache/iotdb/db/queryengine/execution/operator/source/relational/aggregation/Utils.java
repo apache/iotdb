@@ -54,6 +54,7 @@ public class Utils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         BytesUtils.intToBytes(value.getBinary().getValues().length, valueBytes, offset);
         offset += 4;
         System.arraycopy(
@@ -116,6 +117,7 @@ public class Utils {
         return 8;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return 4 + value.getBinary().getValues().length;
       default:

@@ -66,6 +66,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -266,13 +267,15 @@ public class TableMetadataImpl implements Metadata {
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
-          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+          && (isCharType(argumentTypes.get(0))
+              || isBlobType(argumentTypes.get(0))
+              || isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text, string, or blob data type.");
+                + " only accepts one argument and it must be text or string or blob or object data type.");
       }
-      return INT32;
+      return INT64;
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -1078,6 +1081,20 @@ public class TableMetadataImpl implements Metadata {
                 functionName));
       }
       return BLOB;
+    } else if (TableBuiltinScalarFunction.READ_OBJECT
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.isEmpty()
+          || argumentTypes.size() > 3
+          || !isObjectType(argumentTypes.get(0))
+          || (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1)))
+          || (argumentTypes.size() >= 3 && !isIntegerNumber(argumentTypes.get(2)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at 1~3 arguments, and first argument must be OBJECT type, other arguments must be int32 or int64 type");
+      }
+      return BLOB;
     }
 
     // builtin aggregation function
@@ -1318,8 +1335,13 @@ public class TableMetadataImpl implements Metadata {
               Collections.emptyMap());
       try {
         ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            scalarFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                scalarFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -1336,8 +1358,13 @@ public class TableMetadataImpl implements Metadata {
       try {
         AggregateFunctionAnalysis aggregateFunctionAnalysis =
             aggregateFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            aggregateFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                aggregateFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -1514,6 +1541,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isCharType(Type type) {
     return TEXT.equals(type) || StringType.STRING.equals(type);
+  }
+
+  public static boolean isObjectType(Type type) {
+    return ObjectType.OBJECT.equals(type);
   }
 
   public static boolean isBlobType(Type type) {

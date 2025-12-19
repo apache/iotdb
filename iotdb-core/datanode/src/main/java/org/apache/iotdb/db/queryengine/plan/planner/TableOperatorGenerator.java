@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
@@ -267,6 +268,7 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -1339,13 +1341,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     ColumnTransformer filterOutputTransformer =
         predicate
             .map(
                 p -> {
                   ColumnTransformerBuilder.Context filterColumnTransformerContext =
                       new ColumnTransformerBuilder.Context(
-                          context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                          fragmentInstanceContext.getSessionInfo(),
                           filterLeafColumnTransformerList,
                           inputLocations,
                           filterExpressionColumnTransformerMap,
@@ -1354,7 +1358,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata);
+                          metadata,
+                          fragmentInstanceContext);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -1372,7 +1377,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+            fragmentInstanceContext.getSessionInfo(),
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
@@ -1381,7 +1386,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata);
+            metadata,
+            fragmentInstanceContext);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -2461,6 +2467,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         context
@@ -2482,10 +2490,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         .process(
                             node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
-                                context
-                                    .getDriverContext()
-                                    .getFragmentInstanceContext()
-                                    .getSessionInfo(),
+                                fragmentInstanceContext.getSessionInfo(),
                                 filterLeafColumnTransformerList,
                                 makeLayout(Collections.singletonList(node)),
                                 new HashMap<>(),
@@ -2494,7 +2499,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
+                                metadata,
+                                fragmentInstanceContext)),
                     columnSchemaList,
                     database,
                     table)
@@ -3828,6 +3834,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         case MAX:
         case MIN:
           if (BlobType.BLOB.equals(argumentType)
+              || ObjectType.OBJECT.equals(argumentType)
               || BinaryType.TEXT.equals(argumentType)
               || BooleanType.BOOLEAN.equals(argumentType)) {
             canUseStatistic = false;
@@ -3843,8 +3850,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             descendingCount++;
           }
 
-          // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-          if (BlobType.BLOB.equals(argumentType)) {
+          // first/last/first_by/last_by aggregation with BLOB or OBJECT type can not use statistics
+          if (BlobType.BLOB.equals(argumentType) || ObjectType.OBJECT.equals(argumentType)) {
             canUseStatistic = false;
             break;
           }

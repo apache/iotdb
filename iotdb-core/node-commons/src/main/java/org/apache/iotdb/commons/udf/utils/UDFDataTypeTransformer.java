@@ -30,6 +30,7 @@ import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 
@@ -82,6 +83,8 @@ public class UDFDataTypeTransformer {
         return Type.BLOB;
       case STRING:
         return Type.STRING;
+      case OBJECT:
+        return Type.OBJECT;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -112,6 +115,8 @@ public class UDFDataTypeTransformer {
         return BlobType.BLOB;
       case STRING:
         return StringType.STRING;
+      case OBJECT:
+        return ObjectType.OBJECT;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -139,6 +144,8 @@ public class UDFDataTypeTransformer {
         return Type.BLOB;
       case 11:
         return Type.STRING;
+      case 12:
+        return Type.OBJECT;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

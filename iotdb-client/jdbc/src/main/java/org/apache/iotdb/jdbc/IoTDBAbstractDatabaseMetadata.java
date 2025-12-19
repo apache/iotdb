@@ -396,6 +396,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             tsBlockBuilder
                 .getColumnBuilder(j)
                 .writeBinary(

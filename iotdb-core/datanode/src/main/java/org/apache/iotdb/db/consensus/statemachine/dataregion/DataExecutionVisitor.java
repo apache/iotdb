@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -291,5 +292,17 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       final PipeEnrichedDeleteDataNode node, final DataRegion context) {
     node.getDeleteDataNode().markAsGeneratedByPipe();
     return node.getDeleteDataNode().accept(this, context);
+  }
+
+  @Override
+  public TSStatus visitWriteObjectFile(ObjectNode node, DataRegion dataRegion) {
+    try {
+      dataRegion.writeObject(node);
+      dataRegion.insertSeparatorToWAL();
+      return StatusUtils.OK;
+    } catch (final Exception e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return RpcUtils.getStatus(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getMessage());
+    }
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
@@ -79,6 +80,11 @@ public class WALFakeNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, ObjectNode objectNode) {
     return getResult();
   }
 

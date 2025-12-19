@@ -3074,10 +3074,9 @@ public class Session implements ISession {
             this.columnEncodersMap
                 .getOrDefault(
                     measurementSchema.getType(),
-                    TSEncoding.valueOf(
-                        TSFileDescriptor.getInstance()
-                            .getConfig()
-                            .getValueEncoder(measurementSchema.getType())))
+                    TSFileDescriptor.getInstance()
+                        .getConfig()
+                        .getValueEncoder(measurementSchema.getType()))
                 .serialize());
       }
     } else {
@@ -3745,6 +3744,7 @@ public class Session implements ISession {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {
