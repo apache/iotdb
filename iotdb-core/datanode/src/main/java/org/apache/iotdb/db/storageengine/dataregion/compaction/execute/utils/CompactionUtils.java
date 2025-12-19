@@ -539,7 +539,7 @@ public class CompactionUtils {
         continue;
       }
       // buffer 60s to avoid concurrent issues with querying
-      final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS + 60 * 1000;
+      final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS - 60 * 1000;
       try {
         recursiveTTLCheckForTableDir(
             tableDir, 0, tsTable.getTagNum() + 1, !restrictObjectLimit, timeLowerBoundInMS);
@@ -554,6 +554,8 @@ public class CompactionUtils {
     }
   }
 
+  // We try to avoid expensive 'stat' system calls by first checking file name and only performing
+  // Files.readAttributes when the file may be expired
   private static void recursiveTTLCheckForTableDir(
       File currentFile,
       int depth,
