@@ -118,7 +118,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
   public List<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.warn("TablePatternParser does not support tablet processing");
+      LOGGER.warn("TablePatternParser does not support tablet processing with collect");
     }
     return Collections.emptyList();
   }

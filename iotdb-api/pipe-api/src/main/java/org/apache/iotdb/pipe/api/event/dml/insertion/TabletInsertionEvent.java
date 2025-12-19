@@ -52,7 +52,7 @@ public interface TabletInsertionEvent extends Event {
    * org.apache.iotdb.pipe.api.collector.TabletCollector}.
    *
    * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
-   *     contains the results collected by the {@link RowCollector}
+   *     contains the results collected by the {@link TabletCollector}
    */
   Iterable<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer);

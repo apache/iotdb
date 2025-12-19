@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.pipe.api.collector;
 
+import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import java.util.List;
 
+/** Transform data to {@link TabletInsertionEvent}. */
 public interface DataCollector {
+
+  /**
+   * Transform data to {@link TabletInsertionEvent}.
+   *
+   * @param shouldReport Whether to report progress for generated events
+   * @see Row
+   */
   List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport);
 }
