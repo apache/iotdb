@@ -2274,6 +2274,59 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteDataByTag() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS delete_by_tag (deviceId STRING TAG, s1 INT32 FIELD)");
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+      session.executeNonQueryStatement("FLUSH");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      dataSet = session.executeQueryStatement("select * from delete_by_tag order by time");
+
+      RowRecord rec;
+      int cnt = 0;
+      for (int i = 1; i < 5; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        Assert.assertEquals(i, rec.getFields().get(2).getIntV());
+        Assert.assertEquals(TSDataType.INT32, rec.getFields().get(2).getDataType());
+        cnt++;
+      }
+      Assert.assertEquals(4, cnt);
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS delete_by_tag");
+      }
+    }
+  }
+
+  @Test
   public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
@@ -2366,6 +2419,13 @@ public class IoTDBDeletionTableIT {
       for (int i = 1; i < 7; i++) {
         rec = dataSet.next();
         assertEquals(i, rec.getFields().get(0).getLongV());
+        LOGGER.error(
+            "time is {}, value is {}, value type is {}",
+            rec.getFields().get(0).getLongV(),
+            rec.getFields().get(1),
+            rec.getFields().get(1).getDataType());
+        //        assertNull(rec.getFields().get(1).getDataType());
+        //        Assert.assertEquals(TSDataType.TEXT, rec.getFields().get(1).getDataType());
         cnt++;
       }
       Assert.assertEquals(6, cnt);
