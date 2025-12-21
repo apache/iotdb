@@ -236,7 +236,7 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
-                _transformers_registered=False,  # Lazy registration
+                transformers_registered=False,  # Lazy registration
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
@@ -287,7 +287,7 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
-                _transformers_registered=False,  # Register later
+                transformers_registered=False,  # Register later
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
 
@@ -296,7 +296,7 @@ class ModelStorage:
             success = self._register_transformers_model(model_info)
             if success:
                 with self._lock_pool.get_lock(model_id).write_lock():
-                    model_info._transformers_registered = True
+                    model_info.transformers_registered = True
             else:
                 with self._lock_pool.get_lock(model_id).write_lock():
                     model_info.state = ModelStates.INACTIVE
@@ -352,7 +352,7 @@ class ModelStorage:
             f"Registered other type model: {model_info.model_id} ({model_info.model_type})"
         )
 
-    def ensure_transformers_registered(self, model_id: str) -> ModelInfo:
+    def ensure_transformers_registered(self, model_id: str) -> ModelInfo | None:
         """
         Ensure Transformers model is registered (called for lazy registration)
         This method uses locks to ensure thread safety. All check logic is within lock protection.
@@ -369,11 +369,10 @@ class ModelStorage:
                     break
 
             if not model_info:
-                logger.warning(f"Model {model_id} does not exist, cannot register")
                 return None
 
             # If already registered, return directly
-            if model_info._transformers_registered:
+            if model_info.transformers_registered:
                 return model_info
 
             # If no auto_map, not a Transformers model, mark as registered (avoid duplicate checks)
@@ -381,14 +380,14 @@ class ModelStorage:
                 not model_info.auto_map
                 or model_id in BUILTIN_HF_TRANSFORMERS_MODEL_MAP.keys()
             ):
-                model_info._transformers_registered = True
+                model_info.transformers_registered = True
                 return model_info
 
             # Execute registration (under lock protection)
             try:
                 success = self._register_transformers_model(model_info)
                 if success:
-                    model_info._transformers_registered = True
+                    model_info.transformers_registered = True
                     logger.info(
                         f"Model {model_id} successfully registered to Transformers"
                     )
@@ -401,7 +400,7 @@ class ModelStorage:
             except Exception as e:
                 # Ensure state consistency in exception cases
                 model_info.state = ModelStates.INACTIVE
-                model_info._transformers_registered = False
+                model_info.transformers_registered = False
                 logger.error(
                     f"Exception occurred while registering model {model_id} to Transformers: {e}"
                 )
