@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -72,24 +71,6 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
 
   @Override
   public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
-    size += RamUsageEstimator.sizeOf(database);
-    size += RamUsageEstimator.sizeOf(tableName);
-    size += RamUsageEstimator.shallowSizeOf(tagDeterminedFilterList);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
-    size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(getAttributeColumns());
-    if (results != null) {
-      size += RamUsageEstimator.shallowSizeOf(results);
-      for (ShowDevicesResult result : results) {
-        if (result != null) {
-          size += result.ramBytesUsed();
-        }
-      }
-    }
-    return size;
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
   }
 }
