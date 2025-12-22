@@ -120,7 +120,11 @@ public class LoadTsFileMemoryManager {
    */
   synchronized void forceResize(LoadTsFileMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
-    if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+    if (memoryBlock.getTotalMemorySizeInBytes() == newSizeInBytes) {
+      return;
+    }
+
+    if (memoryBlock.getTotalMemorySizeInBytes() > newSizeInBytes) {
 
       if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
         LOGGER.error(
