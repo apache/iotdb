@@ -307,8 +307,8 @@ public class OpcUaSink implements PipeConnector {
         policy = SecurityPolicy.Aes256_Sha256_RsaPss;
         break;
       default:
-        policy = null;
-        break;
+        throw new PipeException(
+            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
     }
 
     final IdentityProvider provider;
