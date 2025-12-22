@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -72,7 +73,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
 
-  OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
+  public OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.builder = builder;
 
@@ -94,9 +95,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             });
   }
 
-  void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
+  public void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
       throws UaException {
-    if (sink.isClientServerModel) {
+    if (sink.isClientServerModel()) {
       transferTabletForClientServerModel(tablet, isTableModel, sink);
     } else {
       transferTabletForPubSubModel(tablet, isTableModel, sink);
@@ -141,11 +142,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 1];
-        folderSegments[0] = sink.unQualifiedDatabaseName;
+        folderSegments[0] = sink.getUnQualifiedDatabaseName();
 
         for (int j = 0; j < segments.length; ++j) {
           folderSegments[j + 1] =
-              Objects.isNull(segments[j]) ? sink.placeHolder : (String) segments[j];
+              Objects.isNull(segments[j]) ? sink.getPlaceHolder() : (String) segments[j];
         }
 
         final int finalI = i;
@@ -228,7 +229,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final String currentFolder = currentStr.toString();
 
     StatusCode currentQuality =
-        Objects.isNull(sink.valueName) ? StatusCode.GOOD : StatusCode.UNCERTAIN;
+        Objects.isNull(sink.getValueName()) ? StatusCode.GOOD : StatusCode.UNCERTAIN;
     UaVariableNode valueNode = null;
     Object value = null;
     long timestamp = 0;
@@ -239,7 +240,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
       final String name = measurementSchemas.get(i).getMeasurementName();
       final TSDataType type = measurementSchemas.get(i).getType();
-      if (Objects.nonNull(sink.qualityName) && sink.qualityName.equals(name)) {
+      if (Objects.nonNull(sink.getQualityName()) && sink.getQualityName().equals(name)) {
         if (!type.equals(TSDataType.BOOLEAN)) {
           throw new UnsupportedOperationException(
               "The quality value only supports boolean type, while true == GOOD and false == BAD.");
@@ -247,11 +248,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         currentQuality = values.get(i) == Boolean.TRUE ? StatusCode.GOOD : StatusCode.BAD;
         continue;
       }
-      if (Objects.nonNull(sink.valueName) && !sink.valueName.equals(name)) {
+      if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         throw new UnsupportedOperationException(
             "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
       }
-      final String nodeName = Objects.isNull(sink.valueName) ? name : segments[segments.length - 1];
+      final String nodeName =
+          Objects.isNull(sink.getValueName()) ? name : segments[segments.length - 1];
       final NodeId nodeId = newNodeId(currentFolder + nodeName);
       final UaVariableNode measurementNode;
       if (!getNodeManager().containsNode(nodeId)) {
@@ -288,7 +290,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
-      if (Objects.isNull(sink.valueName)) {
+      if (Objects.isNull(sink.getValueName())) {
         if (Objects.isNull(measurementNode.getValue())
             || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
                 < utcTimestamp) {
@@ -365,11 +367,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(sink.unQualifiedDatabaseName);
+        final StringBuilder idBuilder = new StringBuilder(sink.getUnQualifiedDatabaseName());
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
-              .append(Objects.isNull(segment) ? sink.placeHolder : segment);
+              .append(Objects.isNull(segment) ? sink.getPlaceHolder() : segment);
         }
         sourceNameList.add(idBuilder.toString());
       }
@@ -521,7 +523,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
   /////////////////////////////// Conflict detection ///////////////////////////////
 
-  void checkEquals(
+  public void checkEquals(
       final String user,
       final String password,
       final String securityDir,

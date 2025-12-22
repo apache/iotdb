@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaServerBuilder;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -355,5 +357,29 @@ public class OpcUaSink implements PipeConnector {
         }
       }
     }
+  }
+
+  // Getter
+
+  public boolean isClientServerModel() {
+    return isClientServerModel;
+  }
+
+  public String getUnQualifiedDatabaseName() {
+    return unQualifiedDatabaseName;
+  }
+
+  public String getPlaceHolder() {
+    return placeHolder;
+  }
+
+  @Nullable
+  public String getValueName() {
+    return valueName;
+  }
+
+  @Nullable
+  public String getQualityName() {
+    return qualityName;
   }
 }

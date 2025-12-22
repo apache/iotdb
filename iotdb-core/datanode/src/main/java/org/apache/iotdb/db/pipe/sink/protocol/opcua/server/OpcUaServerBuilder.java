@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -86,7 +86,7 @@ public class OpcUaServerBuilder implements Closeable {
   private boolean enableAnonymousAccess;
   private DefaultTrustListManager trustListManager;
 
-  OpcUaServerBuilder() {
+  public OpcUaServerBuilder() {
     tcpBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
     httpsBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
     user = PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
@@ -95,37 +95,37 @@ public class OpcUaServerBuilder implements Closeable {
     enableAnonymousAccess = PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
   }
 
-  OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
+  public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
     return this;
   }
 
-  OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
+  public OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
   }
 
-  OpcUaServerBuilder setUser(final String user) {
+  public OpcUaServerBuilder setUser(final String user) {
     this.user = user;
     return this;
   }
 
-  OpcUaServerBuilder setPassword(final String password) {
+  public OpcUaServerBuilder setPassword(final String password) {
     this.password = password;
     return this;
   }
 
-  OpcUaServerBuilder setSecurityDir(final String securityDir) {
+  public OpcUaServerBuilder setSecurityDir(final String securityDir) {
     this.securityDir = Paths.get(securityDir);
     return this;
   }
 
-  OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
+  public OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
     this.enableAnonymousAccess = enableAnonymousAccess;
     return this;
   }
 
-  OpcUaServer build() throws Exception {
+  public OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
       throw new PipeException("Unable to create security dir: " + securityDir);
