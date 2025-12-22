@@ -32,6 +32,7 @@
         <dependency>
             <groupId>org.eclipse.milo</groupId>
             <artifactId>sdk-client</artifactId>
+            <version>${milo.version}</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
