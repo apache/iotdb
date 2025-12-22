@@ -76,9 +76,7 @@ public class IoTDBOpcUaClient {
   }
 
   // Only support tree model & client-server
-  public void transfer(final Tablet tablet, final OpcUaSink sink) throws UaException {
-
-  }
+  public void transfer(final Tablet tablet, final OpcUaSink sink) throws UaException {}
 
   /////////////////////////////// Getter ///////////////////////////////
 

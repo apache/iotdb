@@ -98,14 +98,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   public void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
       throws UaException {
     if (sink.isClientServerModel()) {
-      transferTabletForClientServerModel(tablet, isTableModel, sink);
+      transferTabletForClientServerModel(
+          tablet, isTableModel, sink, this::transferTabletRowForClientServerModel);
     } else {
       transferTabletForPubSubModel(tablet, isTableModel, sink);
     }
   }
 
-  private void transferTabletForClientServerModel(
-      final Tablet tablet, final boolean isTableModel, final OpcUaSink sink) {
+  public static void transferTabletForClientServerModel(
+      final Tablet tablet,
+      final boolean isTableModel,
+      final OpcUaSink sink,
+      final TabletRowConsumer consumer) {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
@@ -126,8 +130,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
       }
 
-      transferTabletRowForClientServerModel(
-          tablet.getDeviceId().split("\\."), newSchemas, timestamps, values, sink);
+      consumer.accept(tablet.getDeviceId().split("\\."), newSchemas, timestamps, values, sink);
     } else {
       new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
 
@@ -150,7 +153,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         final int finalI = i;
-        transferTabletRowForClientServerModel(
+        consumer.accept(
             folderSegments,
             newSchemas,
             Collections.singletonList(tablet.getTimestamp(i)),
@@ -165,6 +168,16 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             sink);
       }
     }
+  }
+
+  @FunctionalInterface
+  public interface TabletRowConsumer {
+    void accept(
+        final String[] segments,
+        final List<IMeasurementSchema> measurementSchemas,
+        final List<Long> timestamps,
+        final List<Object> values,
+        final OpcUaSink sink);
   }
 
   private void transferTabletRowForClientServerModel(
