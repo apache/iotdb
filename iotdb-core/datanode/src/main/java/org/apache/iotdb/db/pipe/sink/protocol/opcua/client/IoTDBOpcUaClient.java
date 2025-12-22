@@ -251,29 +251,7 @@ public class IoTDBOpcUaClient {
         LocalizedText.english(name),
         Unsigned.uint(0), // writeMask
         Unsigned.uint(0), // userWriteMask
-        null // 启用历史记录
-        );
-  }
-
-  public static ObjectAttributes createFolder1Attributes() {
-    return new ObjectAttributes(
-        Unsigned.uint(0xFFFF), // specifiedAttributes
-        LocalizedText.english("sg"),
-        LocalizedText.english("反应釜压力传感器"),
-        Unsigned.uint(0), // writeMask
-        Unsigned.uint(0), // userWriteMask
-        null // 启用历史记录
-        );
-  }
-
-  public static ObjectAttributes createFolder2Attributes() {
-    return new ObjectAttributes(
-        Unsigned.uint(0xFFFF), // specifiedAttributes
-        LocalizedText.english("d1"),
-        LocalizedText.english("反应釜压力传感器"),
-        Unsigned.uint(0), // writeMask
-        Unsigned.uint(0), // userWriteMask
-        null // 启用历史记录
+        null // notifier
         );
   }
 }
