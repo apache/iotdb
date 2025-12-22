@@ -361,7 +361,13 @@ public class OpcUaSink implements PipeConnector {
     transferByTablet(
         tabletInsertionEvent,
         LOGGER,
-        (tablet, isTableModel) -> nameSpace.transfer(tablet, isTableModel, this));
+        (tablet, isTableModel) -> {
+          if (Objects.nonNull(nameSpace)) {
+            nameSpace.transfer(tablet, isTableModel, this);
+          } else if (Objects.nonNull(client)) {
+            client.transfer(tablet, this);
+          }
+        });
   }
 
   public static void transferByTablet(
