@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.object;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -85,7 +85,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   private File objectDir;
   private File regionDir;
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   @Before
   @Override

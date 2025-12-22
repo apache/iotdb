@@ -415,6 +415,9 @@ public class TsTable {
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
+    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
+      return;
+    }
     if (isInvalid4ObjectType(tableName)) {
       throw new MetadataException(
           getObjectStringError("tableName", tableName),
