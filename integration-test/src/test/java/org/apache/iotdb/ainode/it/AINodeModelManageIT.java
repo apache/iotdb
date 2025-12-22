@@ -115,8 +115,8 @@ public class AINodeModelManageIT {
           String category = resultSet.getString(3);
           String state = resultSet.getString(4);
           assertEquals("user_chronos", modelId);
-          assertEquals("user_defined", category);
           assertEquals("custom_t5", modelType);
+          assertEquals("user_defined", category);
           if (state.equals("active")) {
             loading = false;
           } else if (state.equals("loading")) {
