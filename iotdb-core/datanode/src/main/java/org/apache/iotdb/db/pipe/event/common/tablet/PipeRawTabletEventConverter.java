@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.pipe.api.collector.DataCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -33,31 +32,10 @@ public abstract class PipeRawTabletEventConverter implements DataCollector {
   protected boolean isAligned = false;
   protected final PipeTaskMeta pipeTaskMeta; // Used to report progress
   protected final EnrichedEvent sourceEvent; // Used to report progress
-  protected final String sourceEventDataBaseName;
-  protected final Boolean isTableModel;
 
   public PipeRawTabletEventConverter(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
-    if (sourceEvent instanceof PipeInsertionEvent) {
-      sourceEventDataBaseName =
-          ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
-      isTableModel = ((PipeInsertionEvent) sourceEvent).getRawIsTableModelEvent();
-    } else {
-      sourceEventDataBaseName = null;
-      isTableModel = null;
-    }
-  }
-
-  public PipeRawTabletEventConverter(
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      String sourceEventDataBase,
-      Boolean isTableModel) {
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.sourceEvent = sourceEvent;
-    this.sourceEventDataBaseName = sourceEventDataBase;
-    this.isTableModel = isTableModel;
   }
 
   @Override

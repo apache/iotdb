@@ -295,7 +295,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   @Override
   public Iterable<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
-    return initEventParser().processTabletWithCollect(consumer);
+    if (dataContainer == null) {
+      dataContainer =
+          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
+    }
+    return dataContainer.processTabletWithCollect(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////

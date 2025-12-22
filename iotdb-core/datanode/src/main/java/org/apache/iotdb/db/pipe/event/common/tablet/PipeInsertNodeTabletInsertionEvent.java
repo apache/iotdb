@@ -313,7 +313,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public Iterable<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
-    return initEventParsers().stream()
+    return initDataContainers().stream()
         .map(
             tabletInsertionEventParser ->
                 tabletInsertionEventParser.processTabletWithCollect(consumer))

@@ -690,6 +690,13 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
+  public List<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    final PipeTabletCollector tabletCollector = new PipeTabletCollector(pipeTaskMeta, sourceEvent);
+    consumer.accept(convertToTablet(), tabletCollector);
+    return tabletCollector.convertToTabletInsertionEvents(shouldReport);
+  }
+
   ////////////////////////////  convertToTablet  ////////////////////////////
 
   public Tablet convertToTablet() {
@@ -707,7 +714,4 @@ public class TabletInsertionDataContainer {
 
     return tablet;
   }
-
-  public abstract List<TabletInsertionEvent> processTabletWithCollect(
-      final BiConsumer<Tablet, TabletCollector> consumer);
 }
