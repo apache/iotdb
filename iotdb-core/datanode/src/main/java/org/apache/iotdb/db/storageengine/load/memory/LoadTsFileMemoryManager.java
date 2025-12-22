@@ -83,7 +83,8 @@ public class LoadTsFileMemoryManager {
 
   public synchronized void releaseToQuery(final long sizeInBytes) {
     if (sizeInBytes <= 0) {
-      return;
+      throw new IllegalArgumentException(
+          String.format("Load: Invalid memory size %d bytes, must be positive", sizeInBytes));
     }
     if (usedMemorySizeInBytes.get() < sizeInBytes) {
       LOGGER.error(
@@ -129,7 +130,8 @@ public class LoadTsFileMemoryManager {
       throws LoadRuntimeOutOfMemoryException {
     if (newSizeInBytes < 0) {
       throw new IllegalArgumentException(
-          String.format("Load: Invalid memory size %d bytes, must be non-negative", newSizeInBytes));
+          String.format(
+              "Load: Invalid memory size %d bytes, must be non-negative", newSizeInBytes));
     }
     if (memoryBlock.getTotalMemorySizeInBytes() == newSizeInBytes) {
       return;
