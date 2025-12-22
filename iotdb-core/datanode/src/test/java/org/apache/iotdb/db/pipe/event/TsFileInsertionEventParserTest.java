@@ -589,8 +589,7 @@ public class TsFileInsertionEventParserTest {
       tsFileContainer
           .toTabletInsertionEvents()
           .forEach(
-              event -> {
-                try {
+              event ->
                   event
                       .processRowByRow(
                           (row, collector) -> {
@@ -602,8 +601,7 @@ public class TsFileInsertionEventParserTest {
                             }
                           })
                       .forEach(
-                          tabletInsertionEvent1 -> {
-                            try {
+                          tabletInsertionEvent1 ->
                               tabletInsertionEvent1
                                   .processRowByRow(
                                       (row, collector) -> {
@@ -615,8 +613,7 @@ public class TsFileInsertionEventParserTest {
                                         }
                                       })
                                   .forEach(
-                                      tabletInsertionEvent2 -> {
-                                        try {
+                                      tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
                                               (tablet, rowCollector) ->
                                                   new PipeRawTabletInsertionEvent(tablet, false)
@@ -628,19 +625,7 @@ public class TsFileInsertionEventParserTest {
                                                             } catch (final IOException e) {
                                                               throw new RuntimeException(e);
                                                             }
-                                                          }));
-                                        } catch (Exception e) {
-                                          throw new RuntimeException(e);
-                                        }
-                                      });
-                            } catch (Exception e) {
-                              throw new RuntimeException(e);
-                            }
-                          });
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-              });
+                                                          })))));
 
       Assert.assertEquals(expectedCount, count1.get());
       Assert.assertEquals(expectedCount, count2.get());
