@@ -75,6 +75,10 @@ public class AINodeModelManageIT {
       callInferenceTest(
           statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
       dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
     }
   }
 
@@ -86,6 +90,10 @@ public class AINodeModelManageIT {
       forecastTableFunctionTest(
           statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
       dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
     }
   }
 
