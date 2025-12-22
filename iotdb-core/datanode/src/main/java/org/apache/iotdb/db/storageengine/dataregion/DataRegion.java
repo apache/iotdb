@@ -2959,7 +2959,9 @@ public class DataRegion implements IDataRegionForQuery {
               matchedObjectDir.toPath(),
               Integer.MAX_VALUE,
               (path, attrs) ->
-                  attrs.isRegularFile() && path.getFileName().toString().endsWith(".bin"))) {
+                  attrs.isRegularFile()
+                      && (path.getFileName().toString().endsWith(".bin")
+                          || path.getFileName().toString().endsWith(".tmp")))) {
         paths.forEach(
             path -> {
               Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
@@ -2985,7 +2987,7 @@ public class DataRegion implements IDataRegionForQuery {
                                   relativePath.getName(relativePath.getNameCount() - 2).toString()),
                           StandardCharsets.UTF_8);
               String fileName = path.getFileName().toString();
-              long timestamp = Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
+              long timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
               logger.info(
                   "timestamp {}, measurementId {}, ideviceId {}",
                   timestamp,
