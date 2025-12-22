@@ -625,7 +625,7 @@ public class TsFileInsertionDataContainerTest {
     int count = 0;
     for (int i = 0; i < tablet.rowSize; ++i) {
       for (int j = 0; j < tablet.getSchemas().size(); ++j) {
-        if (tablet.bitMaps == null || tablet.bitMaps[i] == null || !tablet.bitMaps[i].isMarked(j)) {
+        if (tablet.bitMaps == null || tablet.bitMaps[j] == null || !tablet.bitMaps[j].isMarked(i)) {
           ++count;
         }
       }
