@@ -180,7 +180,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     UaNode folderNode = null;
     NodeId folderNodeId;
     for (int i = 0;
-        i < (Objects.isNull(sink.valueName) ? segments.length : segments.length - 1);
+        i < (Objects.isNull(sink.getValueName()) ? segments.length : segments.length - 1);
         ++i) {
       final String segment = segments[i];
       final UaNode nextFolderNode;
