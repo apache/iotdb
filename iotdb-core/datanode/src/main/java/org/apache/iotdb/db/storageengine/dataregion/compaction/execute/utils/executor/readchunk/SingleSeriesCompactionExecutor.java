@@ -322,6 +322,7 @@ public class SingleSeriesCompactionExecutor {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case FLOAT:

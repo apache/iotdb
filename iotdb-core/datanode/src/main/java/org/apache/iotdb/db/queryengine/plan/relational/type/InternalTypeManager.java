@@ -35,6 +35,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.ObjectType.OBJECT;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
@@ -52,6 +53,7 @@ public class InternalTypeManager implements TypeManager {
     types.put(new TypeSignature(TypeEnum.TEXT.name().toLowerCase(Locale.ENGLISH)), TEXT);
     types.put(new TypeSignature(TypeEnum.STRING.name().toLowerCase(Locale.ENGLISH)), STRING);
     types.put(new TypeSignature(TypeEnum.BLOB.name().toLowerCase(Locale.ENGLISH)), BLOB);
+    types.put(new TypeSignature(TypeEnum.OBJECT.name().toLowerCase(Locale.ENGLISH)), OBJECT);
     types.put(new TypeSignature(TypeEnum.DATE.name().toLowerCase(Locale.ENGLISH)), DATE);
     types.put(new TypeSignature(TypeEnum.TIMESTAMP.name().toLowerCase(Locale.ENGLISH)), TIMESTAMP);
     types.put(new TypeSignature(TypeEnum.UNKNOWN.name().toLowerCase(Locale.ENGLISH)), UNKNOWN);
@@ -105,6 +107,8 @@ public class InternalTypeManager implements TypeManager {
         return TSDataType.BLOB;
       case STRING:
         return TSDataType.STRING;
+      case OBJECT:
+        return TSDataType.OBJECT;
       default:
         throw new IllegalArgumentException();
     }
@@ -132,6 +136,8 @@ public class InternalTypeManager implements TypeManager {
         return TIMESTAMP;
       case BLOB:
         return BLOB;
+      case OBJECT:
+        return OBJECT;
       case STRING:
         return STRING;
       default:

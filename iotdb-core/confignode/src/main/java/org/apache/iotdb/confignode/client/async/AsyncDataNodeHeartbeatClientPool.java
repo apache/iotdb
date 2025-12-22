@@ -63,7 +63,6 @@ public class AsyncDataNodeHeartbeatClientPool {
     }
   }
 
-  // TODO: Is the AsyncDataNodeHeartbeatClientPool must be a singleton?
   private static class AsyncDataNodeHeartbeatClientPoolHolder {
 
     private static final AsyncDataNodeHeartbeatClientPool INSTANCE =

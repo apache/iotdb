@@ -700,6 +700,11 @@ public class QueryExecution implements IQueryExecution {
     return context.getSession().getUserName();
   }
 
+  @Override
+  public String getClientHostname() {
+    return context.getCliHostname();
+  }
+
   public MPPQueryContext getContext() {
     return context;
   }

@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionAlignedChunkReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
@@ -42,21 +44,33 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -496,5 +510,175 @@ public class CompactionUtils {
           new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
           new TimeRange(Long.MIN_VALUE, timeLowerBound));
     }
+  }
+
+  public static void removeDeletedObjectFiles(TsFileResource resource) {
+    // check for compaction recovery
+    if (!resource.tsFileExists()) {
+      return;
+    }
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(Collections.singletonList(resource))) {
+      while (deviceIterator.hasNextDevice()) {
+        deviceIterator.nextDevice();
+        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+      }
+    } catch (Exception e) {
+      logger.warn("Failed to remove object files from file {}", resource.getTsFilePath(), e);
+    }
+  }
+
+  @SuppressWarnings("java:S3776")
+  public static void removeDeletedObjectFiles(
+      TsFileSequenceReader reader,
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList,
+      List<ModEntry> timeMods,
+      List<List<ModEntry>> valueMods,
+      int currentRegionId)
+      throws IOException {
+    if (alignedChunkMetadataList.isEmpty()) {
+      return;
+    }
+    List<Integer> objectColumnIndexList = new ArrayList<>();
+    List<List<ModEntry>> objectDeletionIntervalList = new ArrayList<>();
+    boolean objectColumnHasDeletion = false;
+
+    TSDataType[] dataTypes = new TSDataType[valueMods.size()];
+    for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      boolean hasNull = false;
+      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+        if (dataTypes[i] != null) {
+          continue;
+        }
+        IChunkMetadata chunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(i);
+        if (chunkMetadata == null) {
+          hasNull = true;
+          continue;
+        }
+        dataTypes[i] = chunkMetadata.getDataType();
+        if (dataTypes[i] == TSDataType.OBJECT) {
+          objectColumnIndexList.add(i);
+          List<ModEntry> deletionInterval = ModificationUtils.sortAndMerge(valueMods.get(i));
+          objectColumnHasDeletion |= (!deletionInterval.isEmpty() || !timeMods.isEmpty());
+          objectDeletionIntervalList.add(deletionInterval);
+        }
+      }
+      if (!hasNull) {
+        break;
+      }
+    }
+    if (!objectColumnHasDeletion) {
+      return;
+    }
+    int[] deletionCursors = new int[objectColumnIndexList.size() + 1];
+    List<ModEntry> timeDeletionIntervalList = ModificationUtils.sortAndMerge(timeMods);
+    for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      CompactionUtils.removeDeletedObjectFiles(
+          reader,
+          alignedChunkMetadata,
+          objectColumnIndexList,
+          timeDeletionIntervalList,
+          objectDeletionIntervalList,
+          deletionCursors,
+          currentRegionId);
+    }
+  }
+
+  @SuppressWarnings("java:S3776")
+  private static void removeDeletedObjectFiles(
+      TsFileSequenceReader reader,
+      AbstractAlignedChunkMetadata alignedChunkMetadata,
+      List<Integer> objectColumnIndexList,
+      List<ModEntry> timeDeletions,
+      List<List<ModEntry>> objectDeletions,
+      int[] deletionCursors,
+      int currentRegionId)
+      throws IOException {
+    Chunk timeChunk =
+        reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+    CompactionChunkReader compactionChunkReader = new CompactionChunkReader(timeChunk);
+    List<Pair<PageHeader, ByteBuffer>> timePages =
+        compactionChunkReader.readPageDataWithoutUncompressing();
+
+    List<Chunk> valueChunks = new ArrayList<>();
+    List<List<Pair<PageHeader, ByteBuffer>>> valuePages = new ArrayList<>();
+
+    for (int i = 0; i < objectColumnIndexList.size(); i++) {
+      int idxInAlignedChunkMetadata = objectColumnIndexList.get(i);
+      if (timeDeletions.isEmpty() && objectDeletions.get(i).isEmpty()) {
+        continue;
+      }
+      ChunkMetadata valueChunkMetadata =
+          (ChunkMetadata)
+              alignedChunkMetadata.getValueChunkMetadataList().get(idxInAlignedChunkMetadata);
+      if (valueChunkMetadata == null) {
+        continue;
+      }
+      Chunk chunk = reader.readMemChunk(valueChunkMetadata);
+      if (chunk != null) {
+        chunk
+            .getHeader()
+            .setReplaceDecoder(
+                decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, currentRegionId));
+      }
+      valueChunks.add(chunk);
+      valuePages.add(
+          chunk == null
+              ? null
+              : new CompactionChunkReader(chunk).readPageDataWithoutUncompressing());
+    }
+
+    CompactionAlignedChunkReader alignedChunkReader =
+        new CompactionAlignedChunkReader(timeChunk, valueChunks, true);
+    for (int i = 0; i < timePages.size(); i++) {
+      Pair<PageHeader, ByteBuffer> timePage = timePages.get(i);
+      List<PageHeader> valuePageHeaders = new ArrayList<>(valuePages.size());
+      List<ByteBuffer> compressedValuePages = new ArrayList<>(valuePages.size());
+      for (int j = 0; j < valuePages.size(); j++) {
+        Pair<PageHeader, ByteBuffer> valuePage = valuePages.get(j).get(i);
+        valuePageHeaders.add(valuePage.getLeft());
+        compressedValuePages.add(valuePage.getRight());
+      }
+      IPointReader pagePointReader =
+          alignedChunkReader.getPagePointReader(
+              timePage.getLeft(), valuePageHeaders, timePage.getRight(), compressedValuePages);
+
+      while (pagePointReader.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = pagePointReader.nextTimeValuePair();
+        removeDeletedObjectFiles(timeValuePair, deletionCursors, timeDeletions, objectDeletions);
+      }
+    }
+  }
+
+  private static void removeDeletedObjectFiles(
+      TimeValuePair timeValuePair,
+      int[] cursors,
+      List<ModEntry> timeDeletions,
+      List<List<ModEntry>> objectDeletions) {
+    long timestamp = timeValuePair.getTimestamp();
+    boolean timeDeleted = isDeleted(timestamp, timeDeletions, cursors, 0);
+    for (int i = 0; i < timeValuePair.getValues().length; i++) {
+      Binary value = (Binary) timeValuePair.getValues()[i];
+      if (value == null) {
+        continue;
+      }
+      if (timeDeleted || isDeleted(timestamp, objectDeletions.get(i), cursors, i + 1)) {
+        ObjectTypeUtils.deleteObjectPathFromBinary(value);
+      }
+    }
+  }
+
+  private static boolean isDeleted(
+      long timestamp, List<ModEntry> deleteIntervalList, int[] deleteCursors, int idx) {
+    while (deleteIntervalList != null && deleteCursors[idx] < deleteIntervalList.size()) {
+      if (deleteIntervalList.get(deleteCursors[idx]).getTimeRange().contains(timestamp)) {
+        return true;
+      } else if (deleteIntervalList.get(deleteCursors[idx]).getTimeRange().getMax() < timestamp) {
+        deleteCursors[idx]++;
+      } else {
+        return false;
+      }
+    }
+    return false;
   }
 }

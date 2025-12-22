@@ -57,6 +57,7 @@ public class AvgAccumulator implements Accumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
       case BOOLEAN:
       case DATE:

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -413,6 +414,12 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
     return initEventParser().processTablet(consumer);
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initEventParser().processTabletWithCollect(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////

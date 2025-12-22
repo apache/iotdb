@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,5 +88,28 @@ public class InternalClientSession extends IClientSession {
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
     ClientSession.removeQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "InternalClientSession should never call PREPARE statement methods.");
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return Collections.emptySet();
   }
 }

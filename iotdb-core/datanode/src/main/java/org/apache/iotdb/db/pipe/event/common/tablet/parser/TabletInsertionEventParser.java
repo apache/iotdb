@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -635,6 +636,9 @@ public abstract class TabletInsertionEventParser {
 
   public abstract List<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer);
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 
   public abstract Tablet convertToTablet();
 }

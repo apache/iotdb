@@ -104,6 +104,7 @@ public class FirstByAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case BOOLEAN:
@@ -164,6 +165,7 @@ public class FirstByAccumulator implements TableAccumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
@@ -219,6 +221,7 @@ public class FirstByAccumulator implements TableAccumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilder.writeBinary(xResult.getBinary());
         break;
@@ -278,6 +281,7 @@ public class FirstByAccumulator implements TableAccumulator {
               break;
             case TEXT:
             case BLOB:
+            case OBJECT:
             case STRING:
               xResult.setBinary((Binary) statistics[0].getFirstValue());
               break;

@@ -164,6 +164,7 @@ struct TSCloseOperationReq {
   1: required i64 sessionId
   2: optional i64 queryId
   3: optional i64 statementId
+  4: optional string preparedStatementName
 }
 
 struct TSFetchResultsReq{
@@ -668,5 +669,5 @@ service IClientRPCService {
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
   /** For other node's call */
-  common.TSStatus testConnectionEmptyRPC()
+  common.TSStatus testConnectionEmptyRPC();
 }

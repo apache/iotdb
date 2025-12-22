@@ -219,6 +219,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
           TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
           Binary binary = iterator.getTVList().getBinary(iterator.getScanOrderIndex(rowIndex));
