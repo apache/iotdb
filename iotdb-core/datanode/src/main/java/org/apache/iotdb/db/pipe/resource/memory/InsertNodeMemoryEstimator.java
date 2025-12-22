@@ -602,6 +602,7 @@ public class InsertNodeMemoryEstimator {
         case STRING:
         case TEXT:
         case BLOB:
+        case OBJECT:
           {
             size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
             break;

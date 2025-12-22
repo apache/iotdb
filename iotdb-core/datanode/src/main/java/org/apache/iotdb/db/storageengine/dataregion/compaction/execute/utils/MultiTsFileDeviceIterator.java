@@ -175,7 +175,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  public boolean hasNextDevice() {
+  public boolean hasNextDevice() throws IOException {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
       hasNext =
@@ -196,7 +196,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @return Pair of device full path and whether this device is aligned
    */
   @SuppressWarnings({"squid:S135", "java:S2259"})
-  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException {
+  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException, IOException {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<IDeviceID, Boolean> minDevice = null;
     // get the device from source files sorted from the newest to the oldest by version
@@ -275,7 +275,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           timeseriesMetadataList,
           deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
-          true);
+          true,
+          null);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
             && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
@@ -443,7 +444,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   private void applyModificationForAlignedChunkMetadataList(
       TsFileResource tsFileResource, List<AbstractAlignedChunkMetadata> alignedChunkMetadataList)
-      throws IllegalPathException {
+      throws IllegalPathException, IOException {
     if (alignedChunkMetadataList.isEmpty()) {
       // all the value chunks is empty chunk
       return;
@@ -480,6 +481,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               modifications, device, valueChunkMetadata.getMeasurementUid(), null);
       modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
+    }
+
+    if (ttlDeletion != null) {
+      List<ModEntry> emptyList = Collections.emptyList();
+      CompactionUtils.removeDeletedObjectFiles(
+          readerMap.get(tsFileResource),
+          alignedChunkMetadataList,
+          Collections.singletonList(ttlDeletion),
+          modificationForValueColumns.stream().map(v -> emptyList).collect(Collectors.toList()),
+          tsFileResource.getTsFileID().regionId);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(

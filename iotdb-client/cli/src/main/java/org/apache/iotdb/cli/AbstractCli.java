@@ -742,6 +742,7 @@ public abstract class AbstractCli {
       case DOUBLE:
       case TEXT:
       case STRING:
+      case OBJECT:
         return resultSet.getString(columnIndex);
       case BLOB:
         byte[] v = resultSet.getBytes(columnIndex);

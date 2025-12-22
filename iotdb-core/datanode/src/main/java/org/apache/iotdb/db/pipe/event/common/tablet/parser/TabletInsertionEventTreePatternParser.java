@@ -30,11 +30,13 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -177,6 +179,14 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents(shouldReport);
+  }
+
+  @Override
+  public List<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    final PipeTabletCollector tabletCollector = new PipeTabletCollector(pipeTaskMeta, sourceEvent);
+    consumer.accept(convertToTablet(), tabletCollector);
+    return tabletCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
   ////////////////////////////  convertToTablet  ////////////////////////////

@@ -56,6 +56,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -451,6 +452,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final BiConsumer<Tablet, RowCollector> consumer) {
     return initEventParsers().stream()
         .map(tabletInsertionEventParser -> tabletInsertionEventParser.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initEventParsers().stream()
+        .map(
+            tabletInsertionEventParser ->
+                tabletInsertionEventParser.processTabletWithCollect(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }

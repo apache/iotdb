@@ -94,8 +94,24 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   // proper positions.
   protected List<Integer> range;
 
+  private Boolean shouldCheckTTL;
+
   public InsertTabletNode(PlanNodeId id) {
     super(id);
+  }
+
+  public boolean shouldCheckTTL() {
+    if (shouldCheckTTL != null) {
+      return shouldCheckTTL;
+    }
+    shouldCheckTTL = true;
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      if (measurementSchema != null && measurementSchema.getType() == TSDataType.OBJECT) {
+        shouldCheckTTL = false;
+        break;
+      }
+    }
+    return shouldCheckTTL;
   }
 
   @Override
@@ -219,7 +235,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges();
     final Map<TRegionReplicaSet, List<Integer>> splitMap =
         splitByReplicaSet(deviceIDSplitInfoMap, analysis);
-
     return doSplit(splitMap);
   }
 
@@ -289,7 +304,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return splitMap;
   }
 
-  private List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
+  protected List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
     List<WritePlanNode> result = new ArrayList<>();
 
     if (splitMap.size() == 1) {
@@ -326,7 +341,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         subTimes.length);
   }
 
-  private WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
+  protected WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
     List<Integer> locs;
     // generate a new times and values
     locs = entry.getValue();
@@ -387,6 +402,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             values[i] = new Binary[rowSize];
             break;
           case FLOAT:
@@ -640,6 +656,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -692,6 +709,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -833,6 +851,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
@@ -964,6 +983,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -1127,6 +1147,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
               return false;
             }
@@ -1199,6 +1220,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
         break;
+      case OBJECT:
+        return null;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));

@@ -116,6 +116,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_timer.TimerConfig",
             "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
         },
+        _transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
@@ -127,6 +128,19 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         auto_map={
             "AutoConfig": "configuration_sundial.SundialConfig",
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
+        },
+        _transformers_registered=True,
+    ),
+    "chronos2": ModelInfo(
+        model_id="chronos2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="t5",
+        pipeline_cls="pipeline_chronos2.Chronos2Pipeline",
+        repo_id="amazon/chronos-2",
+        auto_map={
+            "AutoConfig": "config.Chronos2ForecastingConfig",
+            "AutoModelForCausalLM": "model.Chronos2Model",
         },
     ),
 }
