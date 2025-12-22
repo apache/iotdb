@@ -202,7 +202,7 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
   /** {@inheritDoc} */
   @Override
   public synchronized int read(ByteBuffer buffer) throws TTransportException {
-    int numBytes = buffer.limit();
+    int numBytes = buffer.remaining();
     while (decodedBytes.remaining() < numBytes) {
       try {
         if (doUnwrap() == -1) {
@@ -211,29 +211,25 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
       } catch (IOException exc) {
         throw new TTransportException(TTransportException.UNKNOWN, exc.getMessage());
       }
-      if (appUnwrap.position() > 0) {
-        int t;
+      if (appUnwrap.hasRemaining()
+          || (decodedBytes.position() > 0 && decodedBytes.flip().hasRemaining())) {
         appUnwrap.flip();
-        if (decodedBytes.position() > 0) decodedBytes.flip();
-        t = appUnwrap.limit() + decodedBytes.limit();
-        byte[] tmpBuffer = new byte[t];
-        decodedBytes.get(tmpBuffer, 0, decodedBytes.remaining());
-        appUnwrap.get(tmpBuffer, 0, appUnwrap.remaining());
-        if (appUnwrap.position() > 0) {
-          appUnwrap.clear();
-          appUnwrap.flip();
-          appUnwrap.compact();
-        }
-        decodedBytes = ByteBuffer.wrap(tmpBuffer);
+        decodedBytes.flip();
+
+        ByteBuffer tempBuffer =
+            ByteBuffer.allocate(appUnwrap.remaining() + decodedBytes.remaining());
+        tempBuffer.put(decodedBytes);
+        tempBuffer.put(appUnwrap);
+        tempBuffer.flip();
+
+        decodedBytes = tempBuffer;
+        appUnwrap.clear();
       }
     }
-    byte[] b = new byte[numBytes];
-    decodedBytes.get(b, 0, numBytes);
-    if (decodedBytes.position() > 0) {
-      decodedBytes.compact();
-      decodedBytes.flip();
-    }
-    buffer.put(b);
+    int oldLimit = decodedBytes.limit();
+    decodedBytes.limit(decodedBytes.position() + numBytes);
+    buffer.put(decodedBytes);
+    decodedBytes.limit(oldLimit);
     selectionKey.interestOps(SelectionKey.OP_WRITE);
     return numBytes;
   }
@@ -247,11 +243,10 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
 
     int nTransfer;
     int num;
-    while (buffer.remaining() != 0) {
+    while (buffer.hasRemaining()) {
       nTransfer = Math.min(appWrap.remaining(), buffer.remaining());
       if (nTransfer > 0) {
-        appWrap.put(buffer.array(), buffer.arrayOffset() + buffer.position(), nTransfer);
-        buffer.position(buffer.position() + nTransfer);
+        appWrap.put(buffer);
       }
 
       try {
@@ -374,7 +369,7 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
     try {
       appWrap.flip();
       wrapResult = sslEngine_.wrap(appWrap, netWrap);
-      appWrap.compact();
+      appWrap.clear();
     } catch (SSLException exc) {
       LOGGER.error(exc.getMessage());
       throw exc;
@@ -385,7 +380,7 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
         if (netWrap.position() > 0) {
           netWrap.flip();
           num = getSocketChannel().write(netWrap);
-          netWrap.compact();
+          netWrap.clear();
         }
         break;
       case BUFFER_UNDERFLOW:
