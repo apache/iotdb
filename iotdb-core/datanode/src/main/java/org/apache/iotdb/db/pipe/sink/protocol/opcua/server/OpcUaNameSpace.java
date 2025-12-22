@@ -96,7 +96,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   }
 
   public void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
-      throws UaException {
+      throws Exception {
     if (sink.isClientServerModel()) {
       transferTabletForClientServerModel(
           tablet, isTableModel, sink, this::transferTabletRowForClientServerModel);
@@ -109,7 +109,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final Tablet tablet,
       final boolean isTableModel,
       final OpcUaSink sink,
-      final TabletRowConsumer consumer) {
+      final TabletRowConsumer consumer)
+      throws Exception {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
@@ -177,7 +178,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         final List<IMeasurementSchema> measurementSchemas,
         final List<Long> timestamps,
         final List<Object> values,
-        final OpcUaSink sink);
+        final OpcUaSink sink)
+        throws Exception;
   }
 
   private void transferTabletRowForClientServerModel(
@@ -357,7 +359,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
   }
 
-  private static long timestampToUtc(final long timeStamp) {
+  public static long timestampToUtc(final long timeStamp) {
     return TimestampPrecisionUtils.currPrecision.toNanos(timeStamp) / 100L + 116444736000000000L;
   }
 
