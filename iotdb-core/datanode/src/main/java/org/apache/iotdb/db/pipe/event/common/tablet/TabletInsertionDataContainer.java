@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -706,4 +707,7 @@ public class TabletInsertionDataContainer {
 
     return tablet;
   }
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 }

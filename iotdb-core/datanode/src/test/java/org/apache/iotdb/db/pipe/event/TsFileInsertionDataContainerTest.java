@@ -26,6 +26,9 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -593,18 +596,15 @@ public class TsFileInsertionDataContainerTest {
                                       })
                                   .forEach(
                                       tabletInsertionEvent2 ->
-                                          tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) ->
-                                                  new PipeRawTabletInsertionEvent(tablet, false)
-                                                      .processRowByRow(
-                                                          (row, collector) -> {
-                                                            try {
-                                                              rowCollector.collectRow(row);
-                                                              count3.addAndGet(getNonNullSize(row));
-                                                            } catch (final IOException e) {
-                                                              throw new RuntimeException(e);
-                                                            }
-                                                          })))));
+                                          tabletInsertionEvent2.processTabletWithCollect(
+                                              (tablet, collector) -> {
+                                                try {
+                                                  collector.collectTablet(tablet);
+                                                  count3.addAndGet(getNonNullSize(tablet));
+                                                } catch (final IOException e) {
+                                                  throw new RuntimeException(e);
+                                                }
+                                              }))));
 
       Assert.assertEquals(expectedCount, count1.get());
       Assert.assertEquals(expectedCount, count2.get());
@@ -620,6 +620,18 @@ public class TsFileInsertionDataContainerTest {
     for (int i = 0; i < row.size(); ++i) {
       if (!row.isNull(i)) {
         ++count;
+      }
+    }
+    return count;
+  }
+
+  private int getNonNullSize(final Tablet tablet) {
+    int count = 0;
+    for (int i = 0; i < tablet.getRowSize(); ++i) {
+      for (int j = 0; j < tablet.getSchemas().size(); ++j) {
+        if (!tablet.isNull(i, j)) {
+          ++count;
+        }
       }
     }
     return count;

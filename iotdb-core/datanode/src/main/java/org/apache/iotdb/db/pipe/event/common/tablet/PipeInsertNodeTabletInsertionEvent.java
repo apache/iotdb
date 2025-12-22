@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -305,6 +306,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final BiConsumer<Tablet, RowCollector> consumer) {
     return initDataContainers().stream()
         .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initEventParsers().stream()
+        .map(
+            tabletInsertionEventParser ->
+                tabletInsertionEventParser.processTabletWithCollect(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }
