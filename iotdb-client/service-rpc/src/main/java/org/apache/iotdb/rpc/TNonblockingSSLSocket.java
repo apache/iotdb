@@ -179,37 +179,31 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
     isHandshakeCompleted = false;
   }
 
-  /**
-   * Register the new SocketChannel with our Selector, indicating we'd like to be notified when it's
-   * ready for I/O.
-   *
-   * @param selector
-   * @return the selection key for this socket.
-   */
+  /** {@inheritDoc} */
+  @Override
   public SelectionKey registerSelector(Selector selector, int interests) throws IOException {
     selectionKey = super.registerSelector(selector, interests);
     return selectionKey;
   }
 
-  /** Checks whether the socket is connected. */
+  /** {@inheritDoc} */
+  @Override
   public boolean isOpen() {
     // isConnected() does not return false after close(), but isOpen() does
     return super.isOpen() && isHandshakeCompleted;
   }
 
-  /** Do not call, the implementation provides its own lazy non-blocking connect. */
+  /** {@inheritDoc} */
+  @Override
   public void open() throws TTransportException {
     throw new RuntimeException("open() is not implemented for TNonblockingSSLSocket");
   }
 
-  /** Perform a nonblocking read into buffer. */
-  public int read(ByteBuffer buffer) throws TTransportException {
+  /** {@inheritDoc} */
+  @Override
+  public synchronized int read(ByteBuffer buffer) throws TTransportException {
     int numBytes = buffer.limit();
     while (decodedBytes.remaining() < numBytes) {
-      HandshakeStatus hs = sslEngine_.getHandshakeStatus();
-      if (hs == HandshakeStatus.FINISHED)
-        throw new TTransportException(
-            TTransportException.UNKNOWN, "Read operation is terminated. Handshake is completed");
       try {
         if (doUnwrap() == -1) {
           throw new IOException("Unable to read " + numBytes + " bytes");
@@ -244,8 +238,9 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
     return numBytes;
   }
 
-  /** Perform a nonblocking write of the data in buffer; */
-  public int write(ByteBuffer buffer) throws TTransportException {
+  /** {@inheritDoc} */
+  @Override
+  public synchronized int write(ByteBuffer buffer) throws TTransportException {
     int numBytes = 0;
 
     if (buffer.position() > 0) buffer.flip();
@@ -273,13 +268,15 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
     return numBytes;
   }
 
-  /** Closes the socket. */
+  /** {@inheritDoc} */
+  @Override
   public void close() {
     sslEngine_.closeOutbound();
     super.close();
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean startConnect() throws IOException {
     if (this.isOpen()) {
       return true;
@@ -289,6 +286,7 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean finishConnect() throws IOException {
     return super.finishConnect() && doHandShake();
   }
@@ -333,15 +331,7 @@ public class TNonblockingSSLSocket extends TNonblockingSocket {
       runnable.run();
     }
     HandshakeStatus hs = sslEngine_.getHandshakeStatus();
-    if (hs == HandshakeStatus.NEED_TASK) {
-      try {
-        throw new TTransportException(
-            TTransportException.UNKNOWN, "handshake shouldn't need additional tasks");
-      } catch (TTransportException e) {
-        return false;
-      }
-    }
-    return true;
+    return hs != HandshakeStatus.NEED_TASK;
   }
 
   private synchronized int doUnwrap() throws IOException {
