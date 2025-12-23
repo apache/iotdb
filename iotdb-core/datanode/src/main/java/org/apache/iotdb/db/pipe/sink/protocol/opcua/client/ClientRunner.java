@@ -25,6 +25,7 @@ import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateVali
 import org.eclipse.milo.opcua.stack.core.Stack;
 import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -39,6 +40,8 @@ import java.util.concurrent.TimeUnit;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
 public class ClientRunner {
+
+  private static final Logger logger = LoggerFactory.getLogger(ClientRunner.class);
 
   static {
     // Required for SecurityPolicy.Aes256_Sha256_RsaPss
@@ -63,8 +66,8 @@ public class ClientRunner {
 
     final File pkiDir = securityTempDir.resolve("pki").toFile();
 
-    System.out.println("security dir: " + securityTempDir.toAbsolutePath());
-    LoggerFactory.getLogger(getClass()).info("security pki dir: {}", pkiDir.getAbsolutePath());
+    logger.info("security dir: " + securityTempDir.toAbsolutePath());
+    logger.info("security pki dir: {}", pkiDir.getAbsolutePath());
 
     final IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
 
@@ -78,8 +81,8 @@ public class ClientRunner {
         endpoints -> endpoints.stream().filter(configurableUaClient.endpointFilter()).findFirst(),
         configBuilder ->
             configBuilder
-                .setApplicationName(LocalizedText.english("eclipse milo opc-ua client"))
-                .setApplicationUri("urn:eclipse:milo:examples:client")
+                .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA client"))
+                .setApplicationUri("urn:apache:iotdb:opc-ua-client")
                 .setKeyPair(loader.getClientKeyPair())
                 .setCertificate(loader.getClientCertificate())
                 .setCertificateChain(loader.getClientCertificateChain())
@@ -96,21 +99,21 @@ public class ClientRunner {
       future.whenCompleteAsync(
           (c, ex) -> {
             if (ex != null) {
-              System.out.println("Error running example: " + ex.getMessage());
+              logger.warn("Error running opc client: ", ex);
             }
 
             try {
               client.disconnect().get();
               Stack.releaseSharedResources();
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (final InterruptedException | ExecutionException e) {
               Thread.currentThread().interrupt();
-              System.out.println("Error disconnecting: {}" + e.getMessage());
+              logger.warn("Error disconnecting: ", e);
             }
 
             try {
               Thread.sleep(1000);
               System.exit(0);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
               Thread.currentThread().interrupt();
               e.printStackTrace();
             }
@@ -119,21 +122,21 @@ public class ClientRunner {
       try {
         configurableUaClient.run(client);
         future.get(100000, TimeUnit.SECONDS);
-      } catch (Throwable t) {
-        System.out.println("Error running client example: " + t.getMessage() + t);
-        future.completeExceptionally(t);
+      } catch (final Exception e) {
+        logger.warn("Error running client example: ", e);
+        future.completeExceptionally(e);
       }
-    } catch (Throwable t) {
-      System.out.println("Error getting client: {}" + t.getMessage());
+    } catch (final Exception e) {
+      logger.warn("Error getting client: ", e);
 
-      future.completeExceptionally(t);
+      future.completeExceptionally(e);
 
       try {
         Thread.sleep(1000);
         System.exit(0);
-      } catch (InterruptedException e) {
+      } catch (InterruptedException interruptedException) {
         Thread.currentThread().interrupt();
-        e.printStackTrace();
+        logger.warn("Interrupted when running client: ", e);
       }
     }
   }

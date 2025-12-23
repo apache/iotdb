@@ -62,13 +62,13 @@ class IoTDBKeyStoreLoaderClient {
 
       final SelfSignedCertificateBuilder builder =
           new SelfSignedCertificateBuilder(keyPair)
-              .setCommonName("Eclipse Milo Example Client")
-              .setOrganization("digitalpetri")
+              .setCommonName("Apache IoTDB OPC UA client")
+              .setOrganization("Apache")
               .setOrganizationalUnit("dev")
-              .setLocalityName("Folsom")
-              .setStateName("CA")
-              .setCountryCode("US")
-              .setApplicationUri("urn:eclipse:milo:examples:client")
+              .setLocalityName("Beijing")
+              .setStateName("China")
+              .setCountryCode("UN")
+              .setApplicationUri("urn:apache:iotdb:opc-ua-client")
               .addDnsName("localhost")
               .addIpAddress("127.0.0.1");
 
