@@ -56,6 +56,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -339,8 +340,17 @@ public class OpcUaSink implements PipeConnector {
         Objects.nonNull(userName)
             ? new UsernameProvider(userName, password)
             : new AnonymousProvider();
+
+    final String securityDir =
+        IoTDBConfig.addDataHomeDir(
+            parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
+                CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                    + File.separatorChar
+                    + UUID.fromString(nodeUrl)));
+
     client = new IoTDBOpcUaClient(nodeUrl, policy, provider);
-    new ClientRunner(client, password).run();
+    new ClientRunner(client, securityDir, password).run();
   }
 
   @Override

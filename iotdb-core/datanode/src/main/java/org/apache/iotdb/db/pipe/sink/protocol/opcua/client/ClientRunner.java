@@ -51,28 +51,31 @@ public class ClientRunner {
   private final CompletableFuture<OpcUaClient> future = new CompletableFuture<>();
 
   private final IoTDBOpcUaClient configurableUaClient;
+  private final Path securityDir;
   private final String password;
 
-  public ClientRunner(final IoTDBOpcUaClient configurableUaClient, final String password) {
+  public ClientRunner(
+      final IoTDBOpcUaClient configurableUaClient,
+      final String securityDir,
+      final String password) {
     this.configurableUaClient = configurableUaClient;
+    this.securityDir = Paths.get(securityDir);
     this.password = password;
   }
 
   private OpcUaClient createClient() throws Exception {
-    final Path securityTempDir =
-        Paths.get(System.getProperty("java.io.tmpdir"), "client", "security");
-    Files.createDirectories(securityTempDir);
-    if (!Files.exists(securityTempDir)) {
-      throw new Exception("unable to create security dir: " + securityTempDir);
+    Files.createDirectories(securityDir);
+    if (!Files.exists(securityDir)) {
+      throw new Exception("unable to create security dir: " + securityDir);
     }
 
-    final File pkiDir = securityTempDir.resolve("pki").toFile();
+    final File pkiDir = securityDir.resolve("pki").toFile();
 
-    logger.info("security dir: {}", securityTempDir.toAbsolutePath());
+    logger.info("security dir: {}", securityDir.toAbsolutePath());
     logger.info("security pki dir: {}", pkiDir.getAbsolutePath());
 
     final IoTDBKeyStoreLoaderClient loader =
-        new IoTDBKeyStoreLoaderClient().load(securityTempDir, password.toCharArray());
+        new IoTDBKeyStoreLoaderClient().load(securityDir, password.toCharArray());
 
     final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
 
