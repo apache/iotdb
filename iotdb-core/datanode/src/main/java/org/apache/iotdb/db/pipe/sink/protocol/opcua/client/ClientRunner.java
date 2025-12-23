@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateValidator;
@@ -115,35 +118,17 @@ public class ClientRunner {
               Thread.currentThread().interrupt();
               logger.warn("Error disconnecting: ", e);
             }
-
-            try {
-              Thread.sleep(1000);
-              System.exit(0);
-            } catch (final InterruptedException e) {
-              Thread.currentThread().interrupt();
-              e.printStackTrace();
-            }
           });
 
       try {
         configurableUaClient.run(client);
-        future.get(100000, TimeUnit.SECONDS);
+        future.get(
+            PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs(), TimeUnit.MICROSECONDS);
       } catch (final Exception e) {
-        logger.warn("Error running client example: ", e);
-        future.completeExceptionally(e);
+        throw new PipeException("Error running client example.", e);
       }
     } catch (final Exception e) {
-      logger.warn("Error getting client: ", e);
-
-      future.completeExceptionally(e);
-
-      try {
-        Thread.sleep(1000);
-        System.exit(0);
-      } catch (InterruptedException interruptedException) {
-        Thread.currentThread().interrupt();
-        logger.warn("Interrupted when running client: ", e);
-      }
+      throw new PipeException("Error getting client.", e);
     }
   }
 }
