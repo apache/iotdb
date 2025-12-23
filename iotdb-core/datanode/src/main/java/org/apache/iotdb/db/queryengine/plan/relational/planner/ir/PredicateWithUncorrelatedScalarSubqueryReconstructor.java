@@ -93,8 +93,6 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
                 context, (SubqueryExpression) left, analysis.getWith());
         result.ifPresent(comparisonExpression::setShadowLeft);
       }
-      comparisonExpression.setLeft(left);
-      comparisonExpression.setRight(right);
     }
   }
 
