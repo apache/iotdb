@@ -150,7 +150,7 @@ public class IoTDBOpcUaClient {
         throw new PipeException(
             "Failed to transfer dataValue after successfully created nodes, error: " + writeStatus);
       }
-    } else {
+    } else if (writeStatus.getValue() != StatusCode.GOOD.getValue()){
       throw new PipeException("Failed to transfer dataValue, error: " + writeStatus);
     }
   }
@@ -233,7 +233,7 @@ public class IoTDBOpcUaClient {
         LocalizedText.english(name),
         Unsigned.uint(0), // writeMask
         Unsigned.uint(0), // userWriteMask
-        new Variant(initialValue),
+        initialValue,
         objectType,
         ValueRanks.Scalar,
         null, // arrayDimensions
