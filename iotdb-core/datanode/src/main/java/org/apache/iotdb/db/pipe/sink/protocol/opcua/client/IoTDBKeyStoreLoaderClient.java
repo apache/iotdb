@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,6 +40,8 @@ import java.util.regex.Pattern;
 
 class IoTDBKeyStoreLoaderClient {
 
+  private static final Logger logger = LoggerFactory.getLogger(ClientRunner.class);
+
   private static final Pattern IP_ADDR_PATTERN =
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
@@ -52,7 +56,7 @@ class IoTDBKeyStoreLoaderClient {
 
     final Path serverKeyStore = baseDir.resolve("example-client.pfx");
 
-    System.out.println("Loading KeyStore at " + serverKeyStore);
+    logger.info("Loading KeyStore at {}.", serverKeyStore);
 
     if (!Files.exists(serverKeyStore)) {
       keyStore.load(null, password);

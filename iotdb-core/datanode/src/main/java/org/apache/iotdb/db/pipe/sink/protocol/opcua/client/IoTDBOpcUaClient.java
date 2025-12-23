@@ -67,7 +67,7 @@ public class IoTDBOpcUaClient {
   private final SecurityPolicy securityPolicy;
   private final IdentityProvider identityProvider;
   private OpcUaClient client;
-  private boolean historizing;
+  private final boolean historizing;
 
   public IoTDBOpcUaClient(
       final String nodeUrl,
