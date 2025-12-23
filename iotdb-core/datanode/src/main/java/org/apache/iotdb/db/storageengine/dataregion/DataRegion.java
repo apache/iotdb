@@ -2968,7 +2968,7 @@ public class DataRegion implements IDataRegionForQuery {
               String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
               for (int i = 0; i < ideviceIdSegments.length; i++) {
                 ideviceIdSegments[i] =
-                    config.getRestrictObjectLimit()
+                    CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
                         ? relativePath.getName(i).toString()
                         : new String(
                             BaseEncoding.base32()
@@ -2978,7 +2978,7 @@ public class DataRegion implements IDataRegionForQuery {
               }
               IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
               String measurementId =
-                  config.getRestrictObjectLimit()
+                  CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
                       ? relativePath.getName(relativePath.getNameCount() - 2).toString()
                       : new String(
                           BaseEncoding.base32()

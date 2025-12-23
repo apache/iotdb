@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -304,7 +305,7 @@ public class TierManager {
       objectPath
           .append(File.separator)
           .append(
-              config.getRestrictObjectLimit()
+              CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
                   ? str
                   : BaseEncoding.base32()
                       .omitPadding()
