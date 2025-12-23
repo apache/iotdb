@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -516,7 +515,7 @@ public class CompactionUtils {
       return;
     }
     boolean restrictObjectLimit =
-        IoTDBDescriptor.getInstance().getConfig().getRestrictObjectLimit();
+        CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit();
     for (File tableDir : tableDirs) {
       if (!tableDir.isDirectory()) {
         continue;
