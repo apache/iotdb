@@ -146,7 +146,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 1];
-        folderSegments[0] = sink.getUnQualifiedDatabaseName();
+        folderSegments[0] = sink.getDatabaseName();
 
         for (int j = 0; j < segments.length; ++j) {
           folderSegments[j + 1] =
@@ -382,7 +382,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(sink.getUnQualifiedDatabaseName());
+        final StringBuilder idBuilder = new StringBuilder(sink.getDatabaseName());
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)

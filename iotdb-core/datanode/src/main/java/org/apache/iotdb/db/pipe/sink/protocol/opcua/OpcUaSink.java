@@ -128,7 +128,7 @@ public class OpcUaSink implements PipeConnector {
 
   private String serverKey;
   boolean isClientServerModel;
-  String unQualifiedDatabaseName;
+  String databaseName;
   String placeHolder;
   @Nullable String valueName;
   @Nullable String qualityName;
@@ -159,12 +159,15 @@ public class OpcUaSink implements PipeConnector {
 
     final PipeParameters parameters = validator.getParameters();
     if (validator
-        .getParameters()
-        .hasAnyAttributes(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY)) {
+            .getParameters()
+            .hasAnyAttributes(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY)
+        || parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
+            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE)) {
       validator.validate(
           CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
           String.format(
-              "When the OPC UA sink points to an outer server or specifies 'with-quality', the %s or %s must be %s.",
+              "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or %s must be %s.",
               CONNECTOR_OPC_UA_MODEL_KEY,
               SINK_OPC_UA_MODEL_KEY,
               CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
@@ -207,16 +210,22 @@ public class OpcUaSink implements PipeConnector {
     final DataRegion region =
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
-    unQualifiedDatabaseName =
-        Objects.nonNull(region)
-            ? PathUtils.unQualifyDatabaseName(region.getDatabaseName())
-            : "__temp_db";
+    databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "__temp_db";
+
+    if (withQuality && PathUtils.isTableModelDatabase(databaseName)) {
+      throw new PipeException(
+          "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.");
+    }
 
     final String nodeUrl =
         parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
     if (Objects.isNull(nodeUrl)) {
       customizeServer(parameters);
     } else {
+      if (PathUtils.isTableModelDatabase(databaseName)) {
+        throw new PipeException(
+            "When the OPC UA sink points to an outer server, the table model data is not supported.");
+      }
       customizeClient(nodeUrl, parameters);
     }
   }
@@ -478,8 +487,8 @@ public class OpcUaSink implements PipeConnector {
     return isClientServerModel;
   }
 
-  public String getUnQualifiedDatabaseName() {
-    return unQualifiedDatabaseName;
+  public String getDatabaseName() {
+    return databaseName;
   }
 
   public String getPlaceHolder() {
