@@ -60,6 +60,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -902,19 +903,32 @@ public class FragmentInstanceContext extends QueryContext {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
           if (queryContextSet.isEmpty()) {
-            LOGGER.debug(
-                "TVList {} is released by the query, FragmentInstance Id is {}",
-                tvList,
-                this.getId());
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  tvList,
+                  this.getId());
+            }
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
             tvList.clear();
           } else {
+            // Transfer memory to next query. It must be exception-safe as this method is called
+            // during FragmentInstanceExecution cleanup. Any exception during this process could
+            // prevent proper resource cleanup and cause memory leaks.
+            Pair<Long, Long> releasedBytes =
+                memoryReservationManager.releaseMemoryVirtually(tvList.calculateRamSize());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            LOGGER.debug(
-                "TVList {} is now owned by another query, FragmentInstance Id is {}",
-                tvList,
-                queryContext.getId());
+            queryContext
+                .getMemoryReservationContext()
+                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  tvList,
+                  queryContext.getId());
+            }
             tvList.setOwnerQuery(queryContext);
           }
         }

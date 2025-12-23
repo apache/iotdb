@@ -473,6 +473,7 @@ public class CommonConfig {
 
   private String auditableOperationResult = "SUCCESS, FAIL";
   private int pathLogMaxSize = 100;
+  private boolean restrictObjectLimit = false;
 
   CommonConfig() {
     // Empty constructor
@@ -2727,5 +2728,13 @@ public class CommonConfig {
 
   public void setAuditableOperationResult(String auditableOperationResult) {
     this.auditableOperationResult = auditableOperationResult;
+  }
+
+  public boolean isRestrictObjectLimit() {
+    return restrictObjectLimit;
+  }
+
+  public void setRestrictObjectLimit(boolean restrictObjectLimit) {
+    this.restrictObjectLimit = restrictObjectLimit;
   }
 }

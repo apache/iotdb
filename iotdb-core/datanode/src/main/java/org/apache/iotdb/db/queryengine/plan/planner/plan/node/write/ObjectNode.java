@@ -255,6 +255,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       ReadWriteIOUtils.write(getType().getNodeType(), stream);
       byte[] contents = new byte[contentLength];
       boolean readSuccess = false;
+      IOException ioException = null;
       for (int i = 0; i < 2; i++) {
         Optional<File> objectFile =
             TierManager.getInstance().getAbsoluteObjectFilePath(filePath.toString());
@@ -263,7 +264,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
             readContentFromFile(objectFile.get(), contents);
             readSuccess = true;
           } catch (IOException e) {
-            LOGGER.error("Error when read object file {}.", objectFile.get(), e);
+            ioException = e;
           }
           if (readSuccess) {
             break;
@@ -276,12 +277,15 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
             readContentFromFile(objectTmpFile.get(), contents);
             readSuccess = true;
           } catch (IOException e) {
-            LOGGER.error("Error when read tmp object file {}.", objectTmpFile.get(), e);
+            ioException = e;
           }
           if (readSuccess) {
             break;
           }
         }
+      }
+      if (!readSuccess && LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Error when read object file {}.", filePath.toString(), ioException);
       }
       ReadWriteIOUtils.write(readSuccess && isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);

@@ -17,30 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.memory;
+package org.apache.iotdb.pipe.api.collector;
 
-import org.apache.tsfile.utils.Pair;
+import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-public class FakedMemoryReservationManager implements MemoryReservationManager {
+import java.util.List;
 
-  @Override
-  public void reserveMemoryCumulatively(long size) {}
+/** Transform data to {@link TabletInsertionEvent}. */
+public interface DataCollector {
 
-  @Override
-  public void reserveMemoryImmediately() {}
-
-  @Override
-  public void releaseMemoryCumulatively(long size) {}
-
-  @Override
-  public void releaseAllReservedMemory() {}
-
-  @Override
-  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
-    return new Pair<>(0L, 0L);
-  }
-
-  @Override
-  public void reserveMemoryVirtually(
-      final long bytesToBeReserved, final long bytesAlreadyReserved) {}
+  /**
+   * Transform data to {@link TabletInsertionEvent}.
+   *
+   * @param shouldReport Whether to report progress for generated events
+   * @see Row
+   */
+  List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport);
 }

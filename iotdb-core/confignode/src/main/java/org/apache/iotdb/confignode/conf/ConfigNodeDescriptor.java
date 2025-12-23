@@ -368,11 +368,6 @@ public class ConfigNodeDescriptor {
               readConsistencyLevel));
     }
 
-    conf.setRestrictObjectLimit(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "restrict_object_limit", String.valueOf(conf.getRestrictObjectLimit()))));
-
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
