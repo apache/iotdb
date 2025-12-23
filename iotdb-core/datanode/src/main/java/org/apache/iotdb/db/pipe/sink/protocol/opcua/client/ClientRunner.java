@@ -25,7 +25,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateValidator;
-import org.eclipse.milo.opcua.stack.core.Stack;
 import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.slf4j.Logger;
@@ -113,7 +112,6 @@ public class ClientRunner {
 
             try {
               client.disconnect().get();
-              Stack.releaseSharedResources();
             } catch (final InterruptedException | ExecutionException e) {
               Thread.currentThread().interrupt();
               logger.warn("Error disconnecting: ", e);
