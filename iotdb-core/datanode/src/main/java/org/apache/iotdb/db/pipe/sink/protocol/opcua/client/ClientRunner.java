@@ -136,12 +136,5 @@ public class ClientRunner {
         e.printStackTrace();
       }
     }
-
-    try {
-      Thread.sleep(999_999_999);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      e.printStackTrace();
-    }
   }
 }
