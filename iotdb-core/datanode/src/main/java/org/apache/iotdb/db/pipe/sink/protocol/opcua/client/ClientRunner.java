@@ -123,10 +123,10 @@ public class ClientRunner {
         future.get(
             PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs(), TimeUnit.MICROSECONDS);
       } catch (final Exception e) {
-        throw new PipeException("Error running client example: " + e.getMessage());
+        throw new PipeException("Error running opc client: " + e.getMessage());
       }
     } catch (final Exception e) {
-      throw new PipeException("Error getting client: " + e.getMessage());
+      throw new PipeException("Error getting opc client: " + e.getMessage());
     }
   }
 }
