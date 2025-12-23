@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -35,9 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Security;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 

@@ -52,6 +52,7 @@ import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -139,20 +140,37 @@ public class IoTDBOpcUaClient {
         if (!result.getStatusCode().equals(StatusCode.GOOD)
             && !(result.getStatusCode().getValue() == StatusCodes.Bad_NodeIdExists)) {
           throw new PipeException(
-              "Failed to create nodes after transfer data value, write status: "
-                  + writeStatus
-                  + ", creation status: "
-                  + addStatus);
+              "Failed to create nodes after transfer data value, creation status: "
+                  + addStatus
+                  + getErrorString(segments, opcDataType, value, writeStatus));
         }
       }
       writeStatus = client.writeValue(nodeId, dataValue).get();
       if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
         throw new PipeException(
-            "Failed to transfer dataValue after successfully created nodes, error: " + writeStatus);
+            "Failed to transfer dataValue after successfully created nodes"
+                + getErrorString(segments, opcDataType, value, writeStatus));
       }
-    } else if (writeStatus.getValue() != StatusCode.GOOD.getValue()){
-      throw new PipeException("Failed to transfer dataValue, error: " + writeStatus);
+    } else if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
+      throw new PipeException(
+          "Failed to transfer dataValue"
+              + getErrorString(segments, opcDataType, value, writeStatus));
     }
+  }
+
+  private static String getErrorString(
+      final String[] segments,
+      final NodeId dataType,
+      final Object value,
+      final StatusCode writeStatus) {
+    return ", segments: "
+        + Arrays.toString(segments)
+        + ", dataType: "
+        + dataType
+        + ", value: "
+        + value
+        + ", error: "
+        + writeStatus;
   }
 
   public List<AddNodesItem> getNodesToAdd(
