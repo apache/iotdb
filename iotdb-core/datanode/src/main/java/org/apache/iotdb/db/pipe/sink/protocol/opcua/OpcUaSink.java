@@ -213,7 +213,7 @@ public class OpcUaSink implements PipeConnector {
     final DataRegion region =
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
-    databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "__temp_db";
+    databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "root.__temp_db";
 
     if (withQuality && PathUtils.isTableModelDatabase(databaseName)) {
       throw new PipeException(
