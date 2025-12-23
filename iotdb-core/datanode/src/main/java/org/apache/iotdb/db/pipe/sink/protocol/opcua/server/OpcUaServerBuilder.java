@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -85,15 +84,6 @@ public class OpcUaServerBuilder implements Closeable {
   private Path securityDir;
   private boolean enableAnonymousAccess;
   private DefaultTrustListManager trustListManager;
-
-  public OpcUaServerBuilder() {
-    tcpBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
-    httpsBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
-    user = PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-    password = PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-    securityDir = Paths.get(PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
-    enableAnonymousAccess = PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
-  }
 
   public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
