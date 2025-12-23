@@ -66,7 +66,7 @@ class IoTDBKeyStoreLoaderClient {
               .setOrganizationalUnit("dev")
               .setLocalityName("Beijing")
               .setStateName("China")
-              .setCountryCode("UN")
+              .setCountryCode("CN")
               .setApplicationUri("urn:apache:iotdb:opc-ua-client")
               .addDnsName("localhost")
               .addIpAddress("127.0.0.1");

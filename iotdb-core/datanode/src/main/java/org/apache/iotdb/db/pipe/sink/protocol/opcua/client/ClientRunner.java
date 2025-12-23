@@ -50,8 +50,6 @@ public class ClientRunner {
     Security.addProvider(new BouncyCastleProvider());
   }
 
-  private final CompletableFuture<OpcUaClient> future = new CompletableFuture<>();
-
   private final IoTDBOpcUaClient configurableUaClient;
   private final Path securityDir;
   private final String password;
@@ -104,29 +102,15 @@ public class ClientRunner {
     try {
       final OpcUaClient client = createClient();
 
-      future.whenCompleteAsync(
-          (c, ex) -> {
-            if (ex != null) {
-              logger.warn("Error running opc client: ", ex);
-            }
-
-            try {
-              client.disconnect().get();
-            } catch (final InterruptedException | ExecutionException e) {
-              Thread.currentThread().interrupt();
-              logger.warn("Error disconnecting: ", e);
-            }
-          });
-
       try {
         configurableUaClient.run(client);
-        future.get(
-            PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs(), TimeUnit.MICROSECONDS);
       } catch (final Exception e) {
-        throw new PipeException("Error running opc client: " + e.getMessage());
+        throw new PipeException(
+            "Error running opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage());
       }
     } catch (final Exception e) {
-      throw new PipeException("Error getting opc client: " + e.getMessage());
+      throw new PipeException(
+          "Error getting opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage());
     }
   }
 }
