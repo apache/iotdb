@@ -510,6 +510,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case STRING:
         return Identifiers.String;
       case VECTOR:
+      case OBJECT:
       case UNKNOWN:
       default:
         throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
