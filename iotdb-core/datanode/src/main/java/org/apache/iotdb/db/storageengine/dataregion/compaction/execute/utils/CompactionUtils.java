@@ -628,6 +628,7 @@ public class CompactionUtils {
     if (size <= 0) {
       return;
     }
+    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
     RateLimiter rateLimiter = CompactionTaskManager.getInstance().getCompactionReadRateLimiter();
     while (size >= Integer.MAX_VALUE) {
       size -= Integer.MAX_VALUE;
