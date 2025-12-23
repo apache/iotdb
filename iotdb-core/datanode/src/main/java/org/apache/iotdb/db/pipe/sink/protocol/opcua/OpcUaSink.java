@@ -40,6 +40,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
@@ -347,7 +348,7 @@ public class OpcUaSink implements PipeConnector {
                 Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
                 CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
                     + File.separatorChar
-                    + UUID.fromString(nodeUrl)));
+                    + UUID.nameUUIDFromBytes(nodeUrl.getBytes(TSFileConfig.STRING_CHARSET))));
 
     client = new IoTDBOpcUaClient(nodeUrl, policy, provider);
     new ClientRunner(client, securityDir, password).run();
