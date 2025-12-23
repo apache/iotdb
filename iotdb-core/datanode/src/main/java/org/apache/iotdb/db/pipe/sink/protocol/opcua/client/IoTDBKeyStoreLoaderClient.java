@@ -42,13 +42,12 @@ class IoTDBKeyStoreLoaderClient {
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
   private static final String CLIENT_ALIAS = "client-ai";
-  private static final char[] PASSWORD = "root".toCharArray();
 
   private X509Certificate[] clientCertificateChain;
   private X509Certificate clientCertificate;
   private KeyPair clientKeyPair;
 
-  IoTDBKeyStoreLoaderClient load(Path baseDir) throws Exception {
+  IoTDBKeyStoreLoaderClient load(final Path baseDir, final char[] password) throws Exception {
     final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
     final Path serverKeyStore = baseDir.resolve("example-client.pfx");
@@ -56,7 +55,7 @@ class IoTDBKeyStoreLoaderClient {
     System.out.println("Loading KeyStore at " + serverKeyStore);
 
     if (!Files.exists(serverKeyStore)) {
-      keyStore.load(null, PASSWORD);
+      keyStore.load(null, password);
 
       final KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
@@ -84,17 +83,17 @@ class IoTDBKeyStoreLoaderClient {
       final X509Certificate certificate = builder.build();
 
       keyStore.setKeyEntry(
-          CLIENT_ALIAS, keyPair.getPrivate(), PASSWORD, new X509Certificate[] {certificate});
+          CLIENT_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
       try (OutputStream out = Files.newOutputStream(serverKeyStore)) {
-        keyStore.store(out, PASSWORD);
+        keyStore.store(out, password);
       }
     } else {
       try (InputStream in = Files.newInputStream(serverKeyStore)) {
-        keyStore.load(in, PASSWORD);
+        keyStore.load(in, password);
       }
     }
 
-    final Key clientPrivateKey = keyStore.getKey(CLIENT_ALIAS, PASSWORD);
+    final Key clientPrivateKey = keyStore.getKey(CLIENT_ALIAS, password);
     if (clientPrivateKey instanceof PrivateKey) {
       clientCertificate = (X509Certificate) keyStore.getCertificate(CLIENT_ALIAS);
 

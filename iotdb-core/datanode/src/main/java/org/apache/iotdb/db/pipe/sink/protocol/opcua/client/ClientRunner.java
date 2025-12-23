@@ -51,9 +51,11 @@ public class ClientRunner {
   private final CompletableFuture<OpcUaClient> future = new CompletableFuture<>();
 
   private final IoTDBOpcUaClient configurableUaClient;
+  private final String password;
 
-  public ClientRunner(IoTDBOpcUaClient configurableUaClient) {
+  public ClientRunner(final IoTDBOpcUaClient configurableUaClient, final String password) {
     this.configurableUaClient = configurableUaClient;
+    this.password = password;
   }
 
   private OpcUaClient createClient() throws Exception {
@@ -66,10 +68,11 @@ public class ClientRunner {
 
     final File pkiDir = securityTempDir.resolve("pki").toFile();
 
-    logger.info("security dir: " + securityTempDir.toAbsolutePath());
+    logger.info("security dir: {}", securityTempDir.toAbsolutePath());
     logger.info("security pki dir: {}", pkiDir.getAbsolutePath());
 
-    final IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
+    final IoTDBKeyStoreLoaderClient loader =
+        new IoTDBKeyStoreLoaderClient().load(securityTempDir, password.toCharArray());
 
     final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
 

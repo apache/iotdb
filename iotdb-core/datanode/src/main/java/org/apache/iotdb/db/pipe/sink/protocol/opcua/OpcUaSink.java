@@ -331,14 +331,16 @@ public class OpcUaSink implements PipeConnector {
     final IdentityProvider provider;
     final String userName =
         parameters.getStringByKeys(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY);
+    final String password =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
+            CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
     provider =
         Objects.nonNull(userName)
-            ? new UsernameProvider(
-                userName,
-                parameters.getStringByKeys(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY))
+            ? new UsernameProvider(userName, password)
             : new AnonymousProvider();
     client = new IoTDBOpcUaClient(nodeUrl, policy, provider);
-    new ClientRunner(client).run();
+    new ClientRunner(client, password).run();
   }
 
   @Override
