@@ -82,6 +82,10 @@ public class LoadTsFileMemoryManager {
   }
 
   public synchronized void releaseToQuery(final long sizeInBytes) {
+    if (sizeInBytes <= 0) {
+      throw new IllegalArgumentException(
+          String.format("Load: Invalid memory size %d bytes, must be positive", sizeInBytes));
+    }
     if (usedMemorySizeInBytes.get() < sizeInBytes) {
       LOGGER.error(
           "Load: Attempting to release more memory ({}) than allocated ({})",
@@ -96,6 +100,10 @@ public class LoadTsFileMemoryManager {
 
   public synchronized LoadTsFileMemoryBlock allocateMemoryBlock(long sizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
+    if (sizeInBytes <= 0) {
+      throw new IllegalArgumentException(
+          String.format("Load: Invalid memory size %d bytes, must be positive", sizeInBytes));
+    }
     try {
       forceAllocateFromQuery(sizeInBytes);
       if (LOGGER.isDebugEnabled()) {
@@ -120,7 +128,16 @@ public class LoadTsFileMemoryManager {
    */
   synchronized void forceResize(LoadTsFileMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
-    if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+    if (newSizeInBytes < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Load: Invalid memory size %d bytes, must be non-negative", newSizeInBytes));
+    }
+    if (memoryBlock.getTotalMemorySizeInBytes() == newSizeInBytes) {
+      return;
+    }
+
+    if (memoryBlock.getTotalMemorySizeInBytes() > newSizeInBytes) {
 
       if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
         LOGGER.error(

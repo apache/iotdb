@@ -430,6 +430,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           chunkWriter.write(time, (Binary) value);
           break;
         default:

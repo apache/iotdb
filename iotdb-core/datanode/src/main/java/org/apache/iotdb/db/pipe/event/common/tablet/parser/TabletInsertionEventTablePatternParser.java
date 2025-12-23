@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -99,7 +100,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
 
   @Override
   public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    if (LOGGER.isDebugEnabled()) {
+    if (LOGGER.isWarnEnabled()) {
       LOGGER.warn("TablePatternParser does not support row by row processing");
     }
     return Collections.emptyList();
@@ -107,8 +108,17 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
 
   @Override
   public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    if (LOGGER.isDebugEnabled()) {
+    if (LOGGER.isWarnEnabled()) {
       LOGGER.warn("TablePatternParser does not support tablet processing");
+    }
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn("TablePatternParser does not support tablet processing with collect");
     }
     return Collections.emptyList();
   }

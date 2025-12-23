@@ -837,12 +837,12 @@ public class Coordinator {
 
   private void clearExpiredQueriesInfoTask() {
     int queryCostStatWindow = CONFIG.getQueryCostStatWindow();
-    if (queryCostStatWindow <= 0) {
+    if (queryCostStatWindow <= 0 && currentQueriesInfo.isEmpty()) {
       return;
     }
 
     // the QueryInfo smaller than expired time will be cleared
-    long expiredTime = System.currentTimeMillis() - queryCostStatWindow * 60 * 1_000L;
+    long expiredTime = System.currentTimeMillis() - 1_000L * 60 * queryCostStatWindow;
     // peek head, the head QueryInfo is in the time window, return directly
     QueryInfo queryInfo = currentQueriesInfo.peekFirst();
     if (queryInfo == null || queryInfo.endTime >= expiredTime) {
@@ -865,6 +865,39 @@ public class Coordinator {
     }
   }
 
+  public List<StatedQueriesInfo> getRunningQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    return getAllQueryExecutions().stream()
+        .map(
+            queryExecution ->
+                new StatedQueriesInfo(
+                    QueryState.RUNNING,
+                    queryExecution.getQueryId(),
+                    queryExecution.getStartExecutionTime(),
+                    DEFAULT_END_TIME,
+                    (currentTime - queryExecution.getStartExecutionTime()) / 1000,
+                    queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+                    queryExecution.getUser(),
+                    queryExecution.getClientHostname()))
+        .collect(Collectors.toList());
+  }
+
+  public List<StatedQueriesInfo> getFinishedQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    List<StatedQueriesInfo> result = new ArrayList<>();
+    Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
+    while (historyQueriesIterator.hasNext()) {
+      QueryInfo queryInfo = historyQueriesIterator.next();
+      if (queryInfo.endTime < needRecordTime) {
+        // out of time window, ignore it
+      } else {
+        result.add(new StatedQueriesInfo(QueryState.FINISHED, queryInfo));
+      }
+    }
+    return result;
+  }
+
   public List<StatedQueriesInfo> getCurrentQueriesInfo() {
     List<IQueryExecution> runningQueries = getAllQueryExecutions();
     Set<String> runningQueryIdSet =
@@ -875,7 +908,7 @@ public class Coordinator {
     Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
     Set<String> repetitionQueryIdSet = new HashSet<>();
     long currentTime = System.currentTimeMillis();
-    long needRecordTime = currentTime - CONFIG.getQueryCostStatWindow() * 60 * 1_000L;
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
     while (historyQueriesIterator.hasNext()) {
       QueryInfo queryInfo = historyQueriesIterator.next();
       if (queryInfo.endTime < needRecordTime) {

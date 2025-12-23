@@ -182,6 +182,18 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
   public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
 
+  public static final String CONNECTOR_OPC_UA_WITH_QUALITY_KEY = "connector.opcua.with-quality";
+  public static final String SINK_OPC_UA_WITH_QUALITY_KEY = "sink.opcua.with-quality";
+  public static final boolean CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE = false;
+
+  public static final String CONNECTOR_OPC_UA_VALUE_NAME_KEY = "connector.opcua.value-name";
+  public static final String SINK_OPC_UA_VALUE_NAME_KEY = "sink.opcua.value-name";
+  public static final String CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE = "value";
+
+  public static final String CONNECTOR_OPC_UA_QUALITY_NAME_KEY = "connector.opcua.quality-name";
+  public static final String SINK_OPC_UA_QUALITY_NAME_KEY = "sink.opcua.quality-name";
+  public static final String CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE = "quality";
+
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
   public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;

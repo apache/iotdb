@@ -390,6 +390,8 @@ public class InformationSchema {
         new TagColumnSchema(ColumnHeaderConstant.BIN, TSDataType.STRING));
     queriesCostsHistogramTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.NUMS, TSDataType.INT32));
+    queriesCostsHistogramTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.INT32));
     queriesCostsHistogramTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES_COSTS_HISTOGRAM, queriesCostsHistogramTable);
   }

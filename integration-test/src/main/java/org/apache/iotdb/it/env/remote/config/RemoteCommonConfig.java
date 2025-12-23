@@ -477,4 +477,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
     return this;
   }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    return this;
+  }
 }

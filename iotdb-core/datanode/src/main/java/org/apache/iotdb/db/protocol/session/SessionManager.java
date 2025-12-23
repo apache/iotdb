@@ -255,6 +255,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
+    return closeSession(session, releaseByQueryId, true);
+  }
+
+  public boolean closeSession(
+      IClientSession session, LongConsumer releaseByQueryId, boolean mustCurrent) {
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -264,11 +269,11 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
+    if (mustCurrent && session1 != null && session != session1) {
       LOGGER.info(
           String.format(
               "The client-%s is trying to close another session %s, pls check if it's a bug",
-              session, session1));
+              session1, session));
       return false;
     } else {
       LOGGER.info(String.format("Session-%s is closing", session));

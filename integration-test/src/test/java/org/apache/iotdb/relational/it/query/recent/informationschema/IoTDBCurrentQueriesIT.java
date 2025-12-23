@@ -76,6 +76,8 @@ public class IoTDBCurrentQueriesIT {
   @Test
   public void testCurrentQueries() {
     try {
+      Assert.assertEquals(3, QUERIES_COSTS_HISTOGRAM_COLUMN_NUM);
+
       Connection connection =
           EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
       Statement statement = connection.createStatement();
@@ -83,7 +85,7 @@ public class IoTDBCurrentQueriesIT {
       statement.execute("set configuration \"query_cost_stat_window\"='1'");
 
       // 1. query current_queries table
-      String sql = "SELECT * FROM current_queries";
+      String sql = "SELECT * FROM current_queries WHERE state='RUNNING'";
       ResultSet resultSet = statement.executeQuery(sql);
       ResultSetMetaData metaData = resultSet.getMetaData();
       Assert.assertEquals(CURRENT_QUERIES_COLUMN_NUM, metaData.getColumnCount());
@@ -116,7 +118,7 @@ public class IoTDBCurrentQueriesIT {
       Assert.assertEquals(61, rowNum);
 
       // 3. requery current_queries table
-      sql = "SELECT * FROM current_queries";
+      sql = "SELECT * FROM current_queries WHERE state='FINISHED'";
       resultSet = statement.executeQuery(sql);
       metaData = resultSet.getMetaData();
       Assert.assertEquals(CURRENT_QUERIES_COLUMN_NUM, metaData.getColumnCount());
@@ -128,13 +130,14 @@ public class IoTDBCurrentQueriesIT {
         }
         rowNum++;
       }
-      // three rows in the result, 2 FINISHED and 1 RUNNING
-      Assert.assertEquals(3, rowNum);
+      // two rows in the result, 2 FINISHED
+      Assert.assertEquals(2, rowNum);
       Assert.assertEquals(2, finishedQueries);
       resultSet.close();
 
       // 4. test the expired QueryInfo was evicted
       Thread.sleep(61_001);
+      sql = "SELECT * FROM current_queries";
       resultSet = statement.executeQuery(sql);
       rowNum = 0;
       while (resultSet.next()) {
@@ -161,6 +164,9 @@ public class IoTDBCurrentQueriesIT {
 
     // 5. test privilege
     testPrivilege();
+
+    // 6. test more configurations
+    testMoreConfigurations();
   }
 
   private void testPrivilege() {
@@ -200,6 +206,58 @@ public class IoTDBCurrentQueriesIT {
       Assert.assertEquals(
           "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
           e.getMessage());
+    }
+  }
+
+  private void testMoreConfigurations() {
+    try {
+      Connection connection =
+          EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, BaseEnv.TABLE_SQL_DIALECT);
+      Statement statement = connection.createStatement();
+      statement.execute("USE information_schema");
+
+      statement.execute("set configuration \"query_cost_stat_window\"='0'");
+      Thread.sleep(1_001);
+
+      // query_cost_stat_window = 0, history queries are cleared
+      String sql = "SELECT * FROM current_queries WHERE state='FINISHED'";
+      ResultSet resultSet = statement.executeQuery(sql);
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      Assert.assertEquals(CURRENT_QUERIES_COLUMN_NUM, metaData.getColumnCount());
+      int rowNum = 0;
+      while (resultSet.next()) {
+        rowNum++;
+      }
+      Assert.assertEquals(0, rowNum);
+      resultSet.close();
+
+      statement.execute("set configuration \"query_cost_stat_window\"='1040000000'");
+      // make query_cost_stat_window very large but not overflow
+      resultSet = statement.executeQuery(sql);
+      while (resultSet.next()) {
+        rowNum++;
+      }
+      resultSet.close();
+
+      resultSet = statement.executeQuery(sql);
+      rowNum = 0;
+      while (resultSet.next()) {
+        rowNum++;
+      }
+      // the history SQL is recorded
+      Assert.assertEquals(1, rowNum);
+      resultSet.close();
+
+      // make query_cost_stat_window overflow
+      try {
+        statement.execute("set configuration \"query_cost_stat_window\"='10400000000'");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("java.lang.NumberFormatException: For input string: \"10400000000\""));
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
     }
   }
 }

@@ -175,7 +175,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                measurementSchemas));
       }
     }
   }

@@ -369,10 +369,10 @@ public class WriteBackSink implements PipeConnector {
   @Override
   public void close() throws Exception {
     if (session != null) {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
     }
     if (treeSession != null) {
-      SESSION_MANAGER.closeSession(treeSession, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(treeSession, COORDINATOR::cleanupQueryExecution, false);
     }
   }
 

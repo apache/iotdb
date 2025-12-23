@@ -283,7 +283,7 @@ public class RepairDataFileScanUtil {
       throws IOException {
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     reader.getDeviceTimeseriesMetadata(
-        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true);
+        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true, null);
     long actualDeviceStartTime = Long.MAX_VALUE;
     long actualDeviceEndTime = Long.MIN_VALUE;
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {

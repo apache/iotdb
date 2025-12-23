@@ -367,24 +367,35 @@ public class PipeParameters {
 
   private static class KeyReducer {
 
-    private static final Set<String> PREFIXES = new HashSet<>();
+    private static final Set<String> FIRST_PREFIXES = new HashSet<>();
+    private static final Set<String> SECOND_PREFIXES = new HashSet<>();
 
     static {
-      PREFIXES.add("extractor.");
-      PREFIXES.add("source.");
-      PREFIXES.add("processor.");
-      PREFIXES.add("connector.");
-      PREFIXES.add("sink.");
+      FIRST_PREFIXES.add("extractor.");
+      FIRST_PREFIXES.add("source.");
+      FIRST_PREFIXES.add("processor.");
+      FIRST_PREFIXES.add("connector.");
+      FIRST_PREFIXES.add("sink.");
+
+      SECOND_PREFIXES.add("opcua.");
     }
 
-    static String reduce(final String key) {
+    static String reduce(String key) {
       if (key == null) {
         return null;
       }
-      final String lowerCaseKey = key.toLowerCase();
-      for (final String prefix : PREFIXES) {
+      String lowerCaseKey = key.toLowerCase();
+      for (final String prefix : FIRST_PREFIXES) {
         if (lowerCaseKey.startsWith(prefix)) {
-          return key.substring(prefix.length());
+          key = key.substring(prefix.length());
+          lowerCaseKey = lowerCaseKey.substring(prefix.length());
+          break;
+        }
+      }
+      for (final String prefix : SECOND_PREFIXES) {
+        if (lowerCaseKey.startsWith(prefix)) {
+          key = key.substring(prefix.length());
+          break;
         }
       }
       return key;
