@@ -79,6 +79,7 @@ public class AINodeModelManageIT {
           statement,
           "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
           "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
@@ -94,6 +95,7 @@ public class AINodeModelManageIT {
           statement,
           "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
           "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
