@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.function;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
@@ -56,7 +56,7 @@ import static org.junit.Assert.fail;
 
 public class RecordObjectTypeTest {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private File objectDir;
 

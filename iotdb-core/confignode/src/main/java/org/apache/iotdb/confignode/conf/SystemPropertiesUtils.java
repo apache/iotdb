@@ -217,10 +217,13 @@ public class SystemPropertiesUtils {
     if (systemProperties.getProperty("restrict_object_limit", null) != null) {
       boolean restrictObjectLimit =
           Boolean.parseBoolean(systemProperties.getProperty("restrict_object_limit"));
-      if (restrictObjectLimit != conf.getRestrictObjectLimit()) {
+      if (restrictObjectLimit != COMMON_CONFIG.isRestrictObjectLimit()) {
         LOGGER.warn(
-            format, "restrict_object_limit", conf.getRestrictObjectLimit(), restrictObjectLimit);
-        conf.setRestrictObjectLimit(restrictObjectLimit);
+            format,
+            "restrict_object_limit",
+            COMMON_CONFIG.isRestrictObjectLimit(),
+            restrictObjectLimit);
+        COMMON_CONFIG.setRestrictObjectLimit(restrictObjectLimit);
       }
     }
   }
@@ -297,7 +300,7 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOption()));
     systemProperties.setProperty(
-        "restrict_object_limit", String.valueOf(conf.getRestrictObjectLimit()));
+        "restrict_object_limit", String.valueOf(COMMON_CONFIG.isRestrictObjectLimit()));
     systemPropertiesHandler.overwrite(systemProperties);
   }
 
