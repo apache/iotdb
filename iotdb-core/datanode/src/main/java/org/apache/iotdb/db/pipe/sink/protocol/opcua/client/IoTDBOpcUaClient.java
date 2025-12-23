@@ -128,6 +128,10 @@ public class IoTDBOpcUaClient {
       timestamp = utcTimestamp;
       opcDataType = convertToOpcDataType(type);
     }
+    if (Objects.isNull(value)) {
+      return;
+    }
+
     final Variant variant = new Variant(value);
     final DataValue dataValue =
         new DataValue(variant, currentQuality, new DateTime(timestamp), new DateTime());
@@ -221,6 +225,10 @@ public class IoTDBOpcUaClient {
             Identifiers.BaseDataVariableType.expanded()));
 
     return addNodesItems;
+  }
+
+  public void disconnect() throws Exception {
+    client.disconnect().get();
   }
 
   /////////////////////////////// Getter ///////////////////////////////

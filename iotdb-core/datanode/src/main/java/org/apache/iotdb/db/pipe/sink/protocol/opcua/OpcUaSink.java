@@ -178,17 +178,50 @@ public class OpcUaSink implements PipeConnector {
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
+    final boolean withQuality =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
+            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE);
+    valueName =
+        withQuality
+            ? parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_VALUE_NAME_KEY, SINK_OPC_UA_VALUE_NAME_KEY),
+                CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE)
+            : null;
+    qualityName =
+        withQuality
+            ? parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_QUALITY_NAME_KEY, SINK_OPC_UA_QUALITY_NAME_KEY),
+                CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE)
+            : null;
+    isClientServerModel =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+                CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
+            .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE);
+    placeHolder =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_PLACEHOLDER_KEY, SINK_OPC_UA_PLACEHOLDER_KEY),
+            CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE);
+    final DataRegion region =
+        StorageEngine.getInstance()
+            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
+    unQualifiedDatabaseName =
+        Objects.nonNull(region)
+            ? PathUtils.unQualifyDatabaseName(region.getDatabaseName())
+            : "__temp_db";
+
     final String nodeUrl =
         parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
     if (Objects.isNull(nodeUrl)) {
-      customizeServer(parameters, configuration);
+      customizeServer(parameters);
     } else {
       customizeClient(nodeUrl, parameters);
     }
   }
 
-  private void customizeServer(
-      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration) {
+  private void customizeServer(final PipeParameters parameters) {
     final int tcpBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
@@ -225,40 +258,6 @@ public class OpcUaSink implements PipeConnector {
                 CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY,
                 SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY),
             CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE);
-    placeHolder =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_PLACEHOLDER_KEY, SINK_OPC_UA_PLACEHOLDER_KEY),
-            CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE);
-    final boolean withQuality =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
-            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE);
-    valueName =
-        withQuality
-            ? parameters.getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_VALUE_NAME_KEY, SINK_OPC_UA_VALUE_NAME_KEY),
-                CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE)
-            : null;
-    qualityName =
-        withQuality
-            ? parameters.getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_QUALITY_NAME_KEY, SINK_OPC_UA_QUALITY_NAME_KEY),
-                CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE)
-            : null;
-    isClientServerModel =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
-                CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-            .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE);
-
-    final DataRegion region =
-        StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
-    unQualifiedDatabaseName =
-        Objects.nonNull(region)
-            ? PathUtils.unQualifyDatabaseName(region.getDatabaseName())
-            : "__temp_db";
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
@@ -448,6 +447,10 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
+    if (Objects.nonNull(client)) {
+      client.disconnect();
+    }
+
     if (serverKey == null) {
       return;
     }
