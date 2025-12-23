@@ -67,14 +67,17 @@ public class IoTDBOpcUaClient {
   private final SecurityPolicy securityPolicy;
   private final IdentityProvider identityProvider;
   private OpcUaClient client;
+  private boolean historizing;
 
   public IoTDBOpcUaClient(
       final String nodeUrl,
       final SecurityPolicy securityPolicy,
-      final IdentityProvider identityProvider) {
+      final IdentityProvider identityProvider,
+      final boolean historizing) {
     this.nodeUrl = nodeUrl;
     this.securityPolicy = securityPolicy;
     this.identityProvider = identityProvider;
+    this.historizing = historizing;
   }
 
   public void run(final OpcUaClient client) throws Exception {
@@ -251,7 +254,7 @@ public class IoTDBOpcUaClient {
 
   /////////////////////////////// Attribute creator ///////////////////////////////
 
-  public static VariableAttributes createMeasurementAttributes(
+  private VariableAttributes createMeasurementAttributes(
       final String name, final NodeId objectType, final Variant initialValue) {
     return new VariableAttributes(
         Unsigned.uint(0xFFFF), // specifiedAttributes
@@ -266,11 +269,10 @@ public class IoTDBOpcUaClient {
         AccessLevel.toValue(AccessLevel.READ_WRITE),
         AccessLevel.toValue(AccessLevel.READ_WRITE),
         500.0, // samplingInterval
-        false // historizing
-        );
+        historizing);
   }
 
-  public static ObjectAttributes createFolderAttributes(final String name) {
+  private static ObjectAttributes createFolderAttributes(final String name) {
     return new ObjectAttributes(
         Unsigned.uint(0xFFFF), // specifiedAttributes
         LocalizedText.english(name),
