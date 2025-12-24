@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import java.util.concurrent.LinkedBlockingDeque;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.D
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
@@ -93,14 +95,18 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
         // we should not ignore the non-exist of device in TsFileMetadata
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
+        IDeviceID deviceId = seriesPath.getDeviceId();
+        String measurement = seriesPath.getMeasurement();
+        
         timeSeriesMetadata =
             TimeSeriesMetadataCache.getInstance()
                 .get(
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        seriesPath.getDeviceId(),
-                        seriesPath.getMeasurement()),
+                        deviceId,
+                        measurement),
                     allSensors,
                     context.ignoreNotExistsDevice()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
@@ -110,7 +116,7 @@ public class FileLoaderUtils {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
               context.getPathModifications(
-                  resource, seriesPath.getDeviceId(), seriesPath.getMeasurement());
+                  resource, deviceId, measurement);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
