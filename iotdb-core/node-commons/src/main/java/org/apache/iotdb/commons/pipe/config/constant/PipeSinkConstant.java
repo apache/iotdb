@@ -28,6 +28,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
@@ -210,6 +211,12 @@ public class PipeSinkConstant {
       "AES128_SHA256_RSAOAEP";
   public static final String CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE =
       "AES256_SHA256_RSAPSS";
+
+  public static final List<String> CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES =
+      Arrays.asList(
+          CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_SHA_256_VALUE,
+          CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE,
+          CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE);
 
   public static final String CONNECTOR_OPC_UA_HISTORIZING_KEY = "connector.opcua.historizing";
   public static final String SINK_OPC_UA_HISTORIZING_KEY = "sink.opcua.historizing";

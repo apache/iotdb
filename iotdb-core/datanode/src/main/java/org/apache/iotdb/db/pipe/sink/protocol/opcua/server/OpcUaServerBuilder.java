@@ -83,6 +83,7 @@ public class OpcUaServerBuilder implements Closeable {
   private String password;
   private Path securityDir;
   private boolean enableAnonymousAccess;
+  private Set<SecurityPolicy> securityPolicies;
   private DefaultTrustListManager trustListManager;
 
   public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
@@ -112,6 +113,11 @@ public class OpcUaServerBuilder implements Closeable {
 
   public OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
     this.enableAnonymousAccess = enableAnonymousAccess;
+    return this;
+  }
+
+  public OpcUaServerBuilder setSecurityPolicies(final Set<SecurityPolicy> securityPolicies) {
+    this.securityPolicies = securityPolicies;
     return this;
   }
 
@@ -237,30 +243,35 @@ public class OpcUaServerBuilder implements Closeable {
                     USER_TOKEN_POLICY_USERNAME,
                     USER_TOKEN_POLICY_X509);
 
-        final EndpointConfiguration.Builder noSecurityBuilder =
-            builder
-                .copy()
-                .setSecurityPolicy(SecurityPolicy.None)
-                .setSecurityMode(MessageSecurityMode.None);
+        if (securityPolicies.contains(SecurityPolicy.None)) {
+          final EndpointConfiguration.Builder noSecurityBuilder =
+              builder
+                  .copy()
+                  .setSecurityPolicy(SecurityPolicy.None)
+                  .setSecurityMode(MessageSecurityMode.None);
 
-        endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
-        endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
+          endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
+          endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
+          securityPolicies.remove(SecurityPolicy.None);
+        }
 
-        endpointConfigurations.add(
-            buildTcpEndpoint(
-                builder
-                    .copy()
-                    .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                    .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
-                tcpBindPort));
+        for (final SecurityPolicy securityPolicy : securityPolicies) {
+          endpointConfigurations.add(
+              buildTcpEndpoint(
+                  builder
+                      .copy()
+                      .setSecurityPolicy(securityPolicy)
+                      .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
+                  tcpBindPort));
 
-        endpointConfigurations.add(
-            buildHttpsEndpoint(
-                builder
-                    .copy()
-                    .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                    .setSecurityMode(MessageSecurityMode.Sign),
-                httpsBindPort));
+          endpointConfigurations.add(
+              buildHttpsEndpoint(
+                  builder
+                      .copy()
+                      .setSecurityPolicy(securityPolicy)
+                      .setSecurityMode(MessageSecurityMode.Sign),
+                  httpsBindPort));
+        }
 
         final EndpointConfiguration.Builder discoveryBuilder =
             builder

@@ -57,9 +57,11 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
@@ -90,6 +92,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE;
@@ -270,6 +273,18 @@ public class OpcUaSink implements PipeConnector {
                 CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY,
                 SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY),
             CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE);
+    final Set<SecurityPolicy> securityPolicies =
+        (parameters.hasAnyAttributes(
+                    CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY)
+                ? Arrays.stream(
+                    parameters
+                        .getStringByKeys(
+                            CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY)
+                        .replace(" ", "")
+                        .split(","))
+                : CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES.stream())
+            .map(this::getSecurityPolicy)
+            .collect(Collectors.toSet());
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
@@ -288,7 +303,8 @@ public class OpcUaSink implements PipeConnector {
                                 .setUser(user)
                                 .setPassword(password)
                                 .setSecurityDir(securityDir)
-                                .setEnableAnonymousAccess(enableAnonymousAccess);
+                                .setEnableAnonymousAccess(enableAnonymousAccess)
+                                .setSecurityPolicies(securityPolicies);
                         final OpcUaServer newServer = builder.build();
                         nameSpace = new OpcUaNameSpace(newServer, builder);
                         nameSpace.startup();
@@ -312,34 +328,14 @@ public class OpcUaSink implements PipeConnector {
   }
 
   private void customizeClient(final String nodeUrl, final PipeParameters parameters) {
-    final SecurityPolicy policy;
-    switch (parameters
-        .getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY),
-            CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_SHA_256_VALUE)
-        .toUpperCase()) {
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_NONE_VALUE:
-        policy = SecurityPolicy.None;
-        break;
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_128_RSA_15_VALUE:
-        policy = SecurityPolicy.Basic128Rsa15;
-        break;
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_VALUE:
-        policy = SecurityPolicy.Basic256;
-        break;
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_SHA_256_VALUE:
-        policy = SecurityPolicy.Basic256Sha256;
-        break;
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE:
-        policy = SecurityPolicy.Aes128_Sha256_RsaOaep;
-        break;
-      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE:
-        policy = SecurityPolicy.Aes256_Sha256_RsaPss;
-        break;
-      default:
-        throw new PipeException(
-            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
-    }
+    final SecurityPolicy policy =
+        getSecurityPolicy(
+            parameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY),
+                    CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_SHA_256_VALUE)
+                .toUpperCase());
 
     final IdentityProvider provider;
     final String userName =
@@ -370,6 +366,26 @@ public class OpcUaSink implements PipeConnector {
                 Arrays.asList(CONNECTOR_OPC_UA_HISTORIZING_KEY, SINK_OPC_UA_HISTORIZING_KEY),
                 CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE));
     new ClientRunner(client, securityDir, password).run();
+  }
+
+  private SecurityPolicy getSecurityPolicy(final String securityPolicy) {
+    switch (securityPolicy.toUpperCase()) {
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_NONE_VALUE:
+        return SecurityPolicy.None;
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_128_RSA_15_VALUE:
+        return SecurityPolicy.Basic128Rsa15;
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_VALUE:
+        return SecurityPolicy.Basic256;
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_BASIC_256_SHA_256_VALUE:
+        return SecurityPolicy.Basic256Sha256;
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE:
+        return SecurityPolicy.Aes128_Sha256_RsaOaep;
+      case CONNECTOR_OPC_UA_QUALITY_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE:
+        return SecurityPolicy.Aes256_Sha256_RsaPss;
+      default:
+        throw new PipeException(
+            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
+    }
   }
 
   @Override
