@@ -132,6 +132,57 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
     measurementInfo.setPreDeleted(preDeleted);
   }
 
+  // Alias series properties methods
+  @Override
+  public boolean isRenamed() {
+    return measurementInfo.isRenamed();
+  }
+
+  @Override
+  public void setIsRenamed(boolean isRenamed) {
+    measurementInfo.setIsRenamed(isRenamed);
+  }
+
+  @Override
+  public boolean isRenaming() {
+    return measurementInfo.isRenaming();
+  }
+
+  @Override
+  public void setIsRenaming(boolean isRenaming) {
+    measurementInfo.setIsRenaming(isRenaming);
+  }
+
+  @Override
+  public boolean isDisabled() {
+    return measurementInfo.isDisabled();
+  }
+
+  @Override
+  public void setDisabled(boolean isDisabled) {
+    measurementInfo.setDisabled(isDisabled);
+  }
+
+  @Override
+  public PartialPath getOriginalPath() {
+    return measurementInfo.getOriginalPath();
+  }
+
+  @Override
+  public void setOriginalPath(PartialPath originalPath) {
+    measurementInfo.setOriginalPath(originalPath);
+  }
+
+  @Override
+  public PartialPath getAliasPath() {
+    return measurementInfo.getAliasPath();
+  }
+
+  @Override
+  public void setAliasPath(PartialPath aliasPath) {
+    measurementInfo.setAliasPath(aliasPath);
+  }
+
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitMeasurementMNode(this, context);

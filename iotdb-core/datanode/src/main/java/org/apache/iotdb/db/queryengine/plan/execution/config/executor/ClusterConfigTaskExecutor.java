@@ -89,6 +89,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAliasTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
@@ -248,6 +249,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AliasTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -3126,6 +3128,65 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
       return future;
     }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> aliasTimeSeries(
+      final AliasTimeSeriesStatement aliasTimeSeriesStatement, final MPPQueryContext context) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Serialize the old path and new path
+    final ByteArrayOutputStream oldPathStream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream newPathStream = new ByteArrayOutputStream();
+    try {
+      // Write old path
+      aliasTimeSeriesStatement.getPath().serialize(oldPathStream);
+      // Write new path
+      aliasTimeSeriesStatement.getNewPath().serialize(newPathStream);
+    } catch (final IOException e) {
+      future.setException(new RuntimeException("Failed to serialize paths", e));
+      return future;
+    }
+
+    final TAliasTimeSeriesReq req =
+        new TAliasTimeSeriesReq(
+            context.getQueryId().getId(),
+            ByteBuffer.wrap(oldPathStream.toByteArray()),
+            ByteBuffer.wrap(newPathStream.toByteArray()));
+    req.setIsGeneratedByPipe(aliasTimeSeriesStatement.isGeneratedByPipe());
+
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.aliasTimeSeries(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override

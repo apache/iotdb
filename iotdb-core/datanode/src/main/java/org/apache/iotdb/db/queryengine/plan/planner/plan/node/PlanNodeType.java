@@ -43,17 +43,24 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Alt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.ConstructLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
@@ -266,6 +273,13 @@ public enum PlanNodeType {
 
   LAST_QUERY_SCAN((short) 98),
   ALTER_ENCODING_COMPRESSOR((short) 99),
+  LOCK_ALIAS((short) 100),
+  CREATE_ALIAS_SERIES((short) 101),
+  MARK_SERIES_DISABLED((short) 102),
+  UPDATE_PHYSICAL_ALIAS_REF((short) 103),
+  DROP_ALIAS_SERIES((short) 104),
+  ENABLE_PHYSICAL_SERIES((short) 105),
+  UNLOCK_FOR_ALIAS((short) 106),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -601,6 +615,20 @@ public enum PlanNodeType {
         return LastQueryScanNode.deserialize(buffer);
       case 99:
         return AlterEncodingCompressorNode.deserialize(buffer);
+      case 100:
+        return LockAliasNode.deserialize(buffer);
+      case 101:
+        return CreateAliasSeriesNode.deserialize(buffer);
+      case 102:
+        return MarkSeriesDisabledNode.deserialize(buffer);
+      case 103:
+        return UpdatePhysicalAliasRefNode.deserialize(buffer);
+      case 104:
+        return DropAliasSeriesNode.deserialize(buffer);
+      case 105:
+        return EnablePhysicalSeriesNode.deserialize(buffer);
+      case 106:
+        return UnlockForAliasNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:

@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AliasTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -613,8 +614,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
+    MeasurementPath path = parseFullPath(ctx.fullPath());
+
+    // Check if it's a timeseries path rename (RENAME TO fullPath) - return AliasTimeSeriesStatement
+    if (ctx.alterClause() instanceof IoTDBSqlParser.RenameTimeseriesPathContext) {
+      IoTDBSqlParser.RenameTimeseriesPathContext renameCtx =
+          (IoTDBSqlParser.RenameTimeseriesPathContext) ctx.alterClause();
+      AliasTimeSeriesStatement aliasStatement = new AliasTimeSeriesStatement();
+      aliasStatement.setPath(path);
+      aliasStatement.setNewPath(parseFullPath(renameCtx.newPath));
+      return aliasStatement;
+    }
+
+    // For other alter operations, use AlterTimeSeriesStatement
     AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
-    alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
+    alterTimeSeriesStatement.setPath(path);
     parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
     return alterTimeSeriesStatement;
   }
@@ -622,39 +636,54 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseAlterClause(
       IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     Map<String, String> alterMap = new HashMap<>();
-    // Rename
-    if (ctx.RENAME() != null) {
+    // Check if it's a timeseries path rename (should be handled in visitAlterTimeseries)
+    // This case should not happen here as it's already handled in visitAlterTimeseries
+    if (ctx instanceof IoTDBSqlParser.RenameTimeseriesPathContext) {
+      // This should not happen - RENAME TO is handled in visitAlterTimeseries
+      throw new IllegalStateException(
+          "RenameTimeseriesPathContext should be handled in visitAlterTimeseries, not parseAlterClause");
+    } else if (ctx instanceof IoTDBSqlParser.RenameTagOrAttributeContext) {
+      // Rename tag/attribute key (RENAME attributeKey TO attributeKey)
+      IoTDBSqlParser.RenameTagOrAttributeContext renameCtx =
+          (IoTDBSqlParser.RenameTagOrAttributeContext) ctx;
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
-      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
-    } else if (ctx.SET() != null) {
+      alterMap.put(
+          parseAttributeKey(renameCtx.beforeName), parseAttributeKey(renameCtx.currentName));
+    } else if (ctx instanceof IoTDBSqlParser.SetAlterContext) {
       // Set
+      IoTDBSqlParser.SetAlterContext setCtx = (IoTDBSqlParser.SetAlterContext) ctx;
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
-      setMap(ctx, alterMap);
-    } else if (ctx.DROP() != null) {
+      setMap(setCtx, alterMap);
+    } else if (ctx instanceof IoTDBSqlParser.DropAlterContext) {
       // Drop
+      IoTDBSqlParser.DropAlterContext dropCtx = (IoTDBSqlParser.DropAlterContext) ctx;
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
-      for (int i = 0; i < ctx.attributeKey().size(); i++) {
-        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
+      for (int i = 0; i < dropCtx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(dropCtx.attributeKey().get(i)), null);
       }
-    } else if (ctx.TAGS() != null) {
+    } else if (ctx instanceof IoTDBSqlParser.AddTagsAlterContext) {
       // Add tag
+      IoTDBSqlParser.AddTagsAlterContext addTagsCtx = (IoTDBSqlParser.AddTagsAlterContext) ctx;
       alterTimeSeriesStatement.setAlterType((AlterTimeSeriesStatement.AlterType.ADD_TAGS));
-      setMap(ctx, alterMap);
-    } else if (ctx.ATTRIBUTES() != null) {
+      setMap(addTagsCtx, alterMap);
+    } else if (ctx instanceof IoTDBSqlParser.AddAttributesAlterContext) {
       // Add attribute
+      IoTDBSqlParser.AddAttributesAlterContext addAttrsCtx =
+          (IoTDBSqlParser.AddAttributesAlterContext) ctx;
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES);
-      setMap(ctx, alterMap);
-    } else {
+      setMap(addAttrsCtx, alterMap);
+    } else if (ctx instanceof IoTDBSqlParser.UpsertAlterContext) {
       // Upsert
+      IoTDBSqlParser.UpsertAlterContext upsertCtx = (IoTDBSqlParser.UpsertAlterContext) ctx;
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
-      if (ctx.aliasClause() != null) {
-        parseAliasClause(ctx.aliasClause(), alterTimeSeriesStatement);
+      if (upsertCtx.aliasClause() != null) {
+        parseAliasClause(upsertCtx.aliasClause(), alterTimeSeriesStatement);
       }
-      if (ctx.tagClause() != null) {
-        parseTagClause(ctx.tagClause(), alterTimeSeriesStatement);
+      if (upsertCtx.tagClause() != null) {
+        parseTagClause(upsertCtx.tagClause(), alterTimeSeriesStatement);
       }
-      if (ctx.attributeClause() != null) {
-        parseAttributeClauseForTimeSeries(ctx.attributeClause(), alterTimeSeriesStatement);
+      if (upsertCtx.attributeClause() != null) {
+        parseAttributeClauseForTimeSeries(upsertCtx.attributeClause(), alterTimeSeriesStatement);
       }
     }
     alterTimeSeriesStatement.setAlterMap(alterMap);
@@ -3539,11 +3568,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   /** Utils. */
-  private void setMap(IoTDBSqlParser.AlterClauseContext ctx, Map<String, String> alterMap) {
-    List<IoTDBSqlParser.AttributePairContext> tagsList = ctx.attributePair();
+  private void setMap(IoTDBSqlParser.SetAlterContext ctx, Map<String, String> alterMap) {
+    setMapFromAttributePairs(ctx.attributePair(), alterMap);
+  }
+
+  private void setMap(IoTDBSqlParser.AddTagsAlterContext ctx, Map<String, String> alterMap) {
+    setMapFromAttributePairs(ctx.attributePair(), alterMap);
+  }
+
+  private void setMap(IoTDBSqlParser.AddAttributesAlterContext ctx, Map<String, String> alterMap) {
+    setMapFromAttributePairs(ctx.attributePair(), alterMap);
+  }
+
+  private void setMapFromAttributePairs(
+      List<IoTDBSqlParser.AttributePairContext> attributePairs, Map<String, String> alterMap) {
     String key;
-    if (ctx.attributePair(0) != null) {
-      for (IoTDBSqlParser.AttributePairContext attributePair : tagsList) {
+    if (attributePairs != null && !attributePairs.isEmpty()) {
+      for (IoTDBSqlParser.AttributePairContext attributePair : attributePairs) {
         key = parseAttributeKey(attributePair.attributeKey());
         alterMap.computeIfPresent(
             key,

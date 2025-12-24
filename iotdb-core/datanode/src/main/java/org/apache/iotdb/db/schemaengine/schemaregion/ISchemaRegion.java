@@ -28,6 +28,13 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -213,6 +220,21 @@ public interface ISchemaRegion {
   void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
 
   void alterEncodingCompressor(final AlterEncodingCompressorNode node) throws MetadataException;
+
+  // Alias Series Operations
+  void lockForAlias(final LockAliasNode node) throws MetadataException;
+
+  void createAliasSeries(final CreateAliasSeriesNode node) throws MetadataException;
+
+  void markSeriesDisabled(final MarkSeriesDisabledNode node) throws MetadataException;
+
+  void updatePhysicalAliasRef(final UpdatePhysicalAliasRefNode node) throws MetadataException;
+
+  void dropAliasSeries(final DropAliasSeriesNode node) throws MetadataException;
+
+  void enablePhysicalSeries(final EnablePhysicalSeriesNode node) throws MetadataException;
+
+  void unlockForAlias(final UnlockForAliasNode node) throws MetadataException;
 
   // endregion
 

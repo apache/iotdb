@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AliasTimeSeriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AliasTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -740,6 +742,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     return new AlterLogicalViewTask(alterLogicalViewStatement, context);
+  }
+
+  @Override
+  public IConfigTask visitAliasTimeSeriesStatement(
+      AliasTimeSeriesStatement aliasTimeSeriesStatement, MPPQueryContext context) {
+    return new AliasTimeSeriesTask(aliasTimeSeriesStatement, context);
   }
 
   @Override

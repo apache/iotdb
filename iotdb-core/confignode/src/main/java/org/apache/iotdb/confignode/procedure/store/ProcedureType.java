@@ -47,6 +47,7 @@ public enum ProcedureType {
   /** Timeseries */
   DELETE_TIMESERIES_PROCEDURE((short) 300),
   ALTER_ENCODING_COMPRESSOR_PROCEDURE((short) 301),
+  ALIAS_TIMESERIES_PROCEDURE((short) 302),
 
   /** Trigger */
   CREATE_TRIGGER_PROCEDURE((short) 400),

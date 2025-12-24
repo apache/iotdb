@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AliasTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
@@ -380,6 +381,46 @@ public class ProcedureManager {
         }
         procedure =
             new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, mayDeleteAudit);
+        this.executor.submitProcedure(procedure);
+      }
+    }
+    return waitingProcedureFinished(procedure);
+  }
+
+  public TSStatus aliasTimeSeries(
+      String queryId, PartialPath oldPath, PartialPath newPath, boolean isGeneratedByPipe) {
+    AliasTimeSeriesProcedure procedure = null;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      AliasTimeSeriesProcedure aliasTimeSeriesProcedure;
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
+        if (type == null || !type.equals(ProcedureType.ALIAS_TIMESERIES_PROCEDURE)) {
+          continue;
+        }
+        aliasTimeSeriesProcedure = ((AliasTimeSeriesProcedure) runningProcedure);
+        if (queryId.equals(aliasTimeSeriesProcedure.getQueryId())) {
+          procedure = aliasTimeSeriesProcedure;
+          break;
+        }
+        // Check if there's overlap with old path or new path
+        if (oldPath.equals(aliasTimeSeriesProcedure.getOldPath())
+            || oldPath.equals(aliasTimeSeriesProcedure.getNewPath())
+            || newPath.equals(aliasTimeSeriesProcedure.getOldPath())
+            || newPath.equals(aliasTimeSeriesProcedure.getNewPath())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedure == null) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is aliasing some target timeseries.");
+        }
+        procedure = new AliasTimeSeriesProcedure(queryId, oldPath, newPath, isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
       }
     }

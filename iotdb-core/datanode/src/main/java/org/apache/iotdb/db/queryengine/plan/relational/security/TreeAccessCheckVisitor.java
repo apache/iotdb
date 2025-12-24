@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AliasTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -1419,6 +1420,52 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
     }
     return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
+  public TSStatus visitAliasTimeSeriesStatement(
+      AliasTimeSeriesStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
+
+    // audit db is read-only - check old path
+    if (includeByAuditTreeDB(statement.getPath())
+        && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(false),
+          () ->
+              Arrays.asList(statement.getPath(), statement.getNewPath()).stream()
+                  .distinct()
+                  .collect(Collectors.toList())
+                  .toString());
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
+
+    // audit db is read-only - check new path
+    if (includeByAuditTreeDB(statement.getNewPath())
+        && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(false),
+          () ->
+              Arrays.asList(statement.getPath(), statement.getNewPath()).stream()
+                  .distinct()
+                  .collect(Collectors.toList())
+                  .toString());
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
+
+    // Check permission for old path (WRITE_SCHEMA)
+    TSStatus oldPathStatus =
+        checkTimeSeriesPermission(
+            context, () -> Arrays.asList(statement.getPath()), PrivilegeType.WRITE_SCHEMA);
+    if (oldPathStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return oldPathStatus;
+    }
+
+    // Check permission for new path (WRITE_SCHEMA)
+    return checkTimeSeriesPermission(
+        context, () -> Arrays.asList(statement.getNewPath()), PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

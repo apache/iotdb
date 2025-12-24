@@ -20,6 +20,13 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -184,5 +191,37 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitAlterEncodingCompressor(
       final AlterEncodingCompressorNode alterEncodingCompressorNode, final C context) {
     return visitSchemaRegionPlan(alterEncodingCompressorNode, context);
+  }
+
+  public R visitCreateAliasSeries(
+      final CreateAliasSeriesNode createAliasSeriesNode, final C context) {
+    return visitSchemaRegionPlan(createAliasSeriesNode, context);
+  }
+
+  public R visitMarkSeriesDisabled(
+      final MarkSeriesDisabledNode markSeriesDisabledNode, final C context) {
+    return visitSchemaRegionPlan(markSeriesDisabledNode, context);
+  }
+
+  public R visitUpdatePhysicalAliasRef(
+      final UpdatePhysicalAliasRefNode updatePhysicalAliasRefNode, final C context) {
+    return visitSchemaRegionPlan(updatePhysicalAliasRefNode, context);
+  }
+
+  public R visitDropAliasSeries(final DropAliasSeriesNode dropAliasSeriesNode, final C context) {
+    return visitSchemaRegionPlan(dropAliasSeriesNode, context);
+  }
+
+  public R visitEnablePhysicalSeries(
+      final EnablePhysicalSeriesNode enablePhysicalSeriesNode, final C context) {
+    return visitSchemaRegionPlan(enablePhysicalSeriesNode, context);
+  }
+
+  public R visitUnlockForAlias(final UnlockForAliasNode unlockForAliasNode, final C context) {
+    return visitSchemaRegionPlan(unlockForAliasNode, context);
+  }
+
+  public R visitLockAlias(final LockAliasNode lockAliasNode, final C context) {
+    return visitSchemaRegionPlan(lockAliasNode, context);
   }
 }

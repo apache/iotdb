@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -134,6 +135,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAliasTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
@@ -2213,6 +2215,22 @@ public class ConfigManager implements IManager {
           req.isIfExists(),
           req.isIsGeneratedByPipe(),
           req.isMayAlterAudit());
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus aliasTimeSeries(TAliasTimeSeriesReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      String queryId = req.getQueryId();
+      PartialPath oldPath =
+          (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
+      PartialPath newPath =
+          (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+      boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
+      return procedureManager.aliasTimeSeries(queryId, oldPath, newPath, isGeneratedByPipe);
     } else {
       return status;
     }
