@@ -285,6 +285,9 @@ public class OpcUaSink implements PipeConnector {
                 : CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES.stream())
             .map(this::getSecurityPolicy)
             .collect(Collectors.toSet());
+    if (securityPolicies.isEmpty()) {
+      throw new PipeException("The security policy cannot be empty.");
+    }
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
