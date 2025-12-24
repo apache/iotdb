@@ -942,12 +942,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         timeSeriesInfo.setMeasurementAlias(schemaInfo.getAlias());
       }
 
-      // Set props (from schema)
+      // Set props (from schema), excluding internal alias-related keys
       if (schema instanceof org.apache.tsfile.write.schema.MeasurementSchema) {
         Map<String, String> props =
             ((org.apache.tsfile.write.schema.MeasurementSchema) schema).getProps();
         if (props != null && !props.isEmpty()) {
-          timeSeriesInfo.setProps(props);
+          // Remove internal alias-related keys if they exist
+          Map<String, String> propsCopy = new HashMap<>(props);
+          propsCopy.remove(MeasurementInfo.IS_RENAMED_KEY);
+          propsCopy.remove(MeasurementInfo.IS_RENAMING_KEY);
+          propsCopy.remove(MeasurementInfo.DISABLED_KEY);
+          propsCopy.remove(MeasurementInfo.ORIGINAL_PATH_KEY);
+          propsCopy.remove(MeasurementInfo.ALIAS_PATH_KEY);
+          if (!propsCopy.isEmpty()) {
+            timeSeriesInfo.setProps(propsCopy);
+          }
         }
       }
 
