@@ -313,7 +313,12 @@ public class OpcUaSink implements PipeConnector {
                       } else {
                         oldValue
                             .getRight()
-                            .checkEquals(user, password, securityDir, enableAnonymousAccess);
+                            .checkEquals(
+                                user,
+                                password,
+                                securityDir,
+                                enableAnonymousAccess,
+                                securityPolicies);
                         return oldValue;
                       }
                     } catch (final PipeException e) {

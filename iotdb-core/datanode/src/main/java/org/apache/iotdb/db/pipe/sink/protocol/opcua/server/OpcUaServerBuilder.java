@@ -310,7 +310,8 @@ public class OpcUaServerBuilder implements Closeable {
       final String user,
       final String password,
       final Path securityDir,
-      final boolean enableAnonymousAccess) {
+      final boolean enableAnonymousAccess,
+      final Set<SecurityPolicy> securityPolicies) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(
@@ -318,6 +319,7 @@ public class OpcUaServerBuilder implements Closeable {
         FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
         FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
+    checkEquals("securityPolicies", this.securityPolicies, securityPolicies);
   }
 
   private void checkEquals(final String attrName, final Object thisAttr, final Object thatAttr) {

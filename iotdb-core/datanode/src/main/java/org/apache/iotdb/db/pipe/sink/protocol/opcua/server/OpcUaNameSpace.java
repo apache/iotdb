@@ -49,6 +49,7 @@ import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
@@ -65,6 +66,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -543,7 +545,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final String user,
       final String password,
       final String securityDir,
-      final boolean enableAnonymousAccess) {
-    builder.checkEquals(user, password, Paths.get(securityDir), enableAnonymousAccess);
+      final boolean enableAnonymousAccess,
+      final Set<SecurityPolicy> securityPolicies) {
+    builder.checkEquals(
+        user, password, Paths.get(securityDir), enableAnonymousAccess, securityPolicies);
   }
 }
