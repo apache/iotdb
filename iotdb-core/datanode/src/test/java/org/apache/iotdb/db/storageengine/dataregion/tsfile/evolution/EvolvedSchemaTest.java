@@ -56,4 +56,22 @@ public class EvolvedSchemaTest {
 
     assertEquals(allSchema, mergedShema);
   }
+
+  @Test
+  public void testCovert() {
+    // t1 -> t2, t2.s1 -> t2.s2, t3 -> t1
+    List<SchemaEvolution> schemaEvolutionList =
+        Arrays.asList(
+            new TableRename("t1", "t2"),
+            new ColumnRename("t2", "s1", "s2", TSDataType.INT32),
+            new TableRename("t3", "t1"));
+    EvolvedSchema oldSchema = new EvolvedSchema();
+    schemaEvolutionList.forEach(schemaEvolution -> schemaEvolution.applyTo(oldSchema));
+
+    List<SchemaEvolution> convertedSchemaEvolutions = oldSchema.toSchemaEvolutions();
+    EvolvedSchema newSchema = new EvolvedSchema();
+    convertedSchemaEvolutions.forEach(schemaEvolution -> schemaEvolution.applyTo(newSchema));
+
+    assertEquals(oldSchema, newSchema);
+  }
 }

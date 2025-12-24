@@ -34,6 +34,7 @@ public class ColumnRename implements SchemaEvolution {
   private String tableName;
   private String nameBefore;
   private String nameAfter;
+  // to judge if the Object directories should be renamed
   private TSDataType dataType;
 
   // for deserialization

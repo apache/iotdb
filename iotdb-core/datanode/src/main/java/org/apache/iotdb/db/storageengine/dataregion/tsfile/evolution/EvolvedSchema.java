@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
@@ -101,6 +103,23 @@ public class EvolvedSchema {
         + ", originalColumnNames="
         + originalColumnNames
         + '}';
+  }
+
+  public List<SchemaEvolution> toSchemaEvolutions() {
+      List<SchemaEvolution> schemaEvolutions = new ArrayList<>();
+      originalTableNames.forEach((finalTableName, originalTableName) -> {
+        if (!originalTableName.isEmpty()) {
+          schemaEvolutions.add(new TableRename(originalTableName, finalTableName));
+        }
+      });
+      originalColumnNames.forEach((finalTableName, originalColumnNameMap) -> {
+        originalColumnNameMap.forEach((finalColumnName, originalColumnName) -> {
+          if (!originalColumnName.isEmpty()) {
+            schemaEvolutions.add(new ColumnRename(finalTableName, originalColumnName, finalColumnName, null));
+          }
+        });
+      });
+      return schemaEvolutions;
   }
 
   public IDeviceID rewriteDeviceId(IDeviceID deviceID) {
