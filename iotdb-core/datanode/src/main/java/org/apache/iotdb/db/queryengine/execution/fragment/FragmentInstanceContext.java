@@ -874,8 +874,8 @@ public class FragmentInstanceContext extends QueryContext {
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
-          if (LOGGER.isDebugEnabled()) {
-            if (queryContextSet.isEmpty()) {
+          if (queryContextSet.isEmpty()) {
+            if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
                   "TVList {} is released by the query, FragmentInstance Id is {}",
                   tvList,
