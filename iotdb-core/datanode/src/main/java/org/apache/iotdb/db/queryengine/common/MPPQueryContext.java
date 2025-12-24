@@ -210,10 +210,19 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    if (!isSubquery()) {
+      cleanUpCte();
+    }
     this.initResultNodeContext();
     this.releaseAllMemoryReservedForFrontEnd();
   }
 
+  private void cleanUpCte() {
+    cteQueries.clear();
+    cteExplainResults.clear();
+    cteMaterializationCosts.clear();
+    subQueryTables.clear();
+  }
   private void initResultNodeContext() {
     this.resultNodeContext = new ResultNodeContext(queryId);
   }
