@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -38,7 +39,6 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,7 +54,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
+public class PipeConfigTreePatternParseVisitorTest {
 
   private final IoTDBTreePatternOperations prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));

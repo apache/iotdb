@@ -573,7 +573,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipes(
       ShowPipesStatement showPipesStatement, MPPQueryContext context) {
-    return new ShowPipeTask(showPipesStatement);
+    return new ShowPipeTask(showPipesStatement, context.getUsername());
   }
 
   @Override
@@ -584,33 +584,33 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
-    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String sourceAttribute : createPipeStatement.getSourceAttributes().keySet()) {
+      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), ExtractorAttribute));
+                createPipeStatement.getPipeName(), sourceAttribute));
       }
-      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), ExtractorAttribute));
+                createPipeStatement.getPipeName(), sourceAttribute));
       }
     }
 
-    // Inject tree model into the extractor attributes
+    // Inject tree model into the source attributes
     createPipeStatement
-        .getExtractorAttributes()
+        .getSourceAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
     checkAndEnrichSourceUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getExtractorAttributes(),
+        createPipeStatement.getSourceAttributes(),
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
     checkAndEnrichSinkUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getConnectorAttributes(),
+        createPipeStatement.getSinkAttributes(),
         context.getSession().getUserEntity(),
         false);
 
@@ -621,8 +621,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterPipe(
       final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (final String extractorAttributeKey :
-        alterPipeStatement.getExtractorAttributes().keySet()) {
+    for (final String extractorAttributeKey : alterPipeStatement.getSourceAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -641,11 +640,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterPipeStatement.setUserName(userName);
 
     final String pipeName = alterPipeStatement.getPipeName();
-    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
+    final Map<String, String> extractorAttributes = alterPipeStatement.getSourceAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
-    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
+    if (alterPipeStatement.isReplaceAllSourceAttributes()) {
       extractorAttributes.put(
           SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
       checkAndEnrichSourceUser(
@@ -655,10 +654,10 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
           true);
     }
 
-    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+    if (alterPipeStatement.isReplaceAllSinkAttributes()) {
       checkAndEnrichSinkUser(
           pipeName,
-          alterPipeStatement.getConnectorAttributes(),
+          alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
     }

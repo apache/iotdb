@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
@@ -58,26 +59,31 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+
 @TreeModel
 @TableModel
 public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
-  public static final PipeConfigPhysicalPlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanTreePatternParseVisitor();
-  public static final PipeConfigPhysicalPlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanTablePatternParseVisitor();
-  public static final PipeConfigPhysicalPlanTreeScopeParseVisitor TREE_SCOPE_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanTreeScopeParseVisitor();
-  public static final PipeConfigPhysicalPlanTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
-      new PipeConfigPhysicalPlanTableScopeParseVisitor();
-  public static final PipeConfigPhysicalPlanTablePrivilegeParseVisitor
-      TABLE_PRIVILEGE_PARSE_VISITOR = new PipeConfigPhysicalPlanTablePrivilegeParseVisitor();
-
+  public static final PipeConfigTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
+      new PipeConfigTreePatternParseVisitor();
+  public static final PipeConfigTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipeConfigTablePatternParseVisitor();
+  public static final PipeConfigTreeScopeParseVisitor TREE_SCOPE_PARSE_VISITOR =
+      new PipeConfigTreeScopeParseVisitor();
+  public static final PipeConfigTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
+      new PipeConfigTableScopeParseVisitor();
+  public static final PipeConfigTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
+      new PipeConfigTablePrivilegeParseVisitor();
+  // Local for exception
+  private PipeConfigTreePrivilegeParseVisitor treePrivilegeParseVisitor;
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
   private CNPhysicalPlanGenerator parser;
 
@@ -96,6 +102,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
     super.customize(parameters, configuration);
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    treePrivilegeParseVisitor = new PipeConfigTreePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeConfigRegionSourceMetrics.getInstance().register(this);
     PipeConfigNodeRemainingTimeMetrics.getInstance().register(this);
@@ -136,8 +143,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected long getMaxBlockingTimeMs() {
-    // The connector continues to submit and relies on the queue to sleep if empty
-    // Here we return with block to be consistent with the dataNode connector
+    // The sink continues to submit and relies on the queue to sleep if empty
+    // Here we return with block to be consistent with the dataNode sink
     return PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
@@ -181,8 +188,23 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
                         .getCode()
                     == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       case SCHEMA:
-        // Currently do not check tree model mTree
         return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
+                && (permissionManager
+                            .checkUserPrivileges(
+                                userName,
+                                new PrivilegeUnion(
+                                    Collections.singletonList(
+                                        new PartialPath(
+                                            new String[] {PATH_ROOT, MULTI_LEVEL_PATH_WILDCARD})),
+                                    PrivilegeType.READ_SCHEMA))
+                            .getStatus()
+                            .getCode()
+                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    || permissionManager
+                            .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.SYSTEM))
+                            .getStatus()
+                            .getCode()
+                        == TSStatusCode.SUCCESS_STATUS.getStatusCode())
             || Objects.nonNull(userName)
                 && permissionManager
                         .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
@@ -223,15 +245,20 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
     final ConfigPhysicalPlan plan =
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
-    if (Boolean.FALSE.equals(isTableDatabasePlan)) {
-      return Optional.of(event);
+    if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
+      final Optional<ConfigPhysicalPlan> result = treePrivilegeParseVisitor.process(plan, userName);
+      if (result.isPresent()) {
+        return Optional.of(
+            new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+      }
     }
-
-    final Optional<ConfigPhysicalPlan> result =
-        TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
-    if (result.isPresent()) {
-      return Optional.of(
-          new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+    if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
+      final Optional<ConfigPhysicalPlan> result =
+          TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
+      if (result.isPresent()) {
+        return Optional.of(
+            new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+      }
     }
     if (skipIfNoPrivileges) {
       return Optional.empty();
