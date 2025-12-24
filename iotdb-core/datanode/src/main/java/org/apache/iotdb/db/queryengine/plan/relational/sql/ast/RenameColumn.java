@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public final class RenameColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RenameColumn.class);
+
   private final QualifiedName table;
   private final Identifier source;
   private final Identifier target;
@@ -124,5 +128,15 @@ public final class RenameColumn extends Statement {
         .add("columnIfExists", columnIfNotExists)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += table == null ? 0L : table.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(source);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(target);
+    return size;
   }
 }

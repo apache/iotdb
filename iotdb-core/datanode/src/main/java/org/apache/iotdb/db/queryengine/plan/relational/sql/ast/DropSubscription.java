@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DropSubscription extends SubscriptionStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DropSubscription.class);
 
   private final String subscriptionId;
   private final boolean ifExistsCondition;
@@ -71,5 +75,13 @@ public class DropSubscription extends SubscriptionStatement {
         .add("subscriptionId", subscriptionId)
         .add("ifExistsCondition", ifExistsCondition)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(subscriptionId);
+    return size;
   }
 }
