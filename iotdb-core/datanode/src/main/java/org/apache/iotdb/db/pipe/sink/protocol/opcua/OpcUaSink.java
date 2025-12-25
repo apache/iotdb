@@ -449,6 +449,9 @@ public class OpcUaSink implements PipeConnector {
             nameSpace.transfer(tablet, isTableModel, this);
           } else if (Objects.nonNull(client)) {
             client.transfer(tablet, this);
+          } else {
+            throw new PipeException(
+                "No OPC client or server is specified when transferring tablet");
           }
         });
   }
