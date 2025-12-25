@@ -196,11 +196,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.github.Caideyipi</groupId>
-            <version>0.0.1</version>
-            <artifactId>iotdb_opc_server</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <scope>test</scope>

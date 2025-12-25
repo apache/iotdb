@@ -169,9 +169,6 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
   }
 
   @Test
-  public void testOPCUAClientSink() throws Exception {}
-
-  @Test
   public void testOPCUASinkInTableModel() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
