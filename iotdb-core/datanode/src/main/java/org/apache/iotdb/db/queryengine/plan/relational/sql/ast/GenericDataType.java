@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -33,6 +34,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public final class GenericDataType extends DataType {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(GenericDataType.class);
 
   private final Identifier name;
   private final List<DataTypeParameter> arguments;
@@ -107,5 +111,13 @@ public final class GenericDataType extends DataType {
     this.name = (Identifier) deserialize(byteBuffer);
     // arguments are always empty now
     this.arguments = Collections.emptyList();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(arguments);
   }
 }

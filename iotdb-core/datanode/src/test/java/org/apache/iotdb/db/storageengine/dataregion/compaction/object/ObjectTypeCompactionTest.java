@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.PlainObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -39,11 +40,13 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
+import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -67,8 +70,8 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -134,7 +137,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSeqCompactionWithTTL() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 0);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 100000, 0);
     Pair<TsFileResource, File> pair2 =
         generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 100);
     tsFileManager.add(pair1.getLeft(), true);
@@ -148,6 +151,10 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
             new ReadChunkCompactionPerformer(),
             0);
     Assert.assertTrue(task.start());
+
+    Assert.assertTrue(pair1.getRight().exists());
+    Assert.assertTrue(pair2.getRight().exists());
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
   }
@@ -169,6 +176,10 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     Assert.assertTrue(task.start());
+
+    Assert.assertTrue(pair1.getRight().exists());
+    Assert.assertTrue(pair2.getRight().exists());
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -191,6 +202,9 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
             0);
     Assert.assertTrue(task.start());
     Assert.assertTrue(pair1.getRight().exists());
+    Assert.assertTrue(pair2.getRight().exists());
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    Assert.assertTrue(pair1.getRight().exists());
     Assert.assertFalse(pair2.getRight().exists());
   }
 
@@ -212,6 +226,10 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
             1,
             0);
     Assert.assertTrue(task.start());
+
+    Assert.assertTrue(pair1.getRight().exists());
+    Assert.assertTrue(pair2.getRight().exists());
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -219,7 +237,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   @Test
   public void testSettleCompaction() throws IOException, WriteProcessException {
     Pair<TsFileResource, File> pair1 =
-        generateTsFileAndObject(true, System.currentTimeMillis() - 10000, 3);
+        generateTsFileAndObject(true, System.currentTimeMillis() - 100000, 3);
     Pair<TsFileResource, File> pair2 =
         generateTsFileAndObject(true, System.currentTimeMillis() + 1000000, 0);
     tsFileManager.add(pair1.getLeft(), true);
@@ -234,8 +252,71 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
             new FastCompactionPerformer(true),
             0);
     Assert.assertTrue(task.start());
+
+    Assert.assertTrue(pair1.getRight().exists());
+    Assert.assertTrue(pair2.getRight().exists());
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
+  }
+
+  @Test
+  public void testBase32ObjectPathTTLCheck() throws IOException {
+    config.setRestrictObjectLimit(false);
+    try {
+      File file1 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() + 100000, false);
+      File file2 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() + 200000, true);
+      File file3 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() - 100000, true);
+      File file4 =
+          generateBase32PathObjectFile(regionDir, System.currentTimeMillis() - 200000, false);
+      Assert.assertTrue(file1.exists());
+      Assert.assertTrue(file2.exists());
+      Assert.assertTrue(file3.exists());
+      Assert.assertTrue(file4.exists());
+      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+      Assert.assertTrue(file1.exists());
+      Assert.assertTrue(file2.exists());
+      Assert.assertFalse(file3.exists());
+      Assert.assertFalse(file4.exists());
+    } finally {
+      config.setRestrictObjectLimit(true);
+    }
+  }
+
+  @Test
+  public void testPlainObjectPathTTLCheck() throws IOException, InterruptedException {
+    File file1 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() + 100000, false, "d1");
+    File file2 =
+        generatePlainPathObjectFile(
+            regionDir,
+            System.currentTimeMillis() + 200000,
+            true,
+            (System.currentTimeMillis() - 100000) + ".bin");
+    File file3 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() - 100000, true, "d1");
+    File file4 =
+        generatePlainPathObjectFile(regionDir, System.currentTimeMillis() - 200000, false, "d1");
+    File file5 =
+        generatePlainPathObjectFile(
+            regionDir,
+            System.currentTimeMillis() + 300000,
+            false,
+            (System.currentTimeMillis() - 300000) + ".bin");
+    Assert.assertTrue(file1.exists());
+    Assert.assertTrue(file2.exists());
+    Assert.assertTrue(file3.exists());
+    Assert.assertTrue(file4.exists());
+    Assert.assertTrue(file5.exists());
+    new DataRegion(COMPACTION_TEST_SG, regionDir.getName()).executeTTLCheckForObjectFiles();
+    Assert.assertTrue(file1.exists());
+    Assert.assertTrue(file2.exists());
+    Assert.assertFalse(file3.exists());
+    Assert.assertFalse(file4.exists());
+    Assert.assertTrue(file5.exists());
   }
 
   @Test
@@ -280,13 +361,32 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
   private Pair<TsFileResource, File> generateTsFileAndObject(
       boolean seq, long timestamp, int regionIdInTsFile) throws IOException, WriteProcessException {
     TsFileResource resource = createEmptyFileAndResource(seq);
-    Path testFile1 = Files.createTempFile(regionDir.toPath(), "test_", ".bin");
+    File dir =
+        new File(
+            regionDir.getPath()
+                + File.separator
+                + "t1"
+                + File.separator
+                + "d1"
+                + File.separator
+                + "s1");
+    dir.mkdirs();
+    File testFile1 = new File(dir, timestamp + ".bin");
     byte[] content = new byte[100];
     for (int i = 0; i < 100; i++) {
       content[i] = (byte) i;
     }
-    Files.write(testFile1, content);
-    String relativePathInTsFile = regionIdInTsFile + File.separator + testFile1.toFile().getName();
+    Files.write(testFile1.toPath(), content);
+    String relativePathInTsFile =
+        regionIdInTsFile
+            + File.separator
+            + "t1"
+            + File.separator
+            + "d1"
+            + File.separator
+            + "s1"
+            + File.separator
+            + testFile1.getName();
     ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + relativePathInTsFile.length());
     buffer.putLong(100L);
     buffer.put(BytesUtils.stringToBytes(relativePathInTsFile));
@@ -296,7 +396,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
       writer.getSchema().registerTableSchema(tableSchema);
       writer.startChunkGroup(deviceID);
       AlignedChunkWriterImpl alignedChunkWriter =
-          new AlignedChunkWriterImpl(Arrays.asList(new MeasurementSchema("s1", TSDataType.OBJECT)));
+          new AlignedChunkWriterImpl(
+              Collections.singletonList(new MeasurementSchema("s1", TSDataType.OBJECT)));
       alignedChunkWriter.write(timestamp);
       alignedChunkWriter.write(timestamp, new Binary(buffer.array()), false);
       alignedChunkWriter.sealCurrentPage();
@@ -309,6 +410,50 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     resource.serialize();
     resource.deserialize();
     resource.setStatus(TsFileResourceStatus.NORMAL);
-    return new Pair<>(resource, testFile1.toFile());
+    return new Pair<>(resource, testFile1);
+  }
+
+  private File generatePlainPathObjectFile(
+      File regionDir, long timestamp, boolean internalLevel, String tagValue) throws IOException {
+    File dir =
+        new File(
+            regionDir.getPath()
+                + File.separator
+                + "t1"
+                + (internalLevel ? "" : (File.separator + tagValue))
+                + File.separator
+                + "s1");
+    dir.mkdirs();
+    File testFile1 = new File(dir, timestamp + ".bin");
+    byte[] content = new byte[100];
+    for (int i = 0; i < 100; i++) {
+      content[i] = (byte) i;
+    }
+    Files.write(testFile1.toPath(), content);
+    return testFile1;
+  }
+
+  private File generateBase32PathObjectFile(File regionDir, long timestamp, boolean internalLevel)
+      throws IOException {
+    File dir =
+        new File(
+            regionDir.getPath()
+                + File.separator
+                + toBase32Str("t1")
+                + (internalLevel ? "" : (File.separator + toBase32Str("d1")))
+                + File.separator
+                + toBase32Str("s1"));
+    dir.mkdirs();
+    File testFile1 = new File(dir, timestamp + ".bin");
+    byte[] content = new byte[100];
+    for (int i = 0; i < 100; i++) {
+      content[i] = (byte) i;
+    }
+    Files.write(testFile1.toPath(), content);
+    return testFile1;
+  }
+
+  private String toBase32Str(String str) {
+    return BaseEncoding.base32().omitPadding().encode(str.getBytes(StandardCharsets.UTF_8));
   }
 }

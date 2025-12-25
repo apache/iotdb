@@ -21,18 +21,14 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PipeConfigPhysicalPlanTableScopeParseVisitor
+public class PipeConfigTreeScopeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, Void> {
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(final ConfigPhysicalPlan plan, final Void context) {
@@ -40,47 +36,45 @@ public class PipeConfigPhysicalPlanTableScopeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRGrantUserAll(
-      final AuthorRelationalPlan plan, final Void context) {
-    return visitTableAuthorPlan(plan, ConfigPhysicalPlanType.GrantUser);
+  public Optional<ConfigPhysicalPlan> visitGrantRole(
+      final AuthorTreePlan grantRolePlan, final Void context) {
+    return visitTreeAuthorPlan(grantRolePlan);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRGrantRoleAll(
-      final AuthorRelationalPlan plan, final Void context) {
-    return visitTableAuthorPlan(plan, ConfigPhysicalPlanType.GrantRole);
+  public Optional<ConfigPhysicalPlan> visitGrantUser(
+      final AuthorTreePlan grantUserPlan, final Void context) {
+    return visitTreeAuthorPlan(grantUserPlan);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRRevokeUserAll(
-      final AuthorRelationalPlan plan, final Void context) {
-    return visitTableAuthorPlan(plan, ConfigPhysicalPlanType.RevokeUser);
+  public Optional<ConfigPhysicalPlan> visitRevokeUser(
+      final AuthorTreePlan revokeUserPlan, final Void context) {
+    return visitTreeAuthorPlan(revokeUserPlan);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRRevokeRoleAll(
-      final AuthorRelationalPlan plan, final Void context) {
-    return visitTableAuthorPlan(plan, ConfigPhysicalPlanType.RevokeRole);
+  public Optional<ConfigPhysicalPlan> visitRevokeRole(
+      final AuthorTreePlan revokeRolePlan, final Void context) {
+    return visitTreeAuthorPlan(revokeRolePlan);
   }
 
-  private Optional<ConfigPhysicalPlan> visitTableAuthorPlan(
-      final AuthorRelationalPlan authorRelationalPlan, final ConfigPhysicalPlanType type) {
+  private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(final AuthorTreePlan authorTreePlan) {
     final Set<Integer> permissions =
-        Arrays.stream(PrivilegeType.values())
-            .filter(PrivilegeType::forRelationalSys)
-            .map(Enum::ordinal)
+        authorTreePlan.getPermissions().stream()
+            .filter(permission -> PrivilegeType.values()[permission].forRelationalSys())
             .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
             new AuthorTreePlan(
-                type,
-                authorRelationalPlan.getUserName(),
-                authorRelationalPlan.getRoleName(),
-                authorRelationalPlan.getPassword(),
-                authorRelationalPlan.getNewPassword(),
+                authorTreePlan.getAuthorType(),
+                authorTreePlan.getUserName(),
+                authorTreePlan.getRoleName(),
+                authorTreePlan.getPassword(),
+                authorTreePlan.getNewPassword(),
                 permissions,
-                authorRelationalPlan.getGrantOpt(),
-                Collections.emptyList()))
+                authorTreePlan.getGrantOpt(),
+                authorTreePlan.getNodeNameList()))
         : Optional.empty();
   }
 }

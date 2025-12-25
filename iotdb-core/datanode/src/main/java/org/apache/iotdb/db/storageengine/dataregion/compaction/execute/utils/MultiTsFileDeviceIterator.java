@@ -483,16 +483,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
 
-    if (ttlDeletion != null) {
-      List<ModEntry> emptyList = Collections.emptyList();
-      CompactionUtils.removeDeletedObjectFiles(
-          readerMap.get(tsFileResource),
-          alignedChunkMetadataList,
-          Collections.singletonList(ttlDeletion),
-          modificationForValueColumns.stream().map(v -> emptyList).collect(Collectors.toList()),
-          tsFileResource.getTsFileID().regionId);
-    }
-
     ModificationUtils.modifyAlignedChunkMetaData(
         alignedChunkMetadataList,
         modificationForTimeColumn,

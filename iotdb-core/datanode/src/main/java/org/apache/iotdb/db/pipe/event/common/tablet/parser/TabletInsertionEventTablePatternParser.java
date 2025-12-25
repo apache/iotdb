@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -52,7 +53,8 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final EnrichedEvent sourceEvent,
       final InsertNode insertNode,
-      final TablePattern pattern) {
+      final TablePattern pattern)
+      throws IllegalPathException {
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
 

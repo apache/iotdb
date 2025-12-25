@@ -410,7 +410,7 @@ public abstract class TreePattern {
    * are IoTDBTreePattern, it returns an IoTDBUnionTreePattern. Otherwise, it returns a general
    * UnionTreePattern.
    */
-  private static TreePattern buildUnionPattern(
+  public static TreePattern buildUnionPattern(
       final boolean isTreeModelDataAllowedToBeCaptured, final List<TreePattern> patterns) {
     // Check if all instances in the list are of type IoTDBTreePattern
     boolean allIoTDB = true;

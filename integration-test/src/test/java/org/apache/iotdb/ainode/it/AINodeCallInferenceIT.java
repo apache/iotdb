@@ -40,20 +40,11 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
 public class AINodeCallInferenceIT {
-
-  private static final String[] WRITE_SQL_IN_TREE =
-      new String[] {
-        "CREATE DATABASE root.AI",
-        "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s1 WITH DATATYPE=DOUBLE, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s2 WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s3 WITH DATATYPE=INT64, ENCODING=RLE",
-      };
 
   private static final String CALL_INFERENCE_SQL_TEMPLATE =
       "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT %d\", generateTime=true, outputLength=%d)";
@@ -64,16 +55,7 @@ public class AINodeCallInferenceIT {
   public static void setUp() throws Exception {
     // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
-    prepareData(WRITE_SQL_IN_TREE);
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      for (int i = 0; i < 2880; i++) {
-        statement.execute(
-            String.format(
-                "INSERT INTO root.AI(timestamp,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
-                i, (float) i, (double) i, i, i));
-      }
-    }
+    prepareDataInTree();
   }
 
   @AfterClass
@@ -91,7 +73,7 @@ public class AINodeCallInferenceIT {
     }
   }
 
-  public void callInferenceTest(Statement statement, AINodeTestUtils.FakeModelInfo modelInfo)
+  public static void callInferenceTest(Statement statement, AINodeTestUtils.FakeModelInfo modelInfo)
       throws SQLException {
     // Invoke call inference for specified models, there should exist result.
     for (int i = 0; i < 4; i++) {
