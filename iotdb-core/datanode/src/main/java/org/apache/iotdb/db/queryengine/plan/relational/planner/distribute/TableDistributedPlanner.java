@@ -103,7 +103,7 @@ public class TableDistributedPlanner {
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
     List<String> planText = null;
-    if (mppQueryContext.isExplain() && mppQueryContext.isSubquery()) {
+    if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {
       planText =
           outputNodeWithExchange.accept(
               new PlanGraphPrinter(),

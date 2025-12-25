@@ -80,6 +80,7 @@ public class Analyzer {
             warningCollector);
 
     Analysis analysis = new Analysis(rewrittenStatement, parameterLookup);
+    analysis.setSqlParser(statementAnalyzerFactory.getSqlParser());
     // Register CTE passed by parent query.
     context
         .getCteQueries()

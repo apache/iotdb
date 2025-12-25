@@ -60,8 +60,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
 
-  private static final SqlParser relationSqlParser = new SqlParser();
-
   private static final Coordinator coordinator = Coordinator.getInstance();
 
   public void reconstructPredicateWithUncorrelatedScalarSubquery(
@@ -83,14 +81,14 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           && right instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
-                context, (SubqueryExpression) right, analysis.getWith());
+                context, analysis.getSqlParser(), (SubqueryExpression) right, analysis.getWith());
         // If the subquery result is not present, we cannot reconstruct the predicate.
         result.ifPresent(comparisonExpression::setShadowRight);
       } else if ((right instanceof Identifier || right instanceof FunctionCall)
           && left instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
-                context, (SubqueryExpression) left, analysis.getWith());
+                context, analysis.getSqlParser(), (SubqueryExpression) left, analysis.getWith());
         result.ifPresent(comparisonExpression::setShadowLeft);
       }
     }
@@ -102,7 +100,10 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
    *     valid result.
    */
   public Optional<Literal> fetchUncorrelatedSubqueryResultForPredicate(
-      MPPQueryContext context, SubqueryExpression subqueryExpression, With with) {
+      MPPQueryContext context,
+      SqlParser relationSqlParser,
+      SubqueryExpression subqueryExpression,
+      With with) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.db.utils.cte.MemoryReader;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -39,6 +40,9 @@ public class CteScanOperator implements SourceOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteScanOperator.class);
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(CteScanOperator.class);
+
+  private final long maxReturnSize =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
@@ -79,7 +83,7 @@ public class CteScanOperator implements SourceOperator {
         dataReader.close();
       }
     } catch (Exception e) {
-      LOGGER.error("Fail to close fileChannel", e);
+      LOGGER.error("Fail to close CteDataReader", e);
     }
   }
 
@@ -95,8 +99,7 @@ public class CteScanOperator implements SourceOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    // The returned object is a reference to TsBlock in CteDataReader
-    return RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    return maxReturnSize;
   }
 
   @Override

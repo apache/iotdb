@@ -137,8 +137,10 @@ public class MPPQueryContext implements IAuditEntity {
   // planning
   private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
 
-  // Never materialize CTE in a subquery.
-  private boolean subquery = false;
+  // Indicates whether this query context is for a sub-query triggered by the main query.
+  // Sub-queries are independent queries spawned from the main query (e.g., CTE sub-queries).
+  // When true, CTE materialization is skipped as it's handled by the main query context.
+  private boolean innerTriggeredQuery = false;
 
   // Tables in the subquery
   private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
@@ -210,7 +212,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
-    if (!isSubquery()) {
+    if (!isInnerTriggeredQuery()) {
       cleanUpCte();
     }
     this.initResultNodeContext();
@@ -223,6 +225,7 @@ public class MPPQueryContext implements IAuditEntity {
     cteMaterializationCosts.clear();
     subQueryTables.clear();
   }
+
   private void initResultNodeContext() {
     this.resultNodeContext = new ResultNodeContext(queryId);
   }
@@ -500,12 +503,12 @@ public class MPPQueryContext implements IAuditEntity {
     this.userQuery = userQuery;
   }
 
-  public boolean isSubquery() {
-    return subquery;
+  public boolean isInnerTriggeredQuery() {
+    return innerTriggeredQuery;
   }
 
-  public void setSubquery(boolean subquery) {
-    this.subquery = subquery;
+  public void setInnerTriggeredQuery(boolean innerTriggeredQuery) {
+    this.innerTriggeredQuery = innerTriggeredQuery;
   }
 
   public void addCteMaterializationCost(Table table, long cost) {

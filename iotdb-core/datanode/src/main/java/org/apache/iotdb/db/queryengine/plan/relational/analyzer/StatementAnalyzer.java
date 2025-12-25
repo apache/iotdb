@@ -3630,15 +3630,13 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
-      Optional<Scope> leftScope = scope.map(Scope::copy);
-      Scope left = process(node.getLeft(), leftScope);
-      Optional<Scope> rightScope = scope.map(Scope::copy);
-      Scope right = process(node.getRight(), rightScope);
+      // remember current tables in the scope
+      List<Identifier> tables = new ArrayList<>();
+      scope.ifPresent(s -> tables.addAll(s.getTables()));
 
-      if (scope.isPresent()) {
-        leftScope.ifPresent(l -> scope.get().addTables(l.getTables()));
-        rightScope.ifPresent(l -> scope.get().addTables(l.getTables()));
-      }
+      Scope left = process(node.getLeft(), scope);
+      scope.ifPresent(s -> s.setTables(tables));
+      Scope right = process(node.getRight(), scope);
 
       if (criteria instanceof JoinUsing) {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
