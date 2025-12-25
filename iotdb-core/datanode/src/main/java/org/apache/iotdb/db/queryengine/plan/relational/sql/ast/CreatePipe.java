@@ -115,9 +115,9 @@ public class CreatePipe extends PipeStatement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(pipeName);
-    size += RamUsageEstimator.sizeOfMap(extractorAttributes);
+    size += RamUsageEstimator.sizeOfMap(sourceAttributes);
     size += RamUsageEstimator.sizeOfMap(processorAttributes);
-    size += RamUsageEstimator.sizeOfMap(connectorAttributes);
+    size += RamUsageEstimator.sizeOfMap(sinkAttributes);
     return size;
   }
 }
