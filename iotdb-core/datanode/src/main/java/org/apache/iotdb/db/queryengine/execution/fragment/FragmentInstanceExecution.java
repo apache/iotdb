@@ -59,6 +59,11 @@ public class FragmentInstanceExecution {
   // It will be set to null while this FI is FINISHED
   private List<IDriver> drivers;
 
+  // Indicates whether this fragment instance should be ignored for statistics collection.
+  // This is true when the fragment instance contains ExplainAnalyzeOperator, which is
+  // a virtual fragment used for EXPLAIN ANALYZE and should not be included in query statistics.
+  boolean shouldIgnoreForStatistics;
+
   // It will be set to null while this FI is FINISHED
   private ISink sink;
 
@@ -110,6 +115,7 @@ public class FragmentInstanceExecution {
     this.stateMachine = stateMachine;
     this.timeoutInMs = timeoutInMs;
     this.exchangeManager = exchangeManager;
+    this.shouldIgnoreForStatistics = shouldIgnoreForStatistics();
   }
 
   public FragmentInstanceState getInstanceState() {
@@ -141,7 +147,7 @@ public class FragmentInstanceExecution {
   }
 
   // Check if this fragment instance should be ignored for statistics
-  // (i.e., it contains ExplainAnalyzeOperator only)
+  // (i.e., it contains ExplainAnalyzeOperator)
   private boolean shouldIgnoreForStatistics() {
     if (drivers == null || drivers.isEmpty()) {
       return false;
@@ -166,7 +172,7 @@ public class FragmentInstanceExecution {
     statistics.setState(getInstanceState().toString());
     // Previously we ignore statistics when current data region is instance of
     // VirtualDataRegion. Now data region of a CteScanNode is also virtual.
-    if (shouldIgnoreForStatistics()) {
+    if (shouldIgnoreForStatistics) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }

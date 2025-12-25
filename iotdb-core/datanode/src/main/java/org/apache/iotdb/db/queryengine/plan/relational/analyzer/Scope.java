@@ -54,7 +54,11 @@ public class Scope {
   private final RelationId relationId;
   private final RelationType relation;
   private final Map<String, WithQuery> namedQueries;
-  private final List<Identifier> tables;
+
+  // Tables to access for the current relation. For CTE materialization and constant folding
+  // subqueries, non-materialized CTEs in tables must be identified, and their definitions
+  // attached to the subquery context.
+  private List<Identifier> tables;
 
   public static Scope create() {
     return builder().build();
@@ -83,12 +87,8 @@ public class Scope {
     tables.add(new Identifier(table.getName().getSuffix()));
   }
 
-  public void addTables(List<Identifier> tables) {
-    this.tables.addAll(tables);
-  }
-
-  public Scope copy() {
-    return builder().like(this).build();
+  public void setTables(List<Identifier> tables) {
+    this.tables = tables;
   }
 
   public List<Identifier> getTables() {

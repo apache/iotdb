@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -124,6 +125,8 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
 
+  // WITH clause stored during analyze phase. Required for constant folding and CTE materialization
+  // subqueries, which cannot directly access the WITH clause
   private With with;
 
   // map expandable query to the node being the inner recursive reference
@@ -255,6 +258,11 @@ public class Analysis implements IAnalysis {
 
   private boolean isQuery = false;
 
+  // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
+  // in advance (predicate folding). The planner needs to parse and execute these subqueries
+  // independently to utilize predicate pushdown optimization.
+  private SqlParser sqlParser;
+
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
     this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
@@ -275,6 +283,14 @@ public class Analysis implements IAnalysis {
 
   public void setUpdateType(String updateType) {
     this.updateType = updateType;
+  }
+
+  public SqlParser getSqlParser() {
+    return sqlParser;
+  }
+
+  public void setSqlParser(SqlParser sqlParser) {
+    this.sqlParser = sqlParser;
   }
 
   public Query getNamedQuery(Table table) {

@@ -1127,12 +1127,15 @@ sort_buffer_size_in_bytes=0
 # will be used.
 # effectiveMode: hot_reload
 # Datatype: long
-cte_buffer_size_in_bytes=0
+# Privilege: SYSTEM
+# Unit: bytes
+cte_buffer_size_in_bytes=131072
 
 
 # Max rows for CTE materialization
 # effectiveMode: hot_reload
 # Datatype: int
+# Privilege: SYSTEM
 max_rows_in_cte_buffer=1000
 
 # The maximum mod entries size that each FragmentInstance can cache.

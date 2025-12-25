@@ -427,7 +427,7 @@ public class Coordinator {
         sql,
         userQuery,
         ((queryContext, startTime) -> {
-          queryContext.setSubquery(true);
+          queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
           return createQueryExecutionForTableModel(
