@@ -46,15 +46,15 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
       TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
-      final Map<String, String> connectorAttributes = new HashMap<>();
-      connectorAttributes.put("sink", "opc-ua-sink");
-      connectorAttributes.put("opcua.model", "client-server");
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put("sink", "opc-ua-sink");
+      sinkAttributes.put("opcua.model", "client-server");
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
               .createPipe(
-                  new TCreatePipeReq("testPipe", connectorAttributes)
+                  new TCreatePipeReq("testPipe", sinkAttributes)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
@@ -62,23 +62,23 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
 
       // Test reconstruction
-      connectorAttributes.put("password123456", "test");
+      sinkAttributes.put("password123456", "test");
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
               .createPipe(
-                  new TCreatePipeReq("testPipe", connectorAttributes)
+                  new TCreatePipeReq("testPipe", sinkAttributes)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
 
       // Test conflict
-      connectorAttributes.put("password123456", "conflict");
+      sinkAttributes.put("password123456", "conflict");
       Assert.assertEquals(
           TSStatusCode.PIPE_ERROR.getStatusCode(),
           client
               .createPipe(
-                  new TCreatePipeReq("testPipe", connectorAttributes)
+                  new TCreatePipeReq("testPipe", sinkAttributes)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
