@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.PlanAndMappings;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -125,6 +126,9 @@ class SubqueryPlanner {
 
     List<SubqueryExpression> scalarSubqueries = subqueries.getSubqueries();
     if (!scalarSubqueries.isEmpty()) {
+      // try to execute un-correlated scalar subqueries in the predicate in advance to utilize
+      // predicate pushdown if possible
+      tryFoldUncorrelatedScalarSubqueryInPredicate(expression, plannerContext);
       for (Cluster<SubqueryExpression> cluster :
           cluster(builder.getScope(), selectSubqueries(builder, expression, scalarSubqueries))) {
         builder = planScalarSubquery(builder, cluster);
@@ -149,6 +153,12 @@ class SubqueryPlanner {
       }
     }
     return builder;
+  }
+
+  private void tryFoldUncorrelatedScalarSubqueryInPredicate(
+      Expression expression, MPPQueryContext context) {
+    PredicateWithUncorrelatedScalarSubqueryReconstructor
+        .reconstructPredicateWithUncorrelatedScalarSubquery(expression, context);
   }
 
   /**
