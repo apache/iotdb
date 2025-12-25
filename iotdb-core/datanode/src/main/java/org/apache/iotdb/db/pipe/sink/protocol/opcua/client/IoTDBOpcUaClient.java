@@ -69,6 +69,9 @@ public class IoTDBOpcUaClient {
 
   // Customized nodes
   private static final int NAME_SPACE_INDEX = 2;
+
+  // Useless for a server only accept client writing
+  private static final double SAMPLING_INTERVAL_PLACEHOLDER = 500;
   private final String nodeUrl;
 
   private final SecurityPolicy securityPolicy;
@@ -281,7 +284,7 @@ public class IoTDBOpcUaClient {
         null, // arrayDimensions
         AccessLevel.toValue(AccessLevel.READ_WRITE),
         AccessLevel.toValue(AccessLevel.READ_WRITE),
-        500.0, // samplingInterval
+        SAMPLING_INTERVAL_PLACEHOLDER,
         historizing);
   }
 

@@ -156,7 +156,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
         for (int j = 0; j < segments.length; ++j) {
           folderSegments[j + 1] =
-              Objects.isNull(segments[j]) ? sink.getPlaceHolder() : (String) segments[j];
+              Objects.isNull(segments[j]) ? sink.getPlaceHolder4NullTag() : (String) segments[j];
         }
 
         final int finalI = i;
@@ -393,7 +393,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
-              .append(Objects.isNull(segment) ? sink.getPlaceHolder() : segment);
+              .append(Objects.isNull(segment) ? sink.getPlaceHolder4NullTag() : segment);
         }
         sourceNameList.add(idBuilder.toString());
       }

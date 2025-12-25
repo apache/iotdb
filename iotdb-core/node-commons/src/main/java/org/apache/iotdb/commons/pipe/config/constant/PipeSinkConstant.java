@@ -181,7 +181,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_PLACEHOLDER_KEY = "connector.opcua.placeholder";
   public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
-  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
+  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE = "null";
 
   public static final String CONNECTOR_OPC_UA_WITH_QUALITY_KEY = "connector.opcua.with-quality";
   public static final String SINK_OPC_UA_WITH_QUALITY_KEY = "sink.opcua.with-quality";

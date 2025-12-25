@@ -84,7 +84,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_NODE_URL_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_KEY;
@@ -141,7 +141,7 @@ public class OpcUaSink implements PipeConnector {
   private String serverKey;
   private boolean isClientServerModel;
   private String databaseName;
-  private String placeHolder;
+  private String placeHolder4NullTag;
   private @Nullable String valueName;
   private @Nullable String qualityName;
   private StatusCode defaultQuality;
@@ -224,10 +224,10 @@ public class OpcUaSink implements PipeConnector {
                 Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
                 CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
             .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE);
-    placeHolder =
+    placeHolder4NullTag =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_PLACEHOLDER_KEY, SINK_OPC_UA_PLACEHOLDER_KEY),
-            CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE);
+            CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE);
     final DataRegion region =
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
@@ -556,8 +556,8 @@ public class OpcUaSink implements PipeConnector {
     return databaseName;
   }
 
-  public String getPlaceHolder() {
-    return placeHolder;
+  public String getPlaceHolder4NullTag() {
+    return placeHolder4NullTag;
   }
 
   @Nullable
