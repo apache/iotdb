@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -149,14 +148,12 @@ public class FragmentInstanceExecutionTest {
       }
     } finally {
       // Restore original System.out
-      System.setErr(systemOut);
+      System.setOut(systemOut);
 
       // should not contain warn message: "The memory cost to be released is larger than the memory
       // cost of memory block"
       String capturedOutput = logPrint.toString();
-      assertFalse(
-          "Should not contain warning message",
-          capturedOutput.contains("The memory cost to be released is larger than the memory"));
+      assertTrue(capturedOutput.isEmpty());
     }
   }
 
