@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -50,6 +51,8 @@ import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
 import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,6 +64,7 @@ import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
 
 public class IoTDBOpcUaClient {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
   private static final int NAME_SPACE_INDEX = 2;
   private final String nodeUrl;
 
@@ -99,8 +103,7 @@ public class IoTDBOpcUaClient {
       final List<Object> values,
       final OpcUaSink sink)
       throws Exception {
-    StatusCode currentQuality =
-        Objects.isNull(sink.getValueName()) ? StatusCode.GOOD : StatusCode.UNCERTAIN;
+    StatusCode currentQuality = sink.getDefaultQuality();
     Object value = null;
     long timestamp = 0;
     NodeId nodeId = null;
@@ -121,8 +124,10 @@ public class IoTDBOpcUaClient {
         continue;
       }
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
-        throw new UnsupportedOperationException(
+        PipeLogger.log(
+            LOGGER::warn,
             "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+        continue;
       }
       nodeId = new NodeId(NAME_SPACE_INDEX, String.join("/", segments));
 

@@ -195,6 +195,13 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_QUALITY_NAME_KEY = "sink.opcua.quality-name";
   public static final String CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE = "quality";
 
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY =
+      "connector.opcua.default-quality";
+  public static final String SINK_OPC_UA_DEFAULT_QUALITY_KEY = "sink.opcua.default-quality";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE = "GOOD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE = "BAD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE = "UNCERTAIN";
+
   public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
   public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
 

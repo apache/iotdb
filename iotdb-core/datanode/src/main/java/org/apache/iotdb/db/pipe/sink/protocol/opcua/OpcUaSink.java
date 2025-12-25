@@ -48,6 +48,7 @@ import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +69,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE;
@@ -102,6 +107,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_HISTORIZING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_HTTPS_BIND_PORT_KEY;
@@ -133,11 +139,12 @@ public class OpcUaSink implements PipeConnector {
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP = new ConcurrentHashMap<>();
 
   private String serverKey;
-  boolean isClientServerModel;
-  String databaseName;
-  String placeHolder;
-  @Nullable String valueName;
-  @Nullable String qualityName;
+  private boolean isClientServerModel;
+  private String databaseName;
+  private String placeHolder;
+  private @Nullable String valueName;
+  private @Nullable String qualityName;
+  private StatusCode defaultQuality;
 
   // Inner server
   private @Nullable OpcUaNameSpace nameSpace;
@@ -203,6 +210,14 @@ public class OpcUaSink implements PipeConnector {
                 Arrays.asList(CONNECTOR_OPC_UA_QUALITY_NAME_KEY, SINK_OPC_UA_QUALITY_NAME_KEY),
                 CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE)
             : null;
+    defaultQuality =
+        getQuality(
+            withQuality
+                ? parameters.getStringOrDefault(
+                    Arrays.asList(
+                        CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY, SINK_OPC_UA_DEFAULT_QUALITY_KEY),
+                    CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE)
+                : CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE);
     isClientServerModel =
         parameters
             .getStringOrDefault(
@@ -396,6 +411,19 @@ public class OpcUaSink implements PipeConnector {
     }
   }
 
+  private StatusCode getQuality(final String quality) {
+    switch (quality.toUpperCase()) {
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE:
+        return StatusCode.GOOD;
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE:
+        return StatusCode.BAD;
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE:
+        return StatusCode.UNCERTAIN;
+      default:
+        throw new PipeException("The default quality can only be 'GOOD', 'BAD' or 'UNCERTAIN'.");
+    }
+  }
+
   @Override
   public void handshake() throws Exception {
     // Server side, do nothing
@@ -537,5 +565,9 @@ public class OpcUaSink implements PipeConnector {
   @Nullable
   public String getQualityName() {
     return qualityName;
+  }
+
+  public StatusCode getDefaultQuality() {
+    return defaultQuality;
   }
 }

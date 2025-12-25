@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
@@ -56,6 +57,8 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 import java.sql.Date;
@@ -71,6 +74,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
@@ -245,8 +249,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
     final String currentFolder = currentStr.toString();
 
-    StatusCode currentQuality =
-        Objects.isNull(sink.getValueName()) ? StatusCode.GOOD : StatusCode.UNCERTAIN;
+    StatusCode currentQuality = sink.getDefaultQuality();
     UaVariableNode valueNode = null;
     Object value = null;
     long timestamp = 0;
@@ -266,8 +269,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         continue;
       }
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
-        throw new UnsupportedOperationException(
+        PipeLogger.log(
+            LOGGER::warn,
             "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+        continue;
       }
       final String nodeName =
           Objects.isNull(sink.getValueName()) ? name : segments[segments.length - 1];
