@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -38,7 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class IDPredicate implements StreamSerializable, BufferSerializable, Accountable {
+public abstract class TagPredicate implements StreamSerializable, BufferSerializable, Accountable {
 
   public int serializedSize() {
     // type
@@ -73,11 +74,15 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
 
   protected final IDPredicateType type;
 
-  protected IDPredicate(IDPredicateType type) {
+  protected TagPredicate(IDPredicateType type) {
     this.type = type;
   }
 
   public abstract boolean matches(IDeviceID deviceID);
+
+  public TagPredicate rewriteToOriginal(EvolvedSchema evolvedSchema) {
+    return this;
+  }
 
   @Override
   public long serialize(OutputStream stream) throws IOException {
@@ -89,9 +94,9 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return type.serialize(buffer);
   }
 
-  public static IDPredicate createFrom(ByteBuffer buffer) {
+  public static TagPredicate createFrom(ByteBuffer buffer) {
     IDPredicateType type = IDPredicateType.deserialize(buffer);
-    IDPredicate predicate;
+    TagPredicate predicate;
     if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
       predicate = new NOP();
     } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
@@ -107,9 +112,9 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return predicate;
   }
 
-  public static IDPredicate createFrom(InputStream stream) throws IOException {
+  public static TagPredicate createFrom(InputStream stream) throws IOException {
     IDPredicateType type = IDPredicateType.deserialize(stream);
-    IDPredicate predicate;
+    TagPredicate predicate;
     if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
       predicate = new NOP();
     } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
@@ -125,7 +130,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     return predicate;
   }
 
-  public static class NOP extends IDPredicate {
+  public static class NOP extends TagPredicate {
     public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(NOP.class);
 
     public NOP() {
@@ -168,7 +173,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
   }
 
-  public static class FullExactMatch extends IDPredicate {
+  public static class FullExactMatch extends TagPredicate {
 
     public static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FullExactMatch.class);
@@ -243,9 +248,14 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public long ramBytesUsed() {
       return SHALLOW_SIZE + RamUsageEstimator.sizeOfObject(deviceID);
     }
+
+    @Override
+    public TagPredicate rewriteToOriginal(EvolvedSchema evolvedSchema) {
+      return new FullExactMatch(evolvedSchema.rewriteToOriginal(deviceID));
+    }
   }
 
-  public static class SegmentExactMatch extends IDPredicate {
+  public static class SegmentExactMatch extends TagPredicate {
 
     public static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(SegmentExactMatch.class);
@@ -342,17 +352,17 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
   }
 
-  public static class And extends IDPredicate {
+  public static class And extends TagPredicate {
 
     public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(And.class);
-    private final List<IDPredicate> predicates = new ArrayList<>();
+    private final List<TagPredicate> predicates = new ArrayList<>();
 
-    public And(IDPredicate... predicates) {
+    public And(TagPredicate... predicates) {
       super(IDPredicateType.AND);
       Collections.addAll(this.predicates, predicates);
     }
 
-    public void add(IDPredicate predicate) {
+    public void add(TagPredicate predicate) {
       predicates.add(predicate);
     }
 
@@ -360,7 +370,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public int serializedSize() {
       int serializedSize = super.serializedSize();
       serializedSize += ReadWriteForEncodingUtils.varIntSize(predicates.size());
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         serializedSize += predicate.serializedSize();
       }
       return serializedSize;
@@ -370,7 +380,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public long serialize(OutputStream stream) throws IOException {
       long size = super.serialize(stream);
       size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), stream);
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         size += predicate.serialize(stream);
       }
       return size;
@@ -380,7 +390,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public long serialize(ByteBuffer buffer) {
       long size = super.serialize(buffer);
       size += ReadWriteForEncodingUtils.writeVarInt(predicates.size(), buffer);
-      for (IDPredicate predicate : predicates) {
+      for (TagPredicate predicate : predicates) {
         size += predicate.serialize(buffer);
       }
       return size;
@@ -390,7 +400,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public void deserialize(InputStream stream) throws IOException {
       int size = ReadWriteForEncodingUtils.readVarInt(stream);
       for (int i = 0; i < size; i++) {
-        predicates.add(IDPredicate.createFrom(stream));
+        predicates.add(TagPredicate.createFrom(stream));
       }
     }
 
@@ -398,7 +408,7 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     public void deserialize(ByteBuffer buffer) {
       int size = ReadWriteForEncodingUtils.readVarInt(buffer);
       for (int i = 0; i < size; i++) {
-        predicates.add(IDPredicate.createFrom(buffer));
+        predicates.add(TagPredicate.createFrom(buffer));
       }
     }
 

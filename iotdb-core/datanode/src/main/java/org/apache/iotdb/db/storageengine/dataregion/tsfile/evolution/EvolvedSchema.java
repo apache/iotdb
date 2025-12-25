@@ -21,6 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
@@ -40,7 +46,7 @@ public class EvolvedSchema {
   private Map<String, Map<String, String>> originalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
-    if (!originalTableNames.containsKey(oldTableName)) {
+    if (!originalTableNames.containsKey(oldTableName) || originalTableNames.get(oldTableName).isEmpty()) {
       originalTableNames.put(newTableName, oldTableName);
       originalTableNames.put(oldTableName, "");
     } else {
@@ -58,7 +64,7 @@ public class EvolvedSchema {
   public void renameColumn(String tableName, String oldColumnName, String newColumnName) {
     Map<String, String> columnNameMap =
         originalColumnNames.computeIfAbsent(tableName, t -> new LinkedHashMap<>());
-    if (!columnNameMap.containsKey(oldColumnName)) {
+    if (!columnNameMap.containsKey(oldColumnName) || columnNameMap.get(oldColumnName).isEmpty()) {
       columnNameMap.put(newColumnName, oldColumnName);
       columnNameMap.put(oldColumnName, "");
     } else {
@@ -122,14 +128,36 @@ public class EvolvedSchema {
       return schemaEvolutions;
   }
 
-  public IDeviceID rewriteDeviceId(IDeviceID deviceID) {
+  public ModEntry rewriteToOriginal(ModEntry entry) {
+    if (entry.getType() == ModType.TABLE_DELETION) {
+      return rewriteToOriginal(((TableDeletionEntry) entry));
+    }
+    return entry;
+  }
+
+  public TableDeletionEntry rewriteToOriginal(TableDeletionEntry entry) {
+    DeletionPredicate deletionPredicate = rewriteToOriginal(entry.getPredicate());
+    return new TableDeletionEntry(deletionPredicate, entry.getTimeRange());
+  }
+
+  private DeletionPredicate rewriteToOriginal(DeletionPredicate predicate) {
+    String originalTableName = getOriginalTableName(predicate.getTableName());
+    TagPredicate tagPredicate = predicate.getTagPredicate();
+    tagPredicate = tagPredicate.rewriteToOriginal(this);
+    List<String> newMeasurements =
+    predicate.getMeasurementNames().stream().map(m -> getOriginalColumnName(predicate.getTableName(), m)).collect(
+        Collectors.toList());
+    return new DeletionPredicate(originalTableName, tagPredicate, newMeasurements);
+  }
+
+  public IDeviceID rewriteToOriginal(IDeviceID deviceID) {
     String tableName = deviceID.getTableName();
     String originalTableName = getOriginalTableName(tableName);
-    return rewriteDeviceId(deviceID, originalTableName);
+    return rewriteToOriginal(deviceID, originalTableName);
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
-  public static IDeviceID rewriteDeviceId(IDeviceID deviceID, String originalTableName) {
+  public static IDeviceID rewriteToOriginal(IDeviceID deviceID, String originalTableName) {
     String tableName = deviceID.getTableName();
     if (!tableName.equals(originalTableName)) {
       Object[] segments = deviceID.getSegments();

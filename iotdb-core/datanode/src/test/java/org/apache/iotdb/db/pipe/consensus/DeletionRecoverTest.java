@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDele
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import org.apache.tsfile.read.common.TimeRange;

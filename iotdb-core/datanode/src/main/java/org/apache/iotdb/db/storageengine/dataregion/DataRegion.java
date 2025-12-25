@@ -772,7 +772,7 @@ public class DataRegion implements IDataRegionForQuery {
       @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
       long endTime = resource.getEndTime(deviceId).get();
       if (mergedEvolvedSchema != null) {
-        deviceId = mergedEvolvedSchema.rewriteDeviceId(deviceId);
+        deviceId = mergedEvolvedSchema.rewriteToOriginal(deviceId);
       }
       endTimeMap.put(deviceId, endTime);
     }
@@ -794,7 +794,7 @@ public class DataRegion implements IDataRegionForQuery {
         //noinspection OptionalGetWithoutIsPresent
         long endTime = resource.getEndTime(deviceId).get();
         if (mergedEvolvedSchema != null) {
-          deviceId = mergedEvolvedSchema.rewriteDeviceId(deviceId);
+          deviceId = mergedEvolvedSchema.rewriteToOriginal(deviceId);
         }
         endTimeMap.put(deviceId, endTime);
       }
@@ -1270,12 +1270,12 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void renameTableForObjects(String nameBefore, String nameAfter) {
     // TODO-SchemaEvolution
-    throw new UnsupportedOperationException();
+    // throw new UnsupportedOperationException();
   }
 
   private void renameMeasurementForObjects(String tableName, String nameBefore, String nameAfter) {
     // TODO-SchemaEvolution
-    throw new UnsupportedOperationException();
+    // throw new UnsupportedOperationException();
   }
 
   /**
@@ -2681,7 +2681,7 @@ public class DataRegion implements IDataRegionForQuery {
       EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema();
       IDeviceID deviceIdBackThen = singleDeviceId;
       if (evolvedSchema != null) {
-        deviceIdBackThen = evolvedSchema.rewriteDeviceId(singleDeviceId);
+        deviceIdBackThen = evolvedSchema.rewriteToOriginal(singleDeviceId);
       }
 
       if (!tsFileResource.isSatisfied(
@@ -3020,6 +3020,11 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
+    EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema();
+    if (evolvedSchema != null) {
+      deletion = evolvedSchema.rewriteToOriginal(deletion);
+    }
+
     for (IDeviceID device : tsFileResource.getDevices()) {
       // we are iterating the time index so the times are definitely present
       long startTime = tsFileResource.getTimeIndex().getStartTime(device).get();
@@ -3071,10 +3076,70 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private boolean canBeFullyDeleted(ArrayDeviceTimeIndex deviceTimeIndex, TableDeletionEntry tableDeletionEntry) {
+    Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+    String tableName = tableDeletionEntry.getTableName();
+    long matchSize =
+        devicesInFile.stream()
+            .filter(
+                device -> {
+                  if (logger.isDebugEnabled()) {
+                    logger.debug(
+                        "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                        device,
+                        device.getTableName(),
+                        tableDeletionEntry.getPredicate().matches(device));
+                  }
+                  return tableName.equals(device.getTableName())
+                      && tableDeletionEntry.getPredicate().matches(device);
+                })
+            .count();
+    boolean onlyOneTable = matchSize == devicesInFile.size();
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "tableName is {}, matchSize is {}, onlyOneTable is {}",
+          tableName,
+          matchSize,
+          onlyOneTable);
+    }
+
+    if (onlyOneTable) {
+      matchSize = 0;
+      for (IDeviceID device : devicesInFile) {
+        Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
+        Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
+        if (!optStart.isPresent() || !optEnd.isPresent()) {
+          continue;
+        }
+
+        long fileStartTime = optStart.get();
+        long fileEndTime = optEnd.get();
+
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+              device.getTableName(),
+              device,
+              tableDeletionEntry.getStartTime(),
+              tableDeletionEntry.getEndTime(),
+              fileStartTime,
+              fileEndTime);
+        }
+        if (isFileFullyMatchedByTime(tableDeletionEntry, fileStartTime, fileEndTime)) {
+          ++matchSize;
+        } else {
+          return false;
+        }
+      }
+      return matchSize == devicesInFile.size();
+    } else {
+      return false;
+    }
+  }
+
   private void deleteDataInSealedFiles(Collection<TsFileResource> sealedTsFiles, ModEntry deletion)
       throws IOException {
-    Set<ModificationFile> involvedModificationFiles = new HashSet<>();
-    List<TsFileResource> deletedByMods = new ArrayList<>();
+    Set<Pair<ModificationFile, ModEntry>> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
@@ -3082,94 +3147,21 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
+      EvolvedSchema evolvedSchema = sealedTsFile.getMergedEvolvedSchema();
 
       if ((timeIndex instanceof ArrayDeviceTimeIndex)
           && (deletion.getType() == ModType.TABLE_DELETION)) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
-        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
-        boolean onlyOneTable = false;
-
-        if (deletion instanceof TableDeletionEntry) {
-          TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
-          String tableName = tableDeletionEntry.getTableName();
-          long matchSize =
-              devicesInFile.stream()
-                  .filter(
-                      device -> {
-                        if (logger.isDebugEnabled()) {
-                          logger.debug(
-                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
-                              device,
-                              device.getTableName(),
-                              tableDeletionEntry.getPredicate().matches(device));
-                        }
-                        return tableName.equals(device.getTableName())
-                            && tableDeletionEntry.getPredicate().matches(device);
-                      })
-                  .count();
-          onlyOneTable = matchSize == devicesInFile.size();
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                "tableName is {}, matchSize is {}, onlyOneTable is {}",
-                tableName,
-                matchSize,
-                onlyOneTable);
-          }
-        }
-
-        if (onlyOneTable) {
-          int matchSize = 0;
-          for (IDeviceID device : devicesInFile) {
-            Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
-            Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
-            if (!optStart.isPresent() || !optEnd.isPresent()) {
-              continue;
-            }
-
-            long fileStartTime = optStart.get();
-            long fileEndTime = optEnd.get();
-
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
-                  device.getTableName(),
-                  device,
-                  deletion.getStartTime(),
-                  deletion.getEndTime(),
-                  fileStartTime,
-                  fileEndTime);
-            }
-            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
-              ++matchSize;
-            } else {
-              deletedByMods.add(sealedTsFile);
-              break;
-            }
-          }
-          if (matchSize == devicesInFile.size()) {
-            deletedByFiles.add(sealedTsFile);
-          }
-
-          if (logger.isDebugEnabled()) {
-            logger.debug("expect is {}, actual is {}", devicesInFile.size(), matchSize);
-            for (TsFileResource tsFileResource : deletedByFiles) {
-              logger.debug(
-                  "delete tsFileResource is {}", tsFileResource.getTsFile().getAbsolutePath());
-            }
-          }
+        TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+        tableDeletionEntry = evolvedSchema != null? evolvedSchema.rewriteToOriginal(tableDeletionEntry) : tableDeletionEntry;
+        if (canBeFullyDeleted(deviceTimeIndex, tableDeletionEntry)) {
+          deletedByFiles.add(sealedTsFile);
         } else {
-          involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+          involvedModificationFiles.add(new Pair<>(sealedTsFile.getModFileForWrite(), tableDeletionEntry));
         }
       } else {
-        involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+        involvedModificationFiles.add(new Pair<>(sealedTsFile.getModFileForWrite(), evolvedSchema != null? evolvedSchema.rewriteToOriginal(deletion) : deletion));
       }
-    }
-
-    for (TsFileResource tsFileResource : deletedByMods) {
-      if (tsFileResource.isClosed()
-          || !tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
-        involvedModificationFiles.add(tsFileResource.getModFileForWrite());
-      } // else do nothing
     }
 
     if (!deletedByFiles.isEmpty()) {
@@ -3188,10 +3180,10 @@ public class DataRegion implements IDataRegionForQuery {
     List<Exception> exceptions =
         involvedModificationFiles.parallelStream()
             .map(
-                modFile -> {
+                modFileEntryPair -> {
                   try {
-                    modFile.write(deletion);
-                    modFile.close();
+                    modFileEntryPair.getLeft().write(modFileEntryPair.getRight());
+                    modFileEntryPair.getLeft().close();
                   } catch (Exception e) {
                     return e;
                   }

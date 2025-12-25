@@ -33,7 +33,7 @@ import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
