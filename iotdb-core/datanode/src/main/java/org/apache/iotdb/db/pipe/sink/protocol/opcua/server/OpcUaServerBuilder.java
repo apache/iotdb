@@ -57,6 +57,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -243,7 +244,8 @@ public class OpcUaServerBuilder implements Closeable {
                     USER_TOKEN_POLICY_USERNAME,
                     USER_TOKEN_POLICY_X509);
 
-        if (securityPolicies.contains(SecurityPolicy.None)) {
+        final Set<SecurityPolicy> securityPolicySet = new HashSet<>(securityPolicies);
+        if (securityPolicySet.contains(SecurityPolicy.None)) {
           final EndpointConfiguration.Builder noSecurityBuilder =
               builder
                   .copy()
@@ -252,10 +254,10 @@ public class OpcUaServerBuilder implements Closeable {
 
           endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
           endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
-          securityPolicies.remove(SecurityPolicy.None);
+          securityPolicySet.remove(SecurityPolicy.None);
         }
 
-        for (final SecurityPolicy securityPolicy : securityPolicies) {
+        for (final SecurityPolicy securityPolicy : securityPolicySet) {
           endpointConfigurations.add(
               buildTcpEndpoint(
                   builder

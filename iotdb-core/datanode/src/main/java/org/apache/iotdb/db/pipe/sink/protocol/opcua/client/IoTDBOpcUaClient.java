@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -65,6 +66,8 @@ import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace
 
 public class IoTDBOpcUaClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
+
+  // Customized nodes
   private static final int NAME_SPACE_INDEX = 2;
   private final String nodeUrl;
 
@@ -255,6 +258,11 @@ public class IoTDBOpcUaClient {
 
   IdentityProvider getIdentityProvider() {
     return identityProvider;
+  }
+
+  @TestOnly
+  public OpcUaClient getClient() {
+    return client;
   }
 
   /////////////////////////////// Attribute creator ///////////////////////////////
