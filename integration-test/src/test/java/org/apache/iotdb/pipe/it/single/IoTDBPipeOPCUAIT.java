@@ -66,6 +66,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
+      TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null);
+
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sinkAttributes.put("sink", "opc-ua-sink");
@@ -80,8 +82,6 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
                       .setExtractorAttributes(Collections.singletonMap("user", "root"))
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());
-
-      TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
       final OpcUaClient opcUaClient =
           getOpcUaClient("opc.tcp://127.0.0.1:12686/iotdb", SecurityPolicy.None, "root", "root");
