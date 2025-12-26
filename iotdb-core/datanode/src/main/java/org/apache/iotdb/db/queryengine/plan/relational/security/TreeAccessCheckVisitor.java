@@ -652,10 +652,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       case GRANT_ROLE:
       case REVOKE_ROLE:
       case ACCOUNT_UNLOCK:
-        context
-            .setAuditLogOperation(AuditLogOperation.DDL)
-            .setPrivilegeType(PrivilegeType.SECURITY);
-        context.setAuditLogOperation(AuditLogOperation.DDL);
         auditObject =
             () ->
                 authorType == AuthorType.REVOKE_USER || authorType == AuthorType.GRANT_USER
