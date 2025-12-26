@@ -465,6 +465,78 @@ struct TDeleteTimeSeriesReq {
   3: optional bool isGeneratedByPipe
 }
 
+struct TTimeSeriesInfo {
+  1: required binary path  // Serialized MeasurementPath
+  2: required i32 dataType  // TSDataType ordinal value
+  3: required i32 encoding  // TSEncoding ordinal value
+  4: required i32 compressor  // CompressionType ordinal value
+  5: optional string measurementAlias
+  6: optional map<string, string> props
+  7: optional map<string, string> tags
+  8: optional map<string, string> attributes
+}
+
+struct TAliasTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary oldPath
+  3: required binary newPath
+  4: optional bool isGeneratedByPipe
+}
+
+struct TAliasTimeSeriesResp {
+  1: required common.TSStatus status
+  2: optional TTimeSeriesInfo timeSeriesInfo  // Schema info from phase 1
+  3: optional bool isRenamed  // Whether oldPath is an alias series
+  4: optional binary physicalPath  // Physical path if oldPath is alias
+}
+
+// Phase 1: Lock and get schema info
+struct TLockAndGetSchemaInfoForAliasReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary oldPath
+  3: required binary newPath
+  4: optional bool isGeneratedByPipe
+}
+
+// Phase 2: Transform metadata - Scenario A: Create alias series
+struct TCreateAliasSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary oldPath  // Physical path
+  3: required binary newPath  // Alias path
+  4: required TTimeSeriesInfo timeSeriesInfo
+  5: optional bool isGeneratedByPipe
+}
+
+// Phase 2: Transform metadata - Scenario A: Mark old series as disabled
+struct TMarkSeriesDisabledReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary oldPath  // Physical path to mark as disabled
+  3: required binary newPath  // Alias path to set in ALIAS_PATH
+  4: optional bool isGeneratedByPipe
+}
+
+// Phase 2: Transform metadata - Scenario B: Create new alias and update physical reference
+struct TUpdatePhysicalAliasRefReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary physicalPath  // Physical path to update
+  3: required binary newAliasPath  // New alias path to set in ALIAS_PATH
+  4: optional bool isGeneratedByPipe
+}
+
+// Phase 2: Transform metadata - Scenario B/C: Drop old alias series
+struct TDropAliasSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary aliasPath  // Alias path to drop
+  3: optional bool isGeneratedByPipe
+}
+
+// Phase 2: Transform metadata - Scenario C: Enable physical series
+struct TEnablePhysicalSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary physicalPath  // Physical path to enable
+  3: optional bool isGeneratedByPipe
+}
+
 struct TAlterEncodingCompressorReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
@@ -1086,6 +1158,41 @@ service IDataNodeRPCService {
    * Delete matched timeseries and remove according schema black list in target schemRegion
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alias time series: lock and get schema info (phase 1)
+   */
+  TAliasTimeSeriesResp lockAndGetSchemaInfoForAlias(TLockAndGetSchemaInfoForAliasReq req)
+
+  /**
+   * Alias time series: transform metadata - Scenario A: Create alias series
+   */
+  common.TSStatus createAliasSeries(TCreateAliasSeriesReq req)
+
+  /**
+   * Alias time series: transform metadata - Scenario A: Mark old series as disabled
+   */
+  common.TSStatus markSeriesDisabled(TMarkSeriesDisabledReq req)
+
+  /**
+   * Alias time series: transform metadata - Scenario B: Update physical alias reference
+   */
+  common.TSStatus updatePhysicalAliasRef(TUpdatePhysicalAliasRefReq req)
+
+  /**
+   * Alias time series: transform metadata - Scenario B/C: Drop alias series
+   */
+  common.TSStatus dropAliasSeries(TDropAliasSeriesReq req)
+
+  /**
+   * Alias time series: transform metadata - Scenario C: Enable physical series
+   */
+  common.TSStatus enablePhysicalSeries(TEnablePhysicalSeriesReq req)
+
+  /**
+   * Alias time series: unlock (phase 3)
+   */
+  common.TSStatus unlockForAlias(TAliasTimeSeriesReq req)
 
   /**
    * Alter matched timeseries to specific encoding and compressor in target schemaRegions

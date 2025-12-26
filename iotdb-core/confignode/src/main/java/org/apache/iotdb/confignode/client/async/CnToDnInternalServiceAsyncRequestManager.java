@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestManager;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.AliasTimeSeriesRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
@@ -48,6 +49,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckS
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAliasTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
@@ -57,6 +59,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateAliasSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -69,9 +72,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropAliasSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TEnablePhysicalSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -79,6 +84,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TLockAndGetSchemaInfoForAliasReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMarkSeriesDisabledReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -98,6 +105,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdatePhysicalAliasRefReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -310,6 +318,39 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.DELETE_TIMESERIES,
         (req, client, handler) ->
             client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.LOCK_ALIAS,
+        (req, client, handler) ->
+            client.lockAndGetSchemaInfoForAlias(
+                (TLockAndGetSchemaInfoForAliasReq) req, (AliasTimeSeriesRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.CREATE_ALIAS_SERIES,
+        (req, client, handler) ->
+            client.createAliasSeries(
+                (TCreateAliasSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.MARK_SERIES_DISABLED,
+        (req, client, handler) ->
+            client.markSeriesDisabled(
+                (TMarkSeriesDisabledReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.UPDATE_PHYSICAL_ALIAS_REF,
+        (req, client, handler) ->
+            client.updatePhysicalAliasRef(
+                (TUpdatePhysicalAliasRefReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DROP_ALIAS_SERIES,
+        (req, client, handler) ->
+            client.dropAliasSeries((TDropAliasSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.ENABLE_PHYSICAL_SERIES,
+        (req, client, handler) ->
+            client.enablePhysicalSeries(
+                (TEnablePhysicalSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.UNLOCK_FOR_ALIAS,
+        (req, client, handler) ->
+            client.unlockForAlias((TAliasTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.ALTER_ENCODING_COMPRESSOR,
         (req, client, handler) ->

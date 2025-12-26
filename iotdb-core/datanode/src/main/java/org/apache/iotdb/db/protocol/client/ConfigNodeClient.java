@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAliasTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
@@ -1110,6 +1111,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteTimeSeries(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus aliasTimeSeries(TAliasTimeSeriesReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.aliasTimeSeries(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -23,6 +23,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -551,6 +558,50 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         final AlterEncodingCompressorNode alterEncodingCompressorNode,
         final DataOutputStream outputStream) {
       return visitPlanNode(alterEncodingCompressorNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitCreateAliasSeries(
+        final CreateAliasSeriesNode createAliasSeriesNode, final DataOutputStream outputStream) {
+      return visitPlanNode(createAliasSeriesNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitMarkSeriesDisabled(
+        final MarkSeriesDisabledNode markSeriesDisabledNode, final DataOutputStream outputStream) {
+      return visitPlanNode(markSeriesDisabledNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitUpdatePhysicalAliasRef(
+        final UpdatePhysicalAliasRefNode updatePhysicalAliasRefNode,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(updatePhysicalAliasRefNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDropAliasSeries(
+        final DropAliasSeriesNode dropAliasSeriesNode, final DataOutputStream outputStream) {
+      return visitPlanNode(dropAliasSeriesNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitEnablePhysicalSeries(
+        final EnablePhysicalSeriesNode enablePhysicalSeriesNode,
+        final DataOutputStream outputStream) {
+      return visitPlanNode(enablePhysicalSeriesNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitUnlockForAlias(
+        final UnlockForAliasNode unlockForAliasNode, final DataOutputStream outputStream) {
+      return visitPlanNode(unlockForAliasNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitLockAlias(
+        final LockAliasNode lockAliasNode, final DataOutputStream outputStream) {
+      return visitPlanNode(lockAliasNode, outputStream);
     }
 
     private SchemaRegionPlanSerializationResult visitPlanNode(
