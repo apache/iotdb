@@ -584,13 +584,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean canPushDownOffsetLimit = singleSchemaRegion && !showTimeSeriesStatement.isOrderByHeat();
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
-      limit = 0;
+      limit = -1;
       offset = 0;
     } else if (!canPushDownOffsetLimit) {
-      limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+      limit = showTimeSeriesStatement.getLimitWithOffset();
       offset = 0;
     }
-    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries() && singleSchemaRegion;
+    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries();
     boolean orderByTimeseriesDesc =
         orderByTimeseries && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
 
@@ -658,7 +658,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showDevicesStatement.getLimit();
     long offset = showDevicesStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit = showDevicesStatement.getLimit() + showDevicesStatement.getOffset();
+      limit = showDevicesStatement.getLimitWithOffset();
       offset = 0;
     }
 
@@ -1030,7 +1030,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showLogicalViewStatement.getLimit();
     long offset = showLogicalViewStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit = showLogicalViewStatement.getLimit() + showLogicalViewStatement.getOffset();
+      limit = showLogicalViewStatement.getLimitWithOffset();
       offset = 0;
     }
     planBuilder =

@@ -28,7 +28,7 @@ import java.util.List;
 
 public class ShowStatement extends AuthorityInformationStatement {
 
-  long limit = 0;
+  long limit = -1;
   long offset = 0;
 
   protected boolean isPrefixPath;
@@ -57,6 +57,13 @@ public class ShowStatement extends AuthorityInformationStatement {
 
   public void setOffset(long offset) {
     this.offset = offset;
+  }
+
+  public long getLimitWithOffset() {
+    if (limit < 0) {
+      return limit;
+    }
+    return limit + offset;
   }
 
   public boolean isPrefixPath() {

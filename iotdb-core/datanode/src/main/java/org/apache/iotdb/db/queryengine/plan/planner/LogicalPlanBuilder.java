@@ -905,7 +905,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
-    if (rowLimit == 0) {
+    if (rowLimit < 0) {
       return this;
     }
 
