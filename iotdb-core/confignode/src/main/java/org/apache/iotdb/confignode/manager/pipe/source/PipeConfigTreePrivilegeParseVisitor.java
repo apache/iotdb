@@ -184,6 +184,18 @@ public class PipeConfigTreePrivilegeParseVisitor
     return visitRolePlan(revokeRolePlan, userEntity);
   }
 
+  @Override
+  public Optional<ConfigPhysicalPlan> visitGrantRoleToUser(
+      final AuthorTreePlan grantRoleToUserPlan, final IAuditEntity userEntity) {
+    return visitUserRolePlan(grantRoleToUserPlan, userEntity);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRevokeRoleFromUser(
+      final AuthorTreePlan revokeRoleFromUserPlan, final IAuditEntity userEntity) {
+    return visitUserRolePlan(revokeRoleFromUserPlan, userEntity);
+  }
+
   public static Optional<ConfigPhysicalPlan> visitUserRolePlan(
       final AuthorPlan plan, final IAuditEntity userEntity) {
     final Optional<ConfigPhysicalPlan> result = visitUserPlan(plan, userEntity, false);
@@ -238,24 +250,32 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
       final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final IAuditEntity userEntity) {
+    final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
+    final PathPatternTree originalTree =
+        PathPatternTree.deserialize(pipeDeleteTimeSeriesPlan.getPatternTreeBytes());
+    userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
+    final String auditObject = originalTree.getAllPathPatterns().toString();
     try {
-      final PathPatternTree originalTree =
-          PathPatternTree.deserialize(pipeDeleteTimeSeriesPlan.getPatternTreeBytes());
       final PathPatternTree intersectedTree =
           originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
       if (!skip && !originalTree.equals(intersectedTree)) {
+        logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
             "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
       }
-      return !intersectedTree.isEmpty()
+      final boolean result = !intersectedTree.isEmpty();
+      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      return result
           ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(
           "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
           e);
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -268,24 +288,32 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
       final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, final IAuditEntity userEntity) {
+    final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
+    final PathPatternTree originalTree =
+        PathPatternTree.deserialize(pipeDeleteLogicalViewPlan.getPatternTreeBytes());
+    userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
+    final String auditObject = originalTree.getAllPathPatterns().toString();
     try {
-      final PathPatternTree originalTree =
-          PathPatternTree.deserialize(pipeDeleteLogicalViewPlan.getPatternTreeBytes());
       final PathPatternTree intersectedTree =
           originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
       if (!skip && !originalTree.equals(intersectedTree)) {
+        logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
             "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
       }
-      return !intersectedTree.isEmpty()
+      final boolean result = !intersectedTree.isEmpty();
+      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      return result
           ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
     } catch (final IOException e) {
       LOGGER.warn(
           "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
           e);
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -298,6 +326,9 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
       final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, final IAuditEntity userEntity) {
+    final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
+    userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
+    final String auditObject = pipeDeactivateTemplatePlan.getTemplateSetInfo().toString();
     try {
       final Map<PartialPath, List<Template>> newTemplateSetInfo = new HashMap<>();
       for (final Map.Entry<PartialPath, List<Template>> templateEntry :
@@ -312,10 +343,13 @@ public class PipeConfigTreePrivilegeParseVisitor
           }
         }
       }
+      final boolean result = !newTemplateSetInfo.isEmpty();
+      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
       return !newTemplateSetInfo.isEmpty()
           ? Optional.of(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
           : Optional.empty();
     } catch (final AuthException e) {
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -364,7 +398,7 @@ public class PipeConfigTreePrivilegeParseVisitor
     return ConfigNode.getInstance()
         .getConfigManager()
         .getPermissionManager()
-        .fetchRawAuthorizedPTree(userEntity, PrivilegeType.READ_SCHEMA);
+        .fetchRawAuthorizedPTree(userEntity.getUsername(), PrivilegeType.READ_SCHEMA);
   }
 
   public static boolean hasGlobalPrivilege(
