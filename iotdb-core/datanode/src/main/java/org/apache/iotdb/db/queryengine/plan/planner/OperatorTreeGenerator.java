@@ -1557,6 +1557,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
           new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
+              context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
               projectContext,
               expressionTypes,
               projectLeafColumnTransformerList,
@@ -1713,6 +1714,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ColumnTransformerVisitor.ColumnTransformerVisitorContext filterColumnTransformerContext =
         new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
+            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
             filterContext,
             expressionTypes,
             filterLeafColumnTransformerList,
@@ -1739,6 +1741,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
           new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
+              context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
               projectContext,
               expressionTypes,
               projectLeafColumnTransformerList,
