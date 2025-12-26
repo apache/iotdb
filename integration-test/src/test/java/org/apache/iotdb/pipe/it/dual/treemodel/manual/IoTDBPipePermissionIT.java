@@ -414,6 +414,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       fail("Create pipe without user shall succeed if use the current session");
     }
 
+    TestUtils.executeNonQuery(senderEnv, "revoke SYSTEM on root.** from user thulab");
+
     // A user shall only see its own pipe
     try (final Connection connection = senderEnv.getConnection("thulab", "passwD@123456");
         final Statement statement = connection.createStatement()) {
@@ -424,7 +426,5 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     } catch (Exception e) {
       fail(e.getMessage());
     }
-
-    TestUtils.executeNonQuery(senderEnv, "revoke SYSTEM on root.** from user thulab");
   }
 }
