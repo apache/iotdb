@@ -110,7 +110,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       long startTime = System.currentTimeMillis();
       while (true) {
         try {
-          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
+          value =
+              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
           Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
