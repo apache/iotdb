@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
@@ -189,19 +190,27 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
+  private final PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
+
   public RelationPlanner(
       final Analysis analysis,
       final SymbolAllocator symbolAllocator,
       final MPPQueryContext queryContext,
       final Optional<TranslationMap> outerContext,
       final SessionInfo sessionInfo,
-      final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
+      final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(queryContext, "queryContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(sessionInfo, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(
+        predicateWithUncorrelatedScalarSubqueryReconstructor,
+        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -209,6 +218,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     this.idAllocator = queryContext.getQueryId();
     this.outerContext = outerContext;
     this.sessionInfo = sessionInfo;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
     this.subqueryPlanner =
         new SubqueryPlanner(
             analysis,
@@ -216,14 +227,21 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             queryContext,
             outerContext,
             sessionInfo,
-            recursiveSubqueries);
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor);
     this.recursiveSubqueries = recursiveSubqueries;
   }
 
   @Override
   protected RelationPlan visitQuery(final Query node, final Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
+            analysis,
+            symbolAllocator,
+            queryContext,
+            outerContext,
+            sessionInfo,
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor)
         .plan(node);
   }
 
@@ -384,7 +402,13 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   protected RelationPlan visitQuerySpecification(
       final QuerySpecification node, final Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
+            analysis,
+            symbolAllocator,
+            queryContext,
+            outerContext,
+            sessionInfo,
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor)
         .plan(node);
   }
 
@@ -911,11 +935,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           .forEach(outputLayout::add);
     }
 
+    List<Expression> expressions =
+        extractPatternRecognitionExpressions(node.getVariableDefinitions(), node.getMeasures());
     planBuilder =
-        subqueryPlanner.handleSubqueries(
-            planBuilder,
-            extractPatternRecognitionExpressions(node.getVariableDefinitions(), node.getMeasures()),
-            analysis.getSubqueries(node));
+        subqueryPlanner.handleSubqueries(planBuilder, expressions, analysis.getSubqueries(node));
 
     PatternRecognitionComponents components =
         planPatternRecognitionComponents(
@@ -927,6 +950,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             node.getVariableDefinitions());
 
     outputLayout.addAll(components.getMeasureOutputs());
+
+    for (Expression expr : expressions) {
+      predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(expr);
+    }
 
     if (!oneRowOutput) {
       Set<Symbol> inputSymbolsOnOutput = ImmutableSet.copyOf(outputLayout.build());

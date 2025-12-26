@@ -63,6 +63,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Comparison
 
 public class UncorrelatedSubqueryTest {
   private PlanTester planTester;
+  private PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubquery;
 
   @Before
   public void setUp() throws Exception {
@@ -71,21 +73,20 @@ public class UncorrelatedSubqueryTest {
   }
 
   private void mockPredicateWithUncorrelatedScalarSubquery() {
-    PredicateWithUncorrelatedScalarSubqueryReconstructor predicateWithUncorrelatedScalarSubquery =
+    predicateWithUncorrelatedScalarSubquery =
         Mockito.spy(new PredicateWithUncorrelatedScalarSubqueryReconstructor());
     Mockito.when(
             predicateWithUncorrelatedScalarSubquery.fetchUncorrelatedSubqueryResultForPredicate(
                 Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
         .thenReturn(Optional.of(new LongLiteral("1")));
-    PredicateWithUncorrelatedScalarSubqueryReconstructor.setInstance(
-        predicateWithUncorrelatedScalarSubquery);
   }
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
     String sql = "SELECT s1 FROM table1 where s1 = (select max(s1) from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan =
         tableScan(
@@ -113,7 +114,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedScalarSubqueryInWhereClauseWithEnforceSingleRowNode() {
     String sql = "SELECT s1 FROM table1 where s1 = (select s2 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan =
         tableScan(
@@ -134,7 +136,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedInPredicateSubquery() {
     String sql = "SELECT s1 FROM table1 where s1 in (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new SymbolReference("expr");
 
@@ -185,7 +188,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedNotInPredicateSubquery() {
     String sql = "SELECT s1 FROM table1 where s1 not in (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new NotExpression(new SymbolReference("expr"));
 
@@ -219,7 +223,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedAnyComparisonSubquery() {
     String sql = "SELECT s1 FROM table1 where s1 > any (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -346,7 +351,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedEqualsSomeComparisonSubquery() {
     String sql = "SELECT s1 FROM table1 where s1 = some (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new SymbolReference("expr");
 
@@ -380,7 +386,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedAllComparisonSubquery() {
     String sql = "SELECT s1 FROM table1 where s1 != all (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -409,7 +416,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedExistsSubquery() {
     String sql = "SELECT s1 FROM table1 where exists(select s2 from table2)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -456,7 +464,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedNotExistsSubquery() {
     String sql = "SELECT s1 FROM table1 where not exists(select s2 from table2)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -505,7 +514,8 @@ public class UncorrelatedSubqueryTest {
   public void testUncorrelatedHavingSubquery() {
     String sql =
         "SELECT min(time) as min FROM table1 group by s1 having min(time) > (select max(time) from table2)";
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan =
         tableScan("testdb.table1", ImmutableList.of("time", "s1"), ImmutableSet.of("time", "s1"));
