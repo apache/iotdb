@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -57,7 +58,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 
 public class PipeConfigTreePrivilegeParseVisitorTest {
-
+  private static final UserEntity FAKE_USER_ENTITY = new UserEntity(0L, "", "");
   private final PipeConfigTreePrivilegeParseVisitor skipVisitor =
       new PipeConfigTreePrivilegeParseVisitor(true);
   private final PipeConfigTreePrivilegeParseVisitor throwVisitor =
@@ -85,28 +86,28 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
   public void testCanReadSysSchema() {
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) -> privilegeUnion.getPrivilegeType() == PrivilegeType.SYSTEM);
-    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, true));
 
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
                 && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db")));
-    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
-    Assert.assertFalse(skipVisitor.canReadSysSchema("root.db", null, false));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, true));
+    Assert.assertFalse(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, false));
     Assert.assertFalse(
         throwVisitor
             .visitCreateDatabase(
                 new DatabaseSchemaPlan(
                     ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
-                null)
+                FAKE_USER_ENTITY)
             .isPresent());
 
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.READ_SCHEMA
                 && privilegeUnion.getPaths().stream().allMatch(path -> path.equals("root.db.**")));
-    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, true));
-    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", null, false));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, true));
+    Assert.assertTrue(skipVisitor.canReadSysSchema("root.db", FAKE_USER_ENTITY, false));
   }
 
   @Test
@@ -116,19 +117,21 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_USER);
     Assert.assertTrue(
         skipVisitor
-            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), null)
+            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertTrue(
         skipVisitor
-            .visitRevokeUser(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), null)
+            .visitRevokeUser(
+                new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertFalse(
         skipVisitor
-            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), null)
+            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertFalse(
         skipVisitor
-            .visitRevokeRole(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), null)
+            .visitRevokeRole(
+                new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
             .isPresent());
 
     permissionManager.setUserPrivilege(
@@ -136,19 +139,21 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_ROLE);
     Assert.assertFalse(
         skipVisitor
-            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), null)
+            .visitGrantUser(new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertFalse(
         skipVisitor
-            .visitRevokeUser(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), null)
+            .visitRevokeUser(
+                new AuthorTreePlan(ConfigPhysicalPlanType.RevokeUser), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertTrue(
         skipVisitor
-            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), null)
+            .visitGrantRole(new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole), FAKE_USER_ENTITY)
             .isPresent());
     Assert.assertTrue(
         skipVisitor
-            .visitRevokeRole(new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), null)
+            .visitRevokeRole(
+                new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
             .isPresent());
   }
 
@@ -172,7 +177,8 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
         PathPatternTree.deserialize(
                 ((PipeDeleteTimeSeriesPlan)
                         skipVisitor
-                            .visitPipeDeleteTimeSeries(new PipeDeleteTimeSeriesPlan(buffer), null)
+                            .visitPipeDeleteTimeSeries(
+                                new PipeDeleteTimeSeriesPlan(buffer), FAKE_USER_ENTITY)
                             .get())
                     .getPatternTreeBytes())
             .getAllPathPatterns());
@@ -181,16 +187,21 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
         PathPatternTree.deserialize(
                 ((PipeDeleteLogicalViewPlan)
                         skipVisitor
-                            .visitPipeDeleteLogicalView(new PipeDeleteLogicalViewPlan(buffer), null)
+                            .visitPipeDeleteLogicalView(
+                                new PipeDeleteLogicalViewPlan(buffer), FAKE_USER_ENTITY)
                             .get())
                     .getPatternTreeBytes())
             .getAllPathPatterns());
     Assert.assertThrows(
         AccessDeniedException.class,
-        () -> throwVisitor.visitPipeDeleteTimeSeries(new PipeDeleteTimeSeriesPlan(buffer), null));
+        () ->
+            throwVisitor.visitPipeDeleteTimeSeries(
+                new PipeDeleteTimeSeriesPlan(buffer), FAKE_USER_ENTITY));
     Assert.assertThrows(
         AccessDeniedException.class,
-        () -> throwVisitor.visitPipeDeleteLogicalView(new PipeDeleteLogicalViewPlan(buffer), null));
+        () ->
+            throwVisitor.visitPipeDeleteLogicalView(
+                new PipeDeleteLogicalViewPlan(buffer), FAKE_USER_ENTITY));
 
     Assert.assertEquals(
         Collections.singleton(matchedPath),
@@ -204,7 +215,7 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                                 put(unmatchedPath, Collections.singletonList(new Template()));
                               }
                             }),
-                        null)
+                        FAKE_USER_ENTITY)
                     .get())
             .getTemplateSetInfo()
             .keySet());
@@ -215,13 +226,14 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                 skipVisitor
                     .visitTTL(
                         new SetTTLPlan(new String[] {"root", "*", "device", "measurement"}, 100),
-                        null)
+                        FAKE_USER_ENTITY)
                     .get())
             .getPathPattern());
     Assert.assertFalse(
         skipVisitor
             .visitTTL(
-                new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100), null)
+                new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100),
+                FAKE_USER_ENTITY)
             .isPresent());
   }
 
