@@ -833,12 +833,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
-    assertTestFail(
-        senderEnv,
-        "show pipes",
-        "803: No permissions for this operation, please add privilege SYSTEM",
-        "test",
-        "test123123456");
+    // Will not throw exception
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123123456");
     assertNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
