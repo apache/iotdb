@@ -84,7 +84,7 @@ public class PipeConfigTablePrivilegeParseVisitor
   private boolean isDatabaseVisible(final IAuditEntity userEntity, final String database) {
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     final CNAuditLogger logger = configManager.getAuditLogger();
-    boolean result =
+    final boolean result =
         configManager
                 .getPermissionManager()
                 .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(database, null))
@@ -176,7 +176,7 @@ public class PipeConfigTablePrivilegeParseVisitor
       final IAuditEntity userEntity, final String database, final String tableName) {
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     final CNAuditLogger logger = configManager.getAuditLogger();
-    boolean result =
+    final boolean result =
         configManager
                 .getPermissionManager()
                 .checkUserPrivileges(

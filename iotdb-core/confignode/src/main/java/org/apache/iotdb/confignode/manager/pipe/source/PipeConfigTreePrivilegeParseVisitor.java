@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -409,25 +410,35 @@ public class PipeConfigTreePrivilegeParseVisitor
         .fetchRawAuthorizedPTree(userEntity.getUsername(), PrivilegeType.READ_SCHEMA);
   }
 
-  public static boolean hasGlobalPrivilege(
+  public static TSStatus checkGlobalStatus(
       final IAuditEntity userEntity,
       final PrivilegeType privilegeType,
       final String auditObject,
       final boolean isLastCheck) {
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     final CNAuditLogger logger = configManager.getAuditLogger();
-    final boolean result =
+    final TSStatus result =
         configManager
-                .getPermissionManager()
-                .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(privilegeType))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
-    if (result || isLastCheck) {
+            .getPermissionManager()
+            .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(privilegeType))
+            .getStatus();
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
       logger.recordAuditLog(
-          userEntity.setPrivilegeType(privilegeType).setResult(result), () -> auditObject);
+          userEntity
+              .setPrivilegeType(privilegeType)
+              .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          () -> auditObject);
     }
     return result;
+  }
+
+  public static boolean hasGlobalPrivilege(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final String auditObject,
+      final boolean isLastCheck) {
+    return checkGlobalStatus(userEntity, privilegeType, auditObject, isLastCheck).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   private boolean hasReadPrivilege(
