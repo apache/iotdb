@@ -55,6 +55,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 public class PipeConfigTreePrivilegeParseVisitorTest {
@@ -134,6 +135,15 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
             .isPresent());
 
+    permissionManager.setUserPrivilege((userName, privilegeUnion) -> false);
+    AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
+    plan.setUserName("");
+    Assert.assertTrue(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertTrue(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isPresent());
+    plan.setUserName("another");
+    Assert.assertFalse(skipVisitor.visitGrantUser(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertFalse(skipVisitor.visitRevokeUser(plan, FAKE_USER_ENTITY).isPresent());
+
     permissionManager.setUserPrivilege(
         (userName, privilegeUnion) ->
             privilegeUnion.getPrivilegeType() == PrivilegeType.MANAGE_ROLE);
@@ -155,6 +165,15 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
             .visitRevokeRole(
                 new AuthorTreePlan(ConfigPhysicalPlanType.RevokeRole), FAKE_USER_ENTITY)
             .isPresent());
+
+    permissionManager.setUserPrivilege((userName, privilegeUnion) -> false);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
+    plan.setRoleName("");
+    Assert.assertTrue(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertTrue(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isPresent());
+    plan.setRoleName("another");
+    Assert.assertFalse(skipVisitor.visitGrantRole(plan, FAKE_USER_ENTITY).isPresent());
+    Assert.assertFalse(skipVisitor.visitRevokeRole(plan, FAKE_USER_ENTITY).isPresent());
   }
 
   @Test
@@ -266,6 +285,13 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
       tree.appendPathPattern(new PartialPath(new String[] {"root", "db", "device", "**"}));
       tree.constructTree();
       return tree;
+    }
+
+    @Override
+    public TPermissionInfoResp checkRoleOfUser(String username, String rolename) {
+      return Objects.equals(username, rolename)
+          ? new TPermissionInfoResp(StatusUtils.OK)
+          : new TPermissionInfoResp(new TSStatus(TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()));
     }
   }
 }
