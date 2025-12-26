@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -74,6 +75,12 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       sinkAttributes.put("opcua.model", "client-server");
       sinkAttributes.put("security-policy", "None");
 
+      final int[] ports = EnvUtils.searchAvailablePorts();
+      final int tcpPort = ports[0];
+      final int httpsPort = ports[1];
+      sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
+      sinkAttributes.put("https.port", Integer.toString(httpsPort));
+
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
@@ -84,7 +91,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
               .getCode());
 
       final OpcUaClient opcUaClient =
-          getOpcUaClient("opc.tcp://127.0.0.1:12686/iotdb", SecurityPolicy.None, "root", "root");
+          getOpcUaClient(
+              "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb", SecurityPolicy.None, "root", "root");
       DataValue value =
           opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/s1")).get();
       Assert.assertEquals(new Variant(1.0), value.getValue());
@@ -164,7 +172,10 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           PipeException.class,
           () ->
               getOpcUaClient(
-                  "opc.tcp://127.0.0.1:12686/iotdb", SecurityPolicy.None, "root", "root"));
+                  "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb",
+                  SecurityPolicy.None,
+                  "root",
+                  "root"));
 
       // Test conflict
       sinkAttributes.put("password", "conflict");
@@ -195,6 +206,12 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
       sinkAttributes.put("sink", "opc-ua-sink");
       sinkAttributes.put("opcua.model", "client-server");
+
+      final int[] ports = EnvUtils.searchAvailablePorts();
+      final int tcpPort = ports[0];
+      final int httpsPort = ports[1];
+      sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
+      sinkAttributes.put("https.port", Integer.toString(httpsPort));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
