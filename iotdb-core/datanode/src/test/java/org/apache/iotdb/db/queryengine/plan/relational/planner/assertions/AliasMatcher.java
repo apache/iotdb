@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 
 import java.util.Optional;
 
@@ -56,9 +58,15 @@ public class AliasMatcher implements Matcher {
   public MatchResult detailMatches(
       PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
     Optional<Symbol> symbol = matcher.getAssignedSymbol(node, sessionInfo, metadata, symbolAliases);
+    if (!symbol.isPresent() && node instanceof CteScanNode) {
+      TableSchema tableSchema = ((CteScanNode) node).getDataStore().getTableSchema();
+      symbol = matcher.getCteSymbol(tableSchema);
+    }
+
     if (symbol.isPresent() && alias.isPresent()) {
       return match(alias.get(), symbol.get().toSymbolReference());
     }
+
     return new MatchResult(symbol.isPresent());
   }
 

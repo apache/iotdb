@@ -1717,12 +1717,12 @@ public class ExpressionAnalyzer {
       return subqueryType;
     }
 
-    private Type analyzeSubquery(
-        SubqueryExpression node, StackableAstVisitorContext<Context> context) {
+    private Type analyzeSubquery(SubqueryExpression node, StackableAstVisitorContext<Context> ctx) {
       StatementAnalyzer analyzer =
-          statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
-      Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
+          statementAnalyzerFactory.apply(node, ctx.getContext().getCorrelationSupport());
+      Scope subqueryScope = Scope.builder().withParent(ctx.getContext().getScope()).build();
       Scope queryScope = analyzer.analyze(node.getQuery(), subqueryScope);
+      context.addSubQueryTables(node.getQuery(), queryScope.getTables());
 
       ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
       for (int i = 0; i < queryScope.getRelationType().getAllFieldCount(); i++) {
