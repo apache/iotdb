@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameView
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -146,6 +147,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTreePrivilegeParseVisitor.checkGlobalStatus;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTreePrivilegeParseVisitor.checkPathsStatus;
 
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
@@ -296,6 +298,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
 
     String database;
+    String templateName;
     switch (plan.getType()) {
       case CreateDatabase:
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
@@ -331,23 +334,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ((ExtendSchemaTemplatePlan) plan).getTemplateExtendInfo().getTemplateName(),
             true);
       case CreateSchemaTemplate:
+        templateName = ((CreateSchemaTemplatePlan) plan).getTemplate().getName();
+        return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
       case CommitSetSchemaTemplate:
+        templateName = ((CommitSetSchemaTemplatePlan) plan).getName();
+        return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
       case PipeUnsetTemplate:
-        return CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)
-            ? StatusUtils.OK
-            : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-                .setMessage("Only the admin user can perform this operation");
+        templateName = ((PipeUnsetSchemaTemplatePlan) plan).getName();
+        return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
       case PipeDeleteTimeSeries:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    new ArrayList<>(
-                        PathPatternTree.deserialize(
-                                ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
-                            .getAllPathPatterns()),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return checkPathsStatus(
+            userEntity,
+            PrivilegeType.WRITE_SCHEMA,
+            new ArrayList<>(
+                PathPatternTree.deserialize(((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                    .getAllPathPatterns()),
+            true);
       case PipeAlterEncodingCompressor:
         // Judge here in the future
         if (configManager
@@ -376,37 +378,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                       .serialize());
           return StatusUtils.OK;
         } else {
-          return configManager
-              .checkUserPrivileges(
-                  username,
-                  new PrivilegeUnion(
-                      new ArrayList<>(
-                          PathPatternTree.deserialize(
-                                  ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
-                              .getAllPathPatterns()),
-                      PrivilegeType.WRITE_SCHEMA))
-              .getStatus();
+          return checkPathsStatus(
+              userEntity,
+              PrivilegeType.WRITE_SCHEMA,
+              new ArrayList<>(
+                  PathPatternTree.deserialize(
+                          ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes())
+                      .getAllPathPatterns()),
+              true);
         }
       case PipeDeleteLogicalView:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    new ArrayList<>(
-                        PathPatternTree.deserialize(
-                                ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
-                            .getAllPathPatterns()),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return checkPathsStatus(
+            userEntity,
+            PrivilegeType.WRITE_SCHEMA,
+            new ArrayList<>(
+                PathPatternTree.deserialize(
+                        ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                    .getAllPathPatterns()),
+            true);
       case PipeDeactivateTemplate:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    new ArrayList<>(
-                        ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
-                    PrivilegeType.WRITE_SCHEMA))
-            .getStatus();
+        return checkPathsStatus(
+            userEntity,
+            PrivilegeType.WRITE_SCHEMA,
+            new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
+            true);
       case SetTTL:
         return Objects.equals(
                 configManager

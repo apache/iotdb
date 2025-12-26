@@ -51,6 +51,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -441,13 +443,34 @@ public class PipeConfigTreePrivilegeParseVisitor
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
+  public static TSStatus checkPathsStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final @Nonnull List<PartialPath> paths,
+      final boolean isLastCheck) {
+    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
+    final CNAuditLogger logger = configManager.getAuditLogger();
+    final TSStatus result =
+        ConfigNode.getInstance()
+            .getConfigManager()
+            .getPermissionManager()
+            .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(paths, privilegeType))
+            .getStatus();
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
+      logger.recordAuditLog(
+          userEntity
+              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+              .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          paths::toString);
+    }
+    return result;
+  }
+
   private boolean hasReadPrivilege(
       final IAuditEntity userEntity,
       final String path,
       final boolean withWildcard,
       final boolean isLastCheck) {
-    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-    final CNAuditLogger logger = configManager.getAuditLogger();
     PartialPath partialPath;
     try {
       partialPath = new PartialPath(path);
@@ -458,21 +481,12 @@ public class PipeConfigTreePrivilegeParseVisitor
     if (withWildcard) {
       partialPath = partialPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
     }
-    final boolean result =
-        ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(
-                    userEntity.getUsername(),
-                    new PrivilegeUnion(
-                        Collections.singletonList(partialPath), PrivilegeType.READ_SCHEMA))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
-    if (result || isLastCheck) {
-      logger.recordAuditLog(
-          userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA).setResult(result), () -> path);
-    }
-    return result;
+    return checkPathsStatus(
+                userEntity,
+                PrivilegeType.READ_SCHEMA,
+                Collections.singletonList(partialPath),
+                isLastCheck)
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 }
