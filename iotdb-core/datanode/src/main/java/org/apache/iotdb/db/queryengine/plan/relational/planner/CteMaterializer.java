@@ -82,9 +82,10 @@ public class CteMaterializer {
             (tableRef, query) -> {
               Table table = tableRef.getNode();
               if (query.isMaterialized()) {
-                if (!query.isDone()) {
+                if (!query.isExecuted()) {
                   CteDataStore dataStore =
                       fetchCteQueryResult(context, table, query, analysis.getWith());
+                  query.setExecuted(true);
                   if (dataStore == null) {
                     // CTE query execution failed. Use inline instead of materialization
                     // in the outer query
