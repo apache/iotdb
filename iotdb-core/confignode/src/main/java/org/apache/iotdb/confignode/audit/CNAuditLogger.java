@@ -42,5 +42,9 @@ public class CNAuditLogger extends AbstractAuditLogger {
   }
 
   @Override
-  public void log(IAuditEntity auditLogFields, Supplier<String> log) {}
+  public void log(IAuditEntity auditLogFields, Supplier<String> log) {
+    if (!isAuditLogEnabled()) {
+      return;
+    }
+  }
 }
