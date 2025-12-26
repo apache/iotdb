@@ -21,10 +21,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
@@ -36,6 +36,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Objects.requireNonNull;
+
 public class CteScanOperator implements SourceOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(CteScanOperator.class);
   private static final long INSTANCE_SIZE =
@@ -46,42 +48,33 @@ public class CteScanOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
-
-  private final CteDataStore dataStore;
   private final CteDataReader dataReader;
-  private final int dataStoreRefCount;
 
   public CteScanOperator(
-      OperatorContext operatorContext, PlanNodeId sourceId, CteDataStore dataStore) {
+      OperatorContext operatorContext,
+      PlanNodeId sourceId,
+      CteDataStore dataStore,
+      MemoryReservationManager memoryReservationManager) {
+    requireNonNull(dataStore, "dataStore is null");
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
-    this.dataStore = dataStore;
-    this.dataReader = new MemoryReader(dataStore.getCachedData());
-    this.dataStoreRefCount = dataStore.increaseRefCount();
+    this.dataReader = new MemoryReader(dataStore, memoryReservationManager);
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (dataReader == null) {
-      return null;
-    }
     return dataReader.next();
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    if (dataReader == null) {
-      return false;
-    }
     return dataReader.hasNext();
   }
 
   @Override
   public void close() throws Exception {
     try {
-      if (dataReader != null) {
-        dataReader.close();
-      }
+      dataReader.close();
     } catch (Exception e) {
       LOGGER.error("Fail to close CteDataReader", e);
     }
@@ -109,15 +102,9 @@ public class CteScanOperator implements SourceOperator {
 
   @Override
   public long ramBytesUsed() {
-    long bytes =
-        INSTANCE_SIZE
-            + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-            + dataReader.bytesUsed();
-    if (dataStoreRefCount == 1) {
-      bytes += dataStore.getCachedBytes();
-    }
-
-    return bytes;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + dataReader.ramBytesUsed();
   }
 
   @Override
@@ -128,10 +115,5 @@ public class CteScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
-  }
-
-  @TestOnly
-  public int getDataStoreRefCount() {
-    return dataStoreRefCount;
   }
 }

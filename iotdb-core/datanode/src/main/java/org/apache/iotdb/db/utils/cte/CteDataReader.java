@@ -24,8 +24,9 @@ package org.apache.iotdb.db.utils.cte;
 import org.apache.iotdb.commons.exception.IoTDBException;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 
-public interface CteDataReader {
+public interface CteDataReader extends Accountable {
   /**
    * Check if there is more data in CteDataReader. DiskSpillerReader may run out of current TsBlocks
    * , then it needs to read from file and cache more data. This method should be called before
@@ -48,11 +49,4 @@ public interface CteDataReader {
    * @throws IoTDBException the error occurs when closing fileChannel
    */
   void close() throws IoTDBException;
-
-  /**
-   * Get the bytes used by this CteDataReader.
-   *
-   * @return the bytes used by this CteDataReader
-   */
-  long bytesUsed();
 }

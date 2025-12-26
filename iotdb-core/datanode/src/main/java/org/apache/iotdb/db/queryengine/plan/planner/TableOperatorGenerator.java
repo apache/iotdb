@@ -1202,7 +1202,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 CteScanOperator.class.getSimpleName());
-    return new CteScanOperator(operatorContext, node.getPlanNodeId(), node.getDataStore());
+    return new CteScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getDataStore(),
+        context.getInstanceContext().getMemoryReservationContext());
   }
 
   @Override
