@@ -321,9 +321,7 @@ public abstract class AbstractCli {
       }
     }
     if (index >= 0) {
-      if (index + 1 >= args.length
-          || args[index + 1].startsWith("-")
-          || (keywordSet.contains(args[index + 1]))) {
+      if (index + 1 >= args.length || keywordSet.contains(args[index + 1])) {
         return ArrayUtils.remove(args, index);
       }
     }

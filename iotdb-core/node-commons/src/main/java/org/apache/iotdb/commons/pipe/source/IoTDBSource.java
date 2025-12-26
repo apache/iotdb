@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.source;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -195,6 +196,7 @@ public abstract class IoTDBSource implements PipeExtractor {
             PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
             PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
     userEntity = new UserEntity(Long.parseLong(userId), userName, cliHostname);
+    userEntity.setAuditLogOperation(AuditLogOperation.QUERY);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
   }

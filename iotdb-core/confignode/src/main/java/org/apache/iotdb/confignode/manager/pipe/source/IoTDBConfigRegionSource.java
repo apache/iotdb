@@ -246,7 +246,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
-      final Optional<ConfigPhysicalPlan> result = treePrivilegeParseVisitor.process(plan, userName);
+      final Optional<ConfigPhysicalPlan> result =
+          treePrivilegeParseVisitor.process(plan, userEntity);
       if (result.isPresent()) {
         return Optional.of(
             new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
@@ -254,7 +255,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
     }
     if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
       final Optional<ConfigPhysicalPlan> result =
-          TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
+          TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userEntity);
       if (result.isPresent()) {
         return Optional.of(
             new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
