@@ -44,6 +44,9 @@ public class Query extends Statement {
   private final Optional<Node> limit;
   // whether this query needs materialization
   private boolean materialized = false;
+  // whether this query has ever been executed
+  private boolean isExecuted = false;
+  // materialization has been executed successfully if cteDataStore is not null
   private CteDataStore cteDataStore = null;
 
   public Query(
@@ -113,6 +116,14 @@ public class Query extends Statement {
 
   public void setMaterialized(boolean materialized) {
     this.materialized = materialized;
+  }
+
+  public boolean isExecuted() {
+    return isExecuted;
+  }
+
+  public void setExecuted(boolean executed) {
+    isExecuted = executed;
   }
 
   public boolean isDone() {
