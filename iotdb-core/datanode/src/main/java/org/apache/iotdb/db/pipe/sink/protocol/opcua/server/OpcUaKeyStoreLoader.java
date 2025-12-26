@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 

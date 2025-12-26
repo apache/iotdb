@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -58,6 +57,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -84,48 +84,45 @@ public class OpcUaServerBuilder implements Closeable {
   private String password;
   private Path securityDir;
   private boolean enableAnonymousAccess;
+  private Set<SecurityPolicy> securityPolicies;
   private DefaultTrustListManager trustListManager;
 
-  OpcUaServerBuilder() {
-    tcpBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
-    httpsBindPort = PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
-    user = PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-    password = PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-    securityDir = Paths.get(PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
-    enableAnonymousAccess = PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
-  }
-
-  OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
+  public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
     return this;
   }
 
-  OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
+  public OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
   }
 
-  OpcUaServerBuilder setUser(final String user) {
+  public OpcUaServerBuilder setUser(final String user) {
     this.user = user;
     return this;
   }
 
-  OpcUaServerBuilder setPassword(final String password) {
+  public OpcUaServerBuilder setPassword(final String password) {
     this.password = password;
     return this;
   }
 
-  OpcUaServerBuilder setSecurityDir(final String securityDir) {
+  public OpcUaServerBuilder setSecurityDir(final String securityDir) {
     this.securityDir = Paths.get(securityDir);
     return this;
   }
 
-  OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
+  public OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
     this.enableAnonymousAccess = enableAnonymousAccess;
     return this;
   }
 
-  OpcUaServer build() throws Exception {
+  public OpcUaServerBuilder setSecurityPolicies(final Set<SecurityPolicy> securityPolicies) {
+    this.securityPolicies = securityPolicies;
+    return this;
+  }
+
+  public OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
       throw new PipeException("Unable to create security dir: " + securityDir);
@@ -247,30 +244,36 @@ public class OpcUaServerBuilder implements Closeable {
                     USER_TOKEN_POLICY_USERNAME,
                     USER_TOKEN_POLICY_X509);
 
-        final EndpointConfiguration.Builder noSecurityBuilder =
-            builder
-                .copy()
-                .setSecurityPolicy(SecurityPolicy.None)
-                .setSecurityMode(MessageSecurityMode.None);
+        final Set<SecurityPolicy> securityPolicySet = new HashSet<>(securityPolicies);
+        if (securityPolicySet.contains(SecurityPolicy.None)) {
+          final EndpointConfiguration.Builder noSecurityBuilder =
+              builder
+                  .copy()
+                  .setSecurityPolicy(SecurityPolicy.None)
+                  .setSecurityMode(MessageSecurityMode.None);
 
-        endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
-        endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
+          endpointConfigurations.add(buildTcpEndpoint(noSecurityBuilder, tcpBindPort));
+          endpointConfigurations.add(buildHttpsEndpoint(noSecurityBuilder, httpsBindPort));
+          securityPolicySet.remove(SecurityPolicy.None);
+        }
 
-        endpointConfigurations.add(
-            buildTcpEndpoint(
-                builder
-                    .copy()
-                    .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                    .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
-                tcpBindPort));
+        for (final SecurityPolicy securityPolicy : securityPolicySet) {
+          endpointConfigurations.add(
+              buildTcpEndpoint(
+                  builder
+                      .copy()
+                      .setSecurityPolicy(securityPolicy)
+                      .setSecurityMode(MessageSecurityMode.SignAndEncrypt),
+                  tcpBindPort));
 
-        endpointConfigurations.add(
-            buildHttpsEndpoint(
-                builder
-                    .copy()
-                    .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
-                    .setSecurityMode(MessageSecurityMode.Sign),
-                httpsBindPort));
+          endpointConfigurations.add(
+              buildHttpsEndpoint(
+                  builder
+                      .copy()
+                      .setSecurityPolicy(securityPolicy)
+                      .setSecurityMode(MessageSecurityMode.Sign),
+                  httpsBindPort));
+        }
 
         final EndpointConfiguration.Builder discoveryBuilder =
             builder
@@ -309,7 +312,8 @@ public class OpcUaServerBuilder implements Closeable {
       final String user,
       final String password,
       final Path securityDir,
-      final boolean enableAnonymousAccess) {
+      final boolean enableAnonymousAccess,
+      final Set<SecurityPolicy> securityPolicies) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(
@@ -317,10 +321,15 @@ public class OpcUaServerBuilder implements Closeable {
         FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
         FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
+    checkEquals("securityPolicies", this.securityPolicies, securityPolicies);
   }
 
-  private void checkEquals(final String attrName, final Object thisAttr, final Object thatAttr) {
+  private void checkEquals(final String attrName, Object thisAttr, Object thatAttr) {
     if (!Objects.equals(thisAttr, thatAttr)) {
+      if (attrName.equals("password")) {
+        thisAttr = "****";
+        thatAttr = "****";
+      }
       throw new PipeException(
           String.format(
               "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",

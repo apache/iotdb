@@ -28,6 +28,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
@@ -180,7 +181,7 @@ public class PipeSinkConstant {
 
   public static final String CONNECTOR_OPC_UA_PLACEHOLDER_KEY = "connector.opcua.placeholder";
   public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
-  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
+  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE = "null";
 
   public static final String CONNECTOR_OPC_UA_WITH_QUALITY_KEY = "connector.opcua.with-quality";
   public static final String SINK_OPC_UA_WITH_QUALITY_KEY = "sink.opcua.with-quality";
@@ -193,6 +194,40 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_OPC_UA_QUALITY_NAME_KEY = "connector.opcua.quality-name";
   public static final String SINK_OPC_UA_QUALITY_NAME_KEY = "sink.opcua.quality-name";
   public static final String CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE = "quality";
+
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY =
+      "connector.opcua.default-quality";
+  public static final String SINK_OPC_UA_DEFAULT_QUALITY_KEY = "sink.opcua.default-quality";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE = "GOOD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE = "BAD";
+  public static final String CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE = "UNCERTAIN";
+
+  public static final String CONNECTOR_OPC_UA_NODE_URL_KEY = "connector.opcua.node-url";
+  public static final String SINK_OPC_UA_NODE_URL_KEY = "sink.opcua.node-url";
+
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_KEY =
+      "connector.opcua.security-policy";
+  public static final String SINK_OPC_UA_SECURITY_POLICY_KEY = "sink.opcua.security-policy";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_NONE_VALUE = "NONE";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_128_RSA_15_VALUE =
+      "BASIC128RSA15";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_VALUE = "BASIC256";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE =
+      "BASIC256SHA256";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE =
+      "AES128_SHA256_RSAOAEP";
+  public static final String CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE =
+      "AES256_SHA256_RSAPSS";
+
+  public static final List<String> CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES =
+      Arrays.asList(
+          CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE,
+          CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE,
+          CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE);
+
+  public static final String CONNECTOR_OPC_UA_HISTORIZING_KEY = "connector.opcua.historizing";
+  public static final String SINK_OPC_UA_HISTORIZING_KEY = "sink.opcua.historizing";
+  public static final boolean CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE = false;
 
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
