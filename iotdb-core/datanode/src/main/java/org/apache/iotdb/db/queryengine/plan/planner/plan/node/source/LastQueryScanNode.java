@@ -346,6 +346,10 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
 
+  public List<IMeasurementSchema> getGlobalMeasurementSchemaList() {
+    return globalMeasurementSchemaList;
+  }
+
   public IMeasurementSchema getMeasurementSchema(int idx) {
     int globalIdx = indexOfMeasurementSchemas.get(idx);
     return globalMeasurementSchemaList.get(globalIdx);
