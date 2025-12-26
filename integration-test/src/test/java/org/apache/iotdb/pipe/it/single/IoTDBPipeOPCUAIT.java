@@ -162,7 +162,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         Assert.fail();
       } catch (final Exception e) {
         Assert.assertEquals(
-            "org.apache.iotdb.jdbc.IoTDBSQLException: 1107: The existing server with tcp port 12686 and https port 8443's password test conflicts to the new password conflict, reject reusing.",
+            "org.apache.iotdb.jdbc.IoTDBSQLException: 1107: The existing server with tcp port 12686 and https port 8443's password **** conflicts to the new password ****, reject reusing.",
             e.getMessage());
       }
     }

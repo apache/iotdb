@@ -324,8 +324,12 @@ public class OpcUaServerBuilder implements Closeable {
     checkEquals("securityPolicies", this.securityPolicies, securityPolicies);
   }
 
-  private void checkEquals(final String attrName, final Object thisAttr, final Object thatAttr) {
+  private void checkEquals(final String attrName, Object thisAttr, Object thatAttr) {
     if (!Objects.equals(thisAttr, thatAttr)) {
+      if (attrName.equals("password")) {
+        thisAttr = "****";
+        thatAttr = "****";
+      }
       throw new PipeException(
           String.format(
               "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
