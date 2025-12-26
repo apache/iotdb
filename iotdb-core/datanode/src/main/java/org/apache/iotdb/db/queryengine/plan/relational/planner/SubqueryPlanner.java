@@ -81,6 +81,8 @@ class SubqueryPlanner {
   private final MPPQueryContext plannerContext;
   private final SessionInfo session;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
+  private final PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
 
   SubqueryPlanner(
       Analysis analysis,
@@ -88,13 +90,18 @@ class SubqueryPlanner {
       MPPQueryContext plannerContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
-      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
+      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(plannerContext, "plannerContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(
+        predicateWithUncorrelatedScalarSubqueryReconstructor,
+        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -102,6 +109,8 @@ class SubqueryPlanner {
     this.plannerContext = plannerContext;
     this.session = session;
     this.recursiveSubqueries = recursiveSubqueries;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public PlanBuilder handleSubqueries(
@@ -157,7 +166,7 @@ class SubqueryPlanner {
 
   private void tryFoldUncorrelatedScalarSubqueryInPredicate(
       Expression expression, MPPQueryContext context) {
-    PredicateWithUncorrelatedScalarSubqueryReconstructor.getInstance()
+    predicateWithUncorrelatedScalarSubqueryReconstructor
         .reconstructPredicateWithUncorrelatedScalarSubquery(context, analysis, expression);
   }
 
@@ -219,6 +228,7 @@ class SubqueryPlanner {
     subPlan =
         planInPredicate(
             subPlan, value, subquery, output, predicate, analysis.getPredicateCoercions(predicate));
+    predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
 
     return new PlanBuilder(
         subPlan
@@ -355,7 +365,8 @@ class SubqueryPlanner {
             plannerContext,
             Optional.of(outerContext),
             session,
-            recursiveSubqueries)
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor)
         .process(subquery, null);
   }
 
@@ -385,6 +396,7 @@ class SubqueryPlanner {
             subPlan =
                 planQuantifiedComparison(
                     subPlan, operator, quantifier, value, subquery, output, predicateCoercions);
+            predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
             return new PlanBuilder(
                 subPlan
                     .getTranslations()
@@ -399,6 +411,7 @@ class SubqueryPlanner {
             subPlan =
                 planInPredicate(
                     subPlan, value, subquery, output, quantifiedComparison, predicateCoercions);
+            predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(value);
             return new PlanBuilder(
                 subPlan
                     .getTranslations()

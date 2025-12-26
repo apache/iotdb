@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -115,6 +116,9 @@ public class TableLogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
+  private PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
+
   @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
@@ -145,6 +149,16 @@ public class TableLogicalPlanner {
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers = planOptimizers;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        new PredicateWithUncorrelatedScalarSubqueryReconstructor();
+  }
+
+  @TestOnly
+  public void setPredicateWithUncorrelatedScalarSubqueryReconstructor(
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public LogicalQueryPlan plan(final Analysis analysis) {
@@ -389,7 +403,13 @@ public class TableLogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(
-        analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
+        analysis,
+        symbolAllocator,
+        queryContext,
+        Optional.empty(),
+        sessionInfo,
+        ImmutableMap.of(),
+        predicateWithUncorrelatedScalarSubqueryReconstructor);
   }
 
   private PlanNode planCreateOrUpdateDevice(

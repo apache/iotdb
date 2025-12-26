@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
@@ -105,15 +106,28 @@ public class PlanTester {
   }
 
   public LogicalQueryPlan createPlan(String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false);
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
+  }
+
+  public LogicalQueryPlan createPlan(
+      String sql,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    return createPlan(
+        sessionInfo,
+        sql,
+        NOOP,
+        createPlanOptimizersStatsCollector(),
+        false,
+        predicateWithUncorrelatedScalarSubqueryReconstructor);
   }
 
   public LogicalQueryPlan createPlan(String sql, boolean explain) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), explain);
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), explain, null);
   }
 
   public LogicalQueryPlan createPlan(SessionInfo sessionInfo, String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false);
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
   }
 
   public LogicalQueryPlan createPlan(
@@ -121,7 +135,9 @@ public class PlanTester {
       String sql,
       WarningCollector warningCollector,
       PlanOptimizersStatsCollector planOptimizersStatsCollector,
-      boolean explain) {
+      boolean explain,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     if (explain) {
@@ -135,6 +151,10 @@ public class PlanTester {
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
             context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
+    if (predicateWithUncorrelatedScalarSubqueryReconstructor != null) {
+      logicalPlanner.setPredicateWithUncorrelatedScalarSubqueryReconstructor(
+          predicateWithUncorrelatedScalarSubqueryReconstructor);
+    }
 
     plan = logicalPlanner.plan(analysis);
 

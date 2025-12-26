@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -62,6 +62,8 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
 
   private static final Coordinator coordinator = Coordinator.getInstance();
 
+  public PredicateWithUncorrelatedScalarSubqueryReconstructor() {}
+
   public void reconstructPredicateWithUncorrelatedScalarSubquery(
       MPPQueryContext context, Analysis analysis, Expression expression) {
     if (expression instanceof LogicalExpression) {
@@ -77,14 +79,18 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
       Expression left = comparisonExpression.getLeft();
       Expression right = comparisonExpression.getRight();
-      if ((left instanceof Identifier || left instanceof FunctionCall)
+      if ((left instanceof Identifier
+              || left instanceof FunctionCall
+              || left instanceof DereferenceExpression)
           && right instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
                 context, analysis.getSqlParser(), (SubqueryExpression) right, analysis.getWith());
         // If the subquery result is not present, we cannot reconstruct the predicate.
         result.ifPresent(comparisonExpression::setShadowRight);
-      } else if ((right instanceof Identifier || right instanceof FunctionCall)
+      } else if ((right instanceof Identifier
+              || right instanceof FunctionCall
+              || right instanceof DereferenceExpression)
           && left instanceof SubqueryExpression) {
         Optional<Literal> result =
             fetchUncorrelatedSubqueryResultForPredicate(
@@ -226,23 +232,5 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
       clearShadowExpression(comparisonExpression.getLeft());
       clearShadowExpression(comparisonExpression.getRight());
     }
-  }
-
-  private static class PredicateWithUncorrelatedScalarSubqueryReconstructorHolder {
-    private static PredicateWithUncorrelatedScalarSubqueryReconstructor INSTANCE =
-        new PredicateWithUncorrelatedScalarSubqueryReconstructor();
-
-    private PredicateWithUncorrelatedScalarSubqueryReconstructorHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static PredicateWithUncorrelatedScalarSubqueryReconstructor getInstance() {
-    return PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static void setInstance(PredicateWithUncorrelatedScalarSubqueryReconstructor instance) {
-    PredicateWithUncorrelatedScalarSubqueryReconstructorHolder.INSTANCE = instance;
   }
 }
