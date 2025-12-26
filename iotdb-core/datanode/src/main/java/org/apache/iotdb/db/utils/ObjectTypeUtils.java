@@ -55,6 +55,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class ObjectTypeUtils {
@@ -290,6 +291,37 @@ public class ObjectTypeUtils {
         deleteObjectFile(bakFile);
       } catch (IOException e) {
         logger.error("Failed to remove object file {}", file.get().getAbsolutePath(), e);
+      }
+    }
+  }
+
+  public static void deleteObjectPath(File file) {
+    File tmpFile = new File(file.getPath() + ".tmp");
+    File bakFile = new File(file.getPath() + ".back");
+    for (int i = 0; i < 2; i++) {
+      if (file.exists()) {
+        FileMetrics.getInstance().decreaseObjectFileNum(1);
+        FileMetrics.getInstance().decreaseObjectFileSize(file.length());
+      }
+      try {
+        deleteObjectFile(file);
+        deleteObjectFile(tmpFile);
+        deleteObjectFile(bakFile);
+      } catch (IOException e) {
+        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+      }
+    }
+    deleteEmptyParentDir(file);
+  }
+
+  private static void deleteEmptyParentDir(File file) {
+    File dir = file.getParentFile();
+    if (dir.isDirectory() && Objects.requireNonNull(dir.list()).length == 0) {
+      try {
+        Files.deleteIfExists(dir.toPath());
+        deleteEmptyParentDir(dir);
+      } catch (IOException e) {
+        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
       }
     }
   }
