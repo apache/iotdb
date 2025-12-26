@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -362,16 +363,23 @@ public class PipeConfigTreePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
       final SetTTLPlan setTTLPlan, final IAuditEntity userEntity) {
+    final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
+    userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
+    final String auditObject = Arrays.toString(setTTLPlan.getPathPattern());
     try {
       final List<PartialPath> paths =
           getAllIntersectedPatterns(
               new PartialPath(setTTLPlan.getPathPattern()), userEntity, setTTLPlan);
       // The intersectionList is either a singleton list or an empty list, because the pipe
       // pattern and TTL path are each either a prefix path or a full path
-      return !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length
+      final boolean result =
+          !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length;
+      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      return result
           ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
           : Optional.empty();
     } catch (final AuthException e) {
+      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
