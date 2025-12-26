@@ -841,8 +841,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitShowPipes(ShowPipesStatement statement, TreeAccessCheckContext context) {
-    return checkPipeManagement(
-        context.setAuditLogOperation(AuditLogOperation.DDL), statement::getPipeName);
+    // This query cannot be rejected, but will be filtered at configNode
+    // Does not need auth check here
+    return StatusUtils.OK;
   }
 
   @Override
