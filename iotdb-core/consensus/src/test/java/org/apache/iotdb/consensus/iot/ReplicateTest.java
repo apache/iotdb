@@ -71,6 +71,21 @@ public class ReplicateTest {
           new File("target" + File.separator + "2"),
           new File("target" + File.separator + "3"));
 
+  private final List<List<String>> peersRecvSnapshotDirs =
+      Arrays.asList(
+          Arrays.asList(
+              "target" + File.separator + "1-1",
+              "target" + File.separator + "1-2",
+              "target" + File.separator + "1-3"),
+          Arrays.asList(
+              "target" + File.separator + "2-1",
+              "target" + File.separator + "2-2",
+              "target" + File.separator + "2-3"),
+          Arrays.asList(
+              "target" + File.separator + "3-1",
+              "target" + File.separator + "3-2",
+              "target" + File.separator + "3-3"));
+
   private final ConsensusGroup group = new ConsensusGroup(gid, peers);
   private final List<IoTConsensus> servers = new ArrayList<>();
   private final List<TestStateMachine> stateMachines = new ArrayList<>();
@@ -81,6 +96,7 @@ public class ReplicateTest {
       file.mkdirs();
       stateMachines.add(new TestStateMachine());
     }
+    peersRecvSnapshotDirs.forEach(innerList -> innerList.forEach(dir -> new File(dir).mkdirs()));
     initServer();
   }
 
@@ -90,6 +106,16 @@ public class ReplicateTest {
     for (File file : peersStorage) {
       FileUtils.deleteFully(file);
     }
+    peersRecvSnapshotDirs.forEach(
+        innerList ->
+            innerList.forEach(
+                dir -> {
+                  try {
+                    FileUtils.deleteFully(new File(dir));
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
   }
 
   private void initServer() throws IOException {
@@ -105,6 +131,7 @@ public class ReplicateTest {
                             .setThisNodeId(peers.get(i).getNodeId())
                             .setThisNode(peers.get(i).getEndpoint())
                             .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                            .setRecvSnapshotDirs(peersRecvSnapshotDirs.get(i))
                             .setConsensusGroupType(TConsensusGroupType.DataRegion)
                             .build(),
                         groupId -> stateMachines.get(finalI))

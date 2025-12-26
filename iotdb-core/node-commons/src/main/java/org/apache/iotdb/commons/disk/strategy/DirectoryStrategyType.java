@@ -16,19 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.disk.strategy;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import java.util.List;
-
-public class DiskSpaceInsufficientException extends StorageEngineException {
-
-  private static final long serialVersionUID = 9001643829368311032L;
-
-  public DiskSpaceInsufficientException(List<String> folders) {
-    super(
-        String.format("Can't get next folder from [%s], because they are all full.", folders),
-        TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
-  }
+public enum DirectoryStrategyType {
+  SEQUENCE_STRATEGY,
+  MAX_DISK_USABLE_SPACE_FIRST_STRATEGY,
+  MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY,
+  RANDOM_ON_DISK_USABLE_SPACE_STRATEGY,
 }
