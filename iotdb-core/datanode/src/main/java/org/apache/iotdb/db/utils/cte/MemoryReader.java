@@ -22,43 +22,54 @@
 package org.apache.iotdb.db.utils.cte;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import java.util.List;
 
 public class MemoryReader implements CteDataReader {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MemoryReader.class);
 
+  // thread-safe memory manager
+  private final MemoryReservationManager memoryReservationManager;
   // all the data in MemoryReader lies in memory
-  private final List<TsBlock> cachedData;
+  private final CteDataStore dataStore;
   private int tsBlockIndex;
 
-  public MemoryReader(List<TsBlock> cachedTsBlock) {
-    this.cachedData = cachedTsBlock;
+  public MemoryReader(CteDataStore dataStore, MemoryReservationManager memoryReservationManager) {
+    this.dataStore = dataStore;
     this.tsBlockIndex = 0;
+    this.memoryReservationManager = memoryReservationManager;
+    if (dataStore.incrementAndGetCount() == 1) {
+      memoryReservationManager.reserveMemoryCumulatively(dataStore.ramBytesUsed());
+    }
   }
 
   @Override
   public boolean hasNext() throws IoTDBException {
-    return cachedData != null && tsBlockIndex < cachedData.size();
+    return dataStore.getCachedData() != null && tsBlockIndex < dataStore.getCachedData().size();
   }
 
   @Override
   public TsBlock next() throws IoTDBException {
-    if (cachedData == null || tsBlockIndex >= cachedData.size()) {
+    if (dataStore.getCachedData() == null || tsBlockIndex >= dataStore.getCachedData().size()) {
       return null;
     }
-    return cachedData.get(tsBlockIndex++);
+    return dataStore.getCachedData().get(tsBlockIndex++);
   }
 
   @Override
-  public void close() throws IoTDBException {}
+  public void close() throws IoTDBException {
+    if (dataStore.decrementAndGetCount() == 0) {
+      memoryReservationManager.releaseMemoryCumulatively(dataStore.ramBytesUsed());
+    }
+  }
 
   @Override
-  public long bytesUsed() {
+  public long ramBytesUsed() {
+    // The calculation excludes the memory occupied by the CteDataStore.
+    // memory allocate/release for CteDataStore is handled during constructor and close
     return INSTANCE_SIZE;
   }
 }

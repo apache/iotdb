@@ -21,17 +21,23 @@
 
 package org.apache.iotdb.db.utils.cte;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CteDataStore {
+public class CteDataStore implements Accountable {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CteDataStore.class);
+
   private final TableSchema tableSchema;
   private final List<Integer> columnIndex2TsBlockColumnIndexList;
 
@@ -39,7 +45,7 @@ public class CteDataStore {
   private long cachedBytes;
   private int cachedRows;
 
-  // reference count by CteScanOperator
+  // reference count by CteScanReader
   private final AtomicInteger count;
 
   public CteDataStore(TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
@@ -75,10 +81,6 @@ public class CteDataStore {
     return cachedData;
   }
 
-  public long getCachedBytes() {
-    return cachedBytes;
-  }
-
   public TableSchema getTableSchema() {
     return tableSchema;
   }
@@ -87,7 +89,21 @@ public class CteDataStore {
     return columnIndex2TsBlockColumnIndexList;
   }
 
-  public int increaseRefCount() {
+  public int incrementAndGetCount() {
     return count.incrementAndGet();
+  }
+
+  public int decrementAndGetCount() {
+    return count.decrementAndGet();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + cachedBytes;
+  }
+
+  @TestOnly
+  public int getCount() {
+    return count.get();
   }
 }

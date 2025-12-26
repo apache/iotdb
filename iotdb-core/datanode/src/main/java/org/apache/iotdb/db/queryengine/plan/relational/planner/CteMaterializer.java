@@ -177,7 +177,7 @@ public class CteMaterializer {
                 table,
                 "!!! Failed to materialize CTE. The main query falls back to INLINE mode !!!");
           }
-          context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
+          context.releaseMemoryReservedForFrontEnd(cteDataStore.ramBytesUsed());
           cteDataStore.clear();
           return null;
         }
@@ -192,7 +192,7 @@ public class CteMaterializer {
       return cteDataStore;
     } catch (final Throwable throwable) {
       if (cteDataStore != null) {
-        context.releaseMemoryReservedForFrontEnd(cteDataStore.getCachedBytes());
+        context.releaseMemoryReservedForFrontEnd(cteDataStore.ramBytesUsed());
         cteDataStore.clear();
       }
       t = throwable;
