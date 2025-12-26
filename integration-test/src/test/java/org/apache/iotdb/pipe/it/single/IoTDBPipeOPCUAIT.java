@@ -106,16 +106,27 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           env,
           "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)",
           null);
-      value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
-      Assert.assertEquals(new Variant(1.0), value.getValue());
-      Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
-      Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+
+      long startTime = System.currentTimeMillis();
+      while (true) {
+        try {
+          value = opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
+          Assert.assertEquals(new Variant(1.0), value.getValue());
+          Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
+          Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+          break;
+        } catch (final Throwable t) {
+          if (System.currentTimeMillis() - startTime > 10_000L) {
+            throw t;
+          }
+        }
+      }
 
       TestUtils.executeNonQuery(
           env, "insert into root.db.opc(time, quality) values (2, true)", null);
       TestUtils.executeNonQuery(env, "insert into root.db.opc(time, value) values (2, 2)", null);
 
-      final long startTime = System.currentTimeMillis();
+      startTime = System.currentTimeMillis();
       while (true) {
         try {
           value =
