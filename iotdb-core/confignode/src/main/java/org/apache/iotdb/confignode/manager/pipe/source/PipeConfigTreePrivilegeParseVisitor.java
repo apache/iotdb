@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -183,8 +184,19 @@ public class PipeConfigTreePrivilegeParseVisitor
     return visitRolePlan(revokeRolePlan, userEntity);
   }
 
-  private Optional<ConfigPhysicalPlan> visitUserPlan(
-      final AuthorTreePlan plan, final IAuditEntity userEntity) {
+  public static Optional<ConfigPhysicalPlan> visitUserRolePlan(
+      final AuthorPlan plan, final IAuditEntity userEntity) {
+    final Optional<ConfigPhysicalPlan> result = visitUserPlan(plan, userEntity, false);
+    return result.isPresent() ? result : visitRolePlan(plan, userEntity);
+  }
+
+  public static Optional<ConfigPhysicalPlan> visitUserPlan(
+      final AuthorPlan plan, final IAuditEntity userEntity) {
+    return visitUserPlan(plan, userEntity, true);
+  }
+
+  public static Optional<ConfigPhysicalPlan> visitUserPlan(
+      final AuthorPlan plan, final IAuditEntity userEntity, final boolean isLastCheck) {
     final String auditObject = plan.getUserName();
     if (userEntity.getUsername().equals(plan.getUserName())) {
       ConfigNode.getInstance()
@@ -193,13 +205,14 @@ public class PipeConfigTreePrivilegeParseVisitor
           .recordAuditLog(userEntity.setPrivilegeType(null).setResult(true), () -> auditObject);
       return Optional.of(plan);
     }
-    return hasGlobalPrivilege(userEntity, PrivilegeType.MANAGE_USER, plan.getUserName(), true)
+    return hasGlobalPrivilege(
+            userEntity, PrivilegeType.MANAGE_USER, plan.getUserName(), isLastCheck)
         ? Optional.of(plan)
         : Optional.empty();
   }
 
-  private Optional<ConfigPhysicalPlan> visitRolePlan(
-      final AuthorTreePlan plan, final IAuditEntity userEntity) {
+  public static Optional<ConfigPhysicalPlan> visitRolePlan(
+      final AuthorPlan plan, final IAuditEntity userEntity) {
     final String auditObject = plan.getRoleName();
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     try {
@@ -354,7 +367,7 @@ public class PipeConfigTreePrivilegeParseVisitor
         .fetchRawAuthorizedPTree(userEntity, PrivilegeType.READ_SCHEMA);
   }
 
-  private boolean hasGlobalPrivilege(
+  public static boolean hasGlobalPrivilege(
       final IAuditEntity userEntity,
       final PrivilegeType privilegeType,
       final String auditObject,
