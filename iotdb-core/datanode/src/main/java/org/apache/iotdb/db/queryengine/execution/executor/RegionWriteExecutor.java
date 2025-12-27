@@ -888,8 +888,9 @@ public class RegionWriteExecutor {
           throw new MetadataException(
               String.format("%s is not view.", measurementPath.getFullPath()));
         }
-        if (!MetadataUtils.canAlter(
-            measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
+        if (node.getDataType() != null
+            && !MetadataUtils.canAlter(
+                measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
           throw new MetadataException(
               String.format(
                   "The timeseries %s used new type %s is not compatible with the existing one %s.",

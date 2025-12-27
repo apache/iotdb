@@ -84,7 +84,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -519,8 +518,7 @@ public class SeriesScanUtil implements Accountable {
                   && !SchemaUtils.isUsingSameColumn(
                       alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                       getTsDataTypeList().get(i))
-                  && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-                      .contains(getTsDataTypeList().get(i))) {
+                  && getTsDataTypeList().get(i).equals(TSDataType.STRING)) {
                 alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
               }
             }
@@ -528,8 +526,7 @@ public class SeriesScanUtil implements Accountable {
           } else if (chunkMetadata instanceof ChunkMetadata) {
             if (!SchemaUtils.isUsingSameColumn(
                     chunkMetadata.getDataType(), getTsDataTypeList().get(0))
-                && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-                    .contains(getTsDataTypeList().get(0))) {
+                && getTsDataTypeList().get(0).equals(TSDataType.STRING)) {
               chunkMetadata.setModified(true);
             }
           }
@@ -962,7 +959,10 @@ public class SeriesScanUtil implements Accountable {
           } else {
             newValueColumns[i] =
                 new IntColumn(
-                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new int[positionCount],
+                    TSDataType.INT32);
             for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = true;
             }
@@ -1237,7 +1237,10 @@ public class SeriesScanUtil implements Accountable {
           } else {
             newValueColumns[i] =
                 new IntColumn(
-                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new int[positionCount],
+                    TSDataType.DATE);
             for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = true;
             }
@@ -1430,7 +1433,6 @@ public class SeriesScanUtil implements Accountable {
           TsBlockBuilder builder = new TsBlockBuilder(getTsDataTypeList());
           long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
           while (mergeReader.hasNextTimeValuePair()) {
-
             /*
              * get current first point in mergeReader, this maybe overlapped later
              */
@@ -1599,7 +1601,16 @@ public class SeriesScanUtil implements Accountable {
       case TEXT:
       case BLOB:
       case STRING:
-        builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+        if (timeValuePair.getValue().getDataType() == TSDataType.DATE) {
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(
+                  new Binary(
+                      TSDataType.getDateStringValue(timeValuePair.getValue().getInt()),
+                      StandardCharsets.UTF_8));
+        } else {
+          builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+        }
         break;
       case VECTOR:
         TsPrimitiveType[] values = timeValuePair.getValue().getVector();

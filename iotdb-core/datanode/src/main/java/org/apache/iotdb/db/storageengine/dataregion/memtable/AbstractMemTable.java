@@ -62,6 +62,8 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -124,6 +126,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private String database;
   private String dataRegionId;
+
+  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
 
   protected AbstractMemTable() {
     this.database = null;
@@ -357,6 +361,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
+    int j = 0;
+    for (TSDataType tsDataType : insertTabletNode.getDataTypes()) {
+      logger.error("getDataTypes[{}] is {}", j, tsDataType);
+      j++;
+    }
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         schemaList.add(null);
@@ -364,8 +373,16 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
       }
     }
+    int i = 0;
+    for (IMeasurementSchema schema : schemaList) {
+      logger.error("schemaList[{}] is {}", i, schema);
+      i++;
+    }
+    logger.error("be ready to createMemChunkGroupIfNotExistAndGet");
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
+    logger.error("after createMemChunkGroupIfNotExistAndGet");
+    logger.error("be ready to [writeTabletNode]writeTablet");
     memChunkGroup.writeTablet(
         insertTabletNode.getTimes(),
         insertTabletNode.getColumns(),
@@ -374,11 +391,16 @@ public abstract class AbstractMemTable implements IMemTable {
         start,
         end,
         null);
+    logger.error("after [writeTabletNode]writeTablet");
   }
 
   public void writeAlignedTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
-
+    int j = 0;
+    for (TSDataType tsDataType : insertTabletNode.getDataTypes()) {
+      logger.error("getDataTypes[{}] is {}", j, tsDataType);
+      j++;
+    }
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null
@@ -392,14 +414,22 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
+    int i = 0;
+    for (IMeasurementSchema schema : schemaList) {
+      logger.error("schemaList[{}] is {}", i, schema);
+      i++;
+    }
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPair =
         insertTabletNode.splitByDevice(start, end);
     int splitStart = start;
     for (Pair<IDeviceID, Integer> pair : deviceEndOffsetPair) {
       final IDeviceID deviceID = pair.left;
       int splitEnd = pair.right;
+      logger.error("be ready to createAlignedMemChunkGroupIfNotExistAndGet");
       IWritableMemChunkGroup memChunkGroup =
           createAlignedMemChunkGroupIfNotExistAndGet(deviceID, schemaList);
+      logger.error("after createAlignedMemChunkGroupIfNotExistAndGet");
+      logger.error("be ready to [writeAlignedTablet]writeTablet");
       memChunkGroup.writeTablet(
           insertTabletNode.getTimes(),
           insertTabletNode.getColumns(),
@@ -408,6 +438,7 @@ public abstract class AbstractMemTable implements IMemTable {
           splitStart,
           splitEnd,
           results);
+      logger.error("after [writeAlignedTablet]writeTablet");
       splitStart = splitEnd;
     }
   }

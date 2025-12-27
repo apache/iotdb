@@ -67,7 +67,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -266,7 +265,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
       TSDataType targetDataType = alignedFullPath.getSchemaList().get(index).getType();
-      if (Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)
+      if (targetDataType.equals(TSDataType.STRING)
           && (alignedChunkMetadata.getValueChunkMetadataList().stream()
                   .filter(iChunkMetadata -> iChunkMetadata.getDataType() != targetDataType)
                   .count()
@@ -589,7 +588,11 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     IWritableMemChunk memChunk =
         memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
     // check If data type matches
-    if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()) {
+    if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()
+        && !fullPath
+            .getMeasurementSchema()
+            .getType()
+            .isCompatible(memChunk.getSchema().getType())) {
       return null;
     }
     // prepare TVList for query. It should clone TVList if necessary.

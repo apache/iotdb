@@ -231,16 +231,6 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
     return this;
   }
 
-  @Override
-  public boolean isPreAltered() {
-    return measurementInfo.isPreAltered();
-  }
-
-  @Override
-  public void setPreAltered(boolean preAltered) {
-    measurementInfo.setPreAltered(preAltered);
-  }
-
   /**
    * The basic memory occupied by any AbstractMeasurementMNode object
    *

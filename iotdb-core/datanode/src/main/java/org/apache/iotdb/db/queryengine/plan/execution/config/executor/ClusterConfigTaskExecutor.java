@@ -3171,12 +3171,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      alterTimeSeriesStatement.getPath().serialize(dataOutputStream);
-    } catch (final IOException ignored) {
-      // memory operation, won't happen
+    ByteBuffer measurementPathBuffer = null;
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      alterTimeSeriesStatement.getPath().serialize(baos);
+      measurementPathBuffer = ByteBuffer.wrap(baos.toByteArray());
+    } catch (IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
     }
 
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -3189,11 +3189,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final TAlterTimeSeriesReq req =
         new TAlterTimeSeriesReq(
             queryId,
-            ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+            measurementPathBuffer,
             AlterTimeSeriesOperationType.ALTER_DATA_TYPE.getTypeValue(),
             ByteBuffer.wrap(stream.toByteArray()));
     try (final ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {

@@ -850,7 +850,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req) throws TException {
     final MeasurementPath measurementPath =
-        MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath()));
+        (MeasurementPath)
+            PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath()));
     return executeInternalSchemaTask(
         req.getSchemaRegionIdList(),
         consensusGroupId -> {

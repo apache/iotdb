@@ -176,7 +176,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  public boolean hasNextDevice() {
+  public boolean hasNextDevice() throws IOException {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
       hasNext =
@@ -197,7 +197,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @return Pair of device full path and whether this device is aligned
    */
   @SuppressWarnings({"squid:S135", "java:S2259"})
-  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException {
+  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException, IOException {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<IDeviceID, Boolean> minDevice = null;
     // get the device from source files sorted from the newest to the oldest by version
@@ -276,7 +276,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           timeseriesMetadataList,
           deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
-          true);
+          true,
+          null);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
             && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {

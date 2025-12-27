@@ -579,7 +579,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
-        + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
+        + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas, dataTypes)
         + RamUsageEstimator.sizeOf(measurementIsAligned)
         + InsertNodeMemoryEstimator.sizeOfIDeviceID(deviceID);
   }

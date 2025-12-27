@@ -43,10 +43,6 @@ public interface IMeasurementInfo {
 
   void setPreDeleted(boolean preDeleted);
 
-  boolean isPreAltered();
-
-  void setPreAltered(boolean preAltered);
-
   int estimateSize();
 
   void moveDataToNewMNode(IMeasurementMNode<?> newMNode);

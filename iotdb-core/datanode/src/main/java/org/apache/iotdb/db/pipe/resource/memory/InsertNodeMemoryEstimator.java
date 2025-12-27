@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -48,6 +49,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -232,7 +234,7 @@ public class InsertNodeMemoryEstimator {
     size += calculateFullInsertNodeSize(node);
     size += RamUsageEstimator.sizeOf(node.getTimes());
     size += RamUsageEstimator.sizeOf(node.getBitMaps());
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas(), node.getDataTypes());
     final List<Integer> range = node.getRange();
     if (range != null) {
       size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
@@ -249,7 +251,7 @@ public class InsertNodeMemoryEstimator {
 
     size += RamUsageEstimator.sizeOf(node.getBitMaps());
 
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas(), node.getDataTypes());
 
     final List<Integer> range = node.getRange();
     if (range != null) {
@@ -261,14 +263,14 @@ public class InsertNodeMemoryEstimator {
   private static long sizeOfInsertRowNode(final InsertRowNode node) {
     long size = INSERT_ROW_NODE_SIZE;
     size += calculateFullInsertNodeSize(node);
-    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
+    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas(), node.getDataTypes());
     return size;
   }
 
   private static long calculateInsertRowNodeExcludingSchemas(final InsertRowNode node) {
     long size = INSERT_ROW_NODE_SIZE;
     size += calculateInsertNodeSizeExcludingSchemas(node);
-    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
+    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas(), node.getDataTypes());
     return size;
   }
 
@@ -379,7 +381,7 @@ public class InsertNodeMemoryEstimator {
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
     long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
     size += calculateFullInsertNodeSize(node);
-    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
+    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas(), node.getDataTypes());
     return size;
   }
 
@@ -392,7 +394,7 @@ public class InsertNodeMemoryEstimator {
 
     size += RamUsageEstimator.sizeOf(node.getBitMaps());
 
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
+    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas(), node.getDataTypes());
 
     final List<Integer> range = node.getRange();
     if (range != null) {
@@ -556,7 +558,9 @@ public class InsertNodeMemoryEstimator {
   }
 
   public static long sizeOfColumns(
-      final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+      final Object[] columns,
+      final MeasurementSchema[] measurementSchemas,
+      TSDataType[] dataTypes) {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(columns)
@@ -571,27 +575,65 @@ public class InsertNodeMemoryEstimator {
       if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
+      switch ((dataTypes != null && dataTypes[i] != null)
+          ? dataTypes[i]
+          : measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:
           {
-            size += RamUsageEstimator.sizeOf((long[]) columns[i]);
+            if (columns[i] instanceof long[]) {
+              size += RamUsageEstimator.sizeOf((long[]) columns[i]);
+            } else {
+              Object[] array = (Object[]) columns[i];
+              long[] targetArray = new long[array.length];
+              for (int j = 0; j < array.length; j++) {
+                targetArray[j] = ((Number) array[j]).longValue();
+              }
+              size += RamUsageEstimator.sizeOf(targetArray);
+            }
             break;
           }
         case DATE:
         case INT32:
           {
-            size += RamUsageEstimator.sizeOf((int[]) columns[i]);
+            if (columns[i] instanceof int[]) {
+              size += RamUsageEstimator.sizeOf((int[]) columns[i]);
+            } else {
+              Object[] array = (Object[]) columns[i];
+              int[] targetArray = new int[array.length];
+              for (int j = 0; j < array.length; j++) {
+                targetArray[j] = ((Number) array[j]).intValue();
+              }
+              size += RamUsageEstimator.sizeOf(targetArray);
+            }
             break;
           }
         case DOUBLE:
           {
-            size += RamUsageEstimator.sizeOf((double[]) columns[i]);
+            if (columns[i] instanceof double[]) {
+              size += RamUsageEstimator.sizeOf((double[]) columns[i]);
+            } else {
+              Object[] array = (Object[]) columns[i];
+              double[] targetArray = new double[array.length];
+              for (int j = 0; j < array.length; j++) {
+                targetArray[j] = ((Number) array[j]).doubleValue();
+              }
+              size += RamUsageEstimator.sizeOf(targetArray);
+            }
             break;
           }
         case FLOAT:
           {
-            size += RamUsageEstimator.sizeOf((float[]) columns[i]);
+            if (columns[i] instanceof float[]) {
+              size += RamUsageEstimator.sizeOf((float[]) columns[i]);
+            } else {
+              Object[] array = (Object[]) columns[i];
+              float[] targetArray = new float[array.length];
+              for (int j = 0; j < array.length; j++) {
+                targetArray[j] = ((Number) array[j]).floatValue();
+              }
+              size += RamUsageEstimator.sizeOf(targetArray);
+            }
             break;
           }
         case BOOLEAN:
@@ -603,6 +645,16 @@ public class InsertNodeMemoryEstimator {
         case TEXT:
         case BLOB:
           {
+            if (columns[i] instanceof Binary[]) {
+              size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
+            } else {
+              Object[] array = (Object[]) columns[i];
+              Binary[] targetArray = new Binary[array.length];
+              for (int j = 0; j < array.length; j++) {
+                targetArray[j] = new Binary(String.valueOf(array[j]), StandardCharsets.UTF_8);
+              }
+              size += RamUsageEstimator.sizeOf(targetArray);
+            }
             size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
             break;
           }
@@ -618,7 +670,7 @@ public class InsertNodeMemoryEstimator {
   }
 
   public static long sizeOfValues(
-      final Object[] values, final MeasurementSchema[] measurementSchemas) {
+      final Object[] values, final MeasurementSchema[] measurementSchemas, TSDataType[] dataTypes) {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(values)
@@ -634,7 +686,9 @@ public class InsertNodeMemoryEstimator {
         size += NUM_BYTES_OBJECT_HEADER;
         continue;
       }
-      switch (measurementSchemas[i].getType()) {
+      switch ((dataTypes != null && dataTypes[i] != null)
+          ? dataTypes[i]
+          : measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:
           {

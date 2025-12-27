@@ -480,7 +480,10 @@ public class ProcedureManager {
       procedure =
           new AlterTimeSeriesDataTypeProcedure(
               req.getQueryId(),
-              MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
+              (MeasurementPath)
+                  PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
+              //
+              // MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
               req.getOperationType(),
               TSDataType.deserialize(req.updateInfo.get()),
               false);

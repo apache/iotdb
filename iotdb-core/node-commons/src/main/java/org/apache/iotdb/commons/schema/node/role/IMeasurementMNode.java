@@ -48,8 +48,4 @@ public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N> {
   MeasurementPath getMeasurementPath();
 
   boolean isLogicalView();
-
-  boolean isPreAltered();
-
-  void setPreAltered(boolean preAltered);
 }

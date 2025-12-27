@@ -55,7 +55,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -474,8 +473,7 @@ public class FileLoaderUtils {
           if (!SchemaUtils.isUsingSameColumn(
                   alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                   targetDataTypeList.get(i))
-              && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-                  .contains(targetDataTypeList.get(i))) {
+              && targetDataTypeList.get(i).equals(TSDataType.STRING)) {
             isModified = true;
             alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
           }
@@ -485,8 +483,7 @@ public class FileLoaderUtils {
       chunkReader = chunkLoader.getChunkReader(alignedChunkMetadata, globalTimeFilter);
     } else {
       if (!SchemaUtils.isUsingSameColumn(chunkMetaData.getDataType(), targetDataTypeList.get(0))
-          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-              .contains(targetDataTypeList.get(0))) {
+          && targetDataTypeList.get(0).equals(TSDataType.STRING)) {
         isModified = true;
         chunkMetaData.setModified(true);
       }

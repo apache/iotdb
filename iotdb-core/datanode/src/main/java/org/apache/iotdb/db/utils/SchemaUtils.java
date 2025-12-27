@@ -531,4 +531,11 @@ public class SchemaUtils {
     return new AlignedChunkMetadata(
         alignedChunkMetadata.getTimeChunkMetadata(), newValueChunkMetadataList);
   }
+
+  public static TSEncoding getDataTypeCompatibleEncoding(TSDataType dataType, TSEncoding encoding) {
+    if (!encoding.isSupported(dataType)) {
+      return EncodingInferenceUtils.getDefaultEncoding(dataType);
+    }
+    return encoding;
+  }
 }

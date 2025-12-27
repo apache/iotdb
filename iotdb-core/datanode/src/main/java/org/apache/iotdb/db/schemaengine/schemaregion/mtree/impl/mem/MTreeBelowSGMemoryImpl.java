@@ -544,9 +544,6 @@ public class MTreeBelowSGMemoryImpl {
               throw new MeasurementInBlackListException(
                   measurementPath.concatAsMeasurementPath(measurement));
             }
-            //            if (node.isPreAltered()) {
-            //              throw new MetadataException("Alter is doing.");
-            //            }
             if (!MetadataUtils.canAlter(
                 measurementPath.getMeasurementSchema().getType(), newDataType)) {
               throw new MetadataException(
@@ -558,15 +555,14 @@ public class MTreeBelowSGMemoryImpl {
             }
 
             final IMeasurementSchema schema = node.getSchema();
-            //            node.setPreAltered(true);
             node.setSchema(
                 new MeasurementSchema(
                     schema.getMeasurementName(),
                     newDataType,
-                    schema.getEncodingType(),
+                    SchemaUtils.getDataTypeCompatibleEncoding(
+                        newDataType, schema.getEncodingType()),
                     schema.getCompressor(),
                     schema.getProps()));
-            //            node.setPreAltered(false);
           }
         }) {
       collector.traverse();

@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -36,7 +35,6 @@ import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
@@ -103,7 +101,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -1378,8 +1375,7 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String columnName,
-      final TSDataType dataType,
-      final boolean isAllowTableIsView)
+      final TSDataType dataType)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1389,12 +1385,6 @@ public class ClusterSchemaManager {
               TSStatusCode.TABLE_NOT_EXISTS,
               String.format("Table '%s.%s' does not exist", database, tableName)),
           null);
-    }
-
-    final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isAllowTableIsView);
-    if (result.isPresent()) {
-      return result.get();
     }
 
     TSStatus tsStatus =
@@ -1619,18 +1609,6 @@ public class ClusterSchemaManager {
     }
 
     return Optional.empty();
-  }
-
-  public synchronized TSStatus timeSeriesDataTypeCheckForDataTypeAltering(
-      final MeasurementPath measurementPath, final TSDataType dataType) throws MetadataException {
-    if (!MetadataUtils.canAlter(measurementPath.getSeriesType(), dataType)) {
-      throw new SemanticException(
-          String.format(
-              "New type %s is not compatible with the existing one %s",
-              dataType, measurementPath.getSeriesType()));
-    }
-
-    return RpcUtils.SUCCESS_STATUS;
   }
 
   @TableModel

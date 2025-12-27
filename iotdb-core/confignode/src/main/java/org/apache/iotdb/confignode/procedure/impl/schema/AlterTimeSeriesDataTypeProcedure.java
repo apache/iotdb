@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -35,8 +34,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTimeSeriesDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -98,14 +97,35 @@ public class AlterTimeSeriesDataTypeProcedure
           LOGGER.info(
               "Check and invalidate series {} when altering time series data type",
               measurementPath.getFullPath());
-          checkAndPreAlterTimeSeries(env);
+          checkAndPreAlterTimeSeries();
           break;
         case ALTER_TIME_SERIES_DATA_TYPE:
-          if (!alterColumnDataType(env)) {
+          LOGGER.info("altering time series {} data type", measurementPath.getFullPath());
+          if (!alterTimeSeriesDataType(env)) {
+            LOGGER.info("altering time series {} data type failed", measurementPath.getFullPath());
             return Flow.NO_MORE_STATE;
           }
+          LOGGER.info(
+              "altering time series {} data type successful", measurementPath.getFullPath());
           break;
         case CLEAR_CACHE:
+          LOGGER.info(
+              "clearing cache after alter time series {} data type", measurementPath.getFullPath());
+          PathPatternTree patternTree = new PathPatternTree();
+          patternTree.appendPathPattern(measurementPath);
+          patternTree.constructTree();
+          LOGGER.info(
+              "Invalidate cache of timeSeries {} in AlterTimeSeriesDataTypeProcedure",
+              measurementPath.getFullPath());
+          invalidateCache(
+              env,
+              preparePatternTreeBytesData(patternTree),
+              measurementPath.getFullPath(),
+              this::setFailure,
+              true);
+          LOGGER.info(
+              "clear cache successful after alter time series {} data type",
+              measurementPath.getFullPath());
           break;
         default:
           setFailure(
@@ -123,24 +143,17 @@ public class AlterTimeSeriesDataTypeProcedure
     }
   }
 
-  private void checkAndPreAlterTimeSeries(final ConfigNodeProcedureEnv env) {
-    try {
-      final TSStatus status =
-          env.getConfigManager()
-              .getClusterSchemaManager()
-              .timeSeriesDataTypeCheckForDataTypeAltering(measurementPath, dataType);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-        return;
-      }
+  private void checkAndPreAlterTimeSeries() {
+    if (dataType != null) {
       setNextState(AlterTimeSeriesDataTypeState.ALTER_TIME_SERIES_DATA_TYPE);
-    } catch (final MetadataException e) {
-      setFailure(new ProcedureException(e));
+    } else {
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Invalid data type cannot be used as a new type")));
     }
   }
 
-  private boolean alterColumnDataType(final ConfigNodeProcedureEnv env) {
+  private boolean alterTimeSeriesDataType(final ConfigNodeProcedureEnv env) {
     final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(measurementPath);
     patternTree.constructTree();
@@ -152,14 +165,6 @@ public class AlterTimeSeriesDataTypeProcedure
       setFailure(
           new ProcedureException(new PathNotExistException(measurementPath.getFullPath(), false)));
       return false;
-    }
-
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      measurementPath.serialize(dataOutputStream);
-    } catch (final IOException ignored) {
-      // memory operation, won't happen
     }
 
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -175,12 +180,22 @@ public class AlterTimeSeriesDataTypeProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false),
             false,
             CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TAlterTimeSeriesReq(
-                    queryId,
-                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-                    operationType,
-                    ByteBuffer.wrap(stream.toByteArray())))) {
+            ((dataNodeLocation, consensusGroupIdList) -> {
+              ByteBuffer measurementPathBuffer = null;
+              try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                measurementPath.serialize(baos);
+                measurementPathBuffer = ByteBuffer.wrap(baos.toByteArray());
+              } catch (IOException ignored) {
+                // ByteArrayOutputStream won't throw IOException
+              }
+
+              return new TAlterTimeSeriesReq(
+                  consensusGroupIdList,
+                  queryId,
+                  measurementPathBuffer,
+                  operationType,
+                  ByteBuffer.wrap(stream.toByteArray()));
+            })) {
 
           private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
 
@@ -232,7 +247,9 @@ public class AlterTimeSeriesDataTypeProcedure
           }
         };
     alterTimerSeriesTask.execute();
+    LOGGER.error("start clear cache in AlterTimeSeriesDataTypeProcedure");
     setNextState(AlterTimeSeriesDataTypeState.CLEAR_CACHE);
+    LOGGER.error("end clear cache in AlterTimeSeriesDataTypeProcedure");
     return true;
   }
 
@@ -309,6 +326,17 @@ public class AlterTimeSeriesDataTypeProcedure
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       measurementPath.serialize(dataOutputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static ByteBuffer preparePatternTreeBytesData(final PathPatternTree patternTree) {
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }

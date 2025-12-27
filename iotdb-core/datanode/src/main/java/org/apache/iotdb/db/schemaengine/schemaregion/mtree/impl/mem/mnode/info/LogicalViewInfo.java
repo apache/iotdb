@@ -142,16 +142,6 @@ public class LogicalViewInfo implements IMeasurementInfo {
     this.preDeleted = preDeleted;
   }
 
-  @Override
-  public boolean isPreAltered() {
-    return preAltered;
-  }
-
-  @Override
-  public void setPreAltered(boolean preAltered) {
-    this.preAltered = preAltered;
-  }
-
   /**
    * The memory occupied by an MeasurementInfo based occupation
    *
