@@ -84,6 +84,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -922,7 +923,10 @@ public class SeriesScanUtil implements Accountable {
       for (int i = 0; i < length; i++) {
         TSDataType finalDataType = getTsDataTypeList().get(i);
         if ((valueColumns[i].getDataType() != finalDataType)
-            && SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)) {
+            && (SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
+                || (valueColumns[i].getDataType().equals(TSDataType.DATE)
+                    && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
+                        .contains(finalDataType)))) {
           isTypeInconsistent = true;
           break;
         }

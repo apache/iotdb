@@ -299,7 +299,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
       session.insertTablet(tablet);
       tablet.reset();
 
-      log.error("Write completely");
+      log.info("Write completely");
 
       dataSet =
           session.executeQueryStatement(
@@ -1223,7 +1223,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
-                "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+            "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
       }
     }
   }

@@ -135,8 +135,7 @@ public abstract class IntTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(dataType, getInt(index)));
+    return new TimeValuePair(getTime(index), TsPrimitiveType.getByType(dataType, getInt(index)));
   }
 
   @Override
