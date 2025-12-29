@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
@@ -118,6 +119,21 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
         alignedTvList.sort();
+        long alignedTvListRamSize = alignedTvList.calculateRamSize();
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
   }
@@ -356,10 +372,25 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
-      AlignedTVList tvList = (AlignedTVList) entry.getKey();
+      AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryLength = entry.getValue();
-      if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+      if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
+        alignedTvList.sort();
+        long alignedTvListRamSize = alignedTvList.calculateRamSize();
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();
