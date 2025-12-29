@@ -44,7 +44,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   public void checkDatabaseVisibility(
       String userName, String databaseName, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -54,7 +54,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     // Information_schema is visible to any user
     if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -67,7 +67,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       // The audit database only requires audit privilege
       boolean hasAuditPrivilege =
           AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.AUDIT)
@@ -80,7 +80,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -89,7 +89,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -97,7 +97,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
           () -> databaseName);
       throw new AccessDeniedException("DATABASE " + databaseName);
     }
-    AUDIT_LOGGER.recordAuditLog(
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(AuditLogOperation.QUERY)
             .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -119,7 +119,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -129,7 +129,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -159,7 +159,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       if (privilege == TableModelPrivilege.SELECT) {
         checkCanSelectAuditTable(auditEntity);
       } else {
-        AUDIT_LOGGER.recordAuditLog(
+        AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
             auditEntity
                 .setAuditLogOperation(privilege.getAuditLogOperation())
                 .setPrivilegeType(privilege.getPrivilegeType())
@@ -175,7 +175,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     String userName = auditEntity.getUsername();
     if (AuthorityChecker.SUPER_USER_ID != auditEntity.getUserId()
         && !AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.SELECT)
@@ -199,7 +199,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
           String.format(
               "The database '%s' can only be queried by AUDIT admin.", TABLE_MODEL_AUDIT_DATABASE));
     }
-    AUDIT_LOGGER.recordAuditLog(
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(AuditLogOperation.QUERY)
             .setPrivilegeType(PrivilegeType.SELECT)
@@ -214,7 +214,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -239,7 +239,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       IAuditEntity auditEntity) {
     auditEntity.setDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -267,7 +267,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       TableModelPrivilege privilege,
       IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -303,7 +303,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                     tableName.getObjectName())
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.CONTROL)
               .setPrivilegeType(PrivilegeType.SYSTEM)
@@ -311,7 +311,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
           tableName::getObjectName);
       return true;
     }
-    AUDIT_LOGGER.recordAuditLog(
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(AuditLogOperation.CONTROL)
             .setPrivilegeType(PrivilegeType.SYSTEM)
@@ -325,7 +325,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     auditEntity.setDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -339,7 +339,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       // The audit table only requires audit privilege
       boolean hasAuditPrivilege =
           AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.AUDIT)
@@ -352,7 +352,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -362,7 +362,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     if (!AuthorityChecker.checkTableVisible(
         userName, tableName.getDatabaseName(), tableName.getObjectName())) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
@@ -376,7 +376,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   public void checkGlobalPrivilege(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -396,7 +396,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       String username, Collection<PrivilegeType> privileges, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
       for (PrivilegeType privilege : privileges) {
-        AUDIT_LOGGER.recordAuditLog(
+        AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
             auditEntity
                 .setAuditLogOperation(privilege.getAuditLogOperation())
                 .setPrivilegeType(privilege)
@@ -417,7 +417,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   public void checkGlobalPrivilegeGrantOption(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -438,7 +438,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   public void checkAnyScopePrivilegeGrantOption(
       String userName, TableModelPrivilege privilege, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -461,7 +461,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       IAuditEntity auditEntity,
       TSStatus result) {
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      AUDIT_LOGGER.recordAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(privilege.getAuditLogOperation())
               .setPrivilegeType(privilege.getPrivilegeType())
@@ -469,7 +469,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
           auditObject);
       throw new AccessDeniedException(result.getMessage());
     }
-    AUDIT_LOGGER.recordAuditLog(
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(privilege.getAuditLogOperation())
             .setPrivilegeType(privilege.getPrivilegeType())

@@ -92,7 +92,7 @@ public class PipeConfigTablePrivilegeParseVisitor
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode();
     if (result) {
-      logger.recordAuditLog(
+      logger.recordObjectAuthenticationAuditLog(
           userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA).setResult(true), () -> database);
       return true;
     }
@@ -185,7 +185,7 @@ public class PipeConfigTablePrivilegeParseVisitor
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode();
     if (result) {
-      logger.recordAuditLog(
+      logger.recordObjectAuthenticationAuditLog(
           userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA).setResult(true), () -> database);
       return true;
     }

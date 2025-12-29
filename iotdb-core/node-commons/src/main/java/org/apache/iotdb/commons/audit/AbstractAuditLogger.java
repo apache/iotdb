@@ -49,7 +49,8 @@ public abstract class AbstractAuditLogger {
     return true;
   }
 
-  public void recordAuditLog(final IAuditEntity auditEntity, final Supplier<String> auditObject) {
+  public void recordObjectAuthenticationAuditLog(
+      final IAuditEntity auditEntity, final Supplier<String> auditObject) {
     log(
         auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
         () ->

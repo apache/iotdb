@@ -220,7 +220,8 @@ public class PipeConfigTreePrivilegeParseVisitor
       ConfigNode.getInstance()
           .getConfigManager()
           .getAuditLogger()
-          .recordAuditLog(userEntity.setPrivilegeType(null).setResult(true), () -> auditObject);
+          .recordObjectAuthenticationAuditLog(
+              userEntity.setPrivilegeType(null).setResult(true), () -> auditObject);
       return Optional.of(plan);
     }
     return hasGlobalPrivilege(
@@ -242,7 +243,8 @@ public class PipeConfigTreePrivilegeParseVisitor
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         configManager
             .getAuditLogger()
-            .recordAuditLog(userEntity.setPrivilegeType(null).setResult(true), () -> auditObject);
+            .recordObjectAuthenticationAuditLog(
+                userEntity.setPrivilegeType(null).setResult(true), () -> auditObject);
         return Optional.of(plan);
       }
     } catch (final Exception ignore) {
@@ -265,12 +267,12 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PathPatternTree intersectedTree =
           originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
       if (!skip && !originalTree.equals(intersectedTree)) {
-        logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+        logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
             "Not has privilege to transfer plan: " + pipeDeleteTimeSeriesPlan);
       }
       final boolean result = !intersectedTree.isEmpty();
-      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
           ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
           : Optional.empty();
@@ -278,10 +280,10 @@ public class PipeConfigTreePrivilegeParseVisitor
       LOGGER.warn(
           "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
           e);
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -303,12 +305,12 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PathPatternTree intersectedTree =
           originalTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
       if (!skip && !originalTree.equals(intersectedTree)) {
-        logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+        logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
         throw new AccessDeniedException(
             "Not has privilege to transfer plan: " + pipeDeleteLogicalViewPlan);
       }
       final boolean result = !intersectedTree.isEmpty();
-      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
           ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
           : Optional.empty();
@@ -316,10 +318,10 @@ public class PipeConfigTreePrivilegeParseVisitor
       LOGGER.warn(
           "Serialization failed for the delete time series plan in pipe transmission, skip transfer",
           e);
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       return Optional.empty();
     } catch (final AuthException e) {
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -350,12 +352,12 @@ public class PipeConfigTreePrivilegeParseVisitor
         }
       }
       final boolean result = !newTemplateSetInfo.isEmpty();
-      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return !newTemplateSetInfo.isEmpty()
           ? Optional.of(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
           : Optional.empty();
     } catch (final AuthException e) {
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -379,12 +381,12 @@ public class PipeConfigTreePrivilegeParseVisitor
       // pattern and TTL path are each either a prefix path or a full path
       final boolean result =
           !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length;
-      logger.recordAuditLog(userEntity.setResult(result), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
           ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
           : Optional.empty();
     } catch (final AuthException e) {
-      logger.recordAuditLog(userEntity.setResult(false), () -> auditObject);
+      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
         return Optional.empty();
       } else {
@@ -448,7 +450,7 @@ public class PipeConfigTreePrivilegeParseVisitor
                 userEntity.getUsername(), new PrivilegeUnion(privilegeType, grantOption, isAny))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
-      logger.recordAuditLog(
+      logger.recordObjectAuthenticationAuditLog(
           userEntity
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -491,7 +493,7 @@ public class PipeConfigTreePrivilegeParseVisitor
                 new PrivilegeUnion(paths, privilegeType, Objects.nonNull(grantName)))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
-      logger.recordAuditLog(
+      logger.recordObjectAuthenticationAuditLog(
           userEntity
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),

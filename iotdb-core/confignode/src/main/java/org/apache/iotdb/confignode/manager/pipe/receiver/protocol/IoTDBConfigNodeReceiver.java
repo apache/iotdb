@@ -386,7 +386,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           ((PipeAlterEncodingCompressorPlan) plan).setPatternTreeBytes(tree.serialize());
           configManager
               .getAuditLogger()
-              .recordAuditLog(
+              .recordObjectAuthenticationAuditLog(
                   userEntity
                       .setPrivilegeType(PrivilegeType.WRITE_SCHEMA)
                       .setResult(!tree.isEmpty()),
@@ -505,7 +505,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -528,7 +528,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -556,7 +556,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -582,7 +582,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -610,7 +610,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -633,7 +633,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         configManager
             .getAuditLogger()
-            .recordAuditLog(
+            .recordObjectAuthenticationAuditLog(
                 userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
                 () -> entityName);
         return StatusUtils.OK;
@@ -644,7 +644,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         if (((AuthorPlan) plan).getUserName().equals(username)) {
           configManager
               .getAuditLogger()
-              .recordAuditLog(userEntity.setPrivilegeType(null).setResult(true), () -> username);
+              .recordObjectAuthenticationAuditLog(
+                  userEntity.setPrivilegeType(null).setResult(true), () -> username);
           return StatusUtils.OK;
         }
         return checkGlobalStatus(
@@ -690,7 +691,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 userEntity.getUsername(), new PrivilegeUnion(database, privilegeType, grantOption))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      auditLogger.recordAuditLog(
+      auditLogger.recordObjectAuthenticationAuditLog(
           userEntity
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -722,7 +723,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 new PrivilegeUnion(database, tableName, privilegeType, grantOption))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
-      auditLogger.recordAuditLog(
+      auditLogger.recordObjectAuthenticationAuditLog(
           userEntity
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),

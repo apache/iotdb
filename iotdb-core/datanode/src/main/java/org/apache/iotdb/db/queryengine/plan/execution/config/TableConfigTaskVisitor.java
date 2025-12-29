@@ -501,7 +501,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final ShowAvailableUrls showAvailableUrls, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     DNAuditLogger.getInstance()
-        .recordAuditLog(
+        .recordObjectAuthenticationAuditLog(
             context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true), () -> "");
     return new ShowAvailableUrlsTask();
   }
