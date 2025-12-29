@@ -311,27 +311,27 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
         if (PathUtils.isTableModelDatabase(database)) {
           status = checkDatabaseStatus(userEntity, PrivilegeType.CREATE, database);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
-          }
+          return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              ? status
+              : checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
         }
         return checkGlobalStatus(userEntity, PrivilegeType.MANAGE_DATABASE, database, true);
       case AlterDatabase:
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
         if (PathUtils.isTableModelDatabase(database)) {
           status = checkDatabaseStatus(userEntity, PrivilegeType.ALTER, database);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
-          }
+          return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              ? status
+              : checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
         }
         return checkGlobalStatus(userEntity, PrivilegeType.MANAGE_DATABASE, database, true);
       case DeleteDatabase:
         database = ((DeleteDatabasePlan) plan).getName();
         if (PathUtils.isTableModelDatabase(database)) {
           status = checkDatabaseStatus(userEntity, PrivilegeType.DELETE, database);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
-          }
+          return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              ? status
+              : checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
         }
         return checkGlobalStatus(userEntity, PrivilegeType.MANAGE_DATABASE, database, true);
       case ExtendSchemaTemplate:
