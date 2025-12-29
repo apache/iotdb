@@ -121,34 +121,26 @@ public class IoTDBAlterTimeSeriesTypeIT {
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
-    //    typesToTest.remove(TSDataType.INT32);
-    //    typesToTest.remove(TSDataType.INT64);
-    //    typesToTest.remove(TSDataType.FLOAT);
-    //    typesToTest.remove(TSDataType.DOUBLE);
-    //    typesToTest.remove(TSDataType.DATE);
-    //    typesToTest.remove(TSDataType.STRING);
-    //    typesToTest.remove(TSDataType.BLOB);
-    //    typesToTest.remove(TSDataType.BOOLEAN);
 
-    //    doWriteAndAlter(TSDataType.DATE, TSDataType.STRING);
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
-        // @todo come true
-        if (from.equals(TSDataType.DATE)
-            && (to.equals(TSDataType.TEXT) || to.equals(TSDataType.STRING))) {
-          //          continue;
-        } else {
-          if (from.equals(TSDataType.INT32) && to.equals(TSDataType.STRING)) {
-            continue;
+        if (from != to && to.isCompatible(from)) {
+          if (from.equals(TSDataType.DATE)
+              && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(to)) {
+
           } else {
             continue;
           }
-        }
-        if (from != to && to.isCompatible(from)) {
           System.out.printf("testing %s to %s%n", from, to);
           doWriteAndAlter(from, to);
+
+          testNonAlignDeviceSequenceDataQuery(from, to);
+          testNonAlignDeviceUnSequenceDataQuery(from, to);
+          testNonAlignDeviceUnSequenceOverlappedDataQuery(from, to);
+
           testAlignDeviceSequenceDataQuery(from, to);
           testAlignDeviceUnSequenceDataQuery(from, to);
+          testAlignDeviceUnSequenceOverlappedDataQuery(from, to);
         }
       }
     }
@@ -1092,7 +1084,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     }
   }
 
-  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
+  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
       throws IoTDBConnectionException,
           StatementExecutionException,
           IOException,
@@ -1105,6 +1097,153 @@ public class IoTDBAlterTimeSeriesTypeIT {
           "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s1 " + from);
       session.executeNonQueryStatement(
           "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s2 " + from);
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              database + ".construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+
+      //      for (int i = 1; i <= 1024; i++) {
+      //        int rowIndex = tablet.getRowSize();
+      //        tablet.addTimestamp(0, i);
+      //        tablet.addValue("s1", rowIndex, genValue(from, i));
+      //        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+      //        session.insert(tablet);
+      //        tablet.reset();
+      //      }
+      //
+      //      session.executeNonQueryStatement("FLUSH");
+      for (int i = 1; i <= 512; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      }
+
+      try {
+        standardSelectTest(session, from, to);
+        standardAccumulatorQueryTest(session, from);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES "
+                + database
+                + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TIMESERIES "
+                  + database
+                  + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                  + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      System.out.println(
+          "[testNonAlignDeviceSequenceDataQuery] AFTER ALTER TIMESERIES s1 SET DATA TYPE ");
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
+
+      TSDataType newType = isCompatible ? to : from;
+
+      try {
+        standardSelectTestAfterAlterColumnType(from, session, newType);
+        // Accumulator query test
+        standardAccumulatorQueryTest(session, from, newType);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      if (from == TSDataType.DATE) {
+        accumulatorQueryTestForDateType(session, to);
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
+      }
+    }
+  }
+
+  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
+
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE ALIGNED TIMESERIES "
+              + database
+              + ".construct_and_alter_column_type(s1 "
+              + from
+              + ", s2 "
+              + from
+              + ")");
 
       // write a sequence tsfile point of "from"
       Tablet tablet =
@@ -1222,8 +1361,151 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
+      }
+    }
+  }
+
+  public void testNonAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
+
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s1 " + from);
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s2 " + from);
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              database + ".construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+
+      System.out.println(tablet.getSchemas().toString());
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 1; i <= 512; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+      //        session.executeNonQueryStatement("FLUSH");
+
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      }
+
+      try {
+        standardSelectTest(session, from, to);
+        standardAccumulatorQueryTest(session, from);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
         session.executeNonQueryStatement(
-            "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+            "ALTER TIMESERIES "
+                + database
+                + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TIMESERIES "
+                  + database
+                  + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                  + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      System.out.println(
+          "[testNonAlignDeviceUnSequenceDataQuery] AFTER ALTER TIMESERIES s1 SET DATA TYPE ");
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
+
+      TSDataType newType = isCompatible ? to : from;
+
+      try {
+        standardSelectTestAfterAlterColumnType(from, session, newType);
+        // Accumulator query test
+        standardAccumulatorQueryTest(session, from, newType);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      if (from == TSDataType.DATE) {
+        accumulatorQueryTestForDateType(session, to);
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
       }
     }
   }
@@ -1238,9 +1520,13 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       // create a table with type of "from"
       session.executeNonQueryStatement(
-          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s1 " + from);
-      session.executeNonQueryStatement(
-          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s2 " + from);
+          "CREATE ALIGNED TIMESERIES "
+              + database
+              + ".construct_and_alter_column_type(s1 "
+              + from
+              + ", s2 "
+              + from
+              + ")");
 
       // write a sequence tsfile point of "from"
       Tablet tablet =
@@ -1349,8 +1635,294 @@ public class IoTDBAlterTimeSeriesTypeIT {
         accumulatorQueryTestForDateType(session, to);
       }
 
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
+      }
+    }
+  }
+
+  public void testNonAlignDeviceUnSequenceOverlappedDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
+
+      // create a table with type of "from"
       session.executeNonQueryStatement(
-          "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s1 " + from);
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".construct_and_alter_column_type.s2 " + from);
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              database + ".construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+
+      System.out.println(tablet.getSchemas().toString());
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 1; i <= 520; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+      //        session.executeNonQueryStatement("FLUSH");
+
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      }
+
+      try {
+        standardSelectTest(session, from, to);
+        standardAccumulatorQueryTest(session, from);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES "
+                + database
+                + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TIMESERIES "
+                  + database
+                  + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                  + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      System.out.println(
+          "[testNonAlignDeviceUnSequenceOverlappedDataQuery] AFTER ALTER TIMESERIES s1 SET DATA TYPE ");
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
+
+      TSDataType newType = isCompatible ? to : from;
+
+      try {
+        standardSelectTestAfterAlterColumnType(from, session, newType);
+        // Accumulator query test
+        standardAccumulatorQueryTest(session, from, newType);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      if (from == TSDataType.DATE) {
+        accumulatorQueryTestForDateType(session, to);
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
+      }
+    }
+  }
+
+  public void testAlignDeviceUnSequenceOverlappedDataQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
+
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE ALIGNED TIMESERIES "
+              + database
+              + ".construct_and_alter_column_type(s1 "
+              + from
+              + ", s2 "
+              + from
+              + ")");
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              database + ".construct_and_alter_column_type",
+              Arrays.asList("s1", "s2"),
+              Arrays.asList(from, from),
+              Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD));
+
+      System.out.println(tablet.getSchemas().toString());
+
+      for (int i = 513; i <= 1024; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+
+      session.executeNonQueryStatement("FLUSH");
+
+      for (int i = 1; i <= 520; i++) {
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
+        tablet.addValue("s2", rowIndex, genValue(from, i * 2));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+      //        session.executeNonQueryStatement("FLUSH");
+
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      }
+
+      try {
+        standardSelectTest(session, from, to);
+        standardAccumulatorQueryTest(session, from);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES "
+                + database
+                + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TIMESERIES "
+                  + database
+                  + ".construct_and_alter_column_type.s1 SET DATA TYPE "
+                  + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      System.out.println(
+          "[testAlignDeviceUnSequenceOverlappedDataQuery] AFTER ALTER TIMESERIES s1 SET DATA TYPE ");
+
+      // If don't execute the flush" operation, verify if result can get valid value, not be null
+      // when query memtable.
+      //      session.executeNonQueryStatement("FLUSH");
+
+      TSDataType newType = isCompatible ? to : from;
+
+      try {
+        standardSelectTestAfterAlterColumnType(from, session, newType);
+        // Accumulator query test
+        standardAccumulatorQueryTest(session, from, newType);
+      } catch (Exception e) {
+        log.info(e.getMessage());
+      }
+
+      if (from == TSDataType.DATE) {
+        accumulatorQueryTestForDateType(session, to);
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        boolean isExist =
+            session
+                .executeQueryStatement(
+                    "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
+                .hasNext();
+        if (isExist) {
+          session.executeNonQueryStatement(
+              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+        }
+      }
     }
   }
 

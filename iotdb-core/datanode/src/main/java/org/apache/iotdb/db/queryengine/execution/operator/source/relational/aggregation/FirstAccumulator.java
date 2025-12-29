@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -230,13 +231,21 @@ public class FirstAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        if (statistics[0].getFirstValue() instanceof Binary) {
+        if (statistics[0] instanceof DateStatistics) {
           updateBinaryFirstValue(
-              (Binary) statistics[0].getFirstValue(), statistics[0].getStartTime());
-        } else {
-          updateBinaryFirstValue(
-              new Binary(String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8),
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics[0].getFirstValue()),
+                  StandardCharsets.UTF_8),
               statistics[0].getStartTime());
+        } else {
+          if (statistics[0].getFirstValue() instanceof Binary) {
+            updateBinaryFirstValue(
+                (Binary) statistics[0].getFirstValue(), statistics[0].getStartTime());
+          } else {
+            updateBinaryFirstValue(
+                new Binary(String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8),
+                statistics[0].getStartTime());
+          }
         }
         break;
       case BOOLEAN:

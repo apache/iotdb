@@ -1925,9 +1925,11 @@ public abstract class AlignedTVList extends TVList {
           return TsPrimitiveType.getByType(
               TSDataType.BOOLEAN, getBooleanByValueIndex(valueIndex, validColumnIndex));
         case INT32:
-        case DATE:
           return TsPrimitiveType.getByType(
               TSDataType.INT32, getIntByValueIndex(valueIndex, validColumnIndex));
+        case DATE:
+          return TsPrimitiveType.getByType(
+              TSDataType.DATE, getIntByValueIndex(valueIndex, validColumnIndex));
         case INT64:
         case TIMESTAMP:
           return TsPrimitiveType.getByType(

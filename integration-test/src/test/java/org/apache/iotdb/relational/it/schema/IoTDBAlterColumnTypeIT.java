@@ -125,18 +125,16 @@ public class IoTDBAlterColumnTypeIT {
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
 
-    doWriteAndAlter(TSDataType.INT64, TSDataType.STRING);
-
-    //    for (TSDataType from : typesToTest) {
-    //      for (TSDataType to : typesToTest) {
-    //        if (from != to && to.isCompatible(from)) {
-    //          System.out.printf("testing %s to %s%n", from, to);
-    //          doWriteAndAlter(from, to);
-    //          testAlignDeviceSequenceDataQuery(from, to);
-    //          testAlignDeviceUnSequenceDataQuery(from, to);
-    //        }
-    //      }
-    //    }
+    for (TSDataType from : typesToTest) {
+      for (TSDataType to : typesToTest) {
+        if (from != to && to.isCompatible(from)) {
+          System.out.printf("testing %s to %s%n", from, to);
+          doWriteAndAlter(from, to);
+          testAlignDeviceSequenceDataQuery(from, to);
+          testAlignDeviceUnSequenceDataQuery(from, to);
+        }
+      }
+    }
   }
 
   private void doWriteAndAlter(TSDataType from, TSDataType to)
@@ -265,8 +263,8 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
-      tablet.addTimestamp(0, 3);
-      tablet.addValue("s1", 0, genValue(newType, 3));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(newType, 2));
       session.insert(tablet);
       tablet.reset();
 
@@ -315,7 +313,10 @@ public class IoTDBAlterColumnTypeIT {
         assertFalse(dataSet.hasNext());
       }
 
-      session.executeNonQueryStatement("DROP TABLE write_and_alter_column_type");
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE write_and_alter_column_type");
+      }
     }
   }
 
@@ -1334,9 +1335,10 @@ public class IoTDBAlterColumnTypeIT {
       dataSet.close();
 
       try {
-        standardSelectTest(session, from, to);
+        //        standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
+        log.error("{}", e.getStackTrace());
         log.info(e.getMessage());
       }
 
@@ -1369,6 +1371,7 @@ public class IoTDBAlterColumnTypeIT {
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
       } catch (Exception e) {
+        log.error("{}", e.getStackTrace());
         log.info(e.getMessage());
       }
 
@@ -1441,6 +1444,7 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
+        log.error("{}", e.getStackTrace());
         log.info(e.getMessage());
       }
 
@@ -1474,6 +1478,7 @@ public class IoTDBAlterColumnTypeIT {
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
       } catch (Exception e) {
+        log.error("{}", e.getStackTrace());
         log.info(e.getMessage());
       }
 

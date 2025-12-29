@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -241,12 +242,21 @@ public class LastAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        if (statistics[0].getLastValue() instanceof Binary) {
-          updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
-        } else {
+        if (statistics[0] instanceof DateStatistics) {
           updateBinaryLastValue(
-              new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics[0].getLastValue()),
+                  StandardCharsets.UTF_8),
               statistics[0].getEndTime());
+        } else {
+          if (statistics[0].getLastValue() instanceof Binary) {
+            updateBinaryLastValue(
+                (Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
+                statistics[0].getEndTime());
+          }
         }
         break;
       case BOOLEAN:

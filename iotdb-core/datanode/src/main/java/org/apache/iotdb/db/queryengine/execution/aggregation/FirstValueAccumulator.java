@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -137,7 +140,15 @@ public class FirstValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+        if (statistics instanceof DateStatistics) {
+          updateBinaryFirstValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getFirstValue()),
+                  StandardCharsets.UTF_8),
+              statistics.getStartTime());
+        } else {
+          updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+        }
         break;
       case BOOLEAN:
         updateBooleanFirstValue((boolean) statistics.getFirstValue(), statistics.getStartTime());
