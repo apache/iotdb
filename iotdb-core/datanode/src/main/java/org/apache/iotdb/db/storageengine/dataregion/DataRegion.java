@@ -3600,9 +3600,21 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("writeObject");
     try {
       String relativeTmpPathString = objectNode.getFilePathString() + ".tmp";
-      String objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
-      File objectTmpFile =
-          FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      String objectFileDir = null;
+      File objectTmpFile = null;
+      for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, relativeTmpPathString);
+        if (tmpFile.exists()) {
+          objectFileDir = objectDir;
+          objectTmpFile = tmpFile;
+          break;
+        }
+      }
+      if (objectTmpFile == null) {
+        objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
+        objectTmpFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      }
       try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
         writer.write(
             objectNode.isGeneratedByRemoteConsensusLeader(),
