@@ -139,6 +139,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -353,7 +354,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     .getAllPathPatterns()),
             true);
       case PipeAlterEncodingCompressor:
-        // The audit check does not need any
+        // The audit check will only filter but not block the plan
+        // Hence we do not write any audit log here
         if (configManager
                 .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.AUDIT))
                 .getStatus()
@@ -371,13 +373,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           if (((PipeAlterEncodingCompressorPlan) plan).isMayAlterAudit()) {
             pathPatternTree.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
           }
-          ((PipeAlterEncodingCompressorPlan) plan)
-              .setPatternTreeBytes(
-                  PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                          PathPatternTree.deserialize(
-                              ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
-                          pathPatternTree)
-                      .serialize());
+          final String auditObject = pathPatternTree.getAllPathPatterns().toString();
+          final PathPatternTree tree =
+              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+                  PathPatternTree.deserialize(
+                      ((PipeAlterEncodingCompressorPlan) plan).getPatternTreeBytes()),
+                  pathPatternTree);
+          ((PipeAlterEncodingCompressorPlan) plan).setPatternTreeBytes(tree.serialize());
+          configManager
+              .getAuditLogger()
+              .recordAuditLog(
+                  userEntity
+                      .setPrivilegeType(PrivilegeType.WRITE_SCHEMA)
+                      .setResult(!tree.isEmpty()),
+                  () -> auditObject);
           return StatusUtils.OK;
         } else {
           return checkPathsStatus(
@@ -405,26 +414,26 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
             true);
       case SetTTL:
-        return Objects.equals(
-                configManager
-                    .getTTLManager()
-                    .getAllTTL()
-                    .get(
-                        String.join(
-                            String.valueOf(IoTDBConstant.PATH_SEPARATOR),
-                            ((SetTTLPlan) plan).getPathPattern())),
-                ((SetTTLPlan) plan).getTTL())
-            ? StatusUtils.OK
-            : configManager
-                .checkUserPrivileges(
-                    username,
-                    ((SetTTLPlan) plan).isDataBase()
-                        ? new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE)
-                        : new PrivilegeUnion(
-                            Collections.singletonList(
-                                new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                            PrivilegeType.WRITE_SCHEMA))
-                .getStatus();
+        if (Objects.equals(
+            configManager
+                .getTTLManager()
+                .getAllTTL()
+                .get(
+                    String.join(
+                        String.valueOf(IoTDBConstant.PATH_SEPARATOR),
+                        ((SetTTLPlan) plan).getPathPattern())),
+            ((SetTTLPlan) plan).getTTL())) {
+          return StatusUtils.OK;
+        }
+        final String[] paths = ((SetTTLPlan) plan).getPathPattern();
+        return ((SetTTLPlan) plan).isDataBase()
+            ? checkGlobalStatus(
+                userEntity, PrivilegeType.MANAGE_DATABASE, Arrays.toString(paths), true)
+            : checkPathsStatus(
+                userEntity,
+                PrivilegeType.WRITE_SCHEMA,
+                Collections.singletonList(new PartialPath(paths)),
+                true);
       case UpdateTriggerStateInTable:
         triggerName = ((UpdateTriggerStateInTablePlan) plan).getTriggerName();
         return checkGlobalStatus(userEntity, PrivilegeType.USE_TRIGGER, triggerName, true);
@@ -432,14 +441,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         triggerName = ((DeleteTriggerInTablePlan) plan).getTriggerName();
         return checkGlobalStatus(userEntity, PrivilegeType.USE_TRIGGER, triggerName, true);
       case PipeCreateTableOrView:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((PipeCreateTableOrViewPlan) plan).getDatabase(),
-                    ((PipeCreateTableOrViewPlan) plan).getTable().getTableName(),
-                    PrivilegeType.CREATE))
-            .getStatus();
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.CREATE,
+            ((PipeCreateTableOrViewPlan) plan).getDatabase(),
+            ((PipeCreateTableOrViewPlan) plan).getTable().getTableName(),
+            true);
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
@@ -453,24 +460,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RenameViewColumn:
       case RenameTable:
       case RenameView:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((AbstractTablePlan) plan).getDatabase(),
-                    ((AbstractTablePlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.ALTER,
+            ((AbstractTablePlan) plan).getDatabase(),
+            ((AbstractTablePlan) plan).getTableName(),
+            true);
       case CommitDeleteTable:
       case CommitDeleteView:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((CommitDeleteTablePlan) plan).getDatabase(),
-                    ((CommitDeleteTablePlan) plan).getTableName(),
-                    PrivilegeType.DROP))
-            .getStatus();
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.DELETE,
+            ((CommitDeleteTablePlan) plan).getDatabase(),
+            ((CommitDeleteTablePlan) plan).getTableName(),
+            true);
       case GrantRole:
       case GrantUser:
       case RevokeUser:
@@ -588,11 +591,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case UpdateUserV2:
       case RUpdateUser:
       case RUpdateUserV2:
-        return ((AuthorPlan) plan).getUserName().equals(username)
-            ? StatusUtils.OK
-            : configManager
-                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
-                .getStatus();
+        if (((AuthorPlan) plan).getUserName().equals(username)) {
+          configManager
+              .getAuditLogger()
+              .recordAuditLog(userEntity.setPrivilegeType(null).setResult(true), () -> username);
+          return StatusUtils.OK;
+        }
+        return checkGlobalStatus(
+            userEntity, PrivilegeType.MANAGE_USER, ((AuthorPlan) plan).getUserName(), true);
       case CreateUser:
       case RCreateUser:
       case CreateUserWithRawPassword:
