@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -318,6 +320,13 @@ public abstract class TVList implements WALEntryValue {
         indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
         int offset = i * ARRAY_SIZE;
         Arrays.setAll(indices.get(i), j -> offset + j);
+      }
+      // Reserve memory for indices if the TVList is owned by a query
+      if (ownerQuery != null) {
+        long indicesBytes = indices.size() * PrimitiveArrayManager.ARRAY_SIZE * 4L;
+        MemoryReservationManager memoryReservationManager =
+            ((FragmentInstanceContext) ownerQuery).getMemoryReservationContext();
+        memoryReservationManager.reserveMemoryCumulatively(indicesBytes);
       }
     }
     indices.get(arrayIndex)[elementIndex] = valueIndex;

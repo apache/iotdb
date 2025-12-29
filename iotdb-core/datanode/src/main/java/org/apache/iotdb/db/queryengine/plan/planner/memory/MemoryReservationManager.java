@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import org.apache.tsfile.utils.Pair;
 
 public interface MemoryReservationManager {
@@ -72,4 +74,13 @@ public interface MemoryReservationManager {
    * @param bytesAlreadyReserved the amount of memory that has already been reserved
    */
   void reserveMemoryVirtually(final long bytesToBeReserved, final long bytesAlreadyReserved);
+
+  /**
+   * Get the total amount of memory currently reserved. This includes memory that has been reserved,
+   * plus memory pending to be reserved, minus memory pending to be released.
+   *
+   * @return the total amount of memory in bytes that is currently reserved
+   */
+  @TestOnly
+  long getReservedMemory();
 }
