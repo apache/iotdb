@@ -98,6 +98,7 @@ public class IoTConsensusMemoryManager {
         result = queueMemorySizeInByte.addAndGet(size) < maxMemorySizeForQueueInByte;
         if (!result) {
           queueMemorySizeInByte.addAndGet(-size);
+          memorySizeInByte.addAndGet(-size);
         }
       } else {
         syncMemorySizeInByte.addAndGet(size);
@@ -170,6 +171,16 @@ public class IoTConsensusMemoryManager {
 
   long getSyncMemorySizeInByte() {
     return syncMemorySizeInByte.get();
+  }
+
+  @TestOnly
+  public Long getMaxMemorySizeInByte() {
+    return maxMemorySizeInByte;
+  }
+
+  @TestOnly
+  public Long getMaxMemorySizeForQueueInByte() {
+    return maxMemorySizeForQueueInByte;
   }
 
   private static final IoTConsensusMemoryManager INSTANCE = new IoTConsensusMemoryManager();
