@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
+
+import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.config.IoTConsensusConfig;
-import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IoTConsensusMemoryManagerTest {
 
@@ -44,8 +46,11 @@ public class IoTConsensusMemoryManagerTest {
     IndexedConsensusRequest request;
     List<IndexedConsensusRequest> requestList = new ArrayList<>();
     while (occupiedMemory <= maxMemory) {
-      request = new IndexedConsensusRequest(0, Collections.singletonList(new ByteBufferConsensusRequest(
-          ByteBuffer.wrap(new byte[4 * 1024 * 1024]))));
+      request =
+          new IndexedConsensusRequest(
+              0,
+              Collections.singletonList(
+                  new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4 * 1024 * 1024]))));
       request.buildSerializedRequests();
       long requestSize = request.getMemorySize();
       if (occupiedMemory + requestSize < maxMemory) {
@@ -84,9 +89,17 @@ public class IoTConsensusMemoryManagerTest {
       batch = new Batch(IoTConsensusConfig.newBuilder().build());
       for (int i = 0; i < batchSize; i++) {
         IndexedConsensusRequest request;
-        request = new IndexedConsensusRequest(0, Collections.singletonList(new ByteBufferConsensusRequest(
-            ByteBuffer.wrap(new byte[1024 * 1024]))));
-        batch.addTLogEntry(new TLogEntry(request.getSerializedRequests(), request.getSearchIndex(), false, request.getMemorySize()));
+        request =
+            new IndexedConsensusRequest(
+                0,
+                Collections.singletonList(
+                    new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[1024 * 1024]))));
+        batch.addTLogEntry(
+            new TLogEntry(
+                request.getSerializedRequests(),
+                request.getSearchIndex(),
+                false,
+                request.getMemorySize()));
       }
 
       long requestSize = batch.getMemorySize();
@@ -123,8 +136,11 @@ public class IoTConsensusMemoryManagerTest {
     int i = 0;
     while (occupiedMemory <= maxMemory) {
       if (i % 2 == 0) {
-        request = new IndexedConsensusRequest(0, Collections.singletonList(new ByteBufferConsensusRequest(
-            ByteBuffer.wrap(new byte[4 * 1024 * 1024]))));
+        request =
+            new IndexedConsensusRequest(
+                0,
+                Collections.singletonList(
+                    new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4 * 1024 * 1024]))));
         request.buildSerializedRequests();
         long requestSize = request.getMemorySize();
         if (occupiedMemory + requestSize < maxMemory) {
@@ -141,9 +157,17 @@ public class IoTConsensusMemoryManagerTest {
         batch = new Batch(IoTConsensusConfig.newBuilder().build());
         for (int j = 0; j < batchSize; j++) {
           IndexedConsensusRequest batchRequest;
-          batchRequest = new IndexedConsensusRequest(0, Collections.singletonList(new ByteBufferConsensusRequest(
-              ByteBuffer.wrap(new byte[1024 * 1024]))));
-          batch.addTLogEntry(new TLogEntry(batchRequest.getSerializedRequests(), batchRequest.getSearchIndex(), false, batchRequest.getMemorySize()));
+          batchRequest =
+              new IndexedConsensusRequest(
+                  0,
+                  Collections.singletonList(
+                      new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[1024 * 1024]))));
+          batch.addTLogEntry(
+              new TLogEntry(
+                  batchRequest.getSerializedRequests(),
+                  batchRequest.getSearchIndex(),
+                  false,
+                  batchRequest.getMemorySize()));
         }
 
         long requestSize = batch.getMemorySize();
@@ -156,7 +180,7 @@ public class IoTConsensusMemoryManagerTest {
           assertFalse(memoryManager.reserve(batch));
         }
       }
-      i ++;
+      i++;
     }
     assertTrue(memoryManager.getMemorySizeInByte() <= maxMemory);
 
@@ -166,14 +190,14 @@ public class IoTConsensusMemoryManagerTest {
         memoryManager.free(request);
         occupiedMemory -= request.getMemorySize();
         assertEquals(occupiedMemory, memoryManager.getMemorySizeInByte());
-        i --;
+        i--;
       }
       if (!batchList.isEmpty()) {
         batch = batchList.remove(0);
         memoryManager.free(batch);
         occupiedMemory -= batch.getMemorySize();
         assertEquals(occupiedMemory, memoryManager.getMemorySizeInByte());
-        i --;
+        i--;
       }
     }
     assertEquals(0, i);
