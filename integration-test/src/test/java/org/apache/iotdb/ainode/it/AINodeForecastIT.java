@@ -39,6 +39,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
@@ -58,18 +59,7 @@ public class AINodeForecastIT {
   public static void setUp() throws Exception {
     // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE db");
-      statement.execute(
-          "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)");
-      for (int i = 0; i < 5760; i++) {
-        statement.execute(
-            String.format(
-                "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
-                i, (float) i, (double) i, i, i));
-      }
-    }
+    prepareDataInTable();
   }
 
   @AfterClass
@@ -87,7 +77,7 @@ public class AINodeForecastIT {
     }
   }
 
-  public void forecastTableFunctionTest(
+  public static void forecastTableFunctionTest(
       Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) throws SQLException {
     // Invoke forecast table function for specified models, there should exist result.
     for (int i = 0; i < 4; i++) {

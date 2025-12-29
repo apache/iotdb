@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -31,6 +32,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class WithQuery extends Node {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WithQuery.class);
 
   private final Identifier name;
   private final Query query;
@@ -126,5 +130,15 @@ public class WithQuery extends Node {
     WithQuery otherRelation = (WithQuery) other;
     return name.equals(otherRelation.name)
         && Objects.equals(columnNames, otherRelation.columnNames);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
+    return size;
   }
 }

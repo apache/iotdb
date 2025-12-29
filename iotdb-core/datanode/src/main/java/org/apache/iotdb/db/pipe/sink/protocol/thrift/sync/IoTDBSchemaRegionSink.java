@@ -131,9 +131,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           true);
     }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
-    }
+    LOGGER.info("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)

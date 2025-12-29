@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,8 @@ import static java.util.Objects.requireNonNull;
 
 /** PREPARE statement AST node. Example: PREPARE stmt1 FROM SELECT * FROM table WHERE id = ? */
 public final class Prepare extends Statement {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Prepare.class);
 
   private final Identifier statementName;
   private final Statement sql;
@@ -83,5 +86,14 @@ public final class Prepare extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("statementName", statementName).add("sql", sql).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(statementName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sql);
+    return size;
   }
 }

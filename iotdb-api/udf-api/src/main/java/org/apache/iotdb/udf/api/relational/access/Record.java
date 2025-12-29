@@ -125,6 +125,14 @@ public interface Record {
   Optional<File> getObjectFile(int columnIndex);
 
   /**
+   * Returns the OBJECT value's real file length at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return length of the object
+   */
+  long objectLength(int columnIndex);
+
+  /**
    * Returns the Binary representation of an object stored at the specified column in this row.
    *
    * <p>Users need to ensure that the data type of the specified column is {@code

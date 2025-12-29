@@ -25,14 +25,15 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionAlignedChunkReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
@@ -44,33 +45,28 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
+import com.google.common.io.BaseEncoding;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -512,173 +508,131 @@ public class CompactionUtils {
     }
   }
 
-  public static void removeDeletedObjectFiles(TsFileResource resource) {
-    // check for compaction recovery
-    if (!resource.tsFileExists()) {
+  public static void executeTTLCheckObjectFilesForTableModel(
+      File regionObjectDir, String databaseName) {
+    File[] tableDirs = regionObjectDir.listFiles();
+    if (tableDirs == null) {
       return;
     }
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(Collections.singletonList(resource))) {
-      while (deviceIterator.hasNextDevice()) {
-        deviceIterator.nextDevice();
-        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    boolean restrictObjectLimit =
+        CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit();
+    for (File tableDir : tableDirs) {
+      if (!tableDir.isDirectory()) {
+        continue;
       }
-    } catch (Exception e) {
-      logger.warn("Failed to remove object files from file {}", resource.getTsFilePath(), e);
-    }
-  }
-
-  @SuppressWarnings("java:S3776")
-  public static void removeDeletedObjectFiles(
-      TsFileSequenceReader reader,
-      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList,
-      List<ModEntry> timeMods,
-      List<List<ModEntry>> valueMods,
-      int currentRegionId)
-      throws IOException {
-    if (alignedChunkMetadataList.isEmpty()) {
-      return;
-    }
-    List<Integer> objectColumnIndexList = new ArrayList<>();
-    List<List<ModEntry>> objectDeletionIntervalList = new ArrayList<>();
-    boolean objectColumnHasDeletion = false;
-
-    TSDataType[] dataTypes = new TSDataType[valueMods.size()];
-    for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-      boolean hasNull = false;
-      for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-        if (dataTypes[i] != null) {
+      String tableName = tableDir.getName();
+      if (!restrictObjectLimit) {
+        try {
+          tableName =
+              new String(
+                  BaseEncoding.base32().omitPadding().decode(tableName), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
           continue;
         }
-        IChunkMetadata chunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(i);
-        if (chunkMetadata == null) {
-          hasNull = true;
-          continue;
-        }
-        dataTypes[i] = chunkMetadata.getDataType();
-        if (dataTypes[i] == TSDataType.OBJECT) {
-          objectColumnIndexList.add(i);
-          List<ModEntry> deletionInterval = ModificationUtils.sortAndMerge(valueMods.get(i));
-          objectColumnHasDeletion |= (!deletionInterval.isEmpty() || !timeMods.isEmpty());
-          objectDeletionIntervalList.add(deletionInterval);
-        }
       }
-      if (!hasNull) {
-        break;
+      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+      if (tsTable == null) {
+        continue;
+      }
+      long ttlInMS = CommonDateTimeUtils.convertIoTDBTimeToMillis(tsTable.getCachedTableTTL());
+      if (ttlInMS == Long.MAX_VALUE) {
+        continue;
+      }
+      // buffer 60s to avoid concurrent issues with querying
+      final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS - 60 * 1000;
+      try {
+        recursiveTTLCheckForTableDir(
+            tableDir, 0, tsTable.getTagNum() + 1, !restrictObjectLimit, timeLowerBoundInMS);
+      } catch (Exception e) {
+        logger.warn(
+            "Meet exception when checking for object files for table {}.{} in region {}",
+            databaseName,
+            tableName,
+            regionObjectDir.getName(),
+            e);
       }
     }
-    if (!objectColumnHasDeletion) {
+  }
+
+  // We try to avoid expensive 'stat' system calls by first checking file name and only performing
+  // Files.readAttributes when the file may be expired
+  private static void recursiveTTLCheckForTableDir(
+      File currentFile,
+      int depth,
+      int maxObjectFileDepth,
+      boolean canDistinguishDirectoryByFileName,
+      long lowerBoundInMS) {
+    canDistinguishDirectoryByFileName |= depth > maxObjectFileDepth;
+    String fileName = currentFile.getName();
+    boolean maybeObjectFile = fileName.endsWith(".bin");
+    if (maybeObjectFile) {
+      if (canDistinguishDirectoryByFileName) {
+        checkTTLAndDeleteExpiredObjectFile(currentFile, null, lowerBoundInMS);
+        return;
+      }
+      try {
+        BasicFileAttributes basicFileAttributes =
+            Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
+        if (!basicFileAttributes.isDirectory()) {
+          checkTTLAndDeleteExpiredObjectFile(currentFile, basicFileAttributes, lowerBoundInMS);
+          return;
+        }
+      } catch (IOException ignored) {
+      }
+    }
+    File[] children = currentFile.listFiles();
+    if (children == null) {
       return;
     }
-    int[] deletionCursors = new int[objectColumnIndexList.size() + 1];
-    List<ModEntry> timeDeletionIntervalList = ModificationUtils.sortAndMerge(timeMods);
-    for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-      CompactionUtils.removeDeletedObjectFiles(
-          reader,
-          alignedChunkMetadata,
-          objectColumnIndexList,
-          timeDeletionIntervalList,
-          objectDeletionIntervalList,
-          deletionCursors,
-          currentRegionId);
+    // The rate limit may only work on filesystems like ext4, directory File.length() is
+    // block-aligned and reflects allocated directory entry blocks.
+    acquireCompactionReadRate(currentFile.length());
+    for (File child : children) {
+      recursiveTTLCheckForTableDir(
+          child, depth + 1, maxObjectFileDepth, canDistinguishDirectoryByFileName, lowerBoundInMS);
     }
   }
 
-  @SuppressWarnings("java:S3776")
-  private static void removeDeletedObjectFiles(
-      TsFileSequenceReader reader,
-      AbstractAlignedChunkMetadata alignedChunkMetadata,
-      List<Integer> objectColumnIndexList,
-      List<ModEntry> timeDeletions,
-      List<List<ModEntry>> objectDeletions,
-      int[] deletionCursors,
-      int currentRegionId)
-      throws IOException {
-    Chunk timeChunk =
-        reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    CompactionChunkReader compactionChunkReader = new CompactionChunkReader(timeChunk);
-    List<Pair<PageHeader, ByteBuffer>> timePages =
-        compactionChunkReader.readPageDataWithoutUncompressing();
-
-    List<Chunk> valueChunks = new ArrayList<>();
-    List<List<Pair<PageHeader, ByteBuffer>>> valuePages = new ArrayList<>();
-
-    for (int i = 0; i < objectColumnIndexList.size(); i++) {
-      int idxInAlignedChunkMetadata = objectColumnIndexList.get(i);
-      if (timeDeletions.isEmpty() && objectDeletions.get(i).isEmpty()) {
-        continue;
-      }
-      ChunkMetadata valueChunkMetadata =
-          (ChunkMetadata)
-              alignedChunkMetadata.getValueChunkMetadataList().get(idxInAlignedChunkMetadata);
-      if (valueChunkMetadata == null) {
-        continue;
-      }
-      Chunk chunk = reader.readMemChunk(valueChunkMetadata);
-      if (chunk != null) {
-        chunk
-            .getHeader()
-            .setReplaceDecoder(
-                decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, currentRegionId));
-      }
-      valueChunks.add(chunk);
-      valuePages.add(
-          chunk == null
-              ? null
-              : new CompactionChunkReader(chunk).readPageDataWithoutUncompressing());
+  private static void checkTTLAndDeleteExpiredObjectFile(
+      File file, @Nullable BasicFileAttributes attributes, long timeLowerBoundInMS) {
+    String fileName = file.getName();
+    long fileTimestampInMS;
+    try {
+      fileTimestampInMS = Long.parseLong(fileName.substring(0, fileName.length() - 4));
+    } catch (NumberFormatException ignored) {
+      return;
     }
 
-    CompactionAlignedChunkReader alignedChunkReader =
-        new CompactionAlignedChunkReader(timeChunk, valueChunks, true);
-    for (int i = 0; i < timePages.size(); i++) {
-      Pair<PageHeader, ByteBuffer> timePage = timePages.get(i);
-      List<PageHeader> valuePageHeaders = new ArrayList<>(valuePages.size());
-      List<ByteBuffer> compressedValuePages = new ArrayList<>(valuePages.size());
-      for (int j = 0; j < valuePages.size(); j++) {
-        Pair<PageHeader, ByteBuffer> valuePage = valuePages.get(j).get(i);
-        valuePageHeaders.add(valuePage.getLeft());
-        compressedValuePages.add(valuePage.getRight());
-      }
-      IPointReader pagePointReader =
-          alignedChunkReader.getPagePointReader(
-              timePage.getLeft(), valuePageHeaders, timePage.getRight(), compressedValuePages);
+    if (fileTimestampInMS >= timeLowerBoundInMS) {
+      return;
+    }
 
-      while (pagePointReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = pagePointReader.nextTimeValuePair();
-        removeDeletedObjectFiles(timeValuePair, deletionCursors, timeDeletions, objectDeletions);
+    try {
+      attributes =
+          attributes == null
+              ? Files.readAttributes(file.toPath(), BasicFileAttributes.class)
+              : attributes;
+      if (attributes.isDirectory()) {
+        return;
       }
+      Files.delete(file.toPath());
+      FileMetrics.getInstance().decreaseObjectFileNum(1);
+      FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
+      logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+    } catch (Exception ignored) {
     }
   }
 
-  private static void removeDeletedObjectFiles(
-      TimeValuePair timeValuePair,
-      int[] cursors,
-      List<ModEntry> timeDeletions,
-      List<List<ModEntry>> objectDeletions) {
-    long timestamp = timeValuePair.getTimestamp();
-    boolean timeDeleted = isDeleted(timestamp, timeDeletions, cursors, 0);
-    for (int i = 0; i < timeValuePair.getValues().length; i++) {
-      Binary value = (Binary) timeValuePair.getValues()[i];
-      if (value == null) {
-        continue;
-      }
-      if (timeDeleted || isDeleted(timestamp, objectDeletions.get(i), cursors, i + 1)) {
-        ObjectTypeUtils.deleteObjectPathFromBinary(value);
-      }
+  private static void acquireCompactionReadRate(long size) {
+    if (size <= 0) {
+      return;
     }
-  }
-
-  private static boolean isDeleted(
-      long timestamp, List<ModEntry> deleteIntervalList, int[] deleteCursors, int idx) {
-    while (deleteIntervalList != null && deleteCursors[idx] < deleteIntervalList.size()) {
-      if (deleteIntervalList.get(deleteCursors[idx]).getTimeRange().contains(timestamp)) {
-        return true;
-      } else if (deleteIntervalList.get(deleteCursors[idx]).getTimeRange().getMax() < timestamp) {
-        deleteCursors[idx]++;
-      } else {
-        return false;
-      }
+    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
+    RateLimiter rateLimiter = CompactionTaskManager.getInstance().getCompactionReadRateLimiter();
+    while (size >= Integer.MAX_VALUE) {
+      size -= Integer.MAX_VALUE;
+      rateLimiter.acquire(Integer.MAX_VALUE);
     }
-    return false;
+    rateLimiter.acquire((int) size);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class TableFunctionArgument extends Node {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableFunctionArgument.class);
+
   private final Optional<Identifier> name;
   private final Node value;
 
@@ -88,5 +92,15 @@ public class TableFunctionArgument extends Node {
     }
 
     return Objects.equals(name, ((TableFunctionArgument) o).name);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
+    return size;
   }
 }

@@ -95,7 +95,7 @@ scikit-learn = "^1.7.1"
 statsmodels = "^0.14.5"
 sktime = "0.40.1"
 pmdarima = "2.1.1"
-hmmlearn = "0.3.2"
+hmmlearn = "0.3.3"
 accelerate = "^1.10.1"
 
 # ---- Optimizers / utils ----

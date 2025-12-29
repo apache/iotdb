@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,6 +28,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class CreateTopic extends SubscriptionStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateTopic.class);
 
   private final String topicName;
   private final boolean ifNotExistsCondition;
@@ -83,5 +87,14 @@ public class CreateTopic extends SubscriptionStatement {
         .add("ifNotExistsCondition", ifNotExistsCondition)
         .add("topicAttributes", topicAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(topicName);
+    size += RamUsageEstimator.sizeOfMap(topicAttributes);
+    return size;
   }
 }

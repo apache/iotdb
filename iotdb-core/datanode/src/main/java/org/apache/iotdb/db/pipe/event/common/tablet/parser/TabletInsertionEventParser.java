@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -190,7 +191,7 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final InsertTabletNode insertTabletNode) {
+  protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 

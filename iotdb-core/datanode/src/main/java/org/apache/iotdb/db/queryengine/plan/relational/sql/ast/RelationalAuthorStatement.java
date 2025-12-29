@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +41,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RelationalAuthorStatement extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalAuthorStatement.class);
 
   private final AuthorRType authorType;
 
@@ -456,5 +459,21 @@ public class RelationalAuthorStatement extends Statement {
 
   public long getAssociatedUserId() {
     return associatedUserId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(userName);
+    size += RamUsageEstimator.sizeOf(roleName);
+    size += RamUsageEstimator.sizeOf(password);
+    size += RamUsageEstimator.sizeOf(oldPassword);
+    size += RamUsageEstimator.sizeOf(newUsername);
+    size += RamUsageEstimator.sizeOf(loginAddr);
+    size += RamUsageEstimator.sizeOfCollection(privilegeType);
+    return size;
   }
 }
