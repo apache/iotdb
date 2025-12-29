@@ -83,7 +83,7 @@ public class IoTDBObjectDeleteIT {
   }
 
   @Test
-  public void deleteObjectTest()
+  public void dropObjectTableTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String testObject =
         System.getProperty("user.dir")
@@ -134,6 +134,96 @@ public class IoTDBObjectDeleteIT {
           Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
         }
         session.executeNonQueryStatement("DROP TABLE IF EXISTS object_table");
+      }
+    }
+
+    // test object file path
+    boolean success = false;
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
+      File objectDir = new File(objectDirStr);
+      if (objectDir.exists() && objectDir.isDirectory()) {
+        File[] regionDirs = objectDir.listFiles();
+        if (regionDirs != null) {
+          for (File regionDir : regionDirs) {
+            if (regionDir.isDirectory()) {
+              File objectFile =
+                  new File(
+                      regionDir,
+                      convertPathString("object_table")
+                          + File.separator
+                          + convertPathString("1")
+                          + File.separator
+                          + convertPathString("5")
+                          + File.separator
+                          + convertPathString("3")
+                          + File.separator
+                          + convertPathString("file")
+                          + File.separator
+                          + "1.bin");
+              if (objectFile.exists() && objectFile.isFile()) {
+                success = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void dropObjectColumnTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // insert table data by tablet
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.OBJECT);
+      List<ColumnCategory> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
+      Tablet tablet = new Tablet("object_table", columnNameList, dataTypeList, columnTypeList, 1);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 1);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+      session.insert(tablet);
+      tablet.reset();
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select READ_OBJECT(file) from object_table where time = 1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Binary binary = iterator.getBlob(1);
+          Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
+        }
+        session.executeNonQueryStatement("ALTER TABLE object_table drop column file");
       }
     }
 

@@ -218,6 +218,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -1999,6 +2000,8 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
       File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
+      AtomicLong totalSize = new AtomicLong(0);
+      AtomicInteger count = new AtomicInteger(0);
       try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
         paths
             .filter(Files::isRegularFile)
@@ -2009,12 +2012,14 @@ public class DataRegion implements IDataRegionForQuery {
                 })
             .forEach(
                 path -> {
-                  FileMetrics.getInstance().decreaseObjectFileNum(1);
-                  FileMetrics.getInstance().decreaseObjectFileSize(path.toFile().length());
+                  count.incrementAndGet();
+                  totalSize.addAndGet(path.toFile().length());
                 });
       } catch (IOException e) {
         logger.error("Failed to check Object Files: {}", e.getMessage());
       }
+      FileMetrics.getInstance().decreaseObjectFileNum(count.get());
+      FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
       if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
         try {
           fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
@@ -2773,10 +2778,30 @@ public class DataRegion implements IDataRegionForQuery {
         boolean droppingTable = false;
         for (TableDeletionEntry entry : modEntries) {
           if (entry.isDroppingTable()) {
+            AtomicLong totalSize = new AtomicLong(0);
+            AtomicInteger count = new AtomicInteger(0);
             for (File objectTableDir : objectTableDirs) {
               droppingTable = true;
+              try (Stream<Path> paths = Files.walk(objectTableDir.toPath())) {
+                paths
+                    .filter(Files::isRegularFile)
+                    .filter(
+                        path -> {
+                          String name = path.getFileName().toString();
+                          return name.endsWith(".bin");
+                        })
+                    .forEach(
+                        path -> {
+                          count.incrementAndGet();
+                          totalSize.addAndGet(path.toFile().length());
+                        });
+              } catch (IOException e) {
+                logger.error("Failed to check Object Files: {}", e.getMessage());
+              }
               FileUtils.deleteQuietly(objectTableDir);
             }
+            FileMetrics.getInstance().decreaseObjectFileNum(count.get());
+            FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
           }
         }
         if (!droppingTable) {
