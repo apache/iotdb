@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -59,6 +60,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -417,12 +419,33 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PrivilegeType privilegeType,
       final String auditObject,
       final boolean isLastCheck) {
+    return checkGlobalStatus(userEntity, privilegeType, auditObject, isLastCheck, false);
+  }
+
+  public static TSStatus checkGlobalStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final String auditObject,
+      final boolean isLastCheck,
+      final boolean grantOption) {
+    return checkGlobalOrAnyStatus(
+        userEntity, privilegeType, auditObject, isLastCheck, grantOption, false);
+  }
+
+  public static TSStatus checkGlobalOrAnyStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final String auditObject,
+      final boolean isLastCheck,
+      final boolean grantOption,
+      final boolean isAny) {
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     final CNAuditLogger logger = configManager.getAuditLogger();
     final TSStatus result =
         configManager
             .getPermissionManager()
-            .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(privilegeType))
+            .checkUserPrivileges(
+                userEntity.getUsername(), new PrivilegeUnion(privilegeType, grantOption, isAny))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
       logger.recordAuditLog(
@@ -448,20 +471,31 @@ public class PipeConfigTreePrivilegeParseVisitor
       final PrivilegeType privilegeType,
       final @Nonnull List<PartialPath> paths,
       final boolean isLastCheck) {
+    return checkPathsStatus(userEntity, privilegeType, paths, isLastCheck, null);
+  }
+
+  public static TSStatus checkPathsStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final @Nonnull List<PartialPath> paths,
+      final boolean isLastCheck,
+      final @Nullable String grantName) {
     final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
     final CNAuditLogger logger = configManager.getAuditLogger();
     final TSStatus result =
         ConfigNode.getInstance()
             .getConfigManager()
             .getPermissionManager()
-            .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(paths, privilegeType))
+            .checkUserPrivileges(
+                userEntity.getUsername(),
+                new PrivilegeUnion(paths, privilegeType, Objects.nonNull(grantName)))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
       logger.recordAuditLog(
           userEntity
               .setPrivilegeType(PrivilegeType.READ_SCHEMA)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          paths::toString);
+          Objects.nonNull(grantName) ? () -> grantName : paths::toString);
     }
     return result;
   }

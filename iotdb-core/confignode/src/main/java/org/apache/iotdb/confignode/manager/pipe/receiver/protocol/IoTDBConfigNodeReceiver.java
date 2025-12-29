@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -148,6 +149,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTreePrivilegeParseVisitor.checkGlobalOrAnyStatus;
 import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTreePrivilegeParseVisitor.checkGlobalStatus;
 import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTreePrivilegeParseVisitor.checkPathsStatus;
 
@@ -193,6 +195,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             resp =
                 handleTransferHandshakeV2(
                     PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+            userEntity.setAuditLogOperation(AuditLogOperation.DDL);
             PipeConfigNodeReceiverMetrics.getInstance()
                 .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
             return resp;
@@ -302,11 +305,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final String database;
     final String templateName;
     final String triggerName;
+    final String entityName;
     switch (plan.getType()) {
       case CreateDatabase:
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
         if (PathUtils.isTableModelDatabase(database)) {
-          status = checkDatabaseStatus(userEntity, PrivilegeType.CREATE, database, false);
+          status = checkDatabaseStatus(userEntity, PrivilegeType.CREATE, database);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
           }
@@ -315,7 +319,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AlterDatabase:
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
         if (PathUtils.isTableModelDatabase(database)) {
-          status = checkDatabaseStatus(userEntity, PrivilegeType.ALTER, database, false);
+          status = checkDatabaseStatus(userEntity, PrivilegeType.ALTER, database);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
           }
@@ -324,7 +328,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case DeleteDatabase:
         database = ((DeleteDatabasePlan) plan).getName();
         if (PathUtils.isTableModelDatabase(database)) {
-          status = checkDatabaseStatus(userEntity, PrivilegeType.DELETE, database, false);
+          status = checkDatabaseStatus(userEntity, PrivilegeType.DELETE, database);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, database, true);
           }
@@ -445,8 +449,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             userEntity,
             PrivilegeType.CREATE,
             ((PipeCreateTableOrViewPlan) plan).getDatabase(),
-            ((PipeCreateTableOrViewPlan) plan).getTable().getTableName(),
-            true);
+            ((PipeCreateTableOrViewPlan) plan).getTable().getTableName());
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
@@ -464,67 +467,86 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             userEntity,
             PrivilegeType.ALTER,
             ((AbstractTablePlan) plan).getDatabase(),
-            ((AbstractTablePlan) plan).getTableName(),
-            true);
+            ((AbstractTablePlan) plan).getTableName());
       case CommitDeleteTable:
       case CommitDeleteView:
         return checkTableStatus(
             userEntity,
             PrivilegeType.DELETE,
             ((CommitDeleteTablePlan) plan).getDatabase(),
-            ((CommitDeleteTablePlan) plan).getTableName(),
-            true);
+            ((CommitDeleteTablePlan) plan).getTableName());
       case GrantRole:
       case GrantUser:
       case RevokeUser:
       case RevokeRole:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.GrantUser
+                    || plan.getType() == ConfigPhysicalPlanType.RevokeUser
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorTreePlan) plan).getPermissions()) {
           status =
-              configManager
-                  .checkUserPrivilegeGrantOpt(
-                      username,
-                      PrivilegeType.values()[permission].isPathPrivilege()
-                          ? new PrivilegeUnion(
-                              ((AuthorTreePlan) plan).getNodeNameList(),
-                              PrivilegeType.values()[permission],
-                              true)
-                          : new PrivilegeUnion(PrivilegeType.values()[permission], true))
-                  .getStatus();
+              PrivilegeType.values()[permission].isPathPrivilege()
+                  ? checkPathsStatus(
+                      userEntity,
+                      PrivilegeType.values()[permission],
+                      ((AuthorTreePlan) plan).getNodeNameList(),
+                      false,
+                      entityName)
+                  : checkGlobalStatus(
+                      userEntity, PrivilegeType.values()[permission], entityName, false, true);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case RGrantUserAny:
       case RGrantRoleAny:
       case RRevokeUserAny:
       case RRevokeRoleAny:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.RGrantUserAny
+                    || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAny
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
-              configManager
-                  .checkUserPrivileges(
-                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true, true))
-                  .getStatus();
+              checkGlobalOrAnyStatus(
+                  userEntity, PrivilegeType.values()[permission], entityName, false, true, true);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case RGrantUserAll:
       case RGrantRoleAll:
       case RRevokeUserAll:
       case RRevokeRoleAll:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.RGrantUserAll
+                    || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAll
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
           if (privilegeType.isRelationalPrivilege()) {
             status =
-                configManager
-                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true, true))
-                    .getStatus();
+                checkGlobalOrAnyStatus(userEntity, privilegeType, entityName, false, true, true);
           } else if (privilegeType.forRelationalSys()) {
-            status =
-                configManager
-                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true))
-                    .getStatus();
+            status = checkGlobalStatus(userEntity, privilegeType, entityName, false, true);
           } else {
             continue;
           }
@@ -532,60 +554,88 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case RGrantUserDBPriv:
       case RGrantRoleDBPriv:
       case RRevokeUserDBPriv:
       case RRevokeRoleDBPriv:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.RGrantUserDBPriv
+                    || plan.getType() == ConfigPhysicalPlanType.RRevokeUserDBPriv
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
-              configManager
-                  .checkUserPrivileges(
-                      username,
-                      new PrivilegeUnion(
-                          ((AuthorRelationalPlan) plan).getDatabaseName(),
-                          PrivilegeType.values()[permission],
-                          true))
-                  .getStatus();
+              checkDatabaseStatus(
+                  userEntity,
+                  PrivilegeType.values()[permission],
+                  ((AuthorRelationalPlan) plan).getDatabaseName(),
+                  true);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case RGrantUserTBPriv:
       case RGrantRoleTBPriv:
       case RRevokeUserTBPriv:
       case RRevokeRoleTBPriv:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.RGrantUserTBPriv
+                    || plan.getType() == ConfigPhysicalPlanType.RRevokeUserTBPriv
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
-              configManager
-                  .checkUserPrivileges(
-                      username,
-                      new PrivilegeUnion(
-                          ((AuthorRelationalPlan) plan).getDatabaseName(),
-                          ((AuthorRelationalPlan) plan).getTableName(),
-                          PrivilegeType.values()[permission],
-                          true))
-                  .getStatus();
+              checkTableStatus(
+                  userEntity,
+                  PrivilegeType.values()[permission],
+                  ((AuthorRelationalPlan) plan).getDatabaseName(),
+                  ((AuthorRelationalPlan) plan).getTableName(),
+                  false,
+                  true);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case RGrantUserSysPri:
       case RGrantRoleSysPri:
       case RRevokeUserSysPri:
       case RRevokeRoleSysPri:
+        entityName =
+            plan.getType() == ConfigPhysicalPlanType.RGrantUserSysPri
+                    || plan.getType() == ConfigPhysicalPlanType.RRevokeUserSysPri
+                ? ((AuthorPlan) plan).getUserName()
+                : ((AuthorPlan) plan).getRoleName();
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
-              configManager
-                  .checkUserPrivileges(
-                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true))
-                  .getStatus();
+              checkGlobalStatus(
+                  userEntity, PrivilegeType.values()[permission], entityName, false, true);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
           }
         }
+        configManager
+            .getAuditLogger()
+            .recordAuditLog(
+                userEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                () -> entityName);
         return StatusUtils.OK;
       case UpdateUser:
       case UpdateUserV2:
@@ -623,21 +673,24 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
-  public static TSStatus checkDatabaseStatus(
+  private TSStatus checkDatabaseStatus(
+      final IAuditEntity userEntity, final PrivilegeType privilegeType, final String database) {
+    return checkDatabaseStatus(userEntity, privilegeType, database, false);
+  }
+
+  private TSStatus checkDatabaseStatus(
       final IAuditEntity userEntity,
       final PrivilegeType privilegeType,
       final String database,
-      final boolean isLastCheck) {
-    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-    final CNAuditLogger logger = configManager.getAuditLogger();
+      final boolean grantOption) {
     final TSStatus result =
         configManager
             .getPermissionManager()
             .checkUserPrivileges(
-                userEntity.getUsername(), new PrivilegeUnion(database, privilegeType))
+                userEntity.getUsername(), new PrivilegeUnion(database, privilegeType, grantOption))
             .getStatus();
-    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
-      logger.recordAuditLog(
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      auditLogger.recordAuditLog(
           userEntity
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -646,22 +699,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return result;
   }
 
-  public static TSStatus checkTableStatus(
+  private TSStatus checkTableStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final String database,
+      final String tableName) {
+    return checkTableStatus(userEntity, privilegeType, database, tableName, true, false);
+  }
+
+  private TSStatus checkTableStatus(
       final IAuditEntity userEntity,
       final PrivilegeType privilegeType,
       final String database,
       final String tableName,
-      final boolean isLastCheck) {
-    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-    final CNAuditLogger logger = configManager.getAuditLogger();
+      final boolean isLastCheck,
+      final boolean grantOption) {
     final TSStatus result =
         configManager
             .getPermissionManager()
             .checkUserPrivileges(
-                userEntity.getUsername(), new PrivilegeUnion(database, tableName, privilegeType))
+                userEntity.getUsername(),
+                new PrivilegeUnion(database, tableName, privilegeType, grantOption))
             .getStatus();
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
-      logger.recordAuditLog(
+      auditLogger.recordAuditLog(
           userEntity
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
