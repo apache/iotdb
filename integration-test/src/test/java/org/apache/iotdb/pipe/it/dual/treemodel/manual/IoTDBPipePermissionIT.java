@@ -360,8 +360,9 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQuery(senderEnv, "create database root.test1");
 
     // Shall be transferred
+    // The root.test may or may not be transferred due to delayed start of the config source
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases root.tes*", "count,", Collections.singleton("1,"));
+        receiverEnv, "count databases root.test1", "count,", Collections.singleton("1,"));
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection();
