@@ -1043,8 +1043,10 @@ public class SeriesScanUtil implements Accountable {
       if (firstPageReader == null) {
         initFirstPageReader();
       }
-      putPageReaderToMergeReader(firstPageReader);
-      firstPageReader = null;
+      if (!mergeReader.hasNextTimeValuePair()) {
+        putPageReaderToMergeReader(firstPageReader);
+        firstPageReader = null;
+      }
     } while (!mergeReader.hasNextTimeValuePair());
 
     /*
@@ -1072,10 +1074,10 @@ public class SeriesScanUtil implements Accountable {
       if (orderUtils.isOverlapped(currentReadStopTime, unSeqPageReader.getStatistics())) {
         if (orderUtils.getAscending()) {
           currentReadStopTime =
-              Math.max(currentReadStopTime, firstPageReader.getStatistics().getEndTime());
+              Math.max(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
         } else {
           currentReadStopTime =
-              Math.min(currentReadStopTime, firstPageReader.getStatistics().getEndTime());
+              Math.min(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
         }
       }
       break;
