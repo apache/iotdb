@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
@@ -297,8 +298,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       return status;
     }
 
-    String database;
-    String templateName;
+    final String database;
+    final String templateName;
+    final String triggerName;
     switch (plan.getType()) {
       case CreateDatabase:
         database = ((DatabaseSchemaPlan) plan).getSchema().getName();
@@ -351,7 +353,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     .getAllPathPatterns()),
             true);
       case PipeAlterEncodingCompressor:
-        // Judge here in the future
+        // The audit check does not need any
         if (configManager
                 .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.AUDIT))
                 .getStatus()
@@ -424,10 +426,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                             PrivilegeType.WRITE_SCHEMA))
                 .getStatus();
       case UpdateTriggerStateInTable:
+        triggerName = ((UpdateTriggerStateInTablePlan) plan).getTriggerName();
+        return checkGlobalStatus(userEntity, PrivilegeType.USE_TRIGGER, triggerName, true);
       case DeleteTriggerInTable:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
-            .getStatus();
+        triggerName = ((DeleteTriggerInTablePlan) plan).getTriggerName();
+        return checkGlobalStatus(userEntity, PrivilegeType.USE_TRIGGER, triggerName, true);
       case PipeCreateTableOrView:
         return configManager
             .checkUserPrivileges(
@@ -597,9 +600,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case DropUserV2:
       case RDropUser:
       case RDropUserV2:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
-            .getStatus();
+        return checkGlobalStatus(
+            userEntity, PrivilegeType.MANAGE_USER, ((AuthorPlan) plan).getUserName(), true);
       case CreateRole:
       case RCreateRole:
       case DropRole:
@@ -608,9 +610,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RGrantUserRole:
       case RevokeRoleFromUser:
       case RRevokeUserRole:
-        return configManager
-            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
-            .getStatus();
+        return checkGlobalStatus(
+            userEntity, PrivilegeType.MANAGE_ROLE, ((AuthorPlan) plan).getRoleName(), true);
       default:
         return StatusUtils.OK;
     }
@@ -635,6 +636,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
               .setPrivilegeType(privilegeType)
               .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
           () -> database);
+    }
+    return result;
+  }
+
+  public static TSStatus checkTableStatus(
+      final IAuditEntity userEntity,
+      final PrivilegeType privilegeType,
+      final String database,
+      final String tableName,
+      final boolean isLastCheck) {
+    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
+    final CNAuditLogger logger = configManager.getAuditLogger();
+    final TSStatus result =
+        configManager
+            .getPermissionManager()
+            .checkUserPrivileges(
+                userEntity.getUsername(), new PrivilegeUnion(database, tableName, privilegeType))
+            .getStatus();
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() || isLastCheck) {
+      logger.recordAuditLog(
+          userEntity
+              .setPrivilegeType(privilegeType)
+              .setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          () -> tableName);
     }
     return result;
   }
