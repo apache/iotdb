@@ -73,7 +73,7 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        transform(column, columnBuilder, i);
+        transform(column, columnBuilder, i, this.offset, this.length, this.fragmentInstanceContext);
       } else {
         columnBuilder.appendNull();
       }
@@ -84,22 +84,34 @@ public class ReadObjectColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (selection[i] && !column.isNull(i)) {
-        transform(column, columnBuilder, i);
+        transform(column, columnBuilder, i, this.offset, this.length, this.fragmentInstanceContext);
       } else {
         columnBuilder.appendNull();
       }
     }
   }
 
-  private void transform(Column column, ColumnBuilder columnBuilder, int i) {
+  public static void transform(
+      Column column,
+      ColumnBuilder columnBuilder,
+      int i,
+      long offset,
+      long length,
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     // BinaryColumn.getDataType() returns TSDataType.TEXT
     if (TSDataType.TEXT == column.getDataType()) {
       Binary binary = column.getBinary(i);
-      columnBuilder.writeBinary(readObject(binary));
+      columnBuilder.writeBinary(readObject(binary, offset, length, fragmentInstanceContext));
+    } else {
+      throw new IllegalStateException("read_object function only accept a BinaryColumn.");
     }
   }
 
-  private Binary readObject(Binary binary) {
+  public static Binary readObject(
+      Binary binary,
+      long offset,
+      long length,
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     Pair<Long, String> objectLengthPathPair =
         ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(binary);
     long fileLength = objectLengthPathPair.getLeft();

@@ -43,7 +43,7 @@ import java.time.LocalDate;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBObjectQueryIT2 {
+public class IoTDBObjectQuery2IT {
 
   private static final String DATABASE_NAME = "test";
 
