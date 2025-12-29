@@ -1299,7 +1299,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
     return new RelationPlan(
         new LoadTsFileNode(
-            idAllocator.genPlanNodeId(), node.getResources(), isTableModel, node.getDatabase()),
+            idAllocator.genPlanNodeId(),
+            node.getResources(),
+            isTableModel,
+            node.getDatabase(),
+            node.getSchemaEvolutionFile()),
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);

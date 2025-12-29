@@ -301,7 +301,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
                 throw new RuntimeException(e);
               }
               return true;
-            });
+            },
+            null);
     splitter.splitTsFileByDataPartition();
     List<TsFileResource> splitResources = new ArrayList<>();
     for (Map.Entry<TTimePartitionSlot, TestLoadTsFileIOWriter> entry : writerMap.entrySet()) {

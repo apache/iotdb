@@ -84,6 +84,10 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     return this;
   }
 
+  public TagPredicate rewriteToFinal(EvolvedSchema evolvedSchema) {
+    return this;
+  }
+
   @Override
   public long serialize(OutputStream stream) throws IOException {
     return type.serialize(stream);
@@ -252,6 +256,11 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     @Override
     public TagPredicate rewriteToOriginal(EvolvedSchema evolvedSchema) {
       return new FullExactMatch(evolvedSchema.rewriteToOriginal(deviceID));
+    }
+
+    @Override
+    public TagPredicate rewriteToFinal(EvolvedSchema evolvedSchema) {
+      return new FullExactMatch(evolvedSchema.rewriteToFinal(deviceID));
     }
   }
 

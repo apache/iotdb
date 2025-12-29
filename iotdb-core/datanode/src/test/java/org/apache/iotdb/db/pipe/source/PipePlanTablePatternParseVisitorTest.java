@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;

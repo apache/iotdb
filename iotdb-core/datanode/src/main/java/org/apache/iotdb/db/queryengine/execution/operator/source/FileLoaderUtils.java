@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import java.util.concurrent.LinkedBlockingDeque;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -98,15 +97,13 @@ public class FileLoaderUtils {
         EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
         IDeviceID deviceId = seriesPath.getDeviceId();
         String measurement = seriesPath.getMeasurement();
-        
+
         timeSeriesMetadata =
             TimeSeriesMetadataCache.getInstance()
                 .get(
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                        resource.getTsFileID(),
-                        deviceId,
-                        measurement),
+                        resource.getTsFileID(), deviceId, measurement),
                     allSensors,
                     context.ignoreNotExistsDevice()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
@@ -115,8 +112,7 @@ public class FileLoaderUtils {
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
-              context.getPathModifications(
-                  resource, deviceId, measurement);
+              context.getPathModifications(resource, deviceId, measurement);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));

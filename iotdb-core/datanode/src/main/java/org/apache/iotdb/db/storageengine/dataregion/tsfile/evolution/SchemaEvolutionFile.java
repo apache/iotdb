@@ -101,4 +101,8 @@ public class SchemaEvolutionFile {
     }
     return evolvedSchema;
   }
+
+  public String getFilePath() {
+    return filePath;
+  }
 }

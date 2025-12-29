@@ -41,6 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
@@ -73,6 +75,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -106,6 +109,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private boolean isMiniTsFileConverted = false;
   private final List<Boolean> isTableModelTsFile;
   private int isTableModelTsFileReliableIndex = -1;
+  private final File schemaEvolutionFile;
+  private EvolvedSchema evolvedSchema;
 
   // User specified configs
   private final int databaseLevel;
@@ -134,6 +139,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.schemaEvolutionFile = loadTsFileStatement.getSchemaEvolutionFile();
 
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileStatement.getDatabase();
@@ -158,6 +164,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.schemaEvolutionFile = loadTsFileTableStatement.getSchemaEvolutionFile();
 
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
@@ -200,6 +207,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     try {
+      if (schemaEvolutionFile != null && schemaEvolutionFile.exists()) {
+        SchemaEvolutionFile sevoFile =
+            new SchemaEvolutionFile(schemaEvolutionFile.getAbsolutePath());
+        evolvedSchema = sevoFile.readAsSchema();
+      }
+
       if (!doAnalyzeFileByFile(analysis)) {
         return analysis;
       }
@@ -526,7 +539,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final File tsFile,
       final TsFileSequenceReader reader,
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator,
-      final Map<String, TableSchema> tableSchemaMap)
+      Map<String, TableSchema> tableSchemaMap)
       throws IOException, LoadAnalyzeException {
     // construct tsfile resource
     final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
@@ -550,12 +563,27 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
+    if (evolvedSchema != null) {
+      tableSchemaMap = evolvedSchema.rewriteToFinal(tableSchemaMap);
+    }
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     while (timeseriesMetadataIterator.hasNext()) {
-      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
+
+      if (evolvedSchema != null) {
+        device2TimeseriesMetadata =
+            device2TimeseriesMetadata.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        e -> evolvedSchema.rewriteToFinal(e.getKey()),
+                        e -> {
+                          evolvedSchema.rewriteToFinal(e.getKey().getTableName(), e.getValue());
+                          return e.getValue();
+                        }));
+      }
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted

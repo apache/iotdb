@@ -195,8 +195,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;

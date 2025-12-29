@@ -106,7 +106,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
     logger.warn(
-        "Can not send {} to peer for {} times {} because {}",
+        "v {} to peer for {} times {} because {}",
         batch,
         thread.getPeer(),
         retryCount,

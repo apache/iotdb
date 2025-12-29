@@ -53,10 +53,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -490,7 +490,8 @@ public class AnalyzeUtils {
     return combinePredicates(oldPredicate, newPredicate);
   }
 
-  private static TagPredicate combinePredicates(TagPredicate oldPredicate, TagPredicate newPredicate) {
+  private static TagPredicate combinePredicates(
+      TagPredicate oldPredicate, TagPredicate newPredicate) {
     if (oldPredicate == null) {
       return newPredicate;
     }

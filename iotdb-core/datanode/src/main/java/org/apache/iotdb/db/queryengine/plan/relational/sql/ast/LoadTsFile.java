@@ -56,6 +56,7 @@ public class LoadTsFile extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
+  private File schemaEvolutionFile;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
@@ -179,6 +180,10 @@ public class LoadTsFile extends Statement {
     return writePointCountList.get(resourceIndex);
   }
 
+  public File getSchemaEvolutionFile() {
+    return schemaEvolutionFile;
+  }
+
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
@@ -189,6 +194,7 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.schemaEvolutionFile = LoadTsFileConfigurator.parseSevoFile(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

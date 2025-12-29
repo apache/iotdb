@@ -19,71 +19,105 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
-  private Map<String, String> originalTableNames = new LinkedHashMap<>();
+  private Map<String, String> finalToOriginalTableNames = new LinkedHashMap<>();
 
   /**
    * the first key is the evolved table name, the second key is the evolved column name, and the
    * value is the original column name before any schema evolution.
    */
-  private Map<String, Map<String, String>> originalColumnNames = new LinkedHashMap<>();
+  private Map<String, Map<String, String>> finalToOriginalColumnNames = new LinkedHashMap<>();
+
+  // the reversed version of finalToOriginalTableNames
+  private Map<String, String> originalToFinalTableNames = new LinkedHashMap<>();
+
+  // the reversed version of finalToOriginalColumnNames
+  private Map<String, Map<String, String>> originalToFinalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
-    if (!originalTableNames.containsKey(oldTableName) || originalTableNames.get(oldTableName).isEmpty()) {
-      originalTableNames.put(newTableName, oldTableName);
-      originalTableNames.put(oldTableName, "");
+    if (!finalToOriginalTableNames.containsKey(oldTableName)
+        || finalToOriginalTableNames.get(oldTableName).isEmpty()) {
+      finalToOriginalTableNames.put(newTableName, oldTableName);
+      finalToOriginalTableNames.put(oldTableName, "");
+      originalToFinalTableNames.put(oldTableName, newTableName);
     } else {
-      // mark the old table name as non-exists
-      String originalName = originalTableNames.put(oldTableName, "");
-      originalTableNames.put(newTableName, originalName);
+      // mark the old table name as non-exists (empty)
+      String originalName = finalToOriginalTableNames.put(oldTableName, "");
+      finalToOriginalTableNames.put(newTableName, originalName);
+      originalToFinalTableNames.put(originalName, newTableName);
     }
 
-    if (originalColumnNames.containsKey(oldTableName)) {
-      Map<String, String> columnMap = originalColumnNames.remove(oldTableName);
-      originalColumnNames.put(newTableName, columnMap);
+    if (finalToOriginalColumnNames.containsKey(oldTableName)) {
+      Map<String, String> columnMap = finalToOriginalColumnNames.remove(oldTableName);
+      finalToOriginalColumnNames.put(newTableName, columnMap);
     }
   }
 
-  public void renameColumn(String tableName, String oldColumnName, String newColumnName) {
+  public void renameColumn(String newTableName, String oldColumnName, String newColumnName) {
     Map<String, String> columnNameMap =
-        originalColumnNames.computeIfAbsent(tableName, t -> new LinkedHashMap<>());
+        finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
+    String originalTableName = getOriginalTableName(newTableName);
     if (!columnNameMap.containsKey(oldColumnName) || columnNameMap.get(oldColumnName).isEmpty()) {
       columnNameMap.put(newColumnName, oldColumnName);
       columnNameMap.put(oldColumnName, "");
+      originalToFinalColumnNames
+          .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+          .put(oldColumnName, newColumnName);
     } else {
       // mark the old column name as non-exists
       String originalName = columnNameMap.put(oldColumnName, "");
       columnNameMap.put(newColumnName, originalName);
+      originalToFinalColumnNames
+          .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+          .put(originalName, newColumnName);
     }
   }
 
-  public String getOriginalTableName(String evolvedTableName) {
-    return originalTableNames.getOrDefault(evolvedTableName, evolvedTableName);
+  public String getOriginalTableName(String finalTableName) {
+    return finalToOriginalTableNames.getOrDefault(finalTableName, finalTableName);
+  }
+
+  private String getFinalTableName(String originalTableName) {
+    return originalToFinalTableNames.getOrDefault(originalTableName, originalTableName);
   }
 
   public String getOriginalColumnName(String tableName, String evolvedColumnName) {
-    Map<String, String> columnNameMap = originalColumnNames.get(tableName);
+    Map<String, String> columnNameMap = finalToOriginalColumnNames.get(tableName);
     if (columnNameMap == null) {
       return evolvedColumnName;
     }
     return columnNameMap.getOrDefault(evolvedColumnName, evolvedColumnName);
+  }
+
+  public String getFinalColumnName(String originalTableName, String originalColumnName) {
+    return originalToFinalColumnNames
+        .getOrDefault(originalTableName, Collections.emptyMap())
+        .getOrDefault(originalColumnName, originalColumnName);
   }
 
   @Override
@@ -92,40 +126,44 @@ public class EvolvedSchema {
       return false;
     }
     EvolvedSchema that = (EvolvedSchema) o;
-    return Objects.equals(originalTableNames, that.originalTableNames)
-        && Objects.equals(originalColumnNames, that.originalColumnNames);
+    return Objects.equals(finalToOriginalTableNames, that.finalToOriginalTableNames)
+        && Objects.equals(finalToOriginalColumnNames, that.finalToOriginalColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(originalTableNames, originalColumnNames);
+    return Objects.hash(finalToOriginalTableNames, finalToOriginalColumnNames);
   }
 
   @Override
   public String toString() {
     return "EvolvedSchema{"
         + "originalTableNames="
-        + originalTableNames
+        + finalToOriginalTableNames
         + ", originalColumnNames="
-        + originalColumnNames
+        + finalToOriginalColumnNames
         + '}';
   }
 
   public List<SchemaEvolution> toSchemaEvolutions() {
-      List<SchemaEvolution> schemaEvolutions = new ArrayList<>();
-      originalTableNames.forEach((finalTableName, originalTableName) -> {
-        if (!originalTableName.isEmpty()) {
-          schemaEvolutions.add(new TableRename(originalTableName, finalTableName));
-        }
-      });
-      originalColumnNames.forEach((finalTableName, originalColumnNameMap) -> {
-        originalColumnNameMap.forEach((finalColumnName, originalColumnName) -> {
-          if (!originalColumnName.isEmpty()) {
-            schemaEvolutions.add(new ColumnRename(finalTableName, originalColumnName, finalColumnName, null));
+    List<SchemaEvolution> schemaEvolutions = new ArrayList<>();
+    finalToOriginalTableNames.forEach(
+        (finalTableName, originalTableName) -> {
+          if (!originalTableName.isEmpty()) {
+            schemaEvolutions.add(new TableRename(originalTableName, finalTableName));
           }
         });
-      });
-      return schemaEvolutions;
+    finalToOriginalColumnNames.forEach(
+        (finalTableName, originalColumnNameMap) -> {
+          originalColumnNameMap.forEach(
+              (finalColumnName, originalColumnName) -> {
+                if (!originalColumnName.isEmpty()) {
+                  schemaEvolutions.add(
+                      new ColumnRename(finalTableName, originalColumnName, finalColumnName, null));
+                }
+              });
+        });
+    return schemaEvolutions;
   }
 
   public ModEntry rewriteToOriginal(ModEntry entry) {
@@ -135,9 +173,32 @@ public class EvolvedSchema {
     return entry;
   }
 
+  public ModEntry rewriteToFinal(ModEntry entry) {
+    if (entry.getType() == ModType.TABLE_DELETION) {
+      return rewriteToFinal(((TableDeletionEntry) entry));
+    }
+    return entry;
+  }
+
   public TableDeletionEntry rewriteToOriginal(TableDeletionEntry entry) {
     DeletionPredicate deletionPredicate = rewriteToOriginal(entry.getPredicate());
     return new TableDeletionEntry(deletionPredicate, entry.getTimeRange());
+  }
+
+  public TableDeletionEntry rewriteToFinal(TableDeletionEntry entry) {
+    DeletionPredicate deletionPredicate = rewriteToFinal(entry.getPredicate());
+    return new TableDeletionEntry(deletionPredicate, entry.getTimeRange());
+  }
+
+  private DeletionPredicate rewriteToFinal(DeletionPredicate predicate) {
+    String finalTableName = getFinalTableName(predicate.getTableName());
+    TagPredicate tagPredicate = predicate.getTagPredicate();
+    tagPredicate = tagPredicate.rewriteToOriginal(this);
+    List<String> newMeasurements =
+        predicate.getMeasurementNames().stream()
+            .map(m -> getFinalColumnName(predicate.getTableName(), m))
+            .collect(Collectors.toList());
+    return new DeletionPredicate(finalTableName, tagPredicate, newMeasurements);
   }
 
   private DeletionPredicate rewriteToOriginal(DeletionPredicate predicate) {
@@ -145,24 +206,71 @@ public class EvolvedSchema {
     TagPredicate tagPredicate = predicate.getTagPredicate();
     tagPredicate = tagPredicate.rewriteToOriginal(this);
     List<String> newMeasurements =
-    predicate.getMeasurementNames().stream().map(m -> getOriginalColumnName(predicate.getTableName(), m)).collect(
-        Collectors.toList());
+        predicate.getMeasurementNames().stream()
+            .map(m -> getOriginalColumnName(predicate.getTableName(), m))
+            .collect(Collectors.toList());
     return new DeletionPredicate(originalTableName, tagPredicate, newMeasurements);
   }
 
   public IDeviceID rewriteToOriginal(IDeviceID deviceID) {
     String tableName = deviceID.getTableName();
     String originalTableName = getOriginalTableName(tableName);
-    return rewriteToOriginal(deviceID, originalTableName);
+    return rewriteTableName(deviceID, originalTableName);
+  }
+
+  public IDeviceID rewriteToFinal(IDeviceID deviceID) {
+    String tableName = deviceID.getTableName();
+    String finalTableName = getFinalTableName(tableName);
+    return rewriteTableName(deviceID, finalTableName);
+  }
+
+  public void rewriteToFinal(
+      String originalTableName, List<TimeseriesMetadata> timeseriesMetadataList) {
+    timeseriesMetadataList.forEach(
+        timeseriesMetadata -> {
+          timeseriesMetadata.setMeasurementId(
+              getFinalColumnName(originalTableName, timeseriesMetadata.getMeasurementId()));
+        });
+  }
+
+  public Map<String, TableSchema> rewriteToFinal(Map<String, TableSchema> tableSchemas) {
+    Map<String, TableSchema> finalTableSchemas = new HashMap<>(tableSchemas.size());
+    for (Map.Entry<String, TableSchema> entry : tableSchemas.entrySet()) {
+      TableSchema tableSchema = entry.getValue();
+      tableSchema = rewriteToFinal(tableSchema);
+      finalTableSchemas.put(tableSchema.getTableName(), tableSchema);
+    }
+    return finalTableSchemas;
+  }
+
+  public TableSchema rewriteToFinal(TableSchema tableSchema) {
+    String finalTableName = getFinalTableName(tableSchema.getTableName());
+
+    List<IMeasurementSchema> measurementSchemas =
+        new ArrayList<>(tableSchema.getColumnSchemas().size());
+    List<ColumnCategory> columnCategories = new ArrayList<>(tableSchema.getColumnTypes().size());
+    List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+    for (int i = 0, columnSchemasSize = columnSchemas.size(); i < columnSchemasSize; i++) {
+      IMeasurementSchema measurementSchema = columnSchemas.get(i);
+      measurementSchemas.add(
+          new MeasurementSchema(
+              getFinalColumnName(
+                      tableSchema.getTableName(), measurementSchema.getMeasurementName()),
+                  measurementSchema.getType(),
+              measurementSchema.getEncodingType(), measurementSchema.getCompressor()));
+      columnCategories.add(tableSchema.getColumnTypes().get(i));
+    }
+
+    return new TableSchema(finalTableName, measurementSchemas, columnCategories);
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
-  public static IDeviceID rewriteToOriginal(IDeviceID deviceID, String originalTableName) {
+  public static IDeviceID rewriteTableName(IDeviceID deviceID, String newTableName) {
     String tableName = deviceID.getTableName();
-    if (!tableName.equals(originalTableName)) {
+    if (!tableName.equals(newTableName)) {
       Object[] segments = deviceID.getSegments();
       String[] newSegments = new String[segments.length];
-      newSegments[0] = originalTableName;
+      newSegments[0] = newTableName;
       System.arraycopy(segments, 1, newSegments, 1, segments.length - 1);
       return Factory.DEFAULT_FACTORY.create(newSegments);
     }
@@ -171,8 +279,10 @@ public class EvolvedSchema {
 
   public static EvolvedSchema deepCopy(EvolvedSchema evolvedSchema) {
     EvolvedSchema newEvolvedSchema = new EvolvedSchema();
-    newEvolvedSchema.originalTableNames = new LinkedHashMap<>(evolvedSchema.originalTableNames);
-    newEvolvedSchema.originalColumnNames = new LinkedHashMap<>(evolvedSchema.originalColumnNames);
+    newEvolvedSchema.finalToOriginalTableNames =
+        new LinkedHashMap<>(evolvedSchema.finalToOriginalTableNames);
+    newEvolvedSchema.finalToOriginalColumnNames =
+        new LinkedHashMap<>(evolvedSchema.finalToOriginalColumnNames);
     return newEvolvedSchema;
   }
 
@@ -196,14 +306,14 @@ public class EvolvedSchema {
       if (schemas[i] != null) {
         EvolvedSchema newSchema = schemas[i];
         for (Entry<String, String> finalOriginalTableName :
-            newSchema.originalTableNames.entrySet()) {
+            newSchema.finalToOriginalTableNames.entrySet()) {
           if (!finalOriginalTableName.getValue().isEmpty()) {
             mergedSchema.renameTable(
                 finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
           }
         }
         for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry :
-            newSchema.originalColumnNames.entrySet()) {
+            newSchema.finalToOriginalColumnNames.entrySet()) {
           for (Entry<String, String> finalColNameOriginalColNameEntry :
               finalTableNameColumnNameMapEntry.getValue().entrySet()) {
             if (!finalColNameOriginalColNameEntry.getValue().isEmpty()) {

@@ -1262,7 +1262,10 @@ public class DataRegion implements IDataRegionForQuery {
       } else if (schemaEvolution instanceof ColumnRename) {
         ColumnRename columnRename = (ColumnRename) schemaEvolution;
         if (columnRename.getDataType() == TSDataType.OBJECT) {
-          renameMeasurementForObjects(columnRename.getTableName(), columnRename.getNameBefore(), columnRename.getNameAfter());
+          renameMeasurementForObjects(
+              columnRename.getTableName(),
+              columnRename.getNameBefore(),
+              columnRename.getNameAfter());
         }
       }
     }
@@ -3076,7 +3079,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private boolean canBeFullyDeleted(ArrayDeviceTimeIndex deviceTimeIndex, TableDeletionEntry tableDeletionEntry) {
+  private boolean canBeFullyDeleted(
+      ArrayDeviceTimeIndex deviceTimeIndex, TableDeletionEntry tableDeletionEntry) {
     Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
     String tableName = tableDeletionEntry.getTableName();
     long matchSize =
@@ -3153,14 +3157,21 @@ public class DataRegion implements IDataRegionForQuery {
           && (deletion.getType() == ModType.TABLE_DELETION)) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
         TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
-        tableDeletionEntry = evolvedSchema != null? evolvedSchema.rewriteToOriginal(tableDeletionEntry) : tableDeletionEntry;
+        tableDeletionEntry =
+            evolvedSchema != null
+                ? evolvedSchema.rewriteToOriginal(tableDeletionEntry)
+                : tableDeletionEntry;
         if (canBeFullyDeleted(deviceTimeIndex, tableDeletionEntry)) {
           deletedByFiles.add(sealedTsFile);
         } else {
-          involvedModificationFiles.add(new Pair<>(sealedTsFile.getModFileForWrite(), tableDeletionEntry));
+          involvedModificationFiles.add(
+              new Pair<>(sealedTsFile.getModFileForWrite(), tableDeletionEntry));
         }
       } else {
-        involvedModificationFiles.add(new Pair<>(sealedTsFile.getModFileForWrite(), evolvedSchema != null? evolvedSchema.rewriteToOriginal(deletion) : deletion));
+        involvedModificationFiles.add(
+            new Pair<>(
+                sealedTsFile.getModFileForWrite(),
+                evolvedSchema != null ? evolvedSchema.rewriteToOriginal(deletion) : deletion));
       }
     }
 

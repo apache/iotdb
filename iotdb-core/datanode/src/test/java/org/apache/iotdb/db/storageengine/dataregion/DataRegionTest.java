@@ -60,14 +60,12 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
-import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -1647,9 +1645,7 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.anyModFileExists());
     Assert.assertFalse(
-        tsFileResource
-            .getDevices()
-            .contains(Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
+        tsFileResource.getDevices().contains(Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
   }
 
   @Test
@@ -1909,13 +1905,12 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testSchemaEvolutionWithPartialDeletion()
-      throws WriteProcessException, IOException {
+  public void testSchemaEvolutionWithPartialDeletion() throws WriteProcessException, IOException {
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
-        new MeasurementSchema("tag1", TSDataType.STRING),
-        new MeasurementSchema("s1", TSDataType.INT64),
-        new MeasurementSchema("s2", TSDataType.DOUBLE)
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
     };
     RelationalInsertRowNode insertRowNode =
         new RelationalInsertRowNode(
@@ -1929,7 +1924,7 @@ public class DataRegionTest {
             new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
             false,
             new TsTableColumnCategory[] {
-                TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
             });
     dataRegion.insert(insertRowNode);
     insertRowNode.setTime(20);
@@ -1938,23 +1933,40 @@ public class DataRegionTest {
     // table1 -> table2
     dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
     // s1 -> s3
-    dataRegion.applySchemaEvolution(Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
 
     // delete with table2
-    TableDeletionEntry tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 15));
-    RelationalDeleteDataNode relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 15));
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // delete with s3
-    tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table2", new NOP(), Collections.singletonList("s3")), new TimeRange(0, 15));
-    relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("table2", new NOP(), Collections.singletonList("s3")),
+            new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // delete with table1
-    tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 15));
-    relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // delete with s1
-    tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table2", new NOP(), Collections.singletonList("s1")), new TimeRange(0, 15));
-    relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("table2", new NOP(), Collections.singletonList("s1")),
+            new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
 
     List<TsFileResource> sequenceFileList = dataRegion.getSequenceFileList();
@@ -1965,22 +1977,25 @@ public class DataRegionTest {
     assertEquals("table1", ((TableDeletionEntry) next).getTableName());
     next = modEntryIterator.next();
     // the s3 modification should be rewritten to s1
-    assertEquals(Collections.singletonList("s1"), ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
+    assertEquals(
+        Collections.singletonList("s1"),
+        ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
     next = modEntryIterator.next();
     // the table1 modification should be skipped
     // the s1 modification should be rewritten to empty
-    assertEquals(Collections.singletonList(""), ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
+    assertEquals(
+        Collections.singletonList(""),
+        ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
     assertFalse(modEntryIterator.hasNext());
   }
 
   @Test
-  public void testSchemaEvolutionWithFullDeletion()
-      throws WriteProcessException, IOException {
+  public void testSchemaEvolutionWithFullDeletion() throws WriteProcessException, IOException {
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
-        new MeasurementSchema("tag1", TSDataType.STRING),
-        new MeasurementSchema("s1", TSDataType.INT64),
-        new MeasurementSchema("s2", TSDataType.DOUBLE)
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
     };
     RelationalInsertRowNode insertRowNode =
         new RelationalInsertRowNode(
@@ -1994,7 +2009,7 @@ public class DataRegionTest {
             new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
             false,
             new TsTableColumnCategory[] {
-                TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
             });
     dataRegion.insert(insertRowNode);
     insertRowNode.setTime(20);
@@ -2003,11 +2018,15 @@ public class DataRegionTest {
     // table1 -> table2
     dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
     // s1 -> s3
-    dataRegion.applySchemaEvolution(Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
 
     // delete with table1
-    TableDeletionEntry tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 30));
-    RelationalDeleteDataNode relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 30));
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // nothing should be deleted
     List<TsFileResource> sequenceFileList = dataRegion.getSequenceFileList();
@@ -2016,8 +2035,11 @@ public class DataRegionTest {
     assertFalse(modEntryIterator.hasNext());
 
     // delete with table2
-    tableDeletionEntry = new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 30));
-    relationalDeleteDataNode = new RelationalDeleteDataNode(new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 30));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // the file should be deleted
     sequenceFileList = dataRegion.getSequenceFileList();

@@ -24,11 +24,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.SegmentExactMatch;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;

@@ -62,7 +62,9 @@ public class TsFileSet implements Comparable<TsFileSet> {
     }
 
     if (schemaEvolutionFile == null) {
-      schemaEvolutionFile = new SchemaEvolutionFile(fileSetsDir + File.separator + 0 + SchemaEvolutionFile.FILE_SUFFIX);
+      schemaEvolutionFile =
+          new SchemaEvolutionFile(
+              fileSetsDir + File.separator + 0 + SchemaEvolutionFile.FILE_SUFFIX);
     }
   }
 
