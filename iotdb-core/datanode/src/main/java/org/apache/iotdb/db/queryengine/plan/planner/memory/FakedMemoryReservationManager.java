@@ -43,9 +43,4 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
   @Override
   public void reserveMemoryVirtually(
       final long bytesToBeReserved, final long bytesAlreadyReserved) {}
-
-  @Override
-  public long getReservedMemory() {
-    return 0;
-  }
 }

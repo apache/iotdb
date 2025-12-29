@@ -114,9 +114,4 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     reservedBytesInTotal += bytesAlreadyReserved;
     reserveMemoryCumulatively(bytesToBeReserved);
   }
-
-  @Override
-  public long getReservedMemory() {
-    return bytesToBeReserved - bytesToBeReleased + reservedBytesInTotal;
-  }
 }

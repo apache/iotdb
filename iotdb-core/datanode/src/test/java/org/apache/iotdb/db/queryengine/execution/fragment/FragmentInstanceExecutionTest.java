@@ -226,9 +226,7 @@ public class FragmentInstanceExecutionTest {
         pointReader.nextTimeValuePair();
       }
       assertTrue(tvList.isSorted());
-      assertEquals(
-          tvList.calculateRamSize(),
-          fragmentInstanceContext1.getMemoryReservationContext().getReservedMemory());
+      assertEquals(tvList.calculateRamSize(), tvList.getReservedMemoryBytes());
     } catch (QueryProcessException
         | IOException
         | MetadataException

@@ -61,9 +61,4 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
       final long bytesToBeReserved, final long bytesAlreadyReserved) {
     super.reserveMemoryVirtually(bytesToBeReserved, bytesAlreadyReserved);
   }
-
-  @Override
-  public synchronized long getReservedMemory() {
-    return super.getReservedMemory();
-  }
 }
