@@ -862,7 +862,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
         "test123123456");
     assertTestFail(
         senderEnv,
-        "show pipe plugins",
+        "show pipePlugins",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
