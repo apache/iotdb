@@ -1,6 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNRowNumberBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -22,12 +41,16 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class TopKRankingOperator implements ProcessOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TopKRankingOperator.class);
+
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TopKRankingNode.RankingType rankingType;
@@ -35,7 +58,7 @@ public class TopKRankingOperator implements ProcessOperator {
 
   private final List<Integer> outputChannels;
   private final List<Integer> partitionChannels;
-  private final List<TSDataType> partitionTypes;
+  private final List<TSDataType> partitionTSDataTypes;
   private final List<Integer> sortChannels;
   private final List<SortItem> sortItems;
   private final int maxRowCountPerPartition;
@@ -51,7 +74,8 @@ public class TopKRankingOperator implements ProcessOperator {
 
   private GroupByHash groupByHash;
   private GroupedTopNBuilder groupedTopNBuilder;
-  private boolean finishing;
+
+  private boolean finished = false;
   private java.util.Iterator<TsBlock> outputIterator;
 
   public TopKRankingOperator(
@@ -61,7 +85,7 @@ public class TopKRankingOperator implements ProcessOperator {
       List<TSDataType> inputTypes,
       List<Integer> outputChannels,
       List<Integer> partitionChannels,
-      List<TSDataType> partitionTypes,
+      List<TSDataType> partitionTSDataTypes,
       List<Integer> sortChannels,
       List<SortItem> sortItems,
       int maxRowCountPerPartition,
@@ -74,7 +98,7 @@ public class TopKRankingOperator implements ProcessOperator {
     this.rankingType = rankingType;
     this.inputTypes = inputTypes;
     this.partitionChannels = partitionChannels;
-    this.partitionTypes = partitionTypes;
+    this.partitionTSDataTypes = partitionTSDataTypes;
     this.sortChannels = sortChannels;
     this.sortItems = sortItems;
     this.maxRowCountPerPartition = maxRowCountPerPartition;
@@ -93,66 +117,36 @@ public class TopKRankingOperator implements ProcessOperator {
     }
     this.outputChannels = outputChannelsBuilder.build();
 
-    this.groupByHashSupplier =
-        getGroupByHashSupplier(
-            expectedPositions,
-            partitionTypes,
-            hashChannel.isPresent(),
-            operatorContext.getSessionInfo(),
-            UpdateMemory.NOOP);
-
-    // Prepare grouped topN builder supplier
-    this.groupedTopNBuilderSupplier =
-        getGroupedTopNBuilderSupplier(
-            rankingType,
-            inputTypes,
-            partitionChannels,
-            sortChannels,
-            sortItems,
-            maxRowCountPerPartition,
-            generateRanking,
-            groupByHashSupplier);
+    this.groupByHashSupplier = getGroupByHashSupplier();
+    this.groupedTopNBuilderSupplier = getGroupedTopNBuilderSupplier();
   }
 
-  private static Supplier<GroupByHash> getGroupByHashSupplier(
-      int expectedPositions,
-      List<TSDataType> partitionTsDataTypes,
-      boolean hasPrecomputedHash,
-      SessionInfo session,
-      UpdateMemory updateMemory) {
+  private Supplier<GroupByHash> getGroupByHashSupplier() {
+    boolean hasPrecomputedHash = hashChannel.isPresent();
 
-    if (partitionTsDataTypes.isEmpty()) {
+    if (partitionTSDataTypes.isEmpty()) {
       return Suppliers.ofInstance(new NoChannelGroupByHash());
     }
 
-    List<Type> partitionTypes = new ArrayList<>(partitionTsDataTypes.size());
-    for (TSDataType partitionTsDataType : partitionTsDataTypes) {
-      partitionTypes.add(InternalTypeManager.fromTSDataType(partitionTsDataType));
+    List<Type> partitionTypes = new ArrayList<>(partitionTSDataTypes.size());
+    for (TSDataType partitionTSDataType : partitionTSDataTypes) {
+      partitionTypes.add(InternalTypeManager.fromTSDataType(partitionTSDataType));
     }
 
     return () ->
         GroupByHash.createGroupByHash(
-            partitionTypes, hasPrecomputedHash, expectedPositions, updateMemory);
+            partitionTypes, hasPrecomputedHash, expectedPositions, UpdateMemory.NOOP);
   }
 
-  private static Supplier<GroupedTopNBuilder> getGroupedTopNBuilderSupplier(
-      TopKRankingNode.RankingType rankingType,
-      List<TSDataType> sourceTypes,
-      List<Integer> partitionChannels,
-      List<Integer> sortChannels,
-      List<SortItem> sortItems,
-      int maxRankingPerPartition,
-      boolean generateRanking,
-      Supplier<GroupByHash> groupByHashSupplier) {
-
+  private Supplier<GroupedTopNBuilder> getGroupedTopNBuilderSupplier() {
     if (rankingType == TopKRankingNode.RankingType.ROW_NUMBER) {
       TsBlockWithPositionComparator comparator =
-          new SimpleTsBlockWithPositionComparator(sourceTypes, sortChannels, sortItems);
+          new SimpleTsBlockWithPositionComparator(inputTypes, sortChannels, sortItems);
       return () ->
           new GroupedTopNRowNumberBuilder(
-              sourceTypes,
+              inputTypes,
               comparator,
-              maxRankingPerPartition,
+              maxRowCountPerPartition,
               generateRanking,
               partitionChannels.stream().mapToInt(Integer::intValue).toArray(),
               groupByHashSupplier.get());
@@ -183,9 +177,23 @@ public class TopKRankingOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (!finishing && (!partial || !isBuilderFull()) && outputIterator == null) {
-      // Still collecting input, nothing to output yet
-      return null;
+    if (groupedTopNBuilder == null) {
+      groupedTopNBuilder = groupedTopNBuilderSupplier.get();
+    }
+
+    if (!finished) {
+      // If we are in partial mode and builder is full
+      // we shall flush output immediately
+      if (!partial || !isBuilderFull()) {
+        // Feed all input TsBlocks to grouped TopK builder
+        if (inputOperator.hasNextWithTimer()) {
+          TsBlock tsBlock = inputOperator.nextWithTimer();
+          groupedTopNBuilder.addTsBlock(tsBlock);
+          return null;
+        } else {
+          finished = true;
+        }
+      }
     }
 
     if (outputIterator == null && groupedTopNBuilder != null) {
@@ -201,20 +209,14 @@ public class TopKRankingOperator implements ProcessOperator {
     }
   }
 
+  private boolean isBuilderFull() {
+    return groupedTopNBuilder != null
+        && groupedTopNBuilder.getEstimatedSizeInBytes() >= maxFlushableBytes;
+  }
+
   @Override
   public boolean hasNext() throws Exception {
-    // If we have an output iterator with more data, return true
-    if (outputIterator != null && outputIterator.hasNext()) {
-      return true;
-    }
-
-    // If we're finishing and have no more output, return false
-    if (finishing && outputIterator == null && groupedTopNBuilder == null) {
-      return false;
-    }
-
-    // If we have a builder that's full (partial) or we're finishing, we should have output
-    return (partial && isBuilderFull()) || finishing;
+    return !finished || outputIterator != null;
   }
 
   @Override
@@ -225,9 +227,19 @@ public class TopKRankingOperator implements ProcessOperator {
     }
   }
 
+  private void closeGroupedTopNBuilder() {
+    if (groupedTopNBuilder != null) {
+      groupedTopNBuilder = null;
+    }
+    if (groupByHash != null) {
+      groupByHash = null;
+    }
+    outputIterator = null;
+  }
+
   @Override
   public boolean isFinished() throws Exception {
-    return finishing && outputIterator == null && groupedTopNBuilder == null;
+    return finished && outputIterator == null && groupedTopNBuilder == null;
   }
 
   @Override
@@ -255,23 +267,8 @@ public class TopKRankingOperator implements ProcessOperator {
     return retainedSize;
   }
 
-  private void closeGroupedTopNBuilder() {
-    if (groupedTopNBuilder != null) {
-      groupedTopNBuilder = null;
-    }
-    if (groupByHash != null) {
-      groupByHash = null;
-    }
-    outputIterator = null;
-  }
-
-  private boolean isBuilderFull() {
-    return groupedTopNBuilder != null
-        && groupedTopNBuilder.getEstimatedSizeInBytes() >= maxFlushableBytes;
-  }
-
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator) + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext) + (groupedTopNBuilder != null ? groupedTopNBuilder.getEstimatedSizeInBytes() : 0);
   }
 }

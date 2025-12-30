@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
@@ -26,7 +45,7 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
   private final boolean produceRowNumber;
   private final int[] groupByChannels;
   private final GroupByHash groupByHash;
-  private final RowReferencePageManager pageManager = new RowReferencePageManager();
+  private final RowReferenceTsBlockManager tsBlockManager = new RowReferenceTsBlockManager();
   private final GroupedTopNRowNumberAccumulator groupedTopNRowNumberAccumulator;
   private final TsBlockWithPositionComparator comparator;
 
@@ -46,14 +65,14 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
     this.groupedTopNRowNumberAccumulator =
         new GroupedTopNRowNumberAccumulator(
             (leftRowId, rightRowId) -> {
-              TsBlock leftTsBlock = pageManager.getPage(leftRowId);
-              int leftPosition = pageManager.getPosition(leftRowId);
-              TsBlock rightTsBlock = pageManager.getPage(rightRowId);
-              int rightPosition = pageManager.getPosition(rightRowId);
+              TsBlock leftTsBlock = tsBlockManager.getTsBlock(leftRowId);
+              int leftPosition = tsBlockManager.getPosition(leftRowId);
+              TsBlock rightTsBlock = tsBlockManager.getTsBlock(rightRowId);
+              int rightPosition = tsBlockManager.getPosition(rightRowId);
               return comparator.compareTo(leftTsBlock, leftPosition, rightTsBlock, rightPosition);
             },
             topN,
-            pageManager::dereference);
+            tsBlockManager::dereference);
   }
 
   @Override
@@ -73,20 +92,20 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
   public long getEstimatedSizeInBytes() {
     return INSTANCE_SIZE
         + groupByHash.getEstimatedSize()
-        + pageManager.sizeOf()
+        + tsBlockManager.sizeOf()
         + groupedTopNRowNumberAccumulator.sizeOf();
   }
 
   private void processTsBlock(TsBlock newTsBlock, int groupCount, int[] groupIds) {
     int firstPositionToAdd =
         groupedTopNRowNumberAccumulator.findFirstPositionToAdd(
-            newTsBlock, groupCount, groupIds, comparator, pageManager);
+            newTsBlock, groupCount, groupIds, comparator, tsBlockManager);
     if (firstPositionToAdd < 0) {
       return;
     }
 
-    try (RowReferencePageManager.LoadCursor loadCursor =
-        pageManager.add(newTsBlock, firstPositionToAdd)) {
+    try (RowReferenceTsBlockManager.LoadCursor loadCursor =
+        tsBlockManager.add(newTsBlock, firstPositionToAdd)) {
       for (int position = firstPositionToAdd;
           position < newTsBlock.getPositionCount();
           position++) {
@@ -96,11 +115,11 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
       }
     }
 
-    pageManager.compactIfNeeded();
+    tsBlockManager.compactIfNeeded();
   }
 
   private class ResultIterator extends AbstractIterator<TsBlock> {
-    private final TsBlockBuilder pageBuilder;
+    private final TsBlockBuilder tsBlockBuilder;
     private final int groupIdCount = groupByHash.getGroupCount();
     private int currentGroupId = -1;
     private final LongBigArray rowIdOutput = new LongBigArray();
@@ -113,20 +132,20 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
       if (produceRowNumber) {
         sourceTypesBuilders.add(TSDataType.INT64);
       }
-      pageBuilder = new TsBlockBuilder(sourceTypesBuilders.build());
+      tsBlockBuilder = new TsBlockBuilder(sourceTypesBuilders.build());
     }
 
     @Override
     protected TsBlock computeNext() {
-      pageBuilder.reset();
-      while (!pageBuilder.isFull()) {
+      tsBlockBuilder.reset();
+      while (!tsBlockBuilder.isFull()) {
         while (currentIndexInGroup >= currentGroupSize) {
           if (currentGroupId + 1 >= groupIdCount) {
-            if (pageBuilder.isEmpty()) {
+            if (tsBlockBuilder.isEmpty()) {
               return endOfData();
             }
-            return pageBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, pageBuilder.getPositionCount()));
+            return tsBlockBuilder.build(
+                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
           }
           currentGroupId++;
           currentGroupSize = groupedTopNRowNumberAccumulator.drainTo(currentGroupId, rowIdOutput);
@@ -134,29 +153,29 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
         }
 
         long rowId = rowIdOutput.get(currentIndexInGroup);
-        TsBlock page = pageManager.getPage(rowId);
-        int position = pageManager.getPosition(rowId);
+        TsBlock tsBlock = tsBlockManager.getTsBlock(rowId);
+        int position = tsBlockManager.getPosition(rowId);
         for (int i = 0; i < sourceTypes.size(); i++) {
-          ColumnBuilder builder = pageBuilder.getColumnBuilder(i);
-          Column column = page.getColumn(i);
+          ColumnBuilder builder = tsBlockBuilder.getColumnBuilder(i);
+          Column column = tsBlock.getColumn(i);
           builder.write(column, position);
         }
         if (produceRowNumber) {
-          ColumnBuilder builder = pageBuilder.getColumnBuilder(sourceTypes.size());
+          ColumnBuilder builder = tsBlockBuilder.getColumnBuilder(sourceTypes.size());
           builder.writeLong(currentGroupId + 1);
         }
-        pageBuilder.declarePosition();
+        tsBlockBuilder.declarePosition();
         currentIndexInGroup++;
 
         // Deference the row for hygiene, but no need to compact them at this point
-        pageManager.dereference(rowId);
+        tsBlockManager.dereference(rowId);
       }
 
-      if (pageBuilder.isEmpty()) {
+      if (tsBlockBuilder.isEmpty()) {
         return endOfData();
       }
-      return pageBuilder.build(
-          new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, pageBuilder.getPositionCount()));
+      return tsBlockBuilder.build(
+          new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     }
   }
 }

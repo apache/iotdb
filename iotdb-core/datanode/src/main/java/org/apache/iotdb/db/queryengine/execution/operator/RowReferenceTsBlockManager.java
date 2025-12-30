@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
@@ -13,77 +32,77 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 
-public class RowReferencePageManager {
+public class RowReferenceTsBlockManager {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(RowReferencePageManager.class);
-  private static final long PAGE_ACCOUNTING_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PageAccounting.class);
+      RamUsageEstimator.shallowSizeOfInstance(RowReferenceTsBlockManager.class);
+  private static final long TSBLOCK_ACCOUNTING_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TsBlockAccounting.class);
   private static final int RESERVED_ROW_ID_FOR_CURSOR = -1;
 
-  private final IdRegistry<PageAccounting> pages = new IdRegistry<>();
+  private final IdRegistry<TsBlockAccounting> tsBlocks = new IdRegistry<>();
   private final RowIdBuffer rowIdBuffer = new RowIdBuffer();
   private final HashSet<Integer> compactionCandidates = new HashSet<>();
 
   private LoadCursor currentCursor;
-  private long pageBytes;
+  private long tsBlockBytes;
 
   public LoadCursor add(TsBlock tsBlock) {
     return add(tsBlock, 0);
   }
 
-  public LoadCursor add(TsBlock page, int startingPosition) {
+  public LoadCursor add(TsBlock tsBlock, int startingPosition) {
     checkState(currentCursor == null, "Cursor still active");
     checkArgument(
-        startingPosition >= 0 && startingPosition <= page.getPositionCount(),
+        startingPosition >= 0 && startingPosition <= tsBlock.getPositionCount(),
         "invalid startingPosition: %s",
         startingPosition);
 
-    PageAccounting pageAccounting = pages.allocateId(id -> new PageAccounting(id, page));
+    TsBlockAccounting tsBlockAccounting = tsBlocks.allocateId(id -> new TsBlockAccounting(id, tsBlock));
 
-    pageAccounting.lockPage();
+    tsBlockAccounting.lockTsBlock();
     currentCursor =
         new LoadCursor(
-            pageAccounting,
+            tsBlockAccounting,
             startingPosition,
             () -> {
               // Initiate additional actions on close
               checkState(currentCursor != null);
-              pageAccounting.unlockPage();
-              pageAccounting.loadPageLoadIfNeeded();
-              // Account for page size after lazy loading (which can change the page size)
-              pageBytes += pageAccounting.sizeOf();
+              tsBlockAccounting.unlockTsBlock();
+              tsBlockAccounting.loadTsBlockLoadIfNeeded();
+              // Account for tsBlock size after lazy loading (which can change the tsBlock size)
+              tsBlockBytes += tsBlockAccounting.sizeOf();
               currentCursor = null;
 
-              checkPageMaintenance(pageAccounting);
+              checkTsBlockMaintenance(tsBlockAccounting);
             });
 
     return currentCursor;
   }
 
   public void dereference(long rowId) {
-    PageAccounting pageAccounting = pages.get(rowIdBuffer.getPageId(rowId));
-    pageAccounting.dereference(rowId);
-    checkPageMaintenance(pageAccounting);
+    TsBlockAccounting tsBlockAccounting = tsBlocks.get(rowIdBuffer.getTsBlockId(rowId));
+    tsBlockAccounting.dereference(rowId);
+    checkTsBlockMaintenance(tsBlockAccounting);
   }
 
-  private void checkPageMaintenance(PageAccounting pageAccounting) {
-    int pageId = pageAccounting.getPageId();
-    if (pageAccounting.isPruneEligible()) {
-      compactionCandidates.remove(pageId);
-      pages.deallocate(pageId);
-      pageBytes -= pageAccounting.sizeOf();
-    } else if (pageAccounting.isCompactionEligible()) {
-      compactionCandidates.add(pageId);
+  private void checkTsBlockMaintenance(TsBlockAccounting tsBlockAccounting) {
+    int tsBlockId = tsBlockAccounting.getTsBlockId();
+    if (tsBlockAccounting.isPruneEligible()) {
+      compactionCandidates.remove(tsBlockId);
+      tsBlocks.deallocate(tsBlockId);
+      tsBlockBytes -= tsBlockAccounting.sizeOf();
+    } else if (tsBlockAccounting.isCompactionEligible()) {
+      compactionCandidates.add(tsBlockId);
     }
   }
 
-  public TsBlock getPage(long rowId) {
+  public TsBlock getTsBlock(long rowId) {
     if (isCursorRowId(rowId)) {
       checkState(currentCursor != null, "No active cursor");
-      return currentCursor.getPage();
+      return currentCursor.getTsBlock();
     }
-    int pageId = rowIdBuffer.getPageId(rowId);
-    return pages.get(pageId).getPage();
+    int tsBlockId = rowIdBuffer.getTsBlockId(rowId);
+    return tsBlocks.get(tsBlockId).getTsBlock();
   }
 
   public int getPosition(long rowId) {
@@ -100,19 +119,19 @@ public class RowReferencePageManager {
   }
 
   public void compactIfNeeded() {
-    for (int pageId : compactionCandidates) {
-      PageAccounting pageAccounting = pages.get(pageId);
-      pageBytes -= pageAccounting.sizeOf();
-      pageAccounting.compact();
-      pageBytes += pageAccounting.sizeOf();
+    for (int tsBlockId : compactionCandidates) {
+      TsBlockAccounting tsBlockAccounting = tsBlocks.get(tsBlockId);
+      tsBlockBytes -= tsBlockAccounting.sizeOf();
+      tsBlockAccounting.compact();
+      tsBlockBytes += tsBlockAccounting.sizeOf();
     }
     compactionCandidates.clear();
   }
 
   public long sizeOf() {
     return INSTANCE_SIZE
-        + pageBytes
-        + pages.sizeOf()
+        + tsBlockBytes
+        + tsBlocks.sizeOf()
         + rowIdBuffer.sizeOf()
         + RamUsageEstimator.sizeOfHashSet(compactionCandidates);
   }
@@ -123,20 +142,20 @@ public class RowReferencePageManager {
    * in tight loops, so this allows callers to quickly skip positions that won't be needed.
    */
   public static final class LoadCursor implements RowReference, AutoCloseable {
-    private final PageAccounting pageAccounting;
+    private final TsBlockAccounting tsBlockAccounting;
     private final Runnable closeCallback;
 
     private int currentPosition;
 
     private LoadCursor(
-        PageAccounting pageAccounting, int startingPosition, Runnable closeCallback) {
-      this.pageAccounting = pageAccounting;
+        TsBlockAccounting tsBlockAccounting, int startingPosition, Runnable closeCallback) {
+      this.tsBlockAccounting = tsBlockAccounting;
       this.currentPosition = startingPosition - 1;
       this.closeCallback = closeCallback;
     }
 
-    private TsBlock getPage() {
-      return pageAccounting.getPage();
+    private TsBlock getTsBlock() {
+      return tsBlockAccounting.getTsBlock();
     }
 
     private int getCurrentPosition() {
@@ -145,7 +164,7 @@ public class RowReferencePageManager {
     }
 
     public boolean advance() {
-      if (currentPosition >= pageAccounting.getPage().getPositionCount() - 1) {
+      if (currentPosition >= tsBlockAccounting.getTsBlock().getPositionCount() - 1) {
         return false;
       }
       currentPosition++;
@@ -173,7 +192,7 @@ public class RowReferencePageManager {
     @Override
     public long allocateRowId() {
       checkState(currentPosition >= 0, "Not yet advanced");
-      return pageAccounting.referencePosition(currentPosition);
+      return tsBlockAccounting.referencePosition(currentPosition);
     }
 
     @Override
@@ -182,21 +201,21 @@ public class RowReferencePageManager {
     }
   }
 
-  private final class PageAccounting {
+  private final class TsBlockAccounting {
     private static final int COMPACTION_MIN_FILL_MULTIPLIER = 2;
 
-    private final int pageId;
-    private TsBlock page;
-    private boolean isPageLoaded;
+    private final int tsBlockId;
+    private TsBlock tsBlock;
+    private boolean isTsBlockLoaded;
     private long[] rowIds;
     // Start off locked to give the caller time to declare which rows to reference
-    private boolean lockedPage = true;
+    private boolean lockedTsBlock = true;
     private int activePositions;
 
-    public PageAccounting(int pageId, TsBlock page) {
-      this.pageId = pageId;
-      this.page = page;
-      rowIds = new long[page.getPositionCount()];
+    public TsBlockAccounting(int tsBlockId, TsBlock tsBlock) {
+      this.tsBlockId = tsBlockId;
+      this.tsBlock = tsBlock;
+      rowIds = new long[tsBlock.getPositionCount()];
       Arrays.fill(rowIds, RowIdBuffer.UNKNOWN_ID);
     }
 
@@ -204,7 +223,7 @@ public class RowReferencePageManager {
     public long referencePosition(int position) {
       long rowId = rowIds[position];
       if (rowId == RowIdBuffer.UNKNOWN_ID) {
-        rowId = rowIdBuffer.allocateRowId(pageId, position);
+        rowId = rowIdBuffer.allocateRowId(tsBlockId, position);
         rowIds[position] = rowId;
         activePositions++;
       }
@@ -212,66 +231,66 @@ public class RowReferencePageManager {
     }
 
     /**
-     * Locks the current page so that it can't be compacted (thus allowing for stable position-based
+     * Locks the current TsBlock so that it can't be compacted (thus allowing for stable position-based
      * access).
      */
-    public void lockPage() {
-      lockedPage = true;
+    public void lockTsBlock() {
+      lockedTsBlock = true;
     }
 
-    /** Unlocks the current page so that it becomes eligible for compaction. */
-    public void unlockPage() {
-      lockedPage = false;
+    /** Unlocks the current TsBlock so that it becomes eligible for compaction. */
+    public void unlockTsBlock() {
+      lockedTsBlock = false;
     }
 
-    public int getPageId() {
-      return pageId;
+    public int getTsBlockId() {
+      return tsBlockId;
     }
 
-    public TsBlock getPage() {
-      return page;
+    public TsBlock getTsBlock() {
+      return tsBlock;
     }
 
-    /** Dereferences the row ID from this page. */
+    /** Dereferences the row ID from this TsBlock. */
     public void dereference(long rowId) {
       int position = rowIdBuffer.getPosition(rowId);
-      checkArgument(rowId == rowIds[position], "rowId does not match this page");
+      checkArgument(rowId == rowIds[position], "rowId does not match this TsBlock");
       rowIds[position] = RowIdBuffer.UNKNOWN_ID;
       activePositions--;
       rowIdBuffer.deallocate(rowId);
     }
 
     public boolean isPruneEligible() {
-      // Pruning is only allowed if the page is unlocked
-      return !lockedPage && activePositions == 0;
+      // Pruning is only allowed if the TsBlock is unlocked
+      return !lockedTsBlock && activePositions == 0;
     }
 
     public boolean isCompactionEligible() {
-      // Compaction is only allowed if the page is unlocked
-      return !lockedPage
-          && activePositions * COMPACTION_MIN_FILL_MULTIPLIER < page.getPositionCount();
+      // Compaction is only allowed if the TsBlock is unlocked
+      return !lockedTsBlock
+          && activePositions * COMPACTION_MIN_FILL_MULTIPLIER < tsBlock.getPositionCount();
     }
 
-    public void loadPageLoadIfNeeded() {
-      if (!isPageLoaded && activePositions > 0) {
-        //        page = page.getLoadedPage();
-        isPageLoaded = true;
+    public void loadTsBlockLoadIfNeeded() {
+      if (!isTsBlockLoaded && activePositions > 0) {
+        //        tsBlock = tsBlock.getLoadedPage();
+        isTsBlockLoaded = true;
       }
     }
 
     public void compact() {
-      checkState(!lockedPage, "Should not attempt compaction when page is locked");
+      checkState(!lockedTsBlock, "Should not attempt compaction when TsBlock is locked");
 
-      if (activePositions == page.getPositionCount()) {
+      if (activePositions == tsBlock.getPositionCount()) {
         return;
       }
 
-      loadPageLoadIfNeeded();
+      loadTsBlockLoadIfNeeded();
 
       int newIndex = 0;
       int[] positionsToKeep = new int[activePositions];
       long[] newRowIds = new long[activePositions];
-      for (int i = 0; i < page.getPositionCount() && newIndex < positionsToKeep.length; i++) {
+      for (int i = 0; i < tsBlock.getPositionCount() && newIndex < positionsToKeep.length; i++) {
         long rowId = rowIds[i];
         positionsToKeep[newIndex] = i;
         newRowIds[newIndex] = rowId;
@@ -282,20 +301,20 @@ public class RowReferencePageManager {
         rowIdBuffer.setPosition(newRowIds[i], i);
       }
 
-      // Compact page
+      // Compact TsBlock
       //      page = page.copyPositions(positionsToKeep, 0, positionsToKeep.length);
       rowIds = newRowIds;
     }
 
     public long sizeOf() {
-      // Getting the size of a page forces a lazy page to be loaded, so only provide the size after
+      // Getting the size of a TsBlock forces a lazy TsBlock to be loaded, so only provide the size after
       // an explicit decision to load
-      long loadedPageSize = isPageLoaded ? page.getSizeInBytes() : 0;
-      return PAGE_ACCOUNTING_INSTANCE_SIZE + loadedPageSize + RamUsageEstimator.sizeOf(rowIds);
+      long loadedTsBlockSize = isTsBlockLoaded ? tsBlock.getSizeInBytes() : 0;
+      return TSBLOCK_ACCOUNTING_INSTANCE_SIZE + loadedTsBlockSize + RamUsageEstimator.sizeOf(rowIds);
     }
   }
 
-  /** Buffer abstracting a mapping between row IDs and their associated page IDs and positions. */
+  /** Buffer abstracting a mapping between row IDs and their associated TsBlock IDs and positions. */
   private static class RowIdBuffer {
     public static final long UNKNOWN_ID = -1;
     private static final long INSTANCE_SIZE =
@@ -303,8 +322,8 @@ public class RowReferencePageManager {
 
     /*
      *  Memory layout:
-     *  [INT] pageId1, [INT] position1,
-     *  [INT] pageId2, [INT] position2,
+     *  [INT] TsBlockId1, [INT] position1,
+     *  [INT] TsBlockId2, [INT] position2,
      *  ...
      */
     private final IntBigArray buffer = new IntBigArray();
@@ -314,11 +333,11 @@ public class RowReferencePageManager {
     private long capacity;
 
     /**
-     * Provides a new row ID referencing the provided page position.
+     * Provides a new row ID referencing the provided TsBlock position.
      *
-     * @return ID referencing the provided page position
+     * @return ID referencing the provided TsBlock position
      */
-    public long allocateRowId(int pageId, int position) {
+    public long allocateRowId(int tsBlockId, int position) {
       long newRowId;
       if (!emptySlots.isEmpty()) {
         newRowId = emptySlots.dequeueLong();
@@ -328,7 +347,7 @@ public class RowReferencePageManager {
         buffer.ensureCapacity(capacity * 2);
       }
 
-      setPageId(newRowId, pageId);
+      setTsBlockId(newRowId, tsBlockId);
       setPosition(newRowId, position);
 
       return newRowId;
@@ -338,12 +357,12 @@ public class RowReferencePageManager {
       emptySlots.enqueue(rowId);
     }
 
-    public int getPageId(long rowId) {
+    public int getTsBlockId(long rowId) {
       return buffer.get(rowId * 2);
     }
 
-    public void setPageId(long rowId, int pageId) {
-      buffer.set(rowId * 2, pageId);
+    public void setTsBlockId(long rowId, int tsBlockId) {
+      buffer.set(rowId * 2, tsBlockId);
     }
 
     public int getPosition(long rowId) {

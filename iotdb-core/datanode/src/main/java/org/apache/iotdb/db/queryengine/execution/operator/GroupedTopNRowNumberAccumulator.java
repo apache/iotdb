@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
@@ -47,15 +66,15 @@ public class GroupedTopNRowNumberAccumulator {
   }
 
   public int findFirstPositionToAdd(
-      TsBlock newPage,
+      TsBlock newTsBlock,
       int groupCount,
       int[] groupIds,
       TsBlockWithPositionComparator comparator,
-      RowReferencePageManager pageManager) {
+      RowReferenceTsBlockManager tsBlockManager) {
     int currentTotalGroups = groupIdToHeapBuffer.getTotalGroups();
     groupIdToHeapBuffer.allocateGroupIfNeeded(groupCount);
 
-    for (int position = 0; position < newPage.getPositionCount(); position++) {
+    for (int position = 0; position < newTsBlock.getPositionCount(); position++) {
       int groupId = groupIds[position];
       if (groupId >= currentTotalGroups || calculateRootRowNumber(groupId) < topN) {
         return position;
@@ -65,9 +84,9 @@ public class GroupedTopNRowNumberAccumulator {
         return position;
       }
       long rowId = heapNodeBuffer.getRowId(heapRootNodeIndex);
-      TsBlock rightPage = pageManager.getPage(rowId);
-      int rightPosition = pageManager.getPosition(rowId);
-      if (comparator.compareTo(newPage, position, rightPage, rightPosition) < 0) {
+      TsBlock rightTsBlock = tsBlockManager.getTsBlock(rowId);
+      int rightPosition = tsBlockManager.getPosition(rowId);
+      if (comparator.compareTo(newTsBlock, position, rightTsBlock, rightPosition) < 0) {
         return position;
       }
     }
