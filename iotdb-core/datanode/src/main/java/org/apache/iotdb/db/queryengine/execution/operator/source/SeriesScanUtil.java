@@ -1079,8 +1079,9 @@ public class SeriesScanUtil implements Accountable {
           currentReadStopTime =
               Math.min(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
         }
+      } else {
+        break;
       }
-      break;
     }
     return currentReadStopTime;
   }

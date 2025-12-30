@@ -196,23 +196,50 @@ public class IoTDBFlushQueryIT {
   @Test
   public void testStreamingQueryMemTableWithOverlappedData()
       throws IoTDBConnectionException, StatementExecutionException {
-    String device = "root.stream.d1";
+    String device = "root.stream1.d1";
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.open();
       generateTimeRangeWithTimestamp(session, device, 1, 10);
 
-      generateTimeRangeWithTimestamp(session, device, 500000, 520000);
+      generateTimeRangeWithTimestamp(session, device, 500000, 510000);
       session.executeNonQueryStatement("flush");
       generateTimeRangeWithTimestamp(session, device, 100000, 350000);
 
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select count(*) from root.stream.d1");
+          session.executeQueryStatement("select count(*) from root.stream1.d1");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       long count = 0;
       while (iterator.next()) {
         count = iterator.getLong(1);
       }
-      Assert.assertEquals(10 + 20001 + 250001, count);
+      Assert.assertEquals(10 + 10001 + 250001, count);
+    }
+  }
+
+  @Test
+  public void testStreamingQueryMemTableWithOverlappedData2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String device = "root.stream2.d1";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.open();
+      generateTimeRangeWithTimestamp(session, device, 1, 10);
+
+      generateTimeRangeWithTimestamp(session, device, 500000, 510000);
+      session.executeNonQueryStatement("flush");
+      generateTimeRangeWithTimestamp(session, device, 1, 20);
+      generateTimeRangeWithTimestamp(session, device, 100000, 210000);
+      session.executeNonQueryStatement("flush");
+
+      generateTimeRangeWithTimestamp(session, device, 150000, 450000);
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select count(*) from root.stream2.d1");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      long count = 0;
+      while (iterator.next()) {
+        count = iterator.getLong(1);
+      }
+      Assert.assertEquals(20 + 10001 + 350001, count);
     }
   }
 
