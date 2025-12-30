@@ -323,6 +323,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
         procedure = new AlterTableColumnDataTypeProcedure(true);
         break;
+      case PIPE_ENRICHED_ALTER_TIMESERIES_DATATYPE_PROCEDURE:
+        procedure = new AlterTimeSeriesDataTypeProcedure(true);
+        break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
         break;

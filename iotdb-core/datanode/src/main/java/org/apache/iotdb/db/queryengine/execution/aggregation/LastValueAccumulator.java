@@ -150,7 +150,13 @@ public class LastValueAccumulator implements Accumulator {
                   StandardCharsets.UTF_8),
               statistics.getEndTime());
         } else {
-          updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+          if (statistics.getLastValue() instanceof Binary) {
+            updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics.getLastValue()), StandardCharsets.UTF_8),
+                statistics.getEndTime());
+          }
         }
         break;
       case BOOLEAN:

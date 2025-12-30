@@ -490,7 +490,6 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
           Arrays.asList(1d, 2d, 3));
       Assert.fail();
     } catch (StatementExecutionException e) {
-      System.out.println("hi: " + e.getMessage());
       Assert.assertTrue(
           e.getMessage()
               .contains(

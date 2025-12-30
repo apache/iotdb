@@ -102,11 +102,9 @@ public class AlterTimeSeriesDataTypeProcedure
         case ALTER_TIME_SERIES_DATA_TYPE:
           LOGGER.info("altering time series {} data type", measurementPath.getFullPath());
           if (!alterTimeSeriesDataType(env)) {
-            LOGGER.info("altering time series {} data type failed", measurementPath.getFullPath());
+            LOGGER.error("alter time series {} data type failed", measurementPath.getFullPath());
             return Flow.NO_MORE_STATE;
           }
-          LOGGER.info(
-              "altering time series {} data type successful", measurementPath.getFullPath());
           break;
         case CLEAR_CACHE:
           LOGGER.info(
@@ -114,18 +112,12 @@ public class AlterTimeSeriesDataTypeProcedure
           PathPatternTree patternTree = new PathPatternTree();
           patternTree.appendPathPattern(measurementPath);
           patternTree.constructTree();
-          LOGGER.info(
-              "Invalidate cache of timeSeries {} in AlterTimeSeriesDataTypeProcedure",
-              measurementPath.getFullPath());
           invalidateCache(
               env,
               preparePatternTreeBytesData(patternTree),
               measurementPath.getFullPath(),
               this::setFailure,
               true);
-          LOGGER.info(
-              "clear cache successful after alter time series {} data type",
-              measurementPath.getFullPath());
           break;
         default:
           setFailure(
@@ -247,9 +239,7 @@ public class AlterTimeSeriesDataTypeProcedure
           }
         };
     alterTimerSeriesTask.execute();
-    LOGGER.error("start clear cache in AlterTimeSeriesDataTypeProcedure");
     setNextState(AlterTimeSeriesDataTypeState.CLEAR_CACHE);
-    LOGGER.error("end clear cache in AlterTimeSeriesDataTypeProcedure");
     return true;
   }
 
@@ -352,6 +342,8 @@ public class AlterTimeSeriesDataTypeProcedure
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     measurementPath.serialize(stream);
+    ReadWriteIOUtils.write(operationType, stream);
+    ReadWriteIOUtils.write(dataType, stream);
   }
 
   @Override
@@ -361,6 +353,12 @@ public class AlterTimeSeriesDataTypeProcedure
     setMeasurementPath(MeasurementPath.deserialize(byteBuffer));
     if (getCurrentState() == AlterTimeSeriesDataTypeState.CLEAR_CACHE) {
       LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+    }
+    if (byteBuffer.hasRemaining()) {
+      operationType = ReadWriteIOUtils.readByte(byteBuffer);
+    }
+    if (byteBuffer.hasRemaining()) {
+      dataType = ReadWriteIOUtils.readDataType(byteBuffer);
     }
   }
 
@@ -377,7 +375,9 @@ public class AlterTimeSeriesDataTypeProcedure
         && this.getCurrentState().equals(that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.measurementPath.equals(that.measurementPath);
+        && this.measurementPath.equals(that.measurementPath)
+        && this.operationType == that.operationType
+        && this.dataType.equals(that.dataType);
   }
 
   @Override

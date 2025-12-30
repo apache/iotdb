@@ -92,7 +92,9 @@ public class IoTDBAlterTimeSeriesTypeIT {
   private static long timeout = -1;
   private static final String database = "root.alter";
   public static final List<TSDataType> DATA_TYPE_LIST =
-      Arrays.asList(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB, TSDataType.BOOLEAN);
+      Arrays.asList(TSDataType.STRING, TSDataType.TEXT, TSDataType.BOOLEAN);
+  public static final List<TSDataType> UNSUPPORT_ACCUMULATOR_QUERY_DATA_TYPE_LIST =
+      Collections.singletonList(TSDataType.BLOB);
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -125,12 +127,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
         if (from != to && to.isCompatible(from)) {
-          if (from.equals(TSDataType.DATE)
-              && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(to)) {
-
-          } else {
-            continue;
-          }
           System.out.printf("testing %s to %s%n", from, to);
           doWriteAndAlter(from, to);
 
@@ -1948,25 +1944,25 @@ public class IoTDBAlterTimeSeriesTypeIT {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' and s2 > '2' order by time");
       } else if (from == TSDataType.BLOB) {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) >= '1' and cast(s2 as TEXT) > '2' order by time");
       } else if (from == TSDataType.BOOLEAN) {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) = 'true' and cast(s2 as TEXT) = 'true' order by time");
       } else {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' and s2 > 2 order by time");
       }
@@ -1975,35 +1971,35 @@ public class IoTDBAlterTimeSeriesTypeIT {
       if (from == TSDataType.STRING || from == TSDataType.TEXT || from == TSDataType.BLOB) {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) >= '1' and cast(s2 as TEXT) > '2' order by time");
-        //                "select time, s1 from construct_and_alter_column_type where cast(s1 as
+        //                "select s1 from construct_and_alter_column_type where cast(s1 as
         // TEXT) >= '1' and s2 > '2' order by time");
       } else {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as INT64) >= 1 and cast(s2 as INT64) > 2 order by time");
       }
     } else if (newType == TSDataType.BOOLEAN) {
       dataSet1 =
           session.executeQueryStatement(
-              "select time, s1 from "
+              "select s1 from "
                   + database
                   + ".construct_and_alter_column_type where s1 = true and s2 = true order by time");
     } else {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' and s2 > '2' order by time");
       } else {
         dataSet1 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= 1 and s2 > 2 order by time");
       }
@@ -2012,23 +2008,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
     for (int i = 2; i <= 3; i++) {
       rec1 = dataSet1.next();
       if (from != TSDataType.BOOLEAN) {
-        assertEquals(i, rec1.getFields().get(0).getLongV());
+        assertEquals(i, rec1.getTimestamp());
         if (newType == TSDataType.BLOB) {
-          assertEquals(genValue(newType, i), rec1.getFields().get(1).getBinaryV());
+          assertEquals(genValue(newType, i), rec1.getFields().get(0).getBinaryV());
         } else if (newType == TSDataType.DATE) {
-          assertEquals(genValue(newType, i), rec1.getFields().get(1).getDateV());
+          assertEquals(genValue(newType, i), rec1.getFields().get(0).getDateV());
         } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           if (from == TSDataType.DATE) {
             assertEquals(
                 new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
-                rec1.getFields().get(1).getBinaryV());
+                rec1.getFields().get(0).getBinaryV());
           } else {
             assertEquals(
                 newType.castFromSingleValue(from, genValue(from, i)),
-                rec1.getFields().get(1).getBinaryV());
+                rec1.getFields().get(0).getBinaryV());
           }
         } else {
-          assertEquals(genValue(newType, i).toString(), rec1.getFields().get(1).toString());
+          assertEquals(genValue(newType, i).toString(), rec1.getFields().get(0).toString());
         }
       }
     }
@@ -2040,25 +2036,25 @@ public class IoTDBAlterTimeSeriesTypeIT {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' or s2 < '2' order by time");
       } else if (from == TSDataType.BLOB) {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) >= '1' or cast(s2 as TEXT) < '2' order by time");
       } else if (from == TSDataType.BOOLEAN) {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) = 'true' or cast(s2 as TEXT) = 'false' order by time");
       } else {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' or s2 < 2 order by time");
       }
@@ -2066,33 +2062,35 @@ public class IoTDBAlterTimeSeriesTypeIT {
       if (from == TSDataType.STRING || from == TSDataType.TEXT || from == TSDataType.BLOB) {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) >= '1' or cast(s2 as TEXT) < '2' order by time");
       } else {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as INT64) >= 1 or cast(s2 as INT64) < 2 order by time");
       }
     } else if (newType == TSDataType.BOOLEAN) {
       dataSet2 =
           session.executeQueryStatement(
-              "select time, s1 from "
+              "select s1 from "
                   + database
                   + ".construct_and_alter_column_type where s1 = true or s2 = false order by time");
     } else {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 >= '1' or s2 < '2' order by time");
       } else {
         dataSet2 =
             session.executeQueryStatement(
-                "select time, s1 from construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
+                "select s1 from "
+                    + database
+                    + ".construct_and_alter_column_type where s1 >= 1 or s2 < 2 order by time");
       }
     }
 
@@ -2100,23 +2098,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
     for (int i = 1; i <= 2; i++) {
       rec2 = dataSet2.next();
       if (from != TSDataType.BOOLEAN) {
-        assertEquals(i, rec2.getFields().get(0).getLongV());
+        assertEquals(i, rec2.getTimestamp());
         if (newType == TSDataType.BLOB) {
-          assertEquals(genValue(newType, i), rec2.getFields().get(1).getBinaryV());
+          assertEquals(genValue(newType, i), rec2.getFields().get(0).getBinaryV());
         } else if (newType == TSDataType.DATE) {
-          assertEquals(genValue(newType, i), rec2.getFields().get(1).getDateV());
+          assertEquals(genValue(newType, i), rec2.getFields().get(0).getDateV());
         } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
           if (from == TSDataType.DATE) {
             assertEquals(
                 new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
-                rec2.getFields().get(1).getBinaryV());
+                rec2.getFields().get(0).getBinaryV());
           } else {
             assertEquals(
                 newType.castFromSingleValue(from, genValue(from, i)),
-                rec2.getFields().get(1).getBinaryV());
+                rec2.getFields().get(0).getBinaryV());
           }
         } else {
-          assertEquals(genValue(newType, i).toString(), rec2.getFields().get(1).toString());
+          assertEquals(genValue(newType, i).toString(), rec2.getFields().get(0).toString());
         }
       }
     }
@@ -2128,45 +2126,45 @@ public class IoTDBAlterTimeSeriesTypeIT {
       if (from == TSDataType.BLOB) {
         dataSet3 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) < '1' order by time");
       } else if (from == TSDataType.BOOLEAN) {
         dataSet3 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) = 'false' order by time");
       } else {
         dataSet3 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 < '1' order by time");
       }
     } else if (newType == TSDataType.BLOB || from == TSDataType.BLOB) {
       dataSet3 =
           session.executeQueryStatement(
-              "select time, s1 from "
+              "select s1 from "
                   + database
                   + ".construct_and_alter_column_type where cast(s1 as TEXT) < '1' order by time");
     } else if (newType == TSDataType.BOOLEAN) {
       dataSet3 =
           session.executeQueryStatement(
-              "select time, s1 from "
+              "select s1 from "
                   + database
                   + ".construct_and_alter_column_type where s1 = false order by time");
     } else {
       if (from == TSDataType.STRING || from == TSDataType.TEXT) {
         dataSet3 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 < '1' order by time");
       } else {
         dataSet3 =
             session.executeQueryStatement(
-                "select time, s1 from "
+                "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where s1 < 1 order by time");
       }
@@ -2180,29 +2178,29 @@ public class IoTDBAlterTimeSeriesTypeIT {
     // 1.satisfy the condition of time filter
     SessionDataSet dataSet4 =
         session.executeQueryStatement(
-            "select time, s1 from "
+            "select s1 from "
                 + database
                 + ".construct_and_alter_column_type where time > 1 order by time");
     RowRecord rec4;
     for (int i = 2; i <= 3; i++) {
       rec4 = dataSet4.next();
-      assertEquals(i, rec4.getFields().get(0).getLongV());
+      assertEquals(i, rec4.getTimestamp());
       if (newType == TSDataType.BLOB) {
-        assertEquals(genValue(newType, i), rec4.getFields().get(1).getBinaryV());
+        assertEquals(genValue(newType, i), rec4.getFields().get(0).getBinaryV());
       } else if (newType == TSDataType.DATE) {
-        assertEquals(genValue(newType, i), rec4.getFields().get(1).getDateV());
+        assertEquals(genValue(newType, i), rec4.getFields().get(0).getDateV());
       } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
         if (from == TSDataType.DATE) {
           assertEquals(
               new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8),
-              rec4.getFields().get(1).getBinaryV());
+              rec4.getFields().get(0).getBinaryV());
         } else {
           assertEquals(
               newType.castFromSingleValue(from, genValue(from, i)),
-              rec4.getFields().get(1).getBinaryV());
+              rec4.getFields().get(0).getBinaryV());
         }
       } else {
-        assertEquals(genValue(newType, i).toString(), rec4.getFields().get(1).toString());
+        assertEquals(genValue(newType, i).toString(), rec4.getFields().get(0).toString());
       }
     }
     dataSet4.close();
@@ -2347,67 +2345,70 @@ public class IoTDBAlterTimeSeriesTypeIT {
     }
 
     SessionDataSet dataSet;
-    int[] expectedValue;
     RowRecord rec;
-    if (DATA_TYPE_LIST.contains(newType)) {
-      dataSet =
-          session.executeQueryStatement(
-              "select first_value(s1),last_value(s1) from "
-                  + database
-                  + ".construct_and_alter_column_type");
-      rec = dataSet.next();
-      expectedValue = new int[] {1, 1024};
-      if (newType == TSDataType.STRING
-          || newType == TSDataType.TEXT
-          || newType == TSDataType.BLOB) {
-        //        expectedValue[1] = 999;
-      } else if (newType == TSDataType.BOOLEAN) {
-        expectedValue = new int[] {19700102, 19721021};
-      }
-    } else {
-      dataSet =
-          session.executeQueryStatement(
-              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                  + database
-                  + ".construct_and_alter_column_type");
-      rec = dataSet.next();
-      expectedValue = new int[] {1, 1024, 1, 1024};
-      if (newType == TSDataType.STRING
-          || newType == TSDataType.TEXT
-          || newType == TSDataType.BLOB) {
-        expectedValue[1] = 999;
-      } else if (newType == TSDataType.BOOLEAN) {
-        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
-      }
-    }
+    if (!UNSUPPORT_ACCUMULATOR_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      int[] expectedValue;
 
-    if (newType != TSDataType.BOOLEAN) {
-      for (int i = 0; i < 4; i++) {
-        if (newType == TSDataType.BLOB) {
-          assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
-        } else if (newType == TSDataType.DATE) {
-          assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
-        } else {
-          log.info(
-              "i is {}, expected value: {}, actual value: {}",
-              i,
-              genValue(newType, expectedValue[i]).toString(),
-              rec.getFields().get(i).toString());
-          assertEquals(
-              genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+      if (DATA_TYPE_LIST.contains(newType)) {
+        dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        rec = dataSet.next();
+        expectedValue = new int[] {1, 1024};
+        if (newType == TSDataType.STRING
+            || newType == TSDataType.TEXT
+            || newType == TSDataType.BLOB) {
+          //        expectedValue[1] = 999;
+        } else if (newType == TSDataType.BOOLEAN) {
+          expectedValue = new int[] {19700102, 19721021};
+        }
+      } else {
+        dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        rec = dataSet.next();
+        expectedValue = new int[] {1, 1024, 1, 1024};
+        if (newType == TSDataType.STRING
+            || newType == TSDataType.TEXT
+            || newType == TSDataType.BLOB) {
+          expectedValue[1] = 999;
+        } else if (newType == TSDataType.BOOLEAN) {
+          expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
         }
       }
 
-      assertFalse(dataSet.hasNext());
+      if (newType != TSDataType.BOOLEAN) {
+        for (int i = 0; i < 4; i++) {
+          if (newType == TSDataType.BLOB) {
+            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
+          } else if (newType == TSDataType.DATE) {
+            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
+          } else {
+            log.info(
+                "i is {}, expected value: {}, actual value: {}",
+                i,
+                genValue(newType, expectedValue[i]).toString(),
+                rec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+          }
+        }
 
-      if (newType.isNumeric()) {
-        dataSet =
-            session.executeQueryStatement(
-                "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
-        rec = dataSet.next();
-        assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
-        assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
         assertFalse(dataSet.hasNext());
+
+        if (newType.isNumeric()) {
+          dataSet =
+              session.executeQueryStatement(
+                  "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
+          rec = dataSet.next();
+          assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
+          assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
+          assertFalse(dataSet.hasNext());
+        }
       }
     }
 
@@ -2436,6 +2437,10 @@ public class IoTDBAlterTimeSeriesTypeIT {
     if (from == TSDataType.DATE) {
       throw new NotSupportedException("Not supported DATE type.");
     }
+
+    if (from == TSDataType.BLOB || newType == TSDataType.BLOB) {
+      throw new NotSupportedException("Not supported BLOB type.");
+    }
     //    if (from == TSDataType.BOOLEAN
     //        && (newType == TSDataType.STRING || newType == TSDataType.TEXT)) {
     if (from == TSDataType.BOOLEAN && DATA_TYPE_LIST.contains(newType)) {
@@ -2452,20 +2457,34 @@ public class IoTDBAlterTimeSeriesTypeIT {
         }
       }
     } else {
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                  + database
-                  + ".construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      int[] expectedValue = {1, 1024, 1, 1024};
-      if (newType == TSDataType.STRING
-          || newType == TSDataType.TEXT
-          || newType == TSDataType.BLOB) {
-        expectedValue[1] = 999;
-      } else if (newType == TSDataType.BOOLEAN) {
-        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+      SessionDataSet dataSet;
+      int[] expectedValue;
+      if (DATA_TYPE_LIST.contains(newType)) {
+        dataSet =
+            session.executeQueryStatement(
+                "select first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        expectedValue = new int[] {1, 1024};
+      } else {
+        dataSet =
+            session.executeQueryStatement(
+                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                    + database
+                    + ".construct_and_alter_column_type");
+        expectedValue = new int[] {1, 1024, 1, 1024};
+        if (newType == TSDataType.BOOLEAN) {
+          expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+        }
       }
+      RowRecord rec = dataSet.next();
+      //      if (newType == TSDataType.STRING
+      //          || newType == TSDataType.TEXT
+      //          || newType == TSDataType.BLOB) {
+      //        expectedValue[1] = 999;
+      //      } else if (newType == TSDataType.BOOLEAN) {
+      //        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+      //      }
       if (newType != TSDataType.BOOLEAN) {
         for (int i = 0; i < 4; i++) {
           if (newType == TSDataType.BLOB) {

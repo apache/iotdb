@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.Nullable;
 
 import java.util.Collections;
@@ -26,6 +28,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class AlterColumnDataType extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlterColumnDataType.class);
   private final QualifiedName tableName;
   private final Identifier columnName;
   private final DataType dataType;
@@ -115,5 +119,15 @@ public class AlterColumnDataType extends Statement {
 
   public boolean isView() {
     return view;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(columnName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(dataType);
+    return size;
   }
 }

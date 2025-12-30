@@ -150,7 +150,13 @@ public class FirstValueAccumulator implements Accumulator {
                   StandardCharsets.UTF_8),
               statistics.getStartTime());
         } else {
-          updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+          if (statistics.getFirstValue() instanceof Binary) {
+            updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
+          } else {
+            updateBinaryFirstValue(
+                new Binary(String.valueOf(statistics.getFirstValue()), StandardCharsets.UTF_8),
+                statistics.getStartTime());
+          }
         }
         break;
       case BOOLEAN:

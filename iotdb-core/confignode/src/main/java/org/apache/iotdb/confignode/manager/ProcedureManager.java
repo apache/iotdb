@@ -480,8 +480,6 @@ public class ProcedureManager {
               req.getQueryId(),
               (MeasurementPath)
                   PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
-              //
-              // MeasurementPath.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
               req.getOperationType(),
               TSDataType.deserialize(req.updateInfo.get()),
               false);

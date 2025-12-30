@@ -22,14 +22,11 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DataTypeMismatchException extends MetadataException {
 
   // NOTICE: DO NOT CHANGE THIS STRING, IT IS USED IN THE ERROR HANDLING OF PIPE
   public static final String REGISTERED_TYPE_STRING = "registered type";
-  private static final Logger log = LoggerFactory.getLogger(DataTypeMismatchException.class);
 
   public DataTypeMismatchException(
       String deviceName,
@@ -49,21 +46,6 @@ public class DataTypeMismatchException extends MetadataException {
             insertType,
             time,
             value == null ? "null" : processValue(value.toString())));
-
-    StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
-
-    // 通常，我们需要忽略前两层堆栈信息，因为它们分别对应于printCallerInfo()方法和当前正在执行的方法（例如methodB()）
-    if (stackTraceElements.length > 2) {
-      // 获取调用者的信息
-      StackTraceElement caller =
-          stackTraceElements[2]; // 获取调用者信息，索引从0开始，所以要取第3个元素（因为第0和第1个是当前方法的堆栈）
-      log.error("调用者类名: {}", caller.getClassName());
-      log.error("调用者方法名: {}", caller.getMethodName());
-      log.error("调用者文件名: {}", caller.getFileName());
-      log.error("调用者行号: {}", caller.getLineNumber());
-    } else {
-      log.error("堆栈跟踪信息不足，无法确定调用者信息。");
-    }
   }
 
   public DataTypeMismatchException(
@@ -77,20 +59,6 @@ public class DataTypeMismatchException extends MetadataException {
             insertType,
             time,
             value == null ? "null" : processValue(value.toString())));
-    StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
-
-    // 通常，我们需要忽略前两层堆栈信息，因为它们分别对应于printCallerInfo()方法和当前正在执行的方法（例如methodB()）
-    if (stackTraceElements.length > 2) {
-      // 获取调用者的信息
-      StackTraceElement caller =
-          stackTraceElements[2]; // 获取调用者信息，索引从0开始，所以要取第3个元素（因为第0和第1个是当前方法的堆栈）
-      log.error("调用者类名: {}", caller.getClassName());
-      log.error("调用者方法名: {}", caller.getMethodName());
-      log.error("调用者文件名: {}", caller.getFileName());
-      log.error("调用者行号: {}", caller.getLineNumber());
-    } else {
-      log.error("堆栈跟踪信息不足，无法确定调用者信息。");
-    }
   }
 
   private static String processValue(String value) {
