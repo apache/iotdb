@@ -57,7 +57,8 @@ public class RowReferenceTsBlockManager {
         "invalid startingPosition: %s",
         startingPosition);
 
-    TsBlockAccounting tsBlockAccounting = tsBlocks.allocateId(id -> new TsBlockAccounting(id, tsBlock));
+    TsBlockAccounting tsBlockAccounting =
+        tsBlocks.allocateId(id -> new TsBlockAccounting(id, tsBlock));
 
     tsBlockAccounting.lockTsBlock();
     currentCursor =
@@ -231,8 +232,8 @@ public class RowReferenceTsBlockManager {
     }
 
     /**
-     * Locks the current TsBlock so that it can't be compacted (thus allowing for stable position-based
-     * access).
+     * Locks the current TsBlock so that it can't be compacted (thus allowing for stable
+     * position-based access).
      */
     public void lockTsBlock() {
       lockedTsBlock = true;
@@ -307,14 +308,19 @@ public class RowReferenceTsBlockManager {
     }
 
     public long sizeOf() {
-      // Getting the size of a TsBlock forces a lazy TsBlock to be loaded, so only provide the size after
+      // Getting the size of a TsBlock forces a lazy TsBlock to be loaded, so only provide the size
+      // after
       // an explicit decision to load
       long loadedTsBlockSize = isTsBlockLoaded ? tsBlock.getSizeInBytes() : 0;
-      return TSBLOCK_ACCOUNTING_INSTANCE_SIZE + loadedTsBlockSize + RamUsageEstimator.sizeOf(rowIds);
+      return TSBLOCK_ACCOUNTING_INSTANCE_SIZE
+          + loadedTsBlockSize
+          + RamUsageEstimator.sizeOf(rowIds);
     }
   }
 
-  /** Buffer abstracting a mapping between row IDs and their associated TsBlock IDs and positions. */
+  /**
+   * Buffer abstracting a mapping between row IDs and their associated TsBlock IDs and positions.
+   */
   private static class RowIdBuffer {
     public static final long UNKNOWN_ID = -1;
     private static final long INSTANCE_SIZE =

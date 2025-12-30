@@ -269,6 +269,9 @@ public class TopKRankingOperator implements ProcessOperator {
 
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator) + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext) + (groupedTopNBuilder != null ? groupedTopNBuilder.getEstimatedSizeInBytes() : 0);
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + (groupedTopNBuilder != null ? groupedTopNBuilder.getEstimatedSizeInBytes() : 0);
   }
 }

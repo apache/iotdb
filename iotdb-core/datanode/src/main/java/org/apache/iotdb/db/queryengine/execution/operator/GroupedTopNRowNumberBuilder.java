@@ -145,7 +145,8 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
               return endOfData();
             }
             return tsBlockBuilder.build(
-                new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+                new RunLengthEncodedColumn(
+                    TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
           }
           currentGroupId++;
           currentGroupSize = groupedTopNRowNumberAccumulator.drainTo(currentGroupId, rowIdOutput);
