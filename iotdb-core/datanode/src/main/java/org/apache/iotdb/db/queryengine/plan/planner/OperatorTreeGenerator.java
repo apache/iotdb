@@ -1494,6 +1494,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           linearFill[i] = IDENTITY_LINEAR_FILL;
           break;
         default:
