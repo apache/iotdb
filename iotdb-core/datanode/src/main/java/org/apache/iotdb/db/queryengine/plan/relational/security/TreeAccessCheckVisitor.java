@@ -2004,7 +2004,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   false,
                   "Has no permission to execute "
                       + privilegeType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
           break;
         }
       } else if (privilegeType.isPathPrivilege()) {
@@ -2015,7 +2015,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   false,
                   "Has no permission to execute "
                       + privilegeType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
           break;
         }
       } else {
