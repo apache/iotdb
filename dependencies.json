@@ -1,5 +1,6 @@
 {
   "dependencies": [
+    "at.yawk.lz4:lz4-java",
     "cglib:cglib",
     "ch.qos.logback:logback-classic",
     "ch.qos.logback:logback-core",
@@ -155,7 +156,6 @@
     "org.jline:jline",
     "org.jvnet.mimepull:mimepull",
     "org.latencyutils:LatencyUtils",
-    "org.lz4:lz4-java",
     "org.ops4j.pax.jdbc:pax-jdbc-common",
     "org.osgi:osgi.cmpn",
     "org.osgi:osgi.core",

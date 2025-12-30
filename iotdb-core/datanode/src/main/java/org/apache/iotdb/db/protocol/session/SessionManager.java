@@ -40,6 +40,7 @@ import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -254,6 +255,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
+    return closeSession(session, releaseByQueryId, true);
+  }
+
+  public boolean closeSession(
+      IClientSession session, LongConsumer releaseByQueryId, boolean mustCurrent) {
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -263,11 +269,11 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
+    if (mustCurrent && session1 != null && session != session1) {
       LOGGER.info(
           String.format(
               "The client-%s is trying to close another session %s, pls check if it's a bug",
-              session, session1));
+              session1, session));
       return false;
     } else {
       LOGGER.info(String.format("Session-%s is closing", session));
@@ -276,6 +282,7 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {
+    // Release query resources
     Iterable<Long> statementIds = session.getStatementIds();
     if (statementIds != null) {
       for (Long statementId : statementIds) {
@@ -287,6 +294,17 @@ public class SessionManager implements SessionManagerMBean {
         }
       }
     }
+
+    // Release PreparedStatement memory resources
+    try {
+      PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to release PreparedStatement resources for session {}: {}",
+          session,
+          e.getMessage(),
+          e);
+    }
   }
 
   public TSStatus closeOperation(
@@ -295,6 +313,7 @@ public class SessionManager implements SessionManagerMBean {
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId,
+      String preparedStatementName,
       LongConsumer releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
@@ -307,7 +326,7 @@ public class SessionManager implements SessionManagerMBean {
         if (haveSetQueryId) {
           this.closeDataset(session, statementId, queryId, releaseByQueryId);
         } else {
-          this.closeStatement(session, statementId, releaseByQueryId);
+          this.closeStatement(session, statementId, preparedStatementName, releaseByQueryId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -342,14 +361,35 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public void closeStatement(
-      IClientSession session, long statementId, LongConsumer releaseByQueryId) {
+      IClientSession session,
+      long statementId,
+      String preparedStatementName,
+      LongConsumer releaseByQueryId) {
     Set<Long> queryIdSet = session.removeStatementId(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
         releaseByQueryId.accept(queryId);
       }
     }
-    session.removeStatementId(statementId);
+
+    // If preparedStatementName is provided, release the prepared statement resources
+    if (preparedStatementName != null && !preparedStatementName.isEmpty()) {
+      try {
+        PreparedStatementInfo removedInfo = session.removePreparedStatement(preparedStatementName);
+        if (removedInfo != null) {
+          // Release the memory allocated for this PreparedStatement
+          PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to release PreparedStatement '{}' resources when closing statement {} for session {}: {}",
+            preparedStatementName,
+            statementId,
+            session,
+            e.getMessage(),
+            e);
+      }
+    }
   }
 
   public long requestQueryId(IClientSession session, Long statementId) {
@@ -462,8 +502,8 @@ public class SessionManager implements SessionManagerMBean {
     session.setUsername(username);
     session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
-    session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setLogin(true);
   }
 
   public void closeDataset(
@@ -546,7 +586,7 @@ public class SessionManager implements SessionManagerMBean {
 
   public List<ConnectionInfo> getAllSessionConnectionInfo() {
     return sessions.keySet().stream()
-        .filter(s -> StringUtils.isNotEmpty(s.getUsername()))
+        .filter(s -> StringUtils.isNotEmpty(s.getUsername()) && s.isLogin())
         .map(IClientSession::convertToConnectionInfo)
         .sorted(Comparator.comparingLong(ConnectionInfo::getLastActiveTime))
         .collect(Collectors.toList());

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -58,6 +59,8 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -69,10 +72,21 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertTabletStatement.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
+
+  /**
+   * Get the instance size of InsertTabletStatement for memory calculation.
+   *
+   * @return instance size in bytes
+   */
+  public static long getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 
   protected long[] times; // times should be sorted. It is done in the session API.
   protected BitMap[] nullBitMaps;
@@ -699,6 +713,189 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (nullBitMaps != null) {
       nullBitMaps = columnsToKeep.stream().map(i -> nullBitMaps[i]).toArray(BitMap[]::new);
     }
+  }
+
+  /**
+   * Convert this InsertTabletStatement to Tablet. This method constructs a Tablet object from this
+   * statement, converting all necessary fields. All arrays are copied to rowSize length to ensure
+   * immutability.
+   *
+   * @return Tablet object
+   * @throws MetadataException if conversion fails
+   */
+  public Tablet convertToTablet() throws MetadataException {
+    try {
+      // Get deviceId/tableName from devicePath
+      final String deviceIdOrTableName =
+          this.getDevicePath() != null ? this.getDevicePath().getFullPath() : "";
+
+      // Get schemas from measurementSchemas
+      final MeasurementSchema[] measurementSchemas = this.getMeasurementSchemas();
+      final String[] measurements = this.getMeasurements();
+      final TSDataType[] dataTypes = this.getDataTypes();
+      // If measurements and dataTypes are not null, use measurements.length as the standard length
+      final int originalSchemaSize = measurements != null ? measurements.length : 0;
+
+      // Build schemas and track valid column indices (skip null columns)
+      // measurements and dataTypes being null is standard - skip those columns
+      final List<IMeasurementSchema> schemas = new ArrayList<>();
+      final List<Integer> validColumnIndices = new ArrayList<>();
+      for (int i = 0; i < originalSchemaSize; i++) {
+        if (dataTypes != null && measurements[i] != null && dataTypes[i] != null) {
+          // Create MeasurementSchema if not present
+          schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
+          validColumnIndices.add(i);
+        }
+        // Skip null columns - don't add to schemas or validColumnIndices
+      }
+
+      final int schemaSize = schemas.size();
+
+      // Get columnTypes (for table model) - only for valid columns
+      final TsTableColumnCategory[] columnCategories = this.getColumnCategories();
+      final List<ColumnCategory> tabletColumnTypes = new ArrayList<>();
+      if (columnCategories != null && columnCategories.length > 0) {
+        for (final int validIndex : validColumnIndices) {
+          if (columnCategories[validIndex] != null) {
+            tabletColumnTypes.add(columnCategories[validIndex].toTsFileColumnType());
+          } else {
+            tabletColumnTypes.add(ColumnCategory.FIELD);
+          }
+        }
+      } else {
+        // Default to FIELD for all valid columns if not specified
+        for (int i = 0; i < schemaSize; i++) {
+          tabletColumnTypes.add(ColumnCategory.FIELD);
+        }
+      }
+
+      // Get timestamps - always copy to ensure immutability
+      final long[] times = this.getTimes();
+      final int rowSize = this.getRowCount();
+      final long[] timestamps;
+      if (times != null && times.length >= rowSize && rowSize > 0) {
+        timestamps = new long[rowSize];
+        System.arraycopy(times, 0, timestamps, 0, rowSize);
+      } else {
+        LOGGER.warn(
+            "Times array is null or too small. times.length={}, rowSize={}, deviceId={}",
+            times != null ? times.length : 0,
+            rowSize,
+            deviceIdOrTableName);
+        timestamps = new long[0];
+      }
+
+      // Get values - convert Statement columns to Tablet format, only for valid columns
+      // All arrays are truncated/copied to rowSize length
+      final Object[] statementColumns = this.getColumns();
+      final Object[] tabletValues = new Object[schemaSize];
+      if (statementColumns != null && statementColumns.length > 0) {
+        for (int i = 0; i < validColumnIndices.size(); i++) {
+          final int originalIndex = validColumnIndices.get(i);
+          if (statementColumns[originalIndex] != null && dataTypes[originalIndex] != null) {
+            tabletValues[i] =
+                convertColumnToTablet(
+                    statementColumns[originalIndex], dataTypes[originalIndex], rowSize);
+          } else {
+            tabletValues[i] = null;
+          }
+        }
+      }
+
+      // Get bitMaps - copy and truncate to rowSize, only for valid columns
+      final BitMap[] originalBitMaps = this.getBitMaps();
+      final BitMap[] bitMaps;
+      if (originalBitMaps != null && originalBitMaps.length > 0) {
+        bitMaps = new BitMap[schemaSize];
+        for (int i = 0; i < validColumnIndices.size(); i++) {
+          final int originalIndex = validColumnIndices.get(i);
+          if (originalBitMaps[originalIndex] != null) {
+            // Create a new BitMap truncated to rowSize
+            final byte[] truncatedBytes =
+                originalBitMaps[originalIndex].getTruncatedByteArray(rowSize);
+            bitMaps[i] = new BitMap(rowSize, truncatedBytes);
+          } else {
+            bitMaps[i] = null;
+          }
+        }
+      } else {
+        bitMaps = null;
+      }
+
+      // Create Tablet using the full constructor
+      // Tablet(String tableName, List<IMeasurementSchema> schemas, List<ColumnCategory>
+      // columnTypes,
+      //        long[] timestamps, Object[] values, BitMap[] bitMaps, int rowSize)
+      return new Tablet(
+          deviceIdOrTableName,
+          schemas,
+          tabletColumnTypes,
+          timestamps,
+          tabletValues,
+          bitMaps,
+          rowSize);
+    } catch (final Exception e) {
+      throw new MetadataException("Failed to convert InsertTabletStatement to Tablet", e);
+    }
+  }
+
+  /**
+   * Convert a single column value from Statement format to Tablet format. Statement uses primitive
+   * arrays (e.g., int[], long[], float[]), while Tablet may need different format. All arrays are
+   * copied and truncated to rowSize length to ensure immutability - even if the original array is
+   * modified, the converted array remains unchanged.
+   *
+   * @param columnValue column value from Statement (primitive array)
+   * @param dataType data type of the column
+   * @param rowSize number of rows to copy (truncate to this length)
+   * @return column value in Tablet format (copied and truncated array)
+   */
+  private Object convertColumnToTablet(
+      final Object columnValue, final TSDataType dataType, final int rowSize) {
+
+    if (columnValue == null) {
+      return null;
+    }
+
+    if (TSDataType.DATE.equals(dataType)) {
+      final int[] values = (int[]) columnValue;
+      // Copy and truncate to rowSize
+      final int[] copiedValues = Arrays.copyOf(values, Math.min(values.length, rowSize));
+      final LocalDate[] localDateValue = new LocalDate[rowSize];
+      for (int i = 0; i < copiedValues.length; i++) {
+        localDateValue[i] = DateUtils.parseIntToLocalDate(copiedValues[i]);
+      }
+      // Fill remaining with null if needed
+      for (int i = copiedValues.length; i < rowSize; i++) {
+        localDateValue[i] = null;
+      }
+      return localDateValue;
+    }
+
+    // For primitive arrays, copy and truncate to rowSize
+    if (columnValue instanceof boolean[]) {
+      final boolean[] original = (boolean[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    } else if (columnValue instanceof int[]) {
+      final int[] original = (int[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    } else if (columnValue instanceof long[]) {
+      final long[] original = (long[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    } else if (columnValue instanceof float[]) {
+      final float[] original = (float[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    } else if (columnValue instanceof double[]) {
+      final double[] original = (double[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    } else if (columnValue instanceof Binary[]) {
+      // For Binary arrays, create a new array and copy references, truncate to rowSize
+      final Binary[] original = (Binary[]) columnValue;
+      return Arrays.copyOf(original, Math.min(original.length, rowSize));
+    }
+
+    // For other types, return as-is (should not happen for standard types)
+    return columnValue;
   }
 
   @Override

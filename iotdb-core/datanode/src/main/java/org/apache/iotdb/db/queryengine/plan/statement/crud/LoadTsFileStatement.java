@@ -307,6 +307,54 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
+  public boolean shouldSplit() {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
+  }
+
+  /**
+   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @return the list of sub-statements
+   */
+  @Override
+  public List<LoadTsFileStatement> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFileStatement> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement();
+      statement.databaseLevel = this.databaseLevel;
+      statement.verifySchema = this.verifySchema;
+      statement.deleteAfterLoad = this.deleteAfterLoad;
+      statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      statement.autoCreateDatabase = this.autoCreateDatabase;
+      statement.isAsyncLoad = this.isAsyncLoad;
+      statement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      statement.tsFiles = new ArrayList<>(batchFiles);
+      statement.resources = new ArrayList<>(batchFiles.size());
+      statement.writePointCountList = new ArrayList<>(batchFiles.size());
+      statement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        statement.isTableModel.add(false);
+      }
+
+      subStatements.add(statement);
+    }
+
+    return subStatements;
+  }
+
+  @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }

@@ -176,7 +176,7 @@ public class IoTDBConnectionsIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "SELECT * FROM connections WHERE data_node_id = '" + dataNodeId + "'");
+              "SELECT * FROM connections WHERE datanode_id = '" + dataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }
@@ -256,7 +256,7 @@ public class IoTDBConnectionsIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "SELECT COUNT(*) FROM connections WHERE data_node_id = '" + closedDataNodeId + "'");
+              "SELECT COUNT(*) FROM connections WHERE datanode_id = '" + closedDataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }
@@ -306,7 +306,7 @@ public class IoTDBConnectionsIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "SELECT COUNT(*) FROM connections WHERE data_node_id = '" + closedDataNodeId + "'");
+              "SELECT COUNT(*) FROM connections WHERE datanode_id = '" + closedDataNodeId + "'");
       if (!resultSet.next()) {
         fail();
       }

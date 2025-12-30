@@ -66,6 +66,7 @@ public class FirstValueAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -101,6 +102,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         updateBinaryFirstValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
@@ -139,6 +141,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         if (statistics instanceof DateStatistics) {
           updateBinaryFirstValue(
@@ -182,6 +185,7 @@ public class FirstValueAccumulator implements Accumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           firstValue.setBinary(finalResult.getBinary(0));
           break;
@@ -221,6 +225,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilders[0].writeBinary(firstValue.getBinary());
         break;
@@ -257,6 +262,7 @@ public class FirstValueAccumulator implements Accumulator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         columnBuilder.writeBinary(firstValue.getBinary());
         break;

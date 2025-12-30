@@ -1639,7 +1639,6 @@ public class IoTDBSessionRelationalIT {
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 14;
     Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
-
     try {
       for (TSDataType from : dataTypes) {
         for (TSDataType to : dataTypes) {

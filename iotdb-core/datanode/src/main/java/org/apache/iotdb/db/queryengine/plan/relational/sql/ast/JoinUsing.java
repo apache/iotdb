@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class JoinUsing extends JoinCriteria {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(JoinUsing.class);
+
   private final List<Identifier> columns;
 
   public JoinUsing(List<Identifier> columns) {
@@ -66,5 +70,12 @@ public class JoinUsing extends JoinCriteria {
   @Override
   public List<Node> getNodes() {
     return ImmutableList.of();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columns);
+    return size;
   }
 }

@@ -316,6 +316,7 @@ public abstract class TopKOperator implements ProcessOperator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           columns[i] =
               new BinaryColumn(
                   positionCount,
@@ -392,6 +393,7 @@ public abstract class TopKOperator implements ProcessOperator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           memory += 16;
           break;
         default:

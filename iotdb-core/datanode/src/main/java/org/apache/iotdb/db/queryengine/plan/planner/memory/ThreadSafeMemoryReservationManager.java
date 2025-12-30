@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
+import org.apache.tsfile.utils.Pair;
+
 import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
@@ -47,5 +49,16 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
   @Override
   public synchronized void releaseAllReservedMemory() {
     super.releaseAllReservedMemory();
+  }
+
+  @Override
+  public synchronized Pair<Long, Long> releaseMemoryVirtually(final long size) {
+    return super.releaseMemoryVirtually(size);
+  }
+
+  @Override
+  public synchronized void reserveMemoryVirtually(
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    super.reserveMemoryVirtually(bytesToBeReserved, bytesAlreadyReserved);
   }
 }

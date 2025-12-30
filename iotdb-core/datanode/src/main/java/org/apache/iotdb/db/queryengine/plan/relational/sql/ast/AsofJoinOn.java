@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.List;
@@ -33,6 +34,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public class AsofJoinOn extends JoinOn {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AsofJoinOn.class);
 
   // record main expression of ASOF join
   // .e.g 'ASOF (tolerance 1) JOIN ON t1.device = t2.device and t1.time > t2.time' =>
@@ -159,5 +162,13 @@ public class AsofJoinOn extends JoinOn {
   @Override
   public List<Node> getNodes() {
     return ImmutableList.of(expression, asofExpression);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedExcludingInstanceSize();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(asofExpression);
+    return size;
   }
 }

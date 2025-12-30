@@ -113,7 +113,7 @@ public class TableModelSessionPoolExample {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("region_id", rowIndex, "1");
-        tablet.addValue("plant_id", rowIndex, "5");
+        tablet.addValue("plant_id", rowIndex, null);
         tablet.addValue("device_id", rowIndex, "3");
         tablet.addValue("model", rowIndex, "A");
         tablet.addValue("temperature", rowIndex, 37.6F);

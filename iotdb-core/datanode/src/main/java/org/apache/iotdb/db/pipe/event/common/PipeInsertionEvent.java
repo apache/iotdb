@@ -56,6 +56,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   protected String treeModelDatabaseName; // lazy initialization
   protected String tableModelDatabaseName; // lazy initialization
+  protected boolean shouldParse4Privilege = false;
 
   protected PipeInsertionEvent(
       final String pipeName,

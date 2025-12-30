@@ -108,7 +108,9 @@ public class MemUtils {
       if (results == null
           || results[i] == null
           || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+        if (column[i] != null) {
+          memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+        }
       }
     }
     return memSize;

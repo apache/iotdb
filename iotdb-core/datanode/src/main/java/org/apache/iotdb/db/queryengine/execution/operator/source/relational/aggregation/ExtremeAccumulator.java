@@ -68,6 +68,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -100,6 +101,7 @@ public class ExtremeAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
         case BOOLEAN:
         case DATE:
         case TIMESTAMP:
@@ -136,6 +138,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -168,6 +171,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -200,6 +204,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:

@@ -87,6 +87,7 @@ public class WindowImpl implements Window {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         binaryValues = new Binary[size];
         for (int i = 0; i < size; ++i) {
           binaryValues[i] = list.getBinaryByIndex(begin + i);

@@ -51,6 +51,7 @@ public class TypeUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return new BinaryColumnBuilder(null, count);
       default:
         throw new UnSupportedDataTypeException(

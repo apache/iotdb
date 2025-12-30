@@ -35,8 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -84,10 +82,6 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
@@ -151,7 +145,6 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManage
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -211,8 +204,6 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
-  private final ModelInfo modelInfo;
-
   private final PipeInfo pipeInfo;
 
   private final SubscriptionInfo subscriptionInfo;
@@ -231,7 +222,6 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
-      ModelInfo modelInfo,
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo,
@@ -262,9 +252,6 @@ public class ConfigPlanExecutor {
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
-
-    this.modelInfo = modelInfo;
-    this.snapshotProcessorList.add(modelInfo);
 
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
@@ -363,10 +350,6 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
       case GetAllFunctionTable:
         return udfInfo.getAllUDFTable();
-      case ShowModel:
-        return modelInfo.showModel((ShowModelPlan) req);
-      case GetModelInfo:
-        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
@@ -652,14 +635,6 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
-      case CreateModel:
-        return modelInfo.createModel((CreateModelPlan) physicalPlan);
-      case UpdateModelInfo:
-        return modelInfo.updateModelInfo((UpdateModelInfoPlan) physicalPlan);
-      case DropModel:
-        return modelInfo.dropModel(((DropModelPlan) physicalPlan).getModelName());
-      case DropModelInNode:
-        return modelInfo.dropModelInNode(((DropModelInNodePlan) physicalPlan).getNodeId());
       case CreatePipePlugin:
         return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:

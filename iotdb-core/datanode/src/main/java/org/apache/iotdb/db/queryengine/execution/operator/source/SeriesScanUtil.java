@@ -1604,6 +1604,7 @@ public class SeriesScanUtil implements Accountable {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         if (timeValuePair.getValue().getDataType() == TSDataType.DATE) {
           builder

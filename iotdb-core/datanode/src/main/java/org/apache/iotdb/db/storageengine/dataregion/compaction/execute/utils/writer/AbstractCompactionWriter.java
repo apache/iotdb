@@ -149,6 +149,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           chunkWriterImpl.write(timestamp, value.getBinary());
           break;
         case DOUBLE:

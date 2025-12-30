@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
 import java.util.List;
 
 public class ShowCurrentUser extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowCurrentUser.class);
 
   public ShowCurrentUser(@Nullable NodeLocation location) {
     super(location);
@@ -62,5 +66,12 @@ public class ShowCurrentUser extends Statement {
   @Override
   public String toString() {
     return "SHOW CURRENT_USER";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

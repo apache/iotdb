@@ -66,6 +66,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -102,6 +103,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         updateBinaryLastValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
@@ -140,6 +142,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         if (statistics instanceof DateStatistics) {
           updateBinaryLastValue(
               new Binary(
@@ -183,6 +186,7 @@ public class LastValueAccumulator implements Accumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           lastValue.setBinary(finalResult.getBinary(0));
           break;
         case BOOLEAN:
@@ -222,6 +226,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilders[0].writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:
@@ -258,6 +263,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilder.writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:

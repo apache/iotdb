@@ -340,3 +340,13 @@ Project page: https://github.com/LMAX-Exchange/disruptor
 License: https://github.com/LMAX-Exchange/disruptor/blob/master/LICENCE.txt
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from chronos-forecasting project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/chronos2/*
+
+The chronos-forecasting is open source software licensed under the Apache License 2.0
+Project page: https://github.com/amazon-science/chronos-forecasting
+License: https://github.com/amazon-science/chronos-forecasting/blob/main/LICENSE
+
+--------------------------------------------------------------------------------

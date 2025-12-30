@@ -814,6 +814,9 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 10000;
 
+  /** time window threshold for record of history queries. Unit: minute */
+  private int queryCostStatWindow = 0;
+
   private int patternMatchingThreshold = 1000000;
 
   /**
@@ -1121,6 +1124,21 @@ public class IoTDBConfig {
 
   private int loadTsFileSpiltPartitionMaxSize = 10;
 
+  /**
+   * The threshold for splitting statement when loading multiple TsFiles. When the number of TsFiles
+   * exceeds this threshold, the statement will be split into multiple sub-statements for batch
+   * execution to limit resource consumption during statement analysis. Default value is 10, which
+   * means splitting will occur when there are more than 10 files.
+   */
+  private int loadTsFileStatementSplitThreshold = 10;
+
+  /**
+   * The number of TsFiles that each sub-statement handles when splitting a statement. This
+   * parameter controls how many files are grouped together in each sub-statement during batch
+   * execution. Default value is 10, which means each sub-statement handles 10 files.
+   */
+  private int loadTsFileSubStatementBatchSize = 10;
+
   private String[] loadActiveListeningDirs =
       new String[] {
         IoTDBConstant.EXT_FOLDER_NAME
@@ -1188,6 +1206,8 @@ public class IoTDBConfig {
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
           Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
+
+  private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -2610,6 +2630,14 @@ public class IoTDBConfig {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public int getQueryCostStatWindow() {
+    return queryCostStatWindow;
+  }
+
+  public void setQueryCostStatWindow(int queryCostStatWindow) {
+    this.queryCostStatWindow = queryCostStatWindow;
   }
 
   public boolean isEnableIndex() {
@@ -4056,6 +4084,46 @@ public class IoTDBConfig {
     this.loadTsFileSpiltPartitionMaxSize = loadTsFileSpiltPartitionMaxSize;
   }
 
+  public int getLoadTsFileStatementSplitThreshold() {
+    return loadTsFileStatementSplitThreshold;
+  }
+
+  public void setLoadTsFileStatementSplitThreshold(final int loadTsFileStatementSplitThreshold) {
+    if (loadTsFileStatementSplitThreshold < 0) {
+      logger.warn(
+          "Invalid loadTsFileStatementSplitThreshold value: {}. Using default value: 10",
+          loadTsFileStatementSplitThreshold);
+      return;
+    }
+    if (this.loadTsFileStatementSplitThreshold != loadTsFileStatementSplitThreshold) {
+      logger.info(
+          "loadTsFileStatementSplitThreshold changed from {} to {}",
+          this.loadTsFileStatementSplitThreshold,
+          loadTsFileStatementSplitThreshold);
+    }
+    this.loadTsFileStatementSplitThreshold = loadTsFileStatementSplitThreshold;
+  }
+
+  public int getLoadTsFileSubStatementBatchSize() {
+    return loadTsFileSubStatementBatchSize;
+  }
+
+  public void setLoadTsFileSubStatementBatchSize(final int loadTsFileSubStatementBatchSize) {
+    if (loadTsFileSubStatementBatchSize <= 0) {
+      logger.warn(
+          "Invalid loadTsFileSubStatementBatchSize value: {}. Using default value: 10",
+          loadTsFileSubStatementBatchSize);
+      return;
+    }
+    if (this.loadTsFileSubStatementBatchSize != loadTsFileSubStatementBatchSize) {
+      logger.info(
+          "loadTsFileSubStatementBatchSize changed from {} to {}",
+          this.loadTsFileSubStatementBatchSize,
+          loadTsFileSubStatementBatchSize);
+    }
+    this.loadTsFileSubStatementBatchSize = loadTsFileSubStatementBatchSize;
+  }
+
   public String[] getPipeReceiverFileDirs() {
     return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
         ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
@@ -4259,5 +4327,13 @@ public class IoTDBConfig {
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {
     return tsFileDBToEncryptMap;
+  }
+
+  public long getMaxObjectSizeInByte() {
+    return maxObjectSizeInByte;
+  }
+
+  public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
+    this.maxObjectSizeInByte = maxObjectSizeInByte;
   }
 }

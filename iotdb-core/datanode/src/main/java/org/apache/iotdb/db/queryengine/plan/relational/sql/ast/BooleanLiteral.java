@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,6 +32,9 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class BooleanLiteral extends Literal {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(BooleanLiteral.class);
 
   public static final BooleanLiteral TRUE_LITERAL = new BooleanLiteral("true");
   public static final BooleanLiteral FALSE_LITERAL = new BooleanLiteral("false");
@@ -108,5 +112,11 @@ public class BooleanLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return value;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
   }
 }
