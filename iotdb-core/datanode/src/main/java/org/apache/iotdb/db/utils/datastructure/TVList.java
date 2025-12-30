@@ -77,14 +77,19 @@ public abstract class TVList implements WALEntryValue {
   // Index relation: arrayIndex -> elementIndex
   protected List<BitMap> bitMap;
 
-  // lock to provide synchronization for query list
+  // Guards queryContextSet, ownerQuery, and reservedMemoryBytes.
+  // Always acquire this lock before accessing/modifying these fields.
   private final ReentrantLock queryListLock = new ReentrantLock();
+
   // set of query that this TVList is used
   protected final Set<QueryContext> queryContextSet;
 
   // the owner query which is obligated to release the TVList.
   // When it is null, the TVList is owned by insert thread and released after flush.
   protected QueryContext ownerQuery;
+
+  // Reserved memory by the query. Ensure to acquire queryListLock before update.
+  protected long reservedMemoryBytes = 0L;
 
   protected boolean sorted = true;
   protected long maxTime;
@@ -157,12 +162,24 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
-  public long calculateRamSize() {
+  public synchronized long calculateRamSize() {
     return timestamps.size() * tvListArrayMemCost();
   }
 
   public synchronized boolean isSorted() {
     return sorted;
+  }
+
+  public void setReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes = bytes;
+  }
+
+  public void addReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes += bytes;
+  }
+
+  public long getReservedMemoryBytes() {
+    return reservedMemoryBytes;
   }
 
   public abstract void sort();
