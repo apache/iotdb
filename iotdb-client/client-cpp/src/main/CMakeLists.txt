@@ -64,4 +64,10 @@ ELSE()
 ENDIF()
 
 # Link with Thrift static library
-TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB} ssl crypto)
+target_link_libraries(iotdb_session
+    PUBLIC
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    PRIVATE
+        ${THRIFT_STATIC_LIB}
+)
