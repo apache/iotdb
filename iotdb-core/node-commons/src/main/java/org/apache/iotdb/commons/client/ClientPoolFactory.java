@@ -312,6 +312,7 @@ public class ClientPoolFactory {
                           conf.isPipeConnectorRPCThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(
                           conf.getPipeAsyncConnectorSelectorNumber())
+                      .setPrintLogWhenEncounterException(conf.isPrintLogWhenEncounterException())
                       .build(),
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
