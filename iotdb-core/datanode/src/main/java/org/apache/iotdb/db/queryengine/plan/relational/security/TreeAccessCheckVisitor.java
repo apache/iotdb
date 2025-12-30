@@ -672,7 +672,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         return checkPermissionsWithGrantOption(
             context,
             Arrays.stream(statement.getPrivilegeList())
-                .map(PrivilegeType::valueOf)
+                .map(s -> PrivilegeType.valueOf(s.toUpperCase()))
                 .collect(Collectors.toList()),
             statement.getNodeNameList());
       default:
