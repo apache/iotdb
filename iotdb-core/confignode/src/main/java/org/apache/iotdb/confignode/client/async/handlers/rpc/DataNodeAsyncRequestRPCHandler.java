@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.mpp.rpc.thrift.TAliasTimeSeriesResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
@@ -183,6 +184,27 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TTestConnectionResp>) responseMap,
+            countDownLatch);
+      case LOCK_ALIAS:
+        return new AliasTimeSeriesRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TAliasTimeSeriesResp>) responseMap,
+            countDownLatch);
+      case CREATE_ALIAS_SERIES:
+      case MARK_SERIES_DISABLED:
+      case UPDATE_PHYSICAL_ALIAS_REF:
+      case DROP_ALIAS_SERIES:
+      case ENABLE_PHYSICAL_SERIES:
+      case UNLOCK_FOR_ALIAS:
+        return new SchemaUpdateRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
             countDownLatch);
       case DETECT_TREE_DEVICE_VIEW_FIELD_TYPE:
         return new TreeDeviceViewFieldDetectionHandler(

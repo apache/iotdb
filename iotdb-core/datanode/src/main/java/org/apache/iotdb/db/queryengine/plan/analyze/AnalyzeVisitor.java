@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AliasTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -2744,6 +2745,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     SchemaPartition schemaPartitionInfo;
     schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitAliasTimeSeriesStatement(
+      AliasTimeSeriesStatement aliasTimeSeriesStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setRealStatement(aliasTimeSeriesStatement);
+
+    // Verify old path exists using fetchSchema
+    PathPatternTree oldPathPatternTree = new PathPatternTree();
+    oldPathPatternTree.appendFullPath(aliasTimeSeriesStatement.getPath());
+    ISchemaTree oldPathSchemaTree =
+        schemaFetcher.fetchSchema(oldPathPatternTree, false, context, false);
+    if (oldPathSchemaTree.isEmpty()) {
+      throw new RuntimeException(
+          new SemanticException(
+              String.format(
+                  "Timeseries [%s] does not exist.",
+                  aliasTimeSeriesStatement.getPath().getFullPath())));
+    }
+
+    // Check if old path and new path are the same
+    if (aliasTimeSeriesStatement.getPath().equals(aliasTimeSeriesStatement.getNewPath())) {
+      // Old path and new path are the same, no need to rename
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    // Verify new path does not exist using fetchSchema
+    PathPatternTree newPathPatternTree = new PathPatternTree();
+    newPathPatternTree.appendFullPath(aliasTimeSeriesStatement.getNewPath());
+    ISchemaTree newPathSchemaTree =
+        schemaFetcher.fetchSchema(newPathPatternTree, false, context, false);
+    if (!newPathSchemaTree.isEmpty()) {
+      throw new RuntimeException(
+          new SemanticException(
+              String.format(
+                  "Timeseries [%s] already exists.",
+                  aliasTimeSeriesStatement.getNewPath().getFullPath())));
+    }
     return analysis;
   }
 

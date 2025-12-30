@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.schema.node.role;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -48,4 +49,25 @@ public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N> {
   MeasurementPath getMeasurementPath();
 
   boolean isLogicalView();
+
+  // Alias series properties methods
+  boolean isRenamed();
+
+  void setIsRenamed(boolean isRenamed);
+
+  boolean isRenaming();
+
+  void setIsRenaming(boolean isRenaming);
+
+  boolean isDisabled();
+
+  void setDisabled(boolean isDisabled);
+
+  PartialPath getOriginalPath();
+
+  void setOriginalPath(PartialPath originalPath);
+
+  PartialPath getAliasPath();
+
+  void setAliasPath(PartialPath aliasPath);
 }
