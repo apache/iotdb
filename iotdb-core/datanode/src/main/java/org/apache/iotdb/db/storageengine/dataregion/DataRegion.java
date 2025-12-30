@@ -3014,7 +3014,7 @@ public class DataRegion implements IDataRegionForQuery {
                           StandardCharsets.UTF_8);
               String fileName = path.getFileName().toString();
               long timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
-              logger.info(
+              logger.debug(
                   "timestamp {}, measurementId {}, ideviceId {}",
                   timestamp,
                   measurementId,
