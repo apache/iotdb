@@ -22,16 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,6 +46,57 @@ import java.util.Collections;
 import java.util.List;
 
 public class LastQueryTest {
+
+  @Test
+  public void testSortLastQueryScanNode() throws IllegalPathException {
+    LastQueryNode lastQueryNode = new LastQueryNode(new PlanNodeId("test"), null, true);
+
+    lastQueryNode.addDeviceLastQueryScanNode(
+        new PlanNodeId("test_last_query_scan1"),
+        new PartialPath("root.test.d1"),
+        true,
+        Arrays.asList(
+            new MeasurementSchema("s3", TSDataType.INT32),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN),
+            new MeasurementSchema("s2", TSDataType.INT32)),
+        null,
+        null);
+    lastQueryNode.addDeviceLastQueryScanNode(
+        new PlanNodeId("test_last_query_scan2"),
+        new PartialPath("root.test.d0"),
+        false,
+        Collections.singletonList(new MeasurementSchema("s0", TSDataType.BOOLEAN)),
+        null,
+        null);
+
+    Analysis analysis = Util.constructAnalysis();
+    SourceRewriter sourceRewriter = new SourceRewriter(analysis);
+    DistributionPlanContext context =
+        new DistributionPlanContext(
+            new MPPQueryContext("", new QueryId("test"), null, new TEndPoint(), new TEndPoint()));
+    context.setOneSeriesInMultiRegion(true);
+    context.setQueryMultiRegion(true);
+    List<PlanNode> result = sourceRewriter.visitLastQuery(lastQueryNode, context);
+    Assert.assertEquals(1, result.size());
+    Assert.assertTrue(result.get(0) instanceof LastQueryMergeNode);
+    LastQueryMergeNode mergeNode = (LastQueryMergeNode) result.get(0);
+    Assert.assertEquals(1, mergeNode.getChildren().size());
+    Assert.assertTrue(mergeNode.getChildren().get(0) instanceof LastQueryNode);
+
+    LastQueryNode lastQueryNode2 = (LastQueryNode) mergeNode.getChildren().get(0);
+    Assert.assertEquals(2, lastQueryNode2.getChildren().size());
+    Assert.assertTrue(lastQueryNode2.getChildren().get(0) instanceof LastQueryScanNode);
+
+    LastQueryScanNode scanNodeChild1 = (LastQueryScanNode) lastQueryNode2.getChildren().get(0);
+    Assert.assertTrue(scanNodeChild1.getDevicePath().toString().contains("d0"));
+    Assert.assertEquals("s0", scanNodeChild1.getMeasurementSchemas().get(0).getMeasurementName());
+
+    LastQueryScanNode scanNodeChild2 = (LastQueryScanNode) lastQueryNode2.getChildren().get(1);
+    Assert.assertTrue(scanNodeChild2.getDevicePath().toString().contains("d1"));
+    Assert.assertEquals("s1", scanNodeChild2.getMeasurementSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("s2", scanNodeChild2.getMeasurementSchemas().get(1).getMeasurementName());
+    Assert.assertEquals("s3", scanNodeChild2.getMeasurementSchemas().get(2).getMeasurementName());
+  }
 
   @Test
   public void testLastQuery1Series1Region() throws IllegalPathException {
