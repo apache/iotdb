@@ -35,12 +35,12 @@ public class ReadObject3ColumnTransformer extends TernaryColumnTransformer {
   private final Optional<FragmentInstanceContext> fragmentInstanceContext;
 
   public ReadObject3ColumnTransformer(
-      Type retuenType,
+      Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer,
       Optional<FragmentInstanceContext> fragmentInstanceContext) {
-    super(retuenType, firstColumnTransformer, secondColumnTransformer, thirdColumnTransformer);
+    super(returnType, firstColumnTransformer, secondColumnTransformer, thirdColumnTransformer);
     this.fragmentInstanceContext = fragmentInstanceContext;
   }
 
