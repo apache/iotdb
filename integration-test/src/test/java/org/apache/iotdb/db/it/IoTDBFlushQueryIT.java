@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -249,20 +248,21 @@ public class IoTDBFlushQueryIT {
   private static void generateTimeRangeWithTimestamp(
       ISession session, String device, long start, long end)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> measurementSchemas =
+    List<MeasurementSchema> measurementSchemas =
         Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
     Tablet tablet = new Tablet(device, measurementSchemas);
     for (long currentTime = start; currentTime <= end; currentTime++) {
-      int rowIndex = tablet.getRowSize();
+      int rowIndex = tablet.rowSize;
       if (rowIndex == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
         tablet.reset();
         rowIndex = 0;
       }
       tablet.addTimestamp(rowIndex, currentTime);
-      tablet.addValue(rowIndex, 0, currentTime);
+      tablet.addValue("s1", 0, currentTime);
+      tablet.rowSize++;
     }
-    if (tablet.getRowSize() > 0) {
+    if (tablet.rowSize > 0) {
       session.insertTablet(tablet);
     }
   }
