@@ -909,7 +909,9 @@ public class SeriesScanUtil implements Accountable {
 
           TsBlockBuilder builder = new TsBlockBuilder(getTsDataTypeList());
           long currentPageEndPointTime =
-              Math.max(mergeReader.getCurrentReadStopTime(), initialEndPointTime);
+              orderUtils.getAscending()
+                  ? Math.max(mergeReader.getCurrentReadStopTime(), initialEndPointTime)
+                  : Math.min(mergeReader.getCurrentReadStopTime(), initialEndPointTime);
           while (mergeReader.hasNextTimeValuePair()) {
 
             /*
@@ -1064,20 +1066,28 @@ public class SeriesScanUtil implements Accountable {
         && orderUtils.isOverlapped(currentReadStopTime, firstPageReader.getStatistics())) {
       if (orderUtils.getAscending()) {
         currentReadStopTime =
-            Math.max(currentReadStopTime, firstPageReader.getStatistics().getEndTime());
+            Math.max(
+                currentReadStopTime,
+                orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
       } else {
         currentReadStopTime =
-            Math.min(currentReadStopTime, firstPageReader.getStatistics().getStartTime());
+            Math.min(
+                currentReadStopTime,
+                orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
       }
     }
     for (IVersionPageReader unSeqPageReader : unSeqPageReaders) {
       if (orderUtils.isOverlapped(currentReadStopTime, unSeqPageReader.getStatistics())) {
         if (orderUtils.getAscending()) {
           currentReadStopTime =
-              Math.max(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
+              Math.max(
+                  currentReadStopTime,
+                  orderUtils.getOverlapCheckTime(unSeqPageReader.getStatistics()));
         } else {
           currentReadStopTime =
-              Math.min(currentReadStopTime, unSeqPageReader.getStatistics().getStartTime());
+              Math.min(
+                  currentReadStopTime,
+                  orderUtils.getOverlapCheckTime(unSeqPageReader.getStatistics()));
         }
       } else {
         break;
