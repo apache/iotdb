@@ -70,9 +70,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -532,7 +533,7 @@ public class CompactionCheckerUtils {
 
   public static List<IFullPath> getAllPathsOfResources(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
-    Set<IFullPath> paths = new HashSet<>();
+    Set<IFullPath> paths = new LinkedHashSet<>();
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
@@ -540,7 +541,10 @@ public class CompactionCheckerUtils {
         boolean isAlign = iDeviceIDBooleanPair.getRight();
         Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
         IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
-        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        List<IMeasurementSchema> measurementSchemas =
+            schemaMap.values().stream()
+                .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementName))
+                .collect(Collectors.toList());
         if (measurementSchemas.isEmpty()) {
           continue;
         }
