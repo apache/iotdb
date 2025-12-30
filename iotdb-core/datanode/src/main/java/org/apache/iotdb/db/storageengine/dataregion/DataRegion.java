@@ -660,6 +660,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
         // ensure that seq and unseq files in the same partition have the same TsFileSet
         Map<Long, List<TsFileSet>> recoveredPartitionTsFileSetMap = new HashMap<>();
+        Map<Long, Long> partitionMinimalVersion = new HashMap<>();
 
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           Callable<Void> asyncRecoverTask =
@@ -669,7 +670,8 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
                   true,
-                  recoveredPartitionTsFileSetMap);
+                  recoveredPartitionTsFileSetMap,
+                  partitionMinimalVersion);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -683,7 +685,7 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getValue(),
                   fileTimeIndexMap,
                   false,
-                  recoveredPartitionTsFileSetMap);
+                  recoveredPartitionTsFileSetMap, partitionMinimalVersion);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
           }
@@ -697,6 +699,18 @@ public class DataRegion implements IDataRegionForQuery {
                       false,
                       Long.MAX_VALUE,
                       lastFlushTimeMap.getMemSize(latestPartitionId)));
+        }
+
+        // remove empty file sets
+        for (Entry<Long, List<TsFileSet>> entry : recoveredPartitionTsFileSetMap.entrySet()) {
+          long partitionId = entry.getKey();
+          // if no file in the partition, all filesets should be cleared
+          long minimumFileVersion = partitionMinimalVersion.getOrDefault(partitionId, Long.MAX_VALUE);
+          for (TsFileSet tsFileSet : entry.getValue()) {
+            if (tsFileSet.getEndVersion() < minimumFileVersion) {
+              tsFileSet.remove();
+            }
+          }
         }
       }
       // wait until all unsealed TsFiles have been recovered
@@ -1063,16 +1077,24 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> resourceList,
       Map<TsFileID, FileTimeIndex> fileTimeIndexMap,
       boolean isSeq,
-      Map<Long, List<TsFileSet>> partitionTsFileSetMap) {
+      Map<Long, List<TsFileSet>> partitionTsFileSetMap, Map<Long, Long> partitionMinimalVersion) {
 
     List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
     List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
     Callable<Void> asyncRecoverTask = null;
+    List<TsFileSet> tsFileSets = recoverTsFileSets(partitionId, partitionTsFileSetMap);
     for (TsFileResource tsFileResource : resourceList) {
-      List<TsFileSet> tsFileSets = recoverTsFileSets(partitionId, partitionTsFileSetMap);
       long fileVersion = tsFileResource.getTsFileID().fileVersion;
+      partitionMinimalVersion.compute(partitionId, (pid, oldVersion) -> {
+        if (oldVersion == null) {
+          return fileVersion;
+        }
+        return Math.min(oldVersion, fileVersion);
+      });
+
       int i = Collections.binarySearch(tsFileSets, TsFileSet.comparatorKey(fileVersion));
       if (i < 0) {
+        // if the binary search does not find an exact match, -i indicates the closest one
         i = -i;
       }
       if (i < tsFileSets.size()) {

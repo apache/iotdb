@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.db.it;
 
 import java.sql.SQLException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
@@ -293,7 +294,9 @@ public class IoTDBLoadTsFileIT {
     SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(sevoFile.getAbsolutePath());
     SchemaEvolution schemaEvolution = new TableRename(SchemaConfig.TABLE_0, SchemaConfig.TABLE_1);
     schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
-    // rename INT322INT32
+    // rename INT322INT32 to INT322INT32_NEW
+    schemaEvolution = new ColumnRename(SchemaConfig.TABLE_1, "INT322INT32", "INT322INT32_NEW");
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
 
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -316,6 +319,24 @@ public class IoTDBLoadTsFileIT {
       // can query with table1
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_1))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      // cannot query using INT322INT32
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
+        fail();
+      } catch (SQLException e) {
+        assertEquals("616: Column 'int322int32' cannot be resolved", e.getMessage());
+      }
+
+      // can query with INT322INT32_NEW
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
         if (resultSet.next()) {
           Assert.assertEquals(lineCount, resultSet.getLong(1));
         } else {

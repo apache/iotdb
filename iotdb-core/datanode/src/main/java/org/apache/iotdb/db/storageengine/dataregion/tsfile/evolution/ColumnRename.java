@@ -40,10 +40,14 @@ public class ColumnRename implements SchemaEvolution {
   // for deserialization
   public ColumnRename() {}
 
-  public ColumnRename(String tableName, String nameBefore, String nameAfter, TSDataType dataType) {
+  public ColumnRename(String tableName, String nameBefore, String nameAfter) {
     this.tableName = tableName.toLowerCase();
     this.nameBefore = nameBefore.toLowerCase();
     this.nameAfter = nameAfter.toLowerCase();
+  }
+
+  public ColumnRename(String tableName, String nameBefore, String nameAfter, TSDataType dataType) {
+    this(tableName, nameBefore, nameAfter);
     this.dataType = dataType;
   }
 

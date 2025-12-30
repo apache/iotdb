@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.tsfile.external.commons.io.FileUtils;
 
 /** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
@@ -126,5 +127,9 @@ public class TsFileSet implements Comparable<TsFileSet> {
   @Override
   public String toString() {
     return "TsFileSet{" + "endVersion=" + endVersion + ", fileSetDir=" + fileSetDir + '}';
+  }
+
+  public void remove() {
+    FileUtils.deleteQuietly(fileSetDir);
   }
 }
