@@ -115,6 +115,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -3031,6 +3032,15 @@ public class DataRegion implements IDataRegionForQuery {
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
+    boolean isDropMeasurementExist = false;
+    IDPredicate.IDPredicateType idPredicateType = null;
+
+    if (deletion instanceof TableDeletionEntry) {
+      TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+      isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
+      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
+    }
+
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
         continue;
@@ -3127,7 +3137,9 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
-    if (!deletedByFiles.isEmpty()) {
+    if (!deletedByFiles.isEmpty()
+        && !isDropMeasurementExist
+        && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)) {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
         logger.debug(
