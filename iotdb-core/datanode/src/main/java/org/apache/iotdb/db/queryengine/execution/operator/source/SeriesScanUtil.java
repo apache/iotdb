@@ -1060,40 +1060,41 @@ public class SeriesScanUtil implements Accountable {
     return calculateInitialEndPointTime(mergeReaderStopTime);
   }
 
-  private long calculateInitialEndPointTime(long currentReadStopTime) {
+  private long calculateInitialEndPointTime(final long currentReadStopTime) {
+    long initialReadStopTime = currentReadStopTime;
     if (firstPageReader != null
         && !firstPageReader.isSeq()
         && orderUtils.isOverlapped(currentReadStopTime, firstPageReader.getStatistics())) {
       if (orderUtils.getAscending()) {
-        currentReadStopTime =
+        initialReadStopTime =
             Math.max(
-                currentReadStopTime,
+                initialReadStopTime,
                 orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
       } else {
-        currentReadStopTime =
+        initialReadStopTime =
             Math.min(
-                currentReadStopTime,
+                initialReadStopTime,
                 orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
       }
     }
     for (IVersionPageReader unSeqPageReader : unSeqPageReaders) {
       if (orderUtils.isOverlapped(currentReadStopTime, unSeqPageReader.getStatistics())) {
         if (orderUtils.getAscending()) {
-          currentReadStopTime =
+          initialReadStopTime =
               Math.max(
-                  currentReadStopTime,
+                  initialReadStopTime,
                   orderUtils.getOverlapCheckTime(unSeqPageReader.getStatistics()));
         } else {
-          currentReadStopTime =
+          initialReadStopTime =
               Math.min(
-                  currentReadStopTime,
+                  initialReadStopTime,
                   orderUtils.getOverlapCheckTime(unSeqPageReader.getStatistics()));
         }
       } else {
         break;
       }
     }
-    return currentReadStopTime;
+    return initialReadStopTime;
   }
 
   private void addTimeValuePairToResult(TimeValuePair timeValuePair, TsBlockBuilder builder) {
