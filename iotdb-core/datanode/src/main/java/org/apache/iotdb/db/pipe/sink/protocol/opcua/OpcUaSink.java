@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaServerBuilder;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -36,9 +40,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,28 +58,46 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_HISTORIZING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_NODE_URL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_PLACEHOLDER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_QUALITY_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_128_RSA_15_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_NONE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE;
@@ -79,12 +107,16 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_HISTORIZING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_HTTPS_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_MODEL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_NODE_URL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_PLACEHOLDER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_QUALITY_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_SECURITY_DIR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_SECURITY_POLICY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_TCP_BIND_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_VALUE_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_WITH_QUALITY_KEY;
@@ -107,12 +139,18 @@ public class OpcUaSink implements PipeConnector {
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP = new ConcurrentHashMap<>();
 
   private String serverKey;
-  boolean isClientServerModel;
-  String unQualifiedDatabaseName;
-  String placeHolder;
-  @Nullable String valueName;
-  @Nullable String qualityName;
-  private OpcUaNameSpace nameSpace;
+  private boolean isClientServerModel;
+  private String databaseName;
+  private String placeHolder4NullTag;
+  private @Nullable String valueName;
+  private @Nullable String qualityName;
+  private StatusCode defaultQuality;
+
+  // Inner server
+  private @Nullable OpcUaNameSpace nameSpace;
+
+  // Outer server
+  private @Nullable IoTDBOpcUaClient client;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -131,12 +169,89 @@ public class OpcUaSink implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
             Arrays.asList(CONNECTOR_IOTDB_USERNAME_KEY, SINK_IOTDB_USERNAME_KEY),
             false);
+
+    final PipeParameters parameters = validator.getParameters();
+    if (validator
+            .getParameters()
+            .hasAnyAttributes(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY)
+        || parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
+            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE)) {
+      validator.validate(
+          CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
+          String.format(
+              "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or %s must be %s.",
+              CONNECTOR_OPC_UA_MODEL_KEY,
+              SINK_OPC_UA_MODEL_KEY,
+              CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
+          parameters.getStringOrDefault(
+              Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+              CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
+    }
   }
 
   @Override
   public void customize(
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
+    final boolean withQuality =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
+            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE);
+    valueName =
+        withQuality
+            ? parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_VALUE_NAME_KEY, SINK_OPC_UA_VALUE_NAME_KEY),
+                CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE)
+            : null;
+    qualityName =
+        withQuality
+            ? parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_QUALITY_NAME_KEY, SINK_OPC_UA_QUALITY_NAME_KEY),
+                CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE)
+            : null;
+    defaultQuality =
+        getQuality(
+            withQuality
+                ? parameters.getStringOrDefault(
+                    Arrays.asList(
+                        CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY, SINK_OPC_UA_DEFAULT_QUALITY_KEY),
+                    CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE)
+                : CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE);
+    isClientServerModel =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+                CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
+            .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE);
+    placeHolder4NullTag =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_PLACEHOLDER_KEY, SINK_OPC_UA_PLACEHOLDER_KEY),
+            CONNECTOR_OPC_UA_PLACEHOLDER_4_NULL_TAG_DEFAULT_VALUE);
+    final DataRegion region =
+        StorageEngine.getInstance()
+            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
+    databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "root.__temp_db";
+
+    if (withQuality && PathUtils.isTableModelDatabase(databaseName)) {
+      throw new PipeException(
+          "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.");
+    }
+
+    final String nodeUrl =
+        parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
+    if (Objects.isNull(nodeUrl)) {
+      customizeServer(parameters);
+    } else {
+      if (PathUtils.isTableModelDatabase(databaseName)) {
+        throw new PipeException(
+            "When the OPC UA sink points to an outer server, the table model data is not supported.");
+      }
+      customizeClient(nodeUrl, parameters);
+    }
+  }
+
+  private void customizeServer(final PipeParameters parameters) {
     final int tcpBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
@@ -173,40 +288,21 @@ public class OpcUaSink implements PipeConnector {
                 CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY,
                 SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY),
             CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE);
-    placeHolder =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_PLACEHOLDER_KEY, SINK_OPC_UA_PLACEHOLDER_KEY),
-            CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE);
-    final boolean withQuality =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_WITH_QUALITY_KEY, SINK_OPC_UA_WITH_QUALITY_KEY),
-            CONNECTOR_OPC_UA_WITH_QUALITY_DEFAULT_VALUE);
-    valueName =
-        withQuality
-            ? parameters.getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_VALUE_NAME_KEY, SINK_OPC_UA_VALUE_NAME_KEY),
-                CONNECTOR_OPC_UA_VALUE_NAME_DEFAULT_VALUE)
-            : null;
-    qualityName =
-        withQuality
-            ? parameters.getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_QUALITY_NAME_KEY, SINK_OPC_UA_QUALITY_NAME_KEY),
-                CONNECTOR_OPC_UA_QUALITY_NAME_DEFAULT_VALUE)
-            : null;
-    isClientServerModel =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
-                CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-            .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE);
-
-    final DataRegion region =
-        StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
-    unQualifiedDatabaseName =
-        Objects.nonNull(region)
-            ? PathUtils.unQualifyDatabaseName(region.getDatabaseName())
-            : "__temp_db";
+    final Set<SecurityPolicy> securityPolicies =
+        (parameters.hasAnyAttributes(
+                    CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY)
+                ? Arrays.stream(
+                    parameters
+                        .getStringByKeys(
+                            CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY)
+                        .replace(" ", "")
+                        .split(","))
+                : CONNECTOR_OPC_UA_SECURITY_POLICY_SERVER_DEFAULT_VALUES.stream())
+            .map(this::getSecurityPolicy)
+            .collect(Collectors.toSet());
+    if (securityPolicies.isEmpty()) {
+      throw new PipeException("The security policy cannot be empty.");
+    }
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
@@ -225,7 +321,8 @@ public class OpcUaSink implements PipeConnector {
                                 .setUser(user)
                                 .setPassword(password)
                                 .setSecurityDir(securityDir)
-                                .setEnableAnonymousAccess(enableAnonymousAccess);
+                                .setEnableAnonymousAccess(enableAnonymousAccess)
+                                .setSecurityPolicies(securityPolicies);
                         final OpcUaServer newServer = builder.build();
                         nameSpace = new OpcUaNameSpace(newServer, builder);
                         nameSpace.startup();
@@ -234,7 +331,12 @@ public class OpcUaSink implements PipeConnector {
                       } else {
                         oldValue
                             .getRight()
-                            .checkEquals(user, password, securityDir, enableAnonymousAccess);
+                            .checkEquals(
+                                user,
+                                password,
+                                securityDir,
+                                enableAnonymousAccess,
+                                securityPolicies);
                         return oldValue;
                       }
                     } catch (final PipeException e) {
@@ -245,6 +347,80 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey).getLeft().incrementAndGet();
+    }
+  }
+
+  private void customizeClient(final String nodeUrl, final PipeParameters parameters) {
+    final SecurityPolicy policy =
+        getSecurityPolicy(
+            parameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        CONNECTOR_OPC_UA_SECURITY_POLICY_KEY, SINK_OPC_UA_SECURITY_POLICY_KEY),
+                    CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE)
+                .toUpperCase());
+
+    final IdentityProvider provider;
+    final String userName =
+        parameters.getStringByKeys(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY);
+    final String password =
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
+            CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+    provider =
+        Objects.nonNull(userName)
+            ? new UsernameProvider(userName, password)
+            : new AnonymousProvider();
+
+    final String securityDir =
+        IoTDBConfig.addDataHomeDir(
+            parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
+                CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                    + File.separatorChar
+                    + UUID.nameUUIDFromBytes(nodeUrl.getBytes(TSFileConfig.STRING_CHARSET))));
+
+    client =
+        new IoTDBOpcUaClient(
+            nodeUrl,
+            policy,
+            provider,
+            parameters.getBooleanOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_HISTORIZING_KEY, SINK_OPC_UA_HISTORIZING_KEY),
+                CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE));
+    new ClientRunner(client, securityDir, password).run();
+  }
+
+  private SecurityPolicy getSecurityPolicy(final String securityPolicy) {
+    switch (securityPolicy.toUpperCase()) {
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_NONE_VALUE:
+        return SecurityPolicy.None;
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_128_RSA_15_VALUE:
+        return SecurityPolicy.Basic128Rsa15;
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_VALUE:
+        return SecurityPolicy.Basic256;
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_BASIC_256_SHA_256_VALUE:
+        return SecurityPolicy.Basic256Sha256;
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_AES128_SHA256_RSAOAEP_VALUE:
+        return SecurityPolicy.Aes128_Sha256_RsaOaep;
+      case CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE:
+        return SecurityPolicy.Aes256_Sha256_RsaPss;
+      default:
+        throw new PipeException(
+            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
+    }
+  }
+
+  private StatusCode getQuality(final String quality) {
+    switch (quality.toUpperCase()) {
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE:
+        return StatusCode.GOOD;
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE:
+        return StatusCode.BAD;
+      case CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE:
+        return StatusCode.UNCERTAIN;
+      default:
+        throw new PipeException("The default quality can only be 'GOOD', 'BAD' or 'UNCERTAIN'.");
     }
   }
 
@@ -268,7 +444,16 @@ public class OpcUaSink implements PipeConnector {
     transferByTablet(
         tabletInsertionEvent,
         LOGGER,
-        (tablet, isTableModel) -> nameSpace.transfer(tablet, isTableModel, this));
+        (tablet, isTableModel) -> {
+          if (Objects.nonNull(nameSpace)) {
+            nameSpace.transfer(tablet, isTableModel, this);
+          } else if (Objects.nonNull(client)) {
+            client.transfer(tablet, this);
+          } else {
+            throw new PipeException(
+                "No OPC client or server is specified when transferring tablet");
+          }
+        });
   }
 
   public static void transferByTablet(
@@ -336,6 +521,10 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
+    if (Objects.nonNull(client)) {
+      client.disconnect();
+    }
+
     if (serverKey == null) {
       return;
     }
@@ -355,5 +544,33 @@ public class OpcUaSink implements PipeConnector {
         }
       }
     }
+  }
+
+  /////////////////////////////// Getter ///////////////////////////////
+
+  public boolean isClientServerModel() {
+    return isClientServerModel;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public String getPlaceHolder4NullTag() {
+    return placeHolder4NullTag;
+  }
+
+  @Nullable
+  public String getValueName() {
+    return valueName;
+  }
+
+  @Nullable
+  public String getQualityName() {
+    return qualityName;
+  }
+
+  public StatusCode getDefaultQuality() {
+    return defaultQuality;
   }
 }

@@ -31,7 +31,7 @@ abstract class AbstractPipeSingleIT {
 
   @Before
   public void setUp() {
-    MultiEnvFactory.createEnv(2);
+    MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
     env.getConfig()
         .getCommonConfig()
