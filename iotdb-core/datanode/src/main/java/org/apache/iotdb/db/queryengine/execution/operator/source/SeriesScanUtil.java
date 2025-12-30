@@ -1067,7 +1067,7 @@ public class SeriesScanUtil implements Accountable {
             Math.max(currentReadStopTime, firstPageReader.getStatistics().getEndTime());
       } else {
         currentReadStopTime =
-            Math.min(currentReadStopTime, firstPageReader.getStatistics().getEndTime());
+            Math.min(currentReadStopTime, firstPageReader.getStatistics().getStartTime());
       }
     }
     for (IVersionPageReader unSeqPageReader : unSeqPageReaders) {
@@ -1077,7 +1077,7 @@ public class SeriesScanUtil implements Accountable {
               Math.max(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
         } else {
           currentReadStopTime =
-              Math.min(currentReadStopTime, unSeqPageReader.getStatistics().getEndTime());
+              Math.min(currentReadStopTime, unSeqPageReader.getStatistics().getStartTime());
         }
       } else {
         break;
