@@ -175,12 +175,9 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         break;
       }
 
-      // Create aligned timeSeries to avoid tsFile parsing
-      TestUtils.executeNonQueries(
+      TestUtils.executeNonQuery(
           env,
-          Arrays.asList(
-              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
-              "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)"),
+          "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)",
           null);
 
       long startTime = System.currentTimeMillis();
