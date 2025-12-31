@@ -48,6 +48,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.ConnectException;
@@ -63,8 +65,11 @@ import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBPipeOPCUAIT.class);
+
   @Test
   public void testOPCUAServerSink() throws Exception {
+    int tcpPort = -1;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
@@ -80,7 +85,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       DataValue value;
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
-        final int tcpPort = ports[0];
+        tcpPort = ports[0];
         final int httpsPort = ports[1];
         sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
@@ -102,6 +107,10 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           if (e.getCause() instanceof ConnectException) {
             continue;
           } else {
+            final String lockPath = EnvUtils.getLockFilePath(tcpPort);
+            if (!new File(lockPath).delete()) {
+              logger.error("Delete lock file {} failed", lockPath);
+            }
             throw e;
           }
         }
@@ -115,7 +124,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
-        final int tcpPort = ports[0];
+        tcpPort = ports[0];
         final int httpsPort = ports[1];
         sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
@@ -204,11 +213,12 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
               .getCode());
 
       // Banned none, only allows basic256sha256
+      final int finalTcpPort = tcpPort;
       Assert.assertThrows(
           PipeException.class,
           () ->
               getOpcUaClient(
-                  "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb",
+                  "opc.tcp://127.0.0.1:" + finalTcpPort + "/iotdb",
                   SecurityPolicy.None,
                   "root",
                   "root"));
@@ -223,6 +233,13 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         Assert.assertEquals(
             "org.apache.iotdb.jdbc.IoTDBSQLException: 1107: The existing server with tcp port 12686 and https port 8443's password **** conflicts to the new password ****, reject reusing.",
             e.getMessage());
+      }
+    } finally {
+      if (tcpPort >= 0) {
+        final String lockPath = EnvUtils.getLockFilePath(tcpPort);
+        if (!new File(lockPath).delete()) {
+          logger.error("Delete lock file {} failed", lockPath);
+        }
       }
     }
   }
