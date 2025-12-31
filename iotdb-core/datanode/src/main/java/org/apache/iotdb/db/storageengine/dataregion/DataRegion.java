@@ -3041,9 +3041,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     for (TsFileResource sealedTsFile : sealedTsFiles) {
-      if (canSkipDelete(sealedTsFile, deletion)) {
-        continue;
-      }
+      //      if (canSkipDelete(sealedTsFile, deletion)) {
+      //        continue;
+      //      }
 
       ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
 
@@ -3110,7 +3110,9 @@ public class DataRegion implements IDataRegionForQuery {
               break;
             }
           }
-          if (matchSize == devicesInFile.size()) {
+          if (matchSize == devicesInFile.size()
+              && !isDropMeasurementExist
+              && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)) {
             deletedByFiles.add(sealedTsFile);
           }
 
@@ -3136,9 +3138,7 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
-    if (!deletedByFiles.isEmpty()
-        && !isDropMeasurementExist
-        && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)) {
+    if (!deletedByFiles.isEmpty()) {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
         logger.debug(

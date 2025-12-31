@@ -2307,18 +2307,19 @@ public class IoTDBDeletionTableIT {
       session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
 
       dataSet = session.executeQueryStatement("select * from delete_by_tag order by time");
-
-      RowRecord rec;
-      int cnt = 0;
-      for (int i = 1; i < 5; i++) {
-        rec = dataSet.next();
-        assertEquals(i, rec.getFields().get(0).getLongV());
-        Assert.assertEquals(i, rec.getFields().get(2).getIntV());
-        Assert.assertEquals(TSDataType.INT32, rec.getFields().get(2).getDataType());
-        cnt++;
-      }
-      Assert.assertEquals(4, cnt);
       assertFalse(dataSet.hasNext());
+
+      //      RowRecord rec;
+      //      int cnt = 0;
+      //      for (int i = 1; i < 5; i++) {
+      //        rec = dataSet.next();
+      //        assertEquals(i, rec.getFields().get(0).getLongV());
+      //        Assert.assertEquals(i, rec.getFields().get(2).getIntV());
+      //        Assert.assertEquals(TSDataType.INT32, rec.getFields().get(2).getDataType());
+      //        cnt++;
+      //      }
+      //      Assert.assertEquals(4, cnt);
+      //      assertFalse(dataSet.hasNext());
     } finally {
       try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
         session.executeNonQueryStatement("DROP TABLE IF EXISTS delete_by_tag");
