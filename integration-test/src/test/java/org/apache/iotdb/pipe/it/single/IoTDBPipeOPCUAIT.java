@@ -170,7 +170,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       TestUtils.executeNonQueries(
           env,
           Arrays.asList(
-              "create aligned timeSeries root.db.opc(value int32, quality boolean, other int32)",
+              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
               "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)"),
           null);
 
