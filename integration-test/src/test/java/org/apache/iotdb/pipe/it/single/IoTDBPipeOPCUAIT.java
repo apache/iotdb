@@ -133,6 +133,14 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         break;
       }
 
+      // Create the region first to avoid tsFile parsing
+      TestUtils.executeNonQueries(
+          env,
+          Arrays.asList(
+              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
+              "insert into root.db.opc(time, value, quality, other) values (0, 0, true, 1)"),
+          null);
+
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
         tcpPort = ports[0];
@@ -241,7 +249,11 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       sinkAttributes.put("password", "conflict");
       try {
         TestUtils.executeNonQuery(
-            env, "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict')", null);
+            env,
+            String.format(
+                "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict@pswd', 'tcp.port'='%s', 'http.port'='%s')",
+                tcpPort, httpsPort),
+            null);
         Assert.fail();
       } catch (final Exception e) {
         Assert.assertEquals(
