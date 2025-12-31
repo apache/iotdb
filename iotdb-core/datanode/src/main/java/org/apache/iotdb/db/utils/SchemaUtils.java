@@ -312,7 +312,7 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
       if (timeseriesMetadata.getChunkMetadataList() != null) {
         timeseriesMetadata.setChunkMetadataList(
@@ -341,8 +341,8 @@ public class SchemaUtils {
       if ((timeseriesMetadata != null)
           && !SchemaUtils.isUsingSameColumn(
               timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-              .contains(targetDataTypeList.get(i))) {
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
         if (timeseriesMetadata.getChunkMetadataList() != null) {
@@ -368,7 +368,7 @@ public class SchemaUtils {
     }
 
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
       if (timeseriesMetadata.getChunkMetadataList() != null) {
         timeseriesMetadata.setChunkMetadataList(
@@ -390,7 +390,7 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       chunkMetadata.setModified(true);
     }
   }
@@ -406,8 +406,8 @@ public class SchemaUtils {
     for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
       if ((iChunkMetadata != null)
           && !SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
-          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-              .contains(targetDataTypeList.get(i))) {
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
       }
