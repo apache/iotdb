@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import java.util.stream.Stream;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -153,13 +154,21 @@ public class ReadPointCompactionPerformer
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
+      List<TsFileResource> allSourceFiles = Stream.concat(seqFiles.stream(), unseqFiles.stream())
+          .sorted(TsFileResource::compareFileName)
+          .collect(Collectors.toList());
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource = TsFileResource.getMaxTsFileSetEndVersionAndMinResource(
+          allSourceFiles);
+
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles,
               unseqFiles,
               deviceIterator.getReaderMap(),
-              deviceIterator.getDeprecatedTableSchemaMap());
-      compactionWriter.setSchemaForAllTargetFile(schemas);
+              deviceIterator.getDeprecatedTableSchemaMap(),
+              maxTsFileSetEndVersionAndMinResource);
+
+      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileSetEndVersionAndMinResource);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();

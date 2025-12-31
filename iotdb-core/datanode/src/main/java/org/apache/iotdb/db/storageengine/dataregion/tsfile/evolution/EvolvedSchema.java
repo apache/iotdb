@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.util.function.Function;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
@@ -42,6 +44,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.tsfile.write.schema.Schema;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
@@ -243,6 +246,27 @@ public class EvolvedSchema {
     return finalTableSchemas;
   }
 
+  private TableSchema rewriteToOriginal(TableSchema tableSchema) {
+    String originalTableName = getOriginalTableName(tableSchema.getTableName());
+
+    List<IMeasurementSchema> measurementSchemas =
+        new ArrayList<>(tableSchema.getColumnSchemas().size());
+    List<ColumnCategory> columnCategories = new ArrayList<>(tableSchema.getColumnTypes().size());
+    List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+    for (int i = 0, columnSchemasSize = columnSchemas.size(); i < columnSchemasSize; i++) {
+      IMeasurementSchema measurementSchema = columnSchemas.get(i);
+      measurementSchemas.add(
+          new MeasurementSchema(
+              getOriginalColumnName(
+                  tableSchema.getTableName(), measurementSchema.getMeasurementName()),
+              measurementSchema.getType(),
+              measurementSchema.getEncodingType(), measurementSchema.getCompressor()));
+      columnCategories.add(tableSchema.getColumnTypes().get(i));
+    }
+
+    return new TableSchema(originalTableName, measurementSchemas, columnCategories);
+  }
+
   public TableSchema rewriteToFinal(TableSchema tableSchema) {
     String finalTableName = getFinalTableName(tableSchema.getTableName());
 
@@ -328,4 +352,21 @@ public class EvolvedSchema {
     }
     return mergedSchema;
   }
+
+  public Schema rewriteToOriginal(Schema schema) {
+    return rewriteToOriginal(schema, null);
+  }
+  public Schema rewriteToOriginal(Schema schema, Function<TableSchema, TableSchema> tableSchemaTransformer) {
+    Schema copySchema = new Schema();
+    for (TableSchema tableSchema : schema.getTableSchemaMap().values()) {
+      TableSchema originalSchema = rewriteToOriginal(tableSchema);
+      if (tableSchemaTransformer != null) {
+        originalSchema = tableSchemaTransformer.apply(originalSchema);
+      }
+      copySchema.registerTableSchema(originalSchema);
+    }
+    return copySchema;
+  }
+
+
 }

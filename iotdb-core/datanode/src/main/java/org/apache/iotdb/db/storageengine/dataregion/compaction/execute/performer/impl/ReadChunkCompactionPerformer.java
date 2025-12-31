@@ -205,7 +205,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private void useNewWriter() throws IOException {
     currentWriter =
         new CompactionTsFileWriter(
-            targetResources.get(currentTargetFileIndex).getTsFile(),
+            targetResources.get(currentTargetFileIndex),
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter);

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
@@ -38,6 +39,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
@@ -338,5 +340,5 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  public abstract void setSchemaForAllTargetFile(List<Schema> schemas);
+  public abstract void setSchemaForAllTargetFile(List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndAssociatedResource);
 }

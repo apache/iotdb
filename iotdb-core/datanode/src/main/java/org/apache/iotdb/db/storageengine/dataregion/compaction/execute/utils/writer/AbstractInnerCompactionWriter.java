@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
@@ -33,6 +35,7 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
@@ -46,6 +49,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected long endedFileSize = 0;
   protected List<Schema> schemas;
   protected EncryptParameter encryptParameter;
+  protected Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
 
   protected final long memoryBudgetForFileWriter =
       (long)
@@ -115,13 +119,18 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   private void useNewWriter() throws IOException {
     fileWriter =
         new CompactionTsFileWriter(
-            targetResources.get(currentFileIndex).getTsFile(),
+            targetResources.get(currentFileIndex),
             memoryBudgetForFileWriter,
             targetResources.get(currentFileIndex).isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
             encryptParameter);
-    fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
+    Schema schema = CompactionTableSchemaCollector.copySchema(schemas.get(0));
+    long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
+    TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+    fileWriter.getTsFileResource().setTsFileManager(minVersionResource.getTsFileManager());
+    EvolvedSchema evolvedSchema = fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    fileWriter.setSchema(evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new));
   }
 
   @Override
@@ -174,8 +183,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+  public void setSchemaForAllTargetFile(List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.schemas = schemas;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @Override

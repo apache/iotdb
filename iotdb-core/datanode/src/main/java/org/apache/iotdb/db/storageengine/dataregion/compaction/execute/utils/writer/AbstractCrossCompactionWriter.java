@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
@@ -35,6 +40,7 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.Schema;
 
@@ -99,7 +105,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
           new CompactionTsFileWriter(
-              targetResources.get(i).getTsFile(),
+              targetResources.get(i),
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
               this.encryptParameter));
@@ -266,9 +272,22 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+  public void setSchemaForAllTargetFile(List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     for (int i = 0; i < targetFileWriters.size(); i++) {
-      targetFileWriters.get(i).setSchema(schemas.get(i));
+      CompactionTsFileWriter compactionTsFileWriter = targetFileWriters.get(i);
+      Schema schema = schemas.get(i);
+      TsFileResource targetResource = compactionTsFileWriter.getTsFileResource();
+      if (maxTsFileSetEndVersionAndMinResource.right != null) {
+        long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
+        TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+        targetResource.setTsFileManager(minVersionResource.getTsFileManager());
+        EvolvedSchema evolvedSchema = targetResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+
+        schema = evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new);
+        compactionTsFileWriter.setSchema(schema);
+      } else {
+        compactionTsFileWriter.setSchema(schema);
+      }
     }
   }
 

@@ -211,8 +211,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
-  // TsFileSets this TsFile belongs to
-  private final List<TsFileSet> tsFileSets = new ArrayList<>();
+  private TsFileManager tsFileManager = null;
 
   @TestOnly
   public TsFileResource() {
@@ -1632,17 +1631,25 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return (TsFileResource) clone();
   }
 
-  public void addFileSet(TsFileSet tsFileSet) {
-    tsFileSets.add(tsFileSet);
+  public List<TsFileSet> getTsFileSets() {
+    return tsFileManager.getTsFileSet(tsFileID.timePartitionId, tsFileID.fileVersion, Long.MAX_VALUE);
   }
 
-  public List<TsFileSet> getTsFileSets() {
-    return tsFileSets;
+  public List<TsFileSet> getTsFileSets(long maxEndVersionExcluded) {
+    return tsFileManager.getTsFileSet(tsFileID.timePartitionId, tsFileID.fileVersion, maxEndVersionExcluded);
   }
 
   public EvolvedSchema getMergedEvolvedSchema() {
+    return getMergedEvolvedSchema(Long.MAX_VALUE);
+  }
+
+  public EvolvedSchema getMergedEvolvedSchema(long excludedMaxFileVersion) {
     List<EvolvedSchema> list = new ArrayList<>();
     for (TsFileSet fileSet : getTsFileSets()) {
+      if (fileSet.getEndVersion() >= excludedMaxFileVersion) {
+        continue;
+      }
+
       try {
         EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
         list.add(readEvolvedSchema);
@@ -1652,5 +1659,35 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
 
     return EvolvedSchema.merge(list.toArray(new EvolvedSchema[0]));
+  }
+
+  public static Pair<Long, TsFileResource> getMaxTsFileSetEndVersionAndMinResource(List<TsFileResource> tsFileResources) {
+    long maxTsFileSetEndVersion = Long.MIN_VALUE;
+    long minResourceVersion = Long.MAX_VALUE;
+    TsFileResource minTsFileResource = null;
+    for (TsFileResource tsFileResource : tsFileResources) {
+      List<TsFileSet> tsFileSets = tsFileResource.getTsFileSets();
+      if (tsFileSets.isEmpty()) {
+        continue;
+      }
+      TsFileSet lastTsFileSet = tsFileSets.get(tsFileSets.size() - 1);
+      if (lastTsFileSet.getEndVersion() > maxTsFileSetEndVersion) {
+        maxTsFileSetEndVersion = lastTsFileSet.getEndVersion();
+      }
+      if (tsFileResource.getTsFileID().fileVersion < minResourceVersion) {
+        minTsFileResource = tsFileResource;
+        minResourceVersion = tsFileResource.getTsFileID().fileVersion;
+      }
+    }
+    return new Pair<>(maxTsFileSetEndVersion, minTsFileResource);
+  }
+
+  public void setTsFileManager(
+      TsFileManager tsFileManager) {
+    this.tsFileManager = tsFileManager;
+  }
+
+  public TsFileManager getTsFileManager() {
+    return tsFileManager;
   }
 }

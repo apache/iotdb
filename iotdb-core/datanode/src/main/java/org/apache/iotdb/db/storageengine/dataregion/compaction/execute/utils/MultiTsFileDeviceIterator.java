@@ -32,6 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -95,6 +97,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
+    long maxTsFileSetEndVersion = this.tsFileResourcesSortedByDesc.stream().mapToLong(
+        // max endVersion of all filesets of a TsFile
+        resource -> resource.getTsFileSets().stream().mapToLong(TsFileSet::getEndVersion).max()
+            .orElse(Long.MAX_VALUE))
+        // overall max endVersion
+        .max().orElse(Long.MAX_VALUE);
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         CompactionTsFileReader reader =
@@ -103,7 +111,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 CompactionType.INNER_SEQ_COMPACTION,
                 EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
         readerMap.put(tsFileResource, reader);
-        deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+        TsFileDeviceIterator tsFileDeviceIterator;
+        EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        if (evolvedSchema != null) {
+          tsFileDeviceIterator = new ReorderedTsFileDeviceIterator(reader,
+              evolvedSchema::rewriteToFinal);
+        } else {
+          tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+        }
+        deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
       }
     } catch (Exception e) {
       // if there is any exception occurs

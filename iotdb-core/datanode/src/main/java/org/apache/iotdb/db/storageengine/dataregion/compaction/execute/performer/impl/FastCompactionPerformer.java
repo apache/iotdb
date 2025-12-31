@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
@@ -162,10 +164,18 @@ public class FastCompactionPerformer
                 ? new FastCrossCompactionWriter(
                     targetFiles, seqFiles, readerCacheMap, encryptParameter)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
+
+      List<TsFileResource> allSourceFiles = Stream.concat(seqFiles.stream(), unseqFiles.stream())
+          .sorted(TsFileResource::compareFileName)
+          .collect(Collectors.toList());
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource = TsFileResource.getMaxTsFileSetEndVersionAndMinResource(
+          allSourceFiles);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
-              seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());
-      compactionWriter.setSchemaForAllTargetFile(schemas);
+              seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap(),
+              maxTsFileSetEndVersionAndMinResource);
+
+      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileSetEndVersionAndMinResource);
       readModification(seqFiles);
       readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {
