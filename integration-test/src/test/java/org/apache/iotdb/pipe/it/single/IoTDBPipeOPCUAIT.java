@@ -65,7 +65,6 @@ import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBPipeOPCUAIT.class);
 
   @Test
   public void testOPCUAServerSink() throws Exception {
@@ -107,10 +106,6 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           if (e.getCause() instanceof ConnectException) {
             continue;
           } else {
-            final String lockPath = EnvUtils.getLockFilePath(tcpPort);
-            if (!new File(lockPath).delete()) {
-              logger.error("Delete lock file {} failed", lockPath);
-            }
             throw e;
           }
         }
@@ -238,7 +233,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       if (tcpPort >= 0) {
         final String lockPath = EnvUtils.getLockFilePath(tcpPort);
         if (!new File(lockPath).delete()) {
-          logger.error("Delete lock file {} failed", lockPath);
+          System.out.printf("Delete lock file %s failed%n", lockPath);
         }
       }
     }
