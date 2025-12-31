@@ -53,6 +53,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.net.ConnectException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -165,9 +166,12 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         break;
       }
 
-      TestUtils.executeNonQuery(
+      // Create aligned timeSeries to avoid tsFile parsing
+      TestUtils.executeNonQueries(
           env,
-          "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)",
+          Arrays.asList(
+              "create aligned timeSeries root.db.opc(value int32, quality boolean, other int32)",
+              "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)"),
           null);
 
       long startTime = System.currentTimeMillis();
