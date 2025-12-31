@@ -37,6 +37,8 @@ abstract class AbstractPipeSingleIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setPipeMemoryManagementEnabled(false)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     env.initClusterEnvironment();
