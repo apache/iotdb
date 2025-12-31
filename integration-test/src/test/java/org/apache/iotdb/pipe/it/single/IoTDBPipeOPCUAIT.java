@@ -85,6 +85,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
   @Test
   public void testOPCUAServerSink() throws Exception {
     int tcpPort = -1;
+    int httpsPort = -1;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
