@@ -50,6 +50,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.net.ConnectException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,40 +76,75 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       sinkAttributes.put("opcua.model", "client-server");
       sinkAttributes.put("security-policy", "None");
 
-      final int[] ports = EnvUtils.searchAvailablePorts();
-      final int tcpPort = ports[0];
-      final int httpsPort = ports[1];
-      sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
-      sinkAttributes.put("https.port", Integer.toString(httpsPort));
+      OpcUaClient opcUaClient;
+      DataValue value;
+      while (true) {
+        final int[] ports = EnvUtils.searchAvailablePorts();
+        final int tcpPort = ports[0];
+        final int httpsPort = ports[1];
+        sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
+        sinkAttributes.put("https.port", Integer.toString(httpsPort));
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .createPipe(
-                  new TCreatePipeReq("testPipe", sinkAttributes)
-                      .setExtractorAttributes(Collections.singletonMap("user", "root"))
-                      .setProcessorAttributes(Collections.emptyMap()))
-              .getCode());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            client
+                .createPipe(
+                    new TCreatePipeReq("testPipe", sinkAttributes)
+                        .setExtractorAttributes(Collections.singletonMap("user", "root"))
+                        .setProcessorAttributes(Collections.emptyMap()))
+                .getCode());
 
-      final OpcUaClient opcUaClient =
-          getOpcUaClient(
-              "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb", SecurityPolicy.None, "root", "root");
-      DataValue value =
-          opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/s1")).get();
-      Assert.assertEquals(new Variant(1.0), value.getValue());
-      Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+        try {
+          opcUaClient =
+              getOpcUaClient(
+                  "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb", SecurityPolicy.None, "root", "root");
+        } catch (final PipeException e) {
+          if (e.getCause() instanceof ConnectException) {
+            continue;
+          } else {
+            throw e;
+          }
+        }
+        value =
+            opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/s1")).get();
+        Assert.assertEquals(new Variant(1.0), value.getValue());
+        Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+        opcUaClient.disconnect().get();
+        break;
+      }
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client
-              .alterPipe(
-                  new TAlterPipeReq()
-                      .setPipeName("testPipe")
-                      .setIsReplaceAllConnectorAttributes(false)
-                      .setConnectorAttributes(Collections.singletonMap("with-quality", "true"))
-                      .setProcessorAttributes(Collections.emptyMap())
-                      .setExtractorAttributes(Collections.emptyMap()))
-              .getCode());
+      while (true) {
+        final int[] ports = EnvUtils.searchAvailablePorts();
+        final int tcpPort = ports[0];
+        final int httpsPort = ports[1];
+        sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
+        sinkAttributes.put("https.port", Integer.toString(httpsPort));
+        sinkAttributes.put("with-quality", "true");
+
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            client
+                .alterPipe(
+                    new TAlterPipeReq()
+                        .setPipeName("testPipe")
+                        .setIsReplaceAllConnectorAttributes(true)
+                        .setConnectorAttributes(sinkAttributes)
+                        .setProcessorAttributes(Collections.emptyMap())
+                        .setExtractorAttributes(Collections.emptyMap()))
+                .getCode());
+        try {
+          opcUaClient =
+              getOpcUaClient(
+                  "opc.tcp://127.0.0.1:" + tcpPort + "/iotdb", SecurityPolicy.None, "root", "root");
+        } catch (final PipeException e) {
+          if (e.getCause() instanceof ConnectException) {
+            continue;
+          } else {
+            throw e;
+          }
+        }
+        break;
+      }
 
       TestUtils.executeNonQuery(
           env,

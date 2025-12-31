@@ -102,11 +102,11 @@ public class ClientRunner {
         configurableUaClient.run(client);
       } catch (final Exception e) {
         throw new PipeException(
-            "Error running opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            "Error running opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
       }
     } catch (final Exception e) {
       throw new PipeException(
-          "Error getting opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+          "Error getting opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
     }
   }
 }
