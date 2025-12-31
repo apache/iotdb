@@ -482,6 +482,11 @@ public class CompactionUtils {
 
   public static ArrayDeviceTimeIndex buildDeviceTimeIndex(TsFileResource resource)
       throws IOException {
+    return buildDeviceTimeIndex(resource, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
+  }
+
+  public static ArrayDeviceTimeIndex buildDeviceTimeIndex(
+      TsFileResource resource, IDeviceID.Deserializer deserializer) throws IOException {
     long resourceFileSize =
         new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);

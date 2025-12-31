@@ -62,15 +62,15 @@ public class IoTDBObjectQueryIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE t1(device_id STRING TAG, o1 OBJECT, b1 BLOB, s1 STRING)",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(1, 'd1', X'cafebabe01', to_object(true, 0, X'cafebabe01'), 'cafebabe01')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(2, 'd1', X'cafebabe0202', to_object(true, 0, X'cafebabe02'), 'cafebabe02')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(3, 'd1', X'cafebabe0303', to_object(true, 0, X'cafebabe03'), 'cafebabe03')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(4, 'd1', X'cafebabe04', to_object(true, 0, X'cafebabe04'), 'cafebabe04')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(1, 'd2', X'cafebade01', to_object(true, 0, X'cafebade01'), 'cafebade01')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(2, 'd2', X'cafebade0202', to_object(true, 0, X'cafebade02'), 'cafebade02')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(3, 'd2', X'cafebade0302', to_object(true, 0, X'cafebade03'), 'cafebade03')",
-        "INSERT INTO t1(time, device_id, b1, o1, s1) VALUES(4, 'd2', X'cafebade04', to_object(true, 0, X'cafebade04'), 'cafebade04')",
+        "CREATE TABLE t1(device_id STRING TAG, o1 OBJECT, b1 BLOB, s1 STRING, l1 INT64, l2 INT64)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd1', X'cafebabe01', to_object(true, 0, X'cafebabe01'), 'cafebabe01', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(2, 'd1', X'cafebabe0202', to_object(true, 0, X'cafebabe02'), 'cafebabe02', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(3, 'd1', X'cafebabe0303', to_object(true, 0, X'cafebabe03'), 'cafebabe03', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(4, 'd1', X'cafebabe04', to_object(true, 0, X'cafebabe04'), 'cafebabe04', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd2', X'cafebade01', to_object(true, 0, X'cafebade01'), 'cafebade01', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(2, 'd2', X'cafebade0202', to_object(true, 0, X'cafebade02'), 'cafebade02', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(3, 'd2', X'cafebade0302', to_object(true, 0, X'cafebade03'), 'cafebade03', 0, 100)",
+        "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(4, 'd2', X'cafebade04', to_object(true, 0, X'cafebade04'), 'cafebade04', 0, 100)",
         "FLUSH",
       };
 
@@ -133,6 +133,83 @@ public class IoTDBObjectQueryIT {
             cnt++;
           }
           assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, READ_OBJECT(o1, 0, -1), s1 FROM t1 WHERE device_id = 'd2' AND READ_OBJECT(o1)=b1 ORDER BY time")) {
+          int cnt = 0;
+          String[] ans = {"0xcafebade01", "0xcafebade04"};
+          while (resultSet.next()) {
+            String s = resultSet.getString(3);
+            assertEquals(ans[cnt], s);
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, READ_OBJECT(o1, l1), s1 FROM t1 WHERE device_id = 'd2' AND READ_OBJECT(o1)=b1 ORDER BY time")) {
+          int cnt = 0;
+          String[] ans = {"0xcafebade01", "0xcafebade04"};
+          while (resultSet.next()) {
+            String s = resultSet.getString(3);
+            assertEquals(ans[cnt], s);
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, READ_OBJECT(o1, l1, l2), s1 FROM t1 WHERE device_id = 'd2' AND READ_OBJECT(o1)=b1 ORDER BY time")) {
+          int cnt = 0;
+          String[] ans = {"0xcafebade01", "0xcafebade04"};
+          while (resultSet.next()) {
+            String s = resultSet.getString(3);
+            assertEquals(ans[cnt], s);
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, READ_OBJECT(o1, l1, -1), s1 FROM t1 WHERE device_id = 'd2' AND READ_OBJECT(o1)=b1 ORDER BY time")) {
+          int cnt = 0;
+          String[] ans = {"0xcafebade01", "0xcafebade04"};
+          while (resultSet.next()) {
+            String s = resultSet.getString(3);
+            assertEquals(ans[cnt], s);
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, READ_OBJECT(o1, 0, l2), s1 FROM t1 WHERE device_id = 'd2' AND READ_OBJECT(o1)=b1 ORDER BY time")) {
+          int cnt = 0;
+          String[] ans = {"0xcafebade01", "0xcafebade04"};
+          while (resultSet.next()) {
+            String s = resultSet.getString(3);
+            assertEquals(ans[cnt], s);
+            cnt++;
+          }
+          assertEquals(2, cnt);
+        }
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "SELECT time, b1, o1, s1 FROM t1 WHERE device_id = 'd1' FILL METHOD LINEAR")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            cnt++;
+            String s = resultSet.getString(3);
+            assertEquals("(Object) 5 B", s);
+          }
+          assertEquals(4, cnt);
         }
       }
     } catch (SQLException e) {

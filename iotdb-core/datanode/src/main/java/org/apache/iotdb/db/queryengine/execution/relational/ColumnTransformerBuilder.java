@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.HmacColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.Like2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ReadObject2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
@@ -105,6 +106,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Like3ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.LpadColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.ReadObject3ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.RpadColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.udf.UserDefineScalarFunctionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
@@ -1467,21 +1469,31 @@ public class ColumnTransformerBuilder
       if (children.size() == 1) {
         return new ReadObjectColumnTransformer(BLOB, first, context.fragmentInstanceContext);
       } else if (children.size() == 2) {
-        return new ReadObjectColumnTransformer(
-            BLOB,
-            ((LongLiteral) children.get(1)).getParsedValue(),
-            first,
-            context.fragmentInstanceContext);
+        Expression offset = children.get(1);
+        if (isLongLiteral(offset)) {
+          return new ReadObjectColumnTransformer(
+              BLOB,
+              ((LongLiteral) children.get(1)).getParsedValue(),
+              first,
+              context.fragmentInstanceContext);
+        } else {
+          return new ReadObject2ColumnTransformer(
+              BLOB, first, this.process(offset, context), context.fragmentInstanceContext);
+        }
       } else {
-        long offset = ((LongLiteral) children.get(1)).getParsedValue();
-        long length = ((LongLiteral) children.get(2)).getParsedValue();
-        checkArgument(offset >= 0 && length >= 0);
-        return new ReadObjectColumnTransformer(
-            BLOB,
-            ((LongLiteral) children.get(1)).getParsedValue(),
-            ((LongLiteral) children.get(2)).getParsedValue(),
-            first,
-            context.fragmentInstanceContext);
+        if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
+          long offset = ((LongLiteral) children.get(1)).getParsedValue();
+          long length = ((LongLiteral) children.get(2)).getParsedValue();
+          return new ReadObjectColumnTransformer(
+              BLOB, offset, length, first, context.fragmentInstanceContext);
+        } else {
+          return new ReadObject3ColumnTransformer(
+              BLOB,
+              first,
+              this.process(children.get(1), context),
+              this.process(children.get(2), context),
+              context.fragmentInstanceContext);
+        }
       }
     } else {
       // user defined function
