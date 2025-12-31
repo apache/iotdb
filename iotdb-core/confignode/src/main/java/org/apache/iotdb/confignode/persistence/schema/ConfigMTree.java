@@ -1109,15 +1109,13 @@ public class ConfigMTree {
       name = tableNode.getName();
       stack.push(new Pair<>(tableNode, false));
     } else {
-      // Currently internal mNode will not be the leaf node and thus will not be deserialized here
-      // This is just in case
       internalMNode = deserializeInternalMNode(inputStream);
       ReadWriteIOUtils.readInt(inputStream);
       name = internalMNode.getName();
       stack.push(new Pair<>(internalMNode, false));
     }
 
-    while (!PATH_ROOT.equals(name)) {
+    while (!PATH_ROOT.equals(name) || type != INTERNAL_MNODE_TYPE) {
       type = ReadWriteIOUtils.readByte(inputStream);
       switch (type) {
         case INTERNAL_MNODE_TYPE:

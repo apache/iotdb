@@ -200,19 +200,21 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.executeNonQuery(senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -238,19 +240,21 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.executeNonQuery(
           receiverEnv, "insert into root.db.d1(time, s1) values (2, 2)", null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", senderIp);
-      connectorAttributes.put("connector.port", Integer.toString(senderPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", senderIp);
+      sinkAttributes.put("sink.port", Integer.toString(senderPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -276,19 +280,21 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.executeNonQuery(senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -344,7 +350,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
   }
 
-  private void doTestUseNodeUrls(String connectorName) throws Exception {
+  private void doTestUseNodeUrls(String sinkName) throws Exception {
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -378,7 +384,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
+      if (sinkName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
         // Use default port for convenience
         nodeUrlsBuilder
             .append(wrapper.getIp())
@@ -403,24 +409,25 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
               "delete from root.db.d1.s1 where time > 2"),
           null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", connectorName);
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
+      sinkAttributes.put("sink", sinkName);
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.node-urls", nodeUrlsBuilder.toString());
 
-      extractorAttributes.put("source.inclusion", "all");
-      extractorAttributes.put("source.mods.enable", "true");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.mods.enable", "true");
+      sourceAttributes.put("user", "root");
 
       // Test forced-log mode, in open releases this might be "file"
-      extractorAttributes.put("source.realtime.mode", "forced-log");
+      sourceAttributes.put("source.realtime.mode", "forced-log");
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -459,13 +466,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv, "count databases", "count,", Collections.singleton("3,"));
 
       // Test file mode
-      extractorAttributes.put("source.inclusion", "data");
-      extractorAttributes.replace("source.realtime.mode", "file");
+      sourceAttributes.put("source.inclusion", "data");
+      sourceAttributes.replace("source.realtime.mode", "file");
 
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

@@ -219,7 +219,6 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
       }
-      CompactionUtils.removeDeletedObjectFiles(resource);
 
       boolean res = deleteTsFileOnDisk(resource);
       if (res) {

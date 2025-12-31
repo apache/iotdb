@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.protocol.opcua;
+package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -49,12 +50,15 @@ import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.sdk.server.util.SubscriptionModel;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 import java.sql.Date;
@@ -65,28 +69,19 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
-  private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
-  private final String databaseName;
-  private final String placeHolder;
 
-  OpcUaNameSpace(
-      final OpcUaServer server,
-      final boolean isClientServerModel,
-      final OpcUaServerBuilder builder,
-      final String qualifiedDatabaseName,
-      final String placeHolder) {
+  public OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
-    this.isClientServerModel = isClientServerModel;
     this.builder = builder;
-    this.databaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
-    this.placeHolder = placeHolder;
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -106,15 +101,22 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             });
   }
 
-  void transfer(final Tablet tablet, final boolean isTableModel) throws UaException {
-    if (isClientServerModel) {
-      transferTabletForClientServerModel(tablet, isTableModel);
+  public void transfer(final Tablet tablet, final boolean isTableModel, final OpcUaSink sink)
+      throws Exception {
+    if (sink.isClientServerModel()) {
+      transferTabletForClientServerModel(
+          tablet, isTableModel, sink, this::transferTabletRowForClientServerModel);
     } else {
-      transferTabletForPubSubModel(tablet, isTableModel);
+      transferTabletForPubSubModel(tablet, isTableModel, sink);
     }
   }
 
-  private void transferTabletForClientServerModel(final Tablet tablet, final boolean isTableModel) {
+  public static void transferTabletForClientServerModel(
+      final Tablet tablet,
+      final boolean isTableModel,
+      final OpcUaSink sink,
+      final TabletRowConsumer consumer)
+      throws Exception {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
@@ -135,8 +137,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
       }
 
-      transferTabletRowForClientServerModel(
-          tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
+      consumer.accept(tablet.getDeviceId().split("\\."), newSchemas, timestamps, values, sink);
     } else {
       new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
 
@@ -151,14 +152,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 1];
-        folderSegments[0] = databaseName;
+        folderSegments[0] = sink.getDatabaseName();
 
         for (int j = 0; j < segments.length; ++j) {
-          folderSegments[j + 1] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
+          folderSegments[j + 1] =
+              Objects.isNull(segments[j]) ? sink.getPlaceHolder4NullTag() : (String) segments[j];
         }
 
         final int finalI = i;
-        transferTabletRowForClientServerModel(
+        consumer.accept(
             folderSegments,
             newSchemas,
             Collections.singletonList(tablet.getTimestamp(i)),
@@ -169,23 +171,39 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                             ? null
                             : getTabletObjectValue4Opc(
                                 tablet.getValues()[index], finalI, schemas.get(index).getType()))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList()),
+            sink);
       }
     }
+  }
+
+  @FunctionalInterface
+  public interface TabletRowConsumer {
+    void accept(
+        final String[] segments,
+        final List<IMeasurementSchema> measurementSchemas,
+        final List<Long> timestamps,
+        final List<Object> values,
+        final OpcUaSink sink)
+        throws Exception;
   }
 
   private void transferTabletRowForClientServerModel(
       final String[] segments,
       final List<IMeasurementSchema> measurementSchemas,
       final List<Long> timestamps,
-      final List<Object> values) {
+      final List<Object> values,
+      final OpcUaSink sink) {
     if (segments.length == 0) {
       throw new PipeRuntimeCriticalException("The segments of tablets must exist");
     }
     final StringBuilder currentStr = new StringBuilder();
     UaNode folderNode = null;
     NodeId folderNodeId;
-    for (final String segment : segments) {
+    for (int i = 0;
+        i < (Objects.isNull(sink.getValueName()) ? segments.length : segments.length - 1);
+        ++i) {
+      final String segment = segments[i];
       final UaNode nextFolderNode;
 
       currentStr.append(segment);
@@ -230,32 +248,57 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
 
     final String currentFolder = currentStr.toString();
+
+    StatusCode currentQuality = sink.getDefaultQuality();
+    UaVariableNode valueNode = null;
+    Object value = null;
+    long timestamp = 0;
+
     for (int i = 0; i < measurementSchemas.size(); ++i) {
       if (Objects.isNull(values.get(i))) {
         continue;
       }
       final String name = measurementSchemas.get(i).getMeasurementName();
       final TSDataType type = measurementSchemas.get(i).getType();
-      final NodeId nodeId = newNodeId(currentFolder + name);
+      if (Objects.nonNull(sink.getQualityName()) && sink.getQualityName().equals(name)) {
+        if (!type.equals(TSDataType.BOOLEAN)) {
+          throw new UnsupportedOperationException(
+              "The quality value only supports boolean type, while true == GOOD and false == BAD.");
+        }
+        currentQuality = values.get(i) == Boolean.TRUE ? StatusCode.GOOD : StatusCode.BAD;
+        continue;
+      }
+      if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
+        PipeLogger.log(
+            LOGGER::warn,
+            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+        continue;
+      }
+      final String nodeName =
+          Objects.isNull(sink.getValueName()) ? name : segments[segments.length - 1];
+      final NodeId nodeId = newNodeId(currentFolder + nodeName);
       final UaVariableNode measurementNode;
       if (!getNodeManager().containsNode(nodeId)) {
         measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                .setNodeId(newNodeId(currentFolder + name))
+                .setNodeId(nodeId)
                 .setAccessLevel(AccessLevel.READ_WRITE)
                 .setUserAccessLevel(AccessLevel.READ_ONLY)
-                .setBrowseName(newQualifiedName(name))
-                .setDisplayName(LocalizedText.english(name))
+                .setBrowseName(newQualifiedName(nodeName))
+                .setDisplayName(LocalizedText.english(nodeName))
                 .setDataType(convertToOpcDataType(type))
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
         getNodeManager().addNode(measurementNode);
-        folderNode.addReference(
-            new Reference(
-                folderNode.getNodeId(),
-                Identifiers.Organizes,
-                measurementNode.getNodeId().expanded(),
-                true));
+        if (Objects.nonNull(folderNode)) {
+          folderNode.addReference(
+              new Reference(
+                  folderNode.getNodeId(), Identifiers.Organizes, nodeId.expanded(), true));
+        } else {
+          measurementNode.addReference(
+              new Reference(
+                  nodeId, Identifiers.Organizes, Identifiers.ObjectsFolder.expanded(), false));
+        }
       } else {
         // This must exist
         measurementNode =
@@ -269,15 +312,30 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
 
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
-      if (Objects.isNull(measurementNode.getValue())
-          || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-              < utcTimestamp) {
-        measurementNode.setValue(
+      if (Objects.isNull(sink.getValueName())) {
+        if (Objects.isNull(measurementNode.getValue())
+            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
+                < utcTimestamp) {
+          measurementNode.setValue(
+              new DataValue(
+                  new Variant(values.get(i)),
+                  currentQuality,
+                  new DateTime(utcTimestamp),
+                  new DateTime()));
+        }
+      } else {
+        valueNode = measurementNode;
+        value = values.get(i);
+        timestamp = utcTimestamp;
+      }
+    }
+    if (Objects.nonNull(valueNode)) {
+      if (Objects.isNull(valueNode.getValue())
+          || Objects.requireNonNull(valueNode.getValue().getSourceTime()).getUtcTime()
+              < timestamp) {
+        valueNode.setValue(
             new DataValue(
-                new Variant(values.get(i)),
-                StatusCode.GOOD,
-                new DateTime(utcTimestamp),
-                new DateTime()));
+                new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()));
       }
     }
   }
@@ -308,7 +366,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
   }
 
-  private static long timestampToUtc(final long timeStamp) {
+  public static long timestampToUtc(final long timeStamp) {
     return TimestampPrecisionUtils.currPrecision.toNanos(timeStamp) / 100L + 116444736000000000L;
   }
 
@@ -319,8 +377,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
    * @param tablet the tablet to send
    * @throws UaException if failed to create {@link Event}
    */
-  private void transferTabletForPubSubModel(final Tablet tablet, final boolean isTableModel)
-      throws UaException {
+  private void transferTabletForPubSubModel(
+      final Tablet tablet, final boolean isTableModel, final OpcUaSink sink) throws UaException {
     final BaseEventTypeNode eventNode =
         getServer()
             .getEventFactory()
@@ -331,11 +389,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(databaseName);
+        final StringBuilder idBuilder = new StringBuilder(sink.getDatabaseName());
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
-              .append(Objects.isNull(segment) ? placeHolder : segment);
+              .append(Objects.isNull(segment) ? sink.getPlaceHolder4NullTag() : segment);
         }
         sourceNameList.add(idBuilder.toString());
       }
@@ -439,7 +497,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     eventNode.delete();
   }
 
-  private NodeId convertToOpcDataType(final TSDataType type) {
+  public static NodeId convertToOpcDataType(final TSDataType type) {
     switch (type) {
       case BOOLEAN:
         return Identifiers.Boolean;
@@ -459,6 +517,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       case STRING:
         return Identifiers.String;
       case VECTOR:
+      case OBJECT:
       case UNKNOWN:
       default:
         throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
@@ -487,11 +546,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
   /////////////////////////////// Conflict detection ///////////////////////////////
 
-  void checkEquals(
+  public void checkEquals(
       final String user,
       final String password,
       final String securityDir,
-      final boolean enableAnonymousAccess) {
-    builder.checkEquals(user, password, Paths.get(securityDir), enableAnonymousAccess);
+      final boolean enableAnonymousAccess,
+      final Set<SecurityPolicy> securityPolicies) {
+    builder.checkEquals(
+        user, password, Paths.get(securityDir), enableAnonymousAccess, securityPolicies);
   }
 }

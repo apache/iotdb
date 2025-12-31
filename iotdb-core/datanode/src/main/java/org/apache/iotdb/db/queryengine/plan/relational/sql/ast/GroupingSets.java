@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,6 +32,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class GroupingSets extends GroupingElement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(GroupingSets.class);
 
   public enum Type {
     EXPLICIT,
@@ -110,5 +113,16 @@ public class GroupingSets extends GroupingElement {
 
     GroupingSets that = (GroupingSets) other;
     return Objects.equals(sets, that.sets) && Objects.equals(type, that.type);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.shallowSizeOf(sets);
+    for (List<Expression> set : sets) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(set);
+    }
+    return size;
   }
 }

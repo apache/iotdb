@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -251,6 +252,9 @@ public class TableDeviceSchemaValidator {
   }
 
   public static void checkObject4DeviceId(final Object[] deviceId) {
+    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
+      return;
+    }
     for (final Object part : deviceId) {
       final String value = (String) part;
       if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {

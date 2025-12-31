@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -50,7 +50,7 @@ import java.util.Optional;
 
 public class ObjectTypeFunctionTest {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private File objectDir;
 

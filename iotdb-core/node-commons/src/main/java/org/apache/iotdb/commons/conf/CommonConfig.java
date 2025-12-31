@@ -282,6 +282,7 @@ public class CommonConfig {
       Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
   private int pipeAsyncConnectorMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
+  private boolean printLogWhenEncounterException = false;
 
   private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
@@ -473,6 +474,7 @@ public class CommonConfig {
 
   private String auditableOperationResult = "SUCCESS, FAIL";
   private int pathLogMaxSize = 100;
+  private boolean restrictObjectLimit = false;
 
   CommonConfig() {
     // Empty constructor
@@ -1253,6 +1255,18 @@ public class CommonConfig {
     this.pipeAsyncConnectorMaxTsFileClientNumber = pipeAsyncConnectorMaxTsFileClientNumber;
     logger.info(
         "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
+  }
+
+  public boolean isPrintLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  public void setPrintLogWhenEncounterException(boolean printLogWhenEncounterException) {
+    if (this.printLogWhenEncounterException == printLogWhenEncounterException) {
+      return;
+    }
+    this.printLogWhenEncounterException = printLogWhenEncounterException;
+    logger.info("printLogWhenEncounterException is set to {}.", printLogWhenEncounterException);
   }
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -2727,5 +2741,13 @@ public class CommonConfig {
 
   public void setAuditableOperationResult(String auditableOperationResult) {
     this.auditableOperationResult = auditableOperationResult;
+  }
+
+  public boolean isRestrictObjectLimit() {
+    return restrictObjectLimit;
+  }
+
+  public void setRestrictObjectLimit(boolean restrictObjectLimit) {
+    this.restrictObjectLimit = restrictObjectLimit;
   }
 }

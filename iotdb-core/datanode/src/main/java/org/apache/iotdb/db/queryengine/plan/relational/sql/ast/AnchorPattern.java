@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +33,9 @@ public class AnchorPattern extends RowPattern {
     PARTITION_START,
     PARTITION_END
   }
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AnchorPattern.class);
 
   private final Type type;
 
@@ -79,5 +83,12 @@ public class AnchorPattern extends RowPattern {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

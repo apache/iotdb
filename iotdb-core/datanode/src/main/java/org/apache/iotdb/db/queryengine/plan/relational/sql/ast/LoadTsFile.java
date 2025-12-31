@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -36,6 +38,12 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class LoadTsFile extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
+
+  private static final long FILE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(File.class);
 
   private String filePath;
 
@@ -323,5 +331,33 @@ public class LoadTsFile extends Statement {
         .add("filePath", filePath)
         .add("loadAttributes", loadAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(filePath);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOfMap(loadAttributes);
+    if (tsFiles != null) {
+      size += RamUsageEstimator.shallowSizeOf(tsFiles);
+      for (File file : tsFiles) {
+        if (file != null) {
+          size += FILE_INSTANCE_SIZE;
+        }
+      }
+    }
+    if (resources != null) {
+      size += RamUsageEstimator.shallowSizeOf(resources);
+      for (TsFileResource resource : resources) {
+        if (resource != null) {
+          size += resource.calculateRamSize();
+        }
+      }
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
+    size += RamUsageEstimator.shallowSizeOf(isTableModel);
+    return size;
   }
 }
