@@ -102,7 +102,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
         tcpPort = ports[0];
-        final int httpsPort = ports[1];
+        httpsPort = ports[1];
         sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
 
