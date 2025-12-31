@@ -452,6 +452,7 @@ public abstract class AlignedTVList extends TVList {
       case STRING:
       case BLOB:
       case TEXT:
+      case OBJECT:
         return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
       default:
         throw new IllegalArgumentException(dataTypes.get(columnIndex) + " is not supported");

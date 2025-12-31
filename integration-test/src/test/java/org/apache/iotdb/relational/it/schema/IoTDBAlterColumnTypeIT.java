@@ -127,12 +127,6 @@ public class IoTDBAlterColumnTypeIT {
 
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
-        if (from == TSDataType.TEXT && to == TSDataType.STRING) {
-          //          continue;
-        } else {
-          continue;
-        }
-
         if (from != to && to.isCompatible(from)) {
           System.out.printf("testing %s to %s%n", from, to);
           doWriteAndAlter(from, to);
