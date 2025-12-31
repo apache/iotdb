@@ -249,7 +249,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         TestUtils.executeNonQuery(
             env,
             String.format(
-                "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict@pswd', 'tcp.port'='%s', 'http.port'='%s')",
+                "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict@pswd', 'tcp.port'='%s', 'https.port'='%s')",
                 tcpPort, httpsPort),
             null);
         Assert.fail();
