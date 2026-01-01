@@ -133,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -776,6 +777,16 @@ public abstract class PlanVisitor<R, C> {
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
     return visitMultiChildProcess(node, context);
+  }
+
+  public R visitTopKRanking(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode node,
+      C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitRowNumber(RowNumberNode node, C context) {
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitJoin(
