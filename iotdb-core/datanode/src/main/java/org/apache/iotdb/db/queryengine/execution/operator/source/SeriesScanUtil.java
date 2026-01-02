@@ -84,7 +84,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -331,7 +330,6 @@ public class SeriesScanUtil implements Accountable {
     checkState(firstTimeSeriesMetadata != null, "no first file");
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
-      //        || !firstTimeSeriesMetadata.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstTimeSeriesMetadata)
@@ -415,7 +413,6 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
-      //        || !firstChunkMetadata.isModified()) {
       return;
     }
 
@@ -547,7 +544,6 @@ public class SeriesScanUtil implements Accountable {
     checkState(firstChunkMetadata != null, "no first chunk");
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
-      //        || !firstChunkMetadata.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstChunkMetadata)
@@ -833,8 +829,6 @@ public class SeriesScanUtil implements Accountable {
       return false;
     }
     if (currentPageOverlapped() || firstPageReader.isModified()) {
-      //    if (currentPageOverlapped() || firstPageReader.isModified() ||
-      // !firstPageReader.isModified()) {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstPageReader.getPageReader())
@@ -923,10 +917,9 @@ public class SeriesScanUtil implements Accountable {
       for (int i = 0; i < length; i++) {
         TSDataType finalDataType = getTsDataTypeList().get(i);
         if ((valueColumns[i].getDataType() != finalDataType)
-            && (SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
+            && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
                 || (valueColumns[i].getDataType().equals(TSDataType.DATE)
-                    && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-                        .contains(finalDataType)))) {
+                    && (finalDataType == TSDataType.STRING || finalDataType == TSDataType.TEXT)))) {
           isTypeInconsistent = true;
           break;
         }
@@ -982,7 +975,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new long[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getLongs()[j] =
@@ -1012,7 +1005,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new float[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getFloats()[j] =
@@ -1040,7 +1033,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new double[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getDoubles()[j] =
@@ -1054,7 +1047,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new double[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getDoubles()[j] =
@@ -1068,7 +1061,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new double[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getFloats().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getDoubles()[j] =
@@ -1082,7 +1075,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new double[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getLongs().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getDoubles()[j] =
@@ -1110,7 +1103,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1125,7 +1118,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1141,7 +1134,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1156,7 +1149,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1171,7 +1164,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1186,7 +1179,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1215,7 +1208,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new long[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getLongs()[j] =
@@ -1274,7 +1267,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1289,7 +1282,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1305,7 +1298,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1320,7 +1313,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1335,7 +1328,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1350,7 +1343,7 @@ public class SeriesScanUtil implements Accountable {
                     Optional.of(new boolean[positionCount]),
                     new Binary[positionCount]);
 
-            for (int j = 0; j < valueColumns[i].getInts().length; j++) {
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
               if (!valueColumns[i].isNull()[j]) {
                 newValueColumns[i].getBinaries()[j] =
@@ -1369,6 +1362,8 @@ public class SeriesScanUtil implements Accountable {
             }
           }
           break;
+        case OBJECT:
+          newValueColumns[i] = valueColumns[i];
         case VECTOR:
         case UNKNOWN:
         default:
@@ -1698,11 +1693,6 @@ public class SeriesScanUtil implements Accountable {
         // this page after unpacking must be the first page
         if (firstPageReader.equals(getFirstPageReaderFromCachedReaders())) {
           this.firstPageReader = firstPageReader;
-          if (isAligned) {
-
-          } else {
-
-          }
           if (!seqPageReaders.isEmpty() && firstPageReader.equals(seqPageReaders.get(0))) {
             seqPageReaders.remove(0);
             break;

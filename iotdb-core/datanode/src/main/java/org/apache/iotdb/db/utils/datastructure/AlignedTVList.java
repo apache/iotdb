@@ -554,7 +554,8 @@ public abstract class AlignedTVList extends TVList {
     List<Object> columnValues = values.get(columnIndex);
     if (dataTypes.get(columnIndex) == TSDataType.TEXT
         || dataTypes.get(columnIndex) == TSDataType.BLOB
-        || dataTypes.get(columnIndex) == TSDataType.STRING) {
+        || dataTypes.get(columnIndex) == TSDataType.STRING
+        || dataTypes.get(columnIndex) == TSDataType.OBJECT) {
       return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
     } else {
       return (Binary)

@@ -224,7 +224,9 @@ public class MinAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        if (!(statistics[0] instanceof BinaryStatistics)) {
+        if (statistics[0] instanceof BinaryStatistics) {
+          updateBinaryMinValue((Binary) statistics[0].getMinValue());
+        } else {
           if (statistics[0].getMinValue() instanceof Binary) {
             updateBinaryMinValue((Binary) statistics[0].getMinValue());
           } else {

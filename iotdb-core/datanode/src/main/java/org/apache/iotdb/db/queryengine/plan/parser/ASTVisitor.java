@@ -675,19 +675,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeValueContext ctx) {
-    TSDataType dataType = null;
-    if (ctx != null) {
-      String dataTypeString = parseAttributeValue(ctx);
-      try {
-        dataType = TSDataType.valueOf(dataTypeString);
-        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
-          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
-        }
-      } catch (Exception e) {
+    if (ctx == null) {
+      throw new SemanticException("Incorrect Data type");
+    }
+
+    String dataTypeString = parseAttributeValue(ctx);
+    try {
+      TSDataType dataType = TSDataType.valueOf(dataTypeString);
+      if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }
+      return dataType;
+    } catch (Exception e) {
+      throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
     }
-    return dataType;
   }
 
   @Override

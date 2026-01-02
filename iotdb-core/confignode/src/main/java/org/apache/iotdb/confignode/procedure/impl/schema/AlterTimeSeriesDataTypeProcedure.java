@@ -159,7 +159,7 @@ public class AlterTimeSeriesDataTypeProcedure
       return false;
     }
 
-    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
     try {
       ReadWriteIOUtils.write(dataType, stream);
     } catch (final IOException ignored) {

@@ -3198,7 +3198,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // ByteArrayOutputStream won't throw IOException
     }
 
-    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
     try {
       ReadWriteIOUtils.write(alterTimeSeriesStatement.getDataType(), stream);
     } catch (final IOException ignored) {

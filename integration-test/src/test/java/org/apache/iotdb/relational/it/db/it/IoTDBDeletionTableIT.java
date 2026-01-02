@@ -1854,8 +1854,7 @@ public class IoTDBDeletionTableIT {
   @Test
   public void testConcurrentFlushAndRandomDeviceDeletion()
       throws InterruptedException, ExecutionException, SQLException {
-    int testNum = 1;
-    //    int testNum = 25;
+    int testNum = 25;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
@@ -1867,12 +1866,9 @@ public class IoTDBDeletionTableIT {
     }
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
-    //    int fileNumMax = 100;
-    //    int pointPerFile = 100;
-    //    int deviceNum = 4;
     int fileNumMax = 100;
     int pointPerFile = 100;
-    int deviceNum = 2;
+    int deviceNum = 4;
     List<AtomicLong> deviceDeletedPointCounters = new ArrayList<>(deviceNum);
     for (int i = 0; i < deviceNum; i++) {
       deviceDeletedPointCounters.add(new AtomicLong(0));

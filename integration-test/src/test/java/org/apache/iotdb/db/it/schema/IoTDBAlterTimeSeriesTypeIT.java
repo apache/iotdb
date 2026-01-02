@@ -183,8 +183,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
           Object v = rec1.getFields().get(0).getObjectValue(from);
           assertEquals(time, i);
           assertEquals(v, genValue(from, i));
-          //          System.out.println(
-          //              "from is " + from + ", time is " + time + ", value is " + v);
         }
       }
 
@@ -228,7 +226,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
             Binary v = rec.getFields().get(0).getBinaryV();
             assertEquals(new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8), v);
           } else {
-            //            Object v = rec.getFields().get(0).getObjectValue(from);
             log.info("from is {}", from);
             assertEquals(
                 newType.castFromSingleValue(from, genValue(from, i)),
@@ -345,9 +342,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
         assertEquals(10.0, rec.getFields().get(1).getDoubleV(), 0.001);
         assertFalse(dataSet.hasNext());
       }
-
-      //      session.executeNonQueryStatement(
-      //          "DROP TIMESERIES " + database + ".write_and_alter_column_type.s1");
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
@@ -362,9 +356,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
-    //    typesToTest.remove(TSDataType.STRING);
-    //    typesToTest.remove(TSDataType.TEXT);
-    //    typesToTest.remove(TSDataType.DATE);
 
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
