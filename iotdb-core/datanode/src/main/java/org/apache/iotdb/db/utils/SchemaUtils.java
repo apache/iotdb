@@ -47,7 +47,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
@@ -310,16 +309,13 @@ public class SchemaUtils {
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
         && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
-      if (timeseriesMetadata.getChunkMetadataList() != null) {
-        timeseriesMetadata.setChunkMetadataList(
-            timeseriesMetadata.getChunkMetadataList().stream()
-                .map(
-                    iChunkMetadata -> {
-                      if (iChunkMetadata == null) return null;
-                      iChunkMetadata.setModified(true);
-                      return (ChunkMetadata) iChunkMetadata;
-                    })
-                .collect(Collectors.toList()));
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
       }
     }
   }
@@ -341,8 +337,7 @@ public class SchemaUtils {
               || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
-        List<? extends IChunkMetadata> chunkMetadataList =
-            timeseriesMetadata.getChunkMetadataList();
+        List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
         if (chunkMetadataList != null) {
           for (IChunkMetadata chunkMetadata : chunkMetadataList) {
             if (chunkMetadata != null) {
@@ -364,16 +359,13 @@ public class SchemaUtils {
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
         && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
-      if (timeseriesMetadata.getChunkMetadataList() != null) {
-        timeseriesMetadata.setChunkMetadataList(
-            timeseriesMetadata.getChunkMetadataList().stream()
-                .map(
-                    iChunkMetadata -> {
-                      if (iChunkMetadata == null) return null;
-                      iChunkMetadata.setModified(true);
-                      return (ChunkMetadata) iChunkMetadata;
-                    })
-                .collect(Collectors.toList()));
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
       }
     }
   }
