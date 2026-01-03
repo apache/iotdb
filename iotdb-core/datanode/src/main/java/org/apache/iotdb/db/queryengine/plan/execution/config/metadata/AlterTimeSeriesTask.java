@@ -51,7 +51,7 @@ public class AlterTimeSeriesTask implements IConfigTask {
       }
       return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
     } else {
-      return configTaskExecutor.alterTimeSeries(queryId, alterTimeSeriesStatement);
+      throw new InterruptedException("Not support current statement");
     }
   }
 }
