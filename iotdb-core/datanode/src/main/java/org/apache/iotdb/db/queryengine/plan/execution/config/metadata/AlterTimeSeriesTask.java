@@ -41,15 +41,17 @@ public class AlterTimeSeriesTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     if (alterTimeSeriesStatement
-            .getAlterType()
-            .equals(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE)
-        && alterTimeSeriesStatement.getDataType() == null) {
-      throw new InterruptedException(
-          String.format(
-              "Data type cannot be null executing the statement that alter timeseries %s set data type",
-              alterTimeSeriesStatement.getPath().getFullPath()));
+        .getAlterType()
+        .equals(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE)) {
+      if (alterTimeSeriesStatement.getDataType() == null) {
+        throw new InterruptedException(
+            String.format(
+                "Data type cannot be null executing the statement that alter timeseries %s set data type",
+                alterTimeSeriesStatement.getPath().getFullPath()));
+      }
+      return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
+    } else {
+      return configTaskExecutor.alterTimeSeries(queryId, alterTimeSeriesStatement);
     }
-
-    return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
   }
 }

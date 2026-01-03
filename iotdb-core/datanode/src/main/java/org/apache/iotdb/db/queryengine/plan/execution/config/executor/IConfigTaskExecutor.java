@@ -261,6 +261,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
       String queryId, AlterTimeSeriesStatement alterTimeSeriesStatement);
 
+  SettableFuture<ConfigTaskResult> alterTimeSeries(
+      String queryId, AlterTimeSeriesStatement alterTimeSeriesStatement);
+
   TSStatus alterLogicalViewByPipe(
       AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 

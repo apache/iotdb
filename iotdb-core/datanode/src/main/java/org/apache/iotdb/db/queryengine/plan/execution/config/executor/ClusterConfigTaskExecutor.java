@@ -3247,6 +3247,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTimeSeries(
+      final String queryId, final AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> getRegionId(
       final GetRegionIdStatement getRegionIdStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
