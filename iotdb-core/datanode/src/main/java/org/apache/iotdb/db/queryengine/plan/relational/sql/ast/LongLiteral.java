@@ -103,7 +103,7 @@ public class LongLiteral extends Literal {
     return parsedValue == ((LongLiteral) other).parsedValue;
   }
 
-  private static long parse(String value) {
+  public static long parse(String value) {
     value = value.replace("_", "");
 
     if (value.startsWith("0x") || value.startsWith("0X")) {

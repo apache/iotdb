@@ -77,4 +77,8 @@ public class StatementAnalyzerFactory {
   public AccessControl getAccessControl() {
     return accessControl;
   }
+
+  public SqlParser getSqlParser() {
+    return sqlParser;
+  }
 }

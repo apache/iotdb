@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -101,6 +102,14 @@ public class TableDistributedPlanner {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+    List<String> planText = null;
+    if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {
+      planText =
+          outputNodeWithExchange.accept(
+              new PlanGraphPrinter(),
+              new PlanGraphPrinter.GraphContext(
+                  mppQueryContext.getTypeProvider().getTemplatedInfo()));
+    }
 
     if (analysis.isQuery()) {
       analysis
@@ -110,7 +119,13 @@ public class TableDistributedPlanner {
 
     adjustUpStream(outputNodeWithExchange, planContext);
 
-    return generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
+    DistributedQueryPlan distributedPlan =
+        generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
+    if (planText != null) {
+      distributedPlan.addPlanText(planText);
+    }
+
+    return distributedPlan;
   }
 
   public PlanNode generateDistributedPlanWithOptimize(
