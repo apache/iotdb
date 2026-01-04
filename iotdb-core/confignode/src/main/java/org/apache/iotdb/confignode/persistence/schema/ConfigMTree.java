@@ -1000,7 +1000,6 @@ public class ConfigMTree {
     final ConfigTableNode node = getTableNode(database, tableName);
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
 
-    //    ((FieldColumnSchema) columnSchema).getEncoding().isSupported()
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);

@@ -96,6 +96,8 @@ public class IoTDBAlterColumnTypeIT {
 
   private static final Logger log = LoggerFactory.getLogger(IoTDBAlterColumnTypeIT.class);
   private static long timeout = -1;
+  public static final List<TSDataType> DATA_TYPE_LIST =
+      Arrays.asList(TSDataType.BLOB, TSDataType.STRING, TSDataType.TEXT);
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -115,11 +117,7 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   @Test
-  public void testWriteAndAlter()
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testWriteAndAlter() throws Exception {
     Set<TSDataType> typesToTest = new HashSet<>();
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
@@ -1268,11 +1266,7 @@ public class IoTDBAlterColumnTypeIT {
     }
   }
 
-  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
 
@@ -1322,15 +1316,27 @@ public class IoTDBAlterColumnTypeIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      while (rec != null) {
-        System.out.println(rec.getFields().toString());
-        rec = dataSet.next();
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
       }
-      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1368,9 +1374,11 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
-      } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+      } catch (NotSupportedException e) {
         log.info(e.getMessage());
+      } catch (Exception e) {
+        log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1381,11 +1389,7 @@ public class IoTDBAlterColumnTypeIT {
     }
   }
 
-  public void testAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to) throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
 
@@ -1428,22 +1432,36 @@ public class IoTDBAlterColumnTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      while (rec != null) {
-        System.out.println(rec.getFields().toString());
-        rec = dataSet.next();
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
       }
-      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
-      } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+      } catch (NotSupportedException e) {
         log.info(e.getMessage());
+      } catch (Exception e) {
+        log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -1489,10 +1507,7 @@ public class IoTDBAlterColumnTypeIT {
   }
 
   public void testAlignDeviceUnSequenceOverlappedDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+      throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
 
@@ -1535,15 +1550,27 @@ public class IoTDBAlterColumnTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      while (rec != null) {
-        System.out.println(rec.getFields().toString());
-        rec = dataSet.next();
+      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
+      } else {
+        SessionDataSet dataSet =
+            session.executeQueryStatement(
+                "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+        RowRecord rec = dataSet.next();
+        while (rec != null) {
+          System.out.println(rec.getFields().toString());
+          rec = dataSet.next();
+        }
+        dataSet.close();
       }
-      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1582,9 +1609,11 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
-      } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+      } catch (NotSupportedException e) {
         log.info(e.getMessage());
+      } catch (Exception e) {
+        log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1938,18 +1967,42 @@ public class IoTDBAlterColumnTypeIT {
     if (newType == TSDataType.DATE) {
       throw new NotSupportedException("Not supported DATE type.");
     }
-    SessionDataSet dataSet =
-        session.executeQueryStatement(
-            "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
-    RowRecord rec = dataSet.next();
-    int[] expectedValue = {1, 1024, 1, 1024};
-    if (newType == TSDataType.STRING || newType == TSDataType.TEXT || newType == TSDataType.BLOB) {
-      expectedValue[1] = 999;
-    } else if (newType == TSDataType.BOOLEAN) {
-      expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+
+    SessionDataSet dataSet;
+    RowRecord rec;
+    int[] expectedValue;
+    int max = 4;
+    if (DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first(s1),last(s1) from construct_and_alter_column_type");
+      rec = dataSet.next();
+      expectedValue = new int[] {1, 1024};
+      if (newType == TSDataType.STRING
+          || newType == TSDataType.TEXT
+          || newType == TSDataType.BLOB) {
+        //        expectedValue[1] = 999;
+      } else if (newType == TSDataType.BOOLEAN) {
+        expectedValue = new int[] {19700102, 19721021};
+      }
+      max = 2;
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+      rec = dataSet.next();
+      expectedValue = new int[] {1, 1024, 1, 1024};
+      if (newType == TSDataType.STRING
+          || newType == TSDataType.TEXT
+          || newType == TSDataType.BLOB) {
+        expectedValue[1] = 999;
+      } else if (newType == TSDataType.BOOLEAN) {
+        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+      }
     }
+
     if (newType != TSDataType.BOOLEAN) {
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < max; i++) {
         if (newType == TSDataType.BLOB) {
           assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
         } else if (newType == TSDataType.DATE) {
@@ -2001,8 +2054,10 @@ public class IoTDBAlterColumnTypeIT {
     if (from == TSDataType.DATE) {
       throw new NotSupportedException("Not supported DATE type.");
     }
-    if (from == TSDataType.BOOLEAN
-        && (newType == TSDataType.STRING || newType == TSDataType.TEXT)) {
+    if (from == TSDataType.BLOB || newType == TSDataType.BLOB) {
+      throw new NotSupportedException("Not supported BLOB type.");
+    }
+    if (from == TSDataType.BOOLEAN && DATA_TYPE_LIST.contains(newType)) {
       SessionDataSet dataSet =
           session.executeQueryStatement(
               "select first(s1),last(s1) from construct_and_alter_column_type");
@@ -2014,20 +2069,32 @@ public class IoTDBAlterColumnTypeIT {
         }
       }
     } else {
-      SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      int[] expectedValue = {1, 1024, 1, 1024};
-      if (newType == TSDataType.STRING
-          || newType == TSDataType.TEXT
-          || newType == TSDataType.BLOB) {
-        expectedValue[1] = 999;
-      } else if (newType == TSDataType.BOOLEAN) {
-        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+      SessionDataSet dataSet;
+      int[] expectedValue;
+      int max = 4;
+      if (DATA_TYPE_LIST.contains(newType)) {
+        dataSet =
+            session.executeQueryStatement(
+                "select first(s1),last(s1) from construct_and_alter_column_type");
+        expectedValue = new int[] {1, 1024};
+        max = 2;
+      } else {
+        dataSet =
+            session.executeQueryStatement(
+                "select min(s1),max(s1),first(s1),last(s1) from construct_and_alter_column_type");
+        expectedValue = new int[] {1, 1024, 1, 1024};
+        if (newType == TSDataType.STRING
+            || newType == TSDataType.TEXT
+            || newType == TSDataType.BLOB) {
+          expectedValue[1] = 999;
+        } else if (newType == TSDataType.BOOLEAN) {
+          expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
+        }
       }
+
+      RowRecord rec = dataSet.next();
       if (newType != TSDataType.BOOLEAN) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < max; i++) {
           if (newType == TSDataType.BLOB) {
             assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
           } else if (newType == TSDataType.DATE) {

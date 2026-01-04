@@ -35,7 +35,7 @@ import java.util.Map;
 
 public class FieldColumnSchema extends TsTableColumnSchema {
 
-  private final TSEncoding encoding;
+  private TSEncoding encoding;
 
   private final CompressionType compressor;
 
@@ -68,6 +68,7 @@ public class FieldColumnSchema extends TsTableColumnSchema {
   }
 
   // Only for table view
+  @Override
   public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
   }
@@ -79,6 +80,10 @@ public class FieldColumnSchema extends TsTableColumnSchema {
 
   public TSEncoding getEncoding() {
     return encoding;
+  }
+
+  public void setEncoding(TSEncoding encoding) {
+    this.encoding = encoding;
   }
 
   public CompressionType getCompressor() {

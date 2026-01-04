@@ -690,7 +690,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(times)
         + RamUsageEstimator.sizeOf(nullBitMaps)
-        + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas, dataTypes)
+        + InsertNodeMemoryEstimator.sizeOfColumns(columns, measurementSchemas)
         + (Objects.nonNull(deviceIDs)
             ? Arrays.stream(deviceIDs)
                 .mapToLong(InsertNodeMemoryEstimator::sizeOfIDeviceID)

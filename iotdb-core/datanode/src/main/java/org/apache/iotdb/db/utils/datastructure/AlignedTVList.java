@@ -1037,7 +1037,6 @@ public abstract class AlignedTVList extends TVList {
   private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
     // mark the null value in the current bitmap
     BitMap bitMap = getBitMap(columnIndex, arrayIndex);
-    bitMap.mark(elementIndex);
     if (bitMap.isMarked(elementIndex)) {
       return false;
     } else {

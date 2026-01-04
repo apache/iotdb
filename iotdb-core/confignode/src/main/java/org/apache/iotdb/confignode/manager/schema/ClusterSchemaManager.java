@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -1404,7 +1405,13 @@ public class ClusterSchemaManager {
     }
 
     final TsTable alteredTable = new TsTable(originalTable);
-    alteredTable.getColumnSchema(columnName).setDataType(dataType);
+    TsTableColumnSchema tsTableColumnSchema = alteredTable.getColumnSchema(columnName);
+    tsTableColumnSchema.setDataType(dataType);
+    if (tsTableColumnSchema instanceof FieldColumnSchema) {
+      FieldColumnSchema fieldColumnSchema = ((FieldColumnSchema) tsTableColumnSchema);
+      fieldColumnSchema.setEncoding(
+          SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+    }
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, alteredTable);
   }
