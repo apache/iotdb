@@ -115,17 +115,17 @@ public class MaxValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntResult((int) statistics.getMaxValue());
+        updateIntResult(((Number) statistics.getMaxValue()).intValue());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongResult((long) statistics.getMaxValue());
+        updateLongResult(((Number) statistics.getMaxValue()).longValue());
         break;
       case FLOAT:
-        updateFloatResult((float) statistics.getMaxValue());
+        updateFloatResult(((Number) statistics.getMaxValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleResult((double) statistics.getMaxValue());
+        updateDoubleResult(((Number) statistics.getMaxValue()).doubleValue());
         break;
       case STRING:
         updateBinaryResult((Binary) statistics.getMaxValue());

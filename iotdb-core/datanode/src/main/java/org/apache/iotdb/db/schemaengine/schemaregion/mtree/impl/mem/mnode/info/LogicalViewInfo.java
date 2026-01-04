@@ -45,6 +45,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
+  /** whether this measurement is pre altered */
+  private boolean preAltered = false;
+
   private LogicalViewSchema schema;
 
   public LogicalViewInfo(LogicalViewSchema schema) {

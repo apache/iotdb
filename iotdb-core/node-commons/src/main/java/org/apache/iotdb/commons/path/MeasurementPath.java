@@ -331,6 +331,37 @@ public class MeasurementPath extends PartialPath {
     return measurementPath;
   }
 
+  public static MeasurementPath deserializeDirectly(ByteBuffer byteBuffer) {
+    PartialPath partialPath = PartialPath.deserialize(byteBuffer);
+    MeasurementPath measurementPath = new MeasurementPath();
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      byte type = ReadWriteIOUtils.readByte(byteBuffer);
+      if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
+      } else {
+        throw new RuntimeException(
+            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+      }
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
+    measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
+    measurementPath.nodes = partialPath.getNodes();
+    measurementPath.device = measurementPath.getIDeviceID();
+    measurementPath.fullPath = measurementPath.getFullPath();
+    return measurementPath;
+  }
+
   @Override
   public PartialPath transformToPartialPath() {
     return getDevicePath().concatNode(getTailNode());

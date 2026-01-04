@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -900,6 +901,16 @@ public class RegionWriteExecutor {
         if (node.isAlterView() && !measurementPath.getMeasurementSchema().isLogicalView()) {
           throw new MetadataException(
               String.format("%s is not view.", measurementPath.getFullPath()));
+        }
+        if (node.getDataType() != null
+            && !MetadataUtils.canAlter(
+                measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
+          throw new MetadataException(
+              String.format(
+                  "The timeseries %s used new type %s is not compatible with the existing one %s.",
+                  measurementPath.getFullPath(),
+                  node.getDataType(),
+                  measurementPath.getMeasurementSchema().getType()));
         }
         return receivedFromPipe
             ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)

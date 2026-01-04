@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -54,6 +55,7 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
   public static void buildTsBlock(
       final TsTable table,
       final Set<String> preDeletedColumns,
+      final Map<String, Byte> preAlteredColumns,
       final SettableFuture<ConfigTaskResult> future) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.describeTableDetailsColumnHeaders.stream()
@@ -63,22 +65,24 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final TsTableColumnSchema columnSchema : table.getColumnList()) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      String columnStatus = "USING";
+      String dataTypeName = columnSchema.getDataType().name();
+      if (preDeletedColumns.contains(columnSchema.getColumnName())) {
+        columnStatus = "PRE_DELETE";
+      }
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(columnSchema.getColumnName(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
-          .writeBinary(new Binary(columnSchema.getDataType().name(), TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(dataTypeName, TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(2)
           .writeBinary(
               new Binary(columnSchema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(3)
-          .writeBinary(
-              new Binary(
-                  preDeletedColumns.contains(columnSchema.getColumnName()) ? "PRE_DELETE" : "USING",
-                  TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(columnStatus, TSFileConfig.STRING_CHARSET));
 
       if (columnSchema.getProps().containsKey(TsTable.COMMENT_KEY)) {
         builder

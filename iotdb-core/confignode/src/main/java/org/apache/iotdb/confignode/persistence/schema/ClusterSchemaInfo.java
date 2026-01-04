@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -91,6 +92,7 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
@@ -103,6 +105,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +124,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1371,16 +1375,19 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final PartialPath databasePath = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (plan.isDetails()) {
-        final Pair<TsTable, Set<String>> pair =
+        final TableSchemaDetails details =
             tableModelMTree.getTableSchemaDetails(databasePath, plan.getTableName());
-        return new DescTableResp(StatusUtils.OK, pair.getLeft(), pair.getRight());
+        return new DescTableResp(
+            StatusUtils.OK, details.table, details.preDeletedColumns, details.preAlteredColumns);
       }
       return new DescTableResp(
           StatusUtils.OK,
           tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          null,
           null);
     } catch (final MetadataException e) {
-      return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
+      return new DescTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null, null);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -1409,17 +1416,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                       // Table path must exist because the "getTableSchemaDetails()"
                                       // is called in databaseReadWriteLock.readLock().
                                     }
-                                    return new Pair<TsTable, Set<String>>(null, null);
+                                    return new TableSchemaDetails();
                                   })
                               .collect(
                                   Collectors.toMap(
-                                      pair -> pair.getLeft().getTableName(),
-                                      pair ->
+                                      tableSchemaDetails -> tableSchemaDetails.table.getTableName(),
+                                      tableSchemaDetails ->
                                           new TTableColumnInfo()
                                               .setTableInfo(
                                                   TsTableInternalRPCUtil.serializeSingleTsTable(
-                                                      pair.getLeft()))
-                                              .setPreDeletedColumns(pair.getRight())));
+                                                      tableSchemaDetails.table))
+                                              .setPreDeletedColumns(
+                                                  tableSchemaDetails.preDeletedColumns)
+                                              .setPreAlteredColumns(
+                                                  tableSchemaDetails
+                                                      .preAlteredColumns
+                                                      .entrySet()
+                                                      .stream()
+                                                      .collect(
+                                                          Collectors.toMap(
+                                                              Entry::getKey,
+                                                              e -> e.getValue().serialize())))));
                         } catch (final MetadataException ignore) {
                           // Database path must exist because the "getAllDatabasePaths()" is called
                           // in databaseReadWriteLock.readLock().
@@ -1528,6 +1545,41 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
                 plan.getColumnName()));
+  }
+
+  public TSStatus preAlterColumnDataType(
+      String databaseName, String tableName, String columnName, TSDataType dataType) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tableModelMTree.preAlterColumnDataType(
+          getQualifiedDatabasePartialPath(databaseName), tableName, columnName, dataType);
+      return status;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (final SemanticException e) {
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus commitAlterColumnDataType(AlterColumnDataTypePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      tableModelMTree.commitAlterColumnDataType(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getNewType());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
   }
 
   // endregion

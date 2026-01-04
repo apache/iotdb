@@ -1651,6 +1651,27 @@ public class IoTDBDeletionTableIT {
           }
 
           // check the point count
+          int finalI = i;
+          Awaitility.await()
+              .atMost(5, TimeUnit.MINUTES)
+              .pollDelay(2, TimeUnit.SECONDS)
+              .pollInterval(2, TimeUnit.SECONDS)
+              .until(
+                  () -> {
+                    ResultSet set =
+                        statement.executeQuery(
+                            "select count(*) from table"
+                                + testNum
+                                + " where time <= "
+                                + currentWrittenTime
+                                + " AND deviceId = 'd"
+                                + finalI
+                                + "'");
+                    assertTrue(set.next());
+                    long expectedCnt =
+                        currentWrittenTime + 1 - deviceDeletedPointCounters.get(finalI).get();
+                    return expectedCnt == set.getLong(1);
+                  });
           try (ResultSet set =
               statement.executeQuery(
                   "select count(*) from table"

@@ -108,20 +108,20 @@ public class ExtremeAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
-        updateIntResult((int) statistics.getMaxValue());
-        updateIntResult((int) statistics.getMinValue());
+        updateIntResult(((Number) statistics.getMaxValue()).intValue());
+        updateIntResult(((Number) statistics.getMinValue()).intValue());
         break;
       case INT64:
-        updateLongResult((long) statistics.getMaxValue());
-        updateLongResult((long) statistics.getMinValue());
+        updateLongResult(((Number) statistics.getMaxValue()).longValue());
+        updateLongResult(((Number) statistics.getMinValue()).longValue());
         break;
       case FLOAT:
-        updateFloatResult((float) statistics.getMaxValue());
-        updateFloatResult((float) statistics.getMinValue());
+        updateFloatResult(((Number) statistics.getMaxValue()).floatValue());
+        updateFloatResult(((Number) statistics.getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleResult((double) statistics.getMaxValue());
-        updateDoubleResult((double) statistics.getMinValue());
+        updateDoubleResult(((Number) statistics.getMaxValue()).doubleValue());
+        updateDoubleResult(((Number) statistics.getMinValue()).doubleValue());
         break;
       case TEXT:
       case STRING:

@@ -221,6 +221,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
     statement.setAlias(node.getAlias());
     statement.setTagsMap(node.getTagsMap());
     statement.setPath(node.getPath());
+    statement.setDataType(node.getDataType());
     return statement;
   }
 

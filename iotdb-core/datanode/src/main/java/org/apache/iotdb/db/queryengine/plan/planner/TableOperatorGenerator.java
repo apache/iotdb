@@ -2269,9 +2269,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
     switch (joinKeyType.getTypeEnum()) {
       case INT32:
+        return (inputColumn, rowIndex) ->
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
       case DATE:
         return (inputColumn, rowIndex) ->
-            new IntColumn(1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)});
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return (inputColumn, rowIndex) ->

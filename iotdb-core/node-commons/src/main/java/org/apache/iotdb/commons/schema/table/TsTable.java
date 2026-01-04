@@ -39,7 +39,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -77,6 +76,7 @@ public class TsTable {
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
+  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -99,6 +99,8 @@ public class TsTable {
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
+  private transient int idNums = 0;
+  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -110,6 +112,16 @@ public class TsTable {
     this.tableName = tableName;
     columnSchemas.forEach(
         columnSchema -> columnSchemaMap.put(columnSchema.getColumnName(), columnSchema));
+  }
+
+  public TsTable(TsTable origin) {
+    this.tableName = origin.tableName;
+    origin.columnSchemaMap.forEach((col, schema) -> this.columnSchemaMap.put(col, schema.copy()));
+    this.idColumnIndexMap.putAll(origin.idColumnIndexMap);
+    this.props = origin.props == null ? null : new HashMap<>(origin.props);
+    this.ttlValue = origin.ttlValue;
+    this.idNums = origin.idNums;
+    this.measurementNum = origin.measurementNum;
   }
 
   public String getTableName() {
@@ -361,16 +373,6 @@ public class TsTable {
           }
           props.remove(key);
         });
-  }
-
-  public byte[] serialize() {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    try {
-      serialize(stream);
-    } catch (IOException ignored) {
-      // won't happen
-    }
-    return stream.toByteArray();
   }
 
   public void serialize(final OutputStream stream) throws IOException {

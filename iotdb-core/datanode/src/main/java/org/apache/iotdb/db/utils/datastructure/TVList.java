@@ -104,6 +104,8 @@ public abstract class TVList implements WALEntryValue {
   protected static int defaultArrayNum = 0;
   protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
 
+  protected TSDataType dataType;
+
   protected TVList() {
     timestamps = new ArrayList<>(getDefaultArrayNum());
     rowCount = 0;
@@ -124,8 +126,9 @@ public abstract class TVList implements WALEntryValue {
       case FLOAT:
         return FloatTVList.newList();
       case INT32:
+        return IntTVList.newList(TSDataType.INT32);
       case DATE:
-        return IntTVList.newList();
+        return IntTVList.newList(TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.newList();
@@ -700,8 +703,9 @@ public abstract class TVList implements WALEntryValue {
       case FLOAT:
         return FloatTVList.deserialize(stream);
       case INT32:
+        return IntTVList.deserialize(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserialize(stream);
+        return IntTVList.deserialize(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserialize(stream);
@@ -726,8 +730,9 @@ public abstract class TVList implements WALEntryValue {
       case FLOAT:
         return FloatTVList.deserializeWithoutBitMap(stream);
       case INT32:
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserializeWithoutBitMap(stream);
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserializeWithoutBitMap(stream);

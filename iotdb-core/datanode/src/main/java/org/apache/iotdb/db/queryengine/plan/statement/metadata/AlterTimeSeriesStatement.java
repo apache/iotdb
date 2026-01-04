@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import org.apache.tsfile.enums.TSDataType;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,8 @@ public class AlterTimeSeriesStatement extends Statement {
   private Map<String, String> attributesMap;
 
   private final boolean isAlterView;
+
+  private TSDataType dataType;
 
   public AlterTimeSeriesStatement() {
     super();
@@ -130,6 +134,14 @@ public class AlterTimeSeriesStatement extends Statement {
     return isAlterView;
   }
 
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAlterTimeSeries(this, context);
@@ -164,6 +176,7 @@ public class AlterTimeSeriesStatement extends Statement {
     DROP,
     ADD_TAGS,
     ADD_ATTRIBUTES,
-    UPSERT
+    UPSERT,
+    SET_DATA_TYPE
   }
 }

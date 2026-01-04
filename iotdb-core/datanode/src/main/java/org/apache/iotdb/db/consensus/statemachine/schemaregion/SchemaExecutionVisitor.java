@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -428,6 +429,19 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         case UPSERT:
           schemaRegion.upsertAliasAndTagsAndAttributes(
               node.getAlias(), node.getTagsMap(), node.getAttributesMap(), node.getPath());
+          break;
+        case SET_DATA_TYPE:
+          MeasurementPath measurementPath = schemaRegion.fetchMeasurementPath(node.getPath());
+          if (!MetadataUtils.canAlter(
+              measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
+            throw new MetadataException(
+                String.format(
+                    "The timeseries %s used new type %s is not compatible with the existing one %s.",
+                    node.getPath().getFullPath(),
+                    node.getDataType(),
+                    node.getPath().getMeasurementSchema().getType()));
+          }
+          schemaRegion.alterTimeSeriesDataType(node.getDataType(), node.getPath());
           break;
       }
     } catch (MetadataException e) {

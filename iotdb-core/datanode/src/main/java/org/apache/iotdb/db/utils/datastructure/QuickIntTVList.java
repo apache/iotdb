@@ -18,11 +18,18 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class QuickIntTVList extends IntTVList {
   private final QuickSort policy;
 
   QuickIntTVList() {
     policy = new QuickSort(this);
+  }
+
+  QuickIntTVList(TSDataType dataType) {
+    policy = new QuickSort(this);
+    this.dataType = dataType;
   }
 
   @Override

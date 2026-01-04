@@ -275,17 +275,17 @@ public class LastByAccumulator implements TableAccumulator {
           switch (xDataType) {
             case INT32:
             case DATE:
-              xResult.setInt((int) xStatistics.getLastValue());
+              xResult.setInt(((Number) xStatistics.getLastValue()).intValue());
               break;
             case INT64:
             case TIMESTAMP:
-              xResult.setLong((long) xStatistics.getLastValue());
+              xResult.setLong(((Number) xStatistics.getLastValue()).longValue());
               break;
             case FLOAT:
-              xResult.setFloat((float) statistics[0].getLastValue());
+              xResult.setFloat(((Number) statistics[0].getLastValue()).floatValue());
               break;
             case DOUBLE:
-              xResult.setDouble((double) statistics[0].getLastValue());
+              xResult.setDouble(((Number) statistics[0].getLastValue()).doubleValue());
               break;
             case TEXT:
             case BLOB:
