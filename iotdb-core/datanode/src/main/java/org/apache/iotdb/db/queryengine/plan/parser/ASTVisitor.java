@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -613,11 +614,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
     AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
     alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
-    parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
+    alterTimeSeriesStatement = parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
     return alterTimeSeriesStatement;
   }
 
-  private void parseAlterClause(
+  private AlterTimeSeriesStatement parseAlterClause(
       IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     Map<String, String> alterMap = new HashMap<>();
     // Rename
@@ -626,6 +627,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       if (ctx.DATA() != null && ctx.TYPE() != null) {
+        MeasurementPath path = alterTimeSeriesStatement.getPath();
+        alterTimeSeriesStatement = new AlterTimeSeriesDataTypeStatement();
+        alterTimeSeriesStatement.setPath(path);
         // Set data type
         alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE);
         setMap(ctx, alterMap);
@@ -665,6 +669,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     alterTimeSeriesStatement.setAlterMap(alterMap);
+    return alterTimeSeriesStatement;
   }
 
   public void parseAliasClause(
