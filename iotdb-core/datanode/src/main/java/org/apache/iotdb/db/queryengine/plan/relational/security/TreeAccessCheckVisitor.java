@@ -1996,7 +1996,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         };
     auditEntity.setPrivilegeTypes(privilegeList);
     if (AuthorityChecker.SUPER_USER.equals(auditEntity.getUsername())) {
-      recordObjectAuthenticationAuditLog(auditEntity.setResult(true), supplier);
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(auditEntity.setResult(true), supplier);
       return SUCCEED;
     }
     TSStatus status = SUCCEED;
@@ -2030,7 +2030,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         break;
       }
     }
-    recordObjectAuthenticationAuditLog(
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity.setResult(status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         supplier);
     return status;
