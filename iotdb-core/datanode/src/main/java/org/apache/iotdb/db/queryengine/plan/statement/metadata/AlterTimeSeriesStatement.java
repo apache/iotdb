@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -41,7 +39,7 @@ import java.util.Objects;
  *
  * <p>ALTER TIMESERIES path RENAME | SET | DROP | ADD TAGS | ADD ATTRIBUTES | UPSERT
  */
-public class AlterTimeSeriesStatement extends Statement implements IConfigStatement {
+public class AlterTimeSeriesStatement extends Statement {
   private MeasurementPath path;
   private AlterTimeSeriesStatement.AlterType alterType;
 
@@ -180,10 +178,5 @@ public class AlterTimeSeriesStatement extends Statement implements IConfigStatem
     ADD_ATTRIBUTES,
     UPSERT,
     SET_DATA_TYPE
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
   }
 }

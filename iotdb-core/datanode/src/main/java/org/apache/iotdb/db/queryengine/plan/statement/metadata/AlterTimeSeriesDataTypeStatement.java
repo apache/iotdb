@@ -17,33 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.single;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 
-import org.junit.After;
-import org.junit.Before;
-
-abstract class AbstractPipeSingleIT {
-
-  protected BaseEnv env;
-
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(1);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    env.initClusterEnvironment();
-  }
-
-  @After
-  public final void tearDown() {
-    env.cleanClusterEnvironment();
+/**
+ * ALTER TIMESERIES data type statement.
+ *
+ * <p>Here is the syntax definition:
+ *
+ * <p>ALTER TIMESERIES path SET DATA TYPE
+ */
+public class AlterTimeSeriesDataTypeStatement extends AlterTimeSeriesStatement
+    implements IConfigStatement {
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 }

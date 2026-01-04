@@ -33,8 +33,10 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,29 +44,28 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
 
-  private static final Set<Pair<TSDataType, TSDataType>> SAME_TYPE_PAIRS;
+  private static final Map<TSDataType, Class> dataTypeColumnClassMap;
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
   static {
-    SAME_TYPE_PAIRS = new HashSet<>();
+    dataTypeColumnClassMap = new HashMap<>();
+    dataTypeColumnClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.DATE, IntColumn.class);
 
-    // related pair about INT
-    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.DATE, TSDataType.INT32);
+    dataTypeColumnClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
 
-    // related pair about LONG
-    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.TIMESTAMP, TSDataType.INT64);
-
-    // related pair about TEXT
-    addSymmetricPairs(SAME_TYPE_PAIRS, TSDataType.STRING, TSDataType.BLOB, TSDataType.TEXT);
+    dataTypeColumnClassMap.put(TSDataType.STRING, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.BLOB, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TEXT, BinaryColumn.class);
   }
 
   private SchemaUtils() {}
@@ -289,21 +290,15 @@ public class SchemaUtils {
     }
   }
 
-  private static void addSymmetricPairs(
-      Set<Pair<TSDataType, TSDataType>> set, TSDataType... dataTypes) {
-    for (int i = 0; i < dataTypes.length; i++) {
-      for (int j = i + 1; j < dataTypes.length; j++) {
-        set.add(new Pair<>(dataTypes[i], dataTypes[j]));
-        set.add(new Pair<>(dataTypes[j], dataTypes[i]));
-      }
-    }
-  }
-
   public static boolean isUsingSameColumn(TSDataType originalDataType, TSDataType dataType) {
     if (originalDataType == dataType) {
       return true;
     }
-    return SAME_TYPE_PAIRS.contains(new Pair<>(originalDataType, dataType));
+    if (dataTypeColumnClassMap.get(originalDataType) == null
+        || dataTypeColumnClassMap.get(dataType) == null) {
+      return false;
+    }
+    return dataTypeColumnClassMap.get(originalDataType) == dataTypeColumnClassMap.get(dataType);
   }
 
   public static void changeMetadataModified(
@@ -312,18 +307,15 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
-      if (timeseriesMetadata.getChunkMetadataList() != null) {
-        timeseriesMetadata.setChunkMetadataList(
-            timeseriesMetadata.getChunkMetadataList().stream()
-                .map(
-                    iChunkMetadata -> {
-                      if (iChunkMetadata == null) return null;
-                      iChunkMetadata.setModified(true);
-                      return (ChunkMetadata) iChunkMetadata;
-                    })
-                .collect(Collectors.toList()));
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
       }
     }
   }
@@ -341,20 +333,17 @@ public class SchemaUtils {
       if ((timeseriesMetadata != null)
           && !SchemaUtils.isUsingSameColumn(
               timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-              .contains(targetDataTypeList.get(i))) {
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
-        if (timeseriesMetadata.getChunkMetadataList() != null) {
-          timeseriesMetadata.setChunkMetadataList(
-              timeseriesMetadata.getChunkMetadataList().stream()
-                  .map(
-                      iChunkMetadata -> {
-                        if (iChunkMetadata == null) return null;
-                        iChunkMetadata.setModified(true);
-                        return (ChunkMetadata) iChunkMetadata;
-                      })
-                  .collect(Collectors.toList()));
+        List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+        if (chunkMetadataList != null) {
+          for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+            if (chunkMetadata != null) {
+              chunkMetadata.setModified(true);
+            }
+          }
         }
       }
       i++;
@@ -368,18 +357,15 @@ public class SchemaUtils {
     }
 
     if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       timeseriesMetadata.setModified(true);
-      if (timeseriesMetadata.getChunkMetadataList() != null) {
-        timeseriesMetadata.setChunkMetadataList(
-            timeseriesMetadata.getChunkMetadataList().stream()
-                .map(
-                    iChunkMetadata -> {
-                      if (iChunkMetadata == null) return null;
-                      iChunkMetadata.setModified(true);
-                      return (ChunkMetadata) iChunkMetadata;
-                    })
-                .collect(Collectors.toList()));
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
       }
     }
   }
@@ -390,7 +376,7 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
-        && Arrays.asList(TSDataType.STRING, TSDataType.TEXT).contains(targetDataType)) {
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
       chunkMetadata.setModified(true);
     }
   }
@@ -406,8 +392,8 @@ public class SchemaUtils {
     for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
       if ((iChunkMetadata != null)
           && !SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
-          && Arrays.asList(TSDataType.STRING, TSDataType.TEXT)
-              .contains(targetDataTypeList.get(i))) {
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
       }

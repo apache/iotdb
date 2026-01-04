@@ -62,8 +62,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -127,8 +125,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private String database;
   private String dataRegionId;
-
-  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
 
   protected AbstractMemTable() {
     this.database = null;

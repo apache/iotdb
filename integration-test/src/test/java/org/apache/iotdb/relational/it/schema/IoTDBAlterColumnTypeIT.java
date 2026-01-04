@@ -327,9 +327,6 @@ public class IoTDBAlterColumnTypeIT {
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
-    //    typesToTest.remove(TSDataType.STRING);
-    //    typesToTest.remove(TSDataType.TEXT);
-    //    typesToTest.remove(TSDataType.DATE);
 
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
@@ -1336,7 +1333,7 @@ public class IoTDBAlterColumnTypeIT {
       dataSet.close();
 
       try {
-        //        standardSelectTest(session, from, to);
+        standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
         log.error("{}", e.getStackTrace());

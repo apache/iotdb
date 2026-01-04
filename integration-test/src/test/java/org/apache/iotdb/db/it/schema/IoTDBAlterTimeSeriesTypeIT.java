@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.schema;
+package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -100,25 +100,15 @@ public class IoTDBAlterTimeSeriesTypeIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      //      session.createDatabase(database);
-    }
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      //      session.deleteDatabase(database);
-    }
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
-  public void testWriteAndAlter()
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testWriteAndAlter() throws Exception {
     Set<TSDataType> typesToTest = new HashSet<>();
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
@@ -193,8 +183,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
           Object v = rec1.getFields().get(0).getObjectValue(from);
           assertEquals(time, i);
           assertEquals(v, genValue(from, i));
-          //          System.out.println(
-          //              "from is " + from + ", time is " + time + ", value is " + v);
         }
       }
 
@@ -238,7 +226,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
             Binary v = rec.getFields().get(0).getBinaryV();
             assertEquals(new Binary(genValue(from, i).toString(), StandardCharsets.UTF_8), v);
           } else {
-            //            Object v = rec.getFields().get(0).getObjectValue(from);
             log.info("from is {}", from);
             assertEquals(
                 newType.castFromSingleValue(from, genValue(from, i)),
@@ -355,9 +342,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
         assertEquals(10.0, rec.getFields().get(1).getDoubleV(), 0.001);
         assertFalse(dataSet.hasNext());
       }
-
-      //      session.executeNonQueryStatement(
-      //          "DROP TIMESERIES " + database + ".write_and_alter_column_type.s1");
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
@@ -372,9 +356,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
     Collections.addAll(typesToTest, TSDataType.values());
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
-    //    typesToTest.remove(TSDataType.STRING);
-    //    typesToTest.remove(TSDataType.TEXT);
-    //    typesToTest.remove(TSDataType.DATE);
 
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
@@ -1080,11 +1061,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     }
   }
 
-  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testNonAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1200,8 +1177,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1223,11 +1203,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     }
   }
 
-  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testAlignDeviceSequenceDataQuery(TSDataType from, TSDataType to) throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1308,8 +1284,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -1347,8 +1326,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1371,10 +1353,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
   }
 
   public void testNonAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+      throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1444,8 +1423,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -1483,8 +1465,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1506,11 +1491,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     }
   }
 
-  public void testAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+  public void testAlignDeviceUnSequenceDataQuery(TSDataType from, TSDataType to) throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1584,8 +1565,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -1623,8 +1607,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1647,10 +1634,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
   }
 
   public void testNonAlignDeviceUnSequenceOverlappedDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+      throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1720,8 +1704,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -1759,8 +1746,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
         standardSelectTestAfterAlterColumnType(from, session, newType);
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1783,10 +1773,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
   }
 
   public void testAlignDeviceUnSequenceOverlappedDataQuery(TSDataType from, TSDataType to)
-      throws IoTDBConnectionException,
-          StatementExecutionException,
-          IOException,
-          WriteProcessException {
+      throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION 'enable_unseq_space_compaction'='false'");
 
@@ -1860,8 +1847,11 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
+      } catch (NotSupportedException e) {
+        log.info(e.getMessage());
       } catch (Exception e) {
         log.info(e.getMessage());
+        throw new Exception(e);
       }
 
       // alter the type to "to"
@@ -2348,7 +2338,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     RowRecord rec;
     if (!UNSUPPORT_ACCUMULATOR_QUERY_DATA_TYPE_LIST.contains(newType)) {
       int[] expectedValue;
-
+      int max = 4;
       if (DATA_TYPE_LIST.contains(newType)) {
         dataSet =
             session.executeQueryStatement(
@@ -2364,6 +2354,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
         } else if (newType == TSDataType.BOOLEAN) {
           expectedValue = new int[] {19700102, 19721021};
         }
+        max = 2;
       } else {
         dataSet =
             session.executeQueryStatement(
@@ -2382,7 +2373,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
 
       if (newType != TSDataType.BOOLEAN) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < max; i++) {
           if (newType == TSDataType.BLOB) {
             assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
           } else if (newType == TSDataType.DATE) {
@@ -2459,6 +2450,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
     } else {
       SessionDataSet dataSet;
       int[] expectedValue;
+      int max = 4;
       if (DATA_TYPE_LIST.contains(newType)) {
         dataSet =
             session.executeQueryStatement(
@@ -2466,6 +2458,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     + database
                     + ".construct_and_alter_column_type");
         expectedValue = new int[] {1, 1024};
+        max = 2;
       } else {
         dataSet =
             session.executeQueryStatement(
@@ -2486,7 +2479,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
       //        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
       //      }
       if (newType != TSDataType.BOOLEAN) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < max; i++) {
           if (newType == TSDataType.BLOB) {
             assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
           } else if (newType == TSDataType.DATE) {

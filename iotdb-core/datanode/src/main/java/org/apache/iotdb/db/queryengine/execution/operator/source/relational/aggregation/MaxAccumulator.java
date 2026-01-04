@@ -224,7 +224,9 @@ public class MaxAccumulator implements TableAccumulator {
       case TEXT:
       case BLOB:
       case STRING:
-        if (!(statistics[0] instanceof BinaryStatistics)) {
+        if (statistics[0] instanceof BinaryStatistics) {
+          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        } else {
           if (statistics[0].getMaxValue() instanceof Binary) {
             updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
           } else {

@@ -127,7 +127,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -745,8 +745,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitAlterTimeSeries(
-      AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
-    return new AlterTimeSeriesTask(context.getQueryId().getId(), alterTimeSeriesStatement);
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, MPPQueryContext context) {
+    return new AlterTimeSeriesTask(context.getQueryId().getId(), alterTimeSeriesDataTypeStatement);
   }
 
   @Override

@@ -3198,7 +3198,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // ByteArrayOutputStream won't throw IOException
     }
 
-    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
     try {
       ReadWriteIOUtils.write(alterTimeSeriesStatement.getDataType(), stream);
     } catch (final IOException ignored) {
@@ -3244,6 +3244,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
       return future;
     }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTimeSeries(
+      final String queryId, final AlterTimeSeriesStatement alterTimeSeriesStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    return future;
   }
 
   @Override
