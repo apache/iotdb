@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.isession.ITableSession;
@@ -27,13 +28,11 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -57,7 +56,7 @@ import static org.junit.Assert.assertNull;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBObjectInsertIT {
+public class IoTDBObjectDeleteIT {
 
   @BeforeClass
   public static void classSetUp() throws Exception {
@@ -84,7 +83,7 @@ public class IoTDBObjectInsertIT {
   }
 
   @Test
-  public void insertObjectTest()
+  public void dropObjectTableTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String testObject =
         System.getProperty("user.dir")
@@ -94,7 +93,6 @@ public class IoTDBObjectInsertIT {
             + "test-classes"
             + File.separator
             + "object-example.pt";
-    File object = new File(testObject);
 
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -127,26 +125,6 @@ public class IoTDBObjectInsertIT {
       session.insert(tablet);
       tablet.reset();
 
-      // insert another row without object value
-      rowIndex = tablet.getRowSize();
-      tablet.addTimestamp(rowIndex, 2);
-      tablet.addValue(rowIndex, 0, "1");
-      tablet.addValue(rowIndex, 1, "5");
-      tablet.addValue(rowIndex, 2, "3");
-      tablet.addValue(rowIndex, 3, 37.6F);
-      session.insert(tablet);
-      tablet.reset();
-
-      try (SessionDataSet dataSet =
-          session.executeQueryStatement("select file from object_table where time = 1")) {
-        SessionDataSet.DataIterator iterator = dataSet.iterator();
-        while (iterator.next()) {
-          Assert.assertEquals(
-              BytesUtils.parseObjectByteArrayToString(BytesUtils.longToBytes(object.length())),
-              iterator.getString(1));
-        }
-      }
-
       try (SessionDataSet dataSet =
           session.executeQueryStatement(
               "select READ_OBJECT(file) from object_table where time = 1")) {
@@ -155,8 +133,10 @@ public class IoTDBObjectInsertIT {
           Binary binary = iterator.getBlob(1);
           Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
         }
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS object_table");
       }
     }
+
     // test object file path
     boolean success = false;
     for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
@@ -189,11 +169,101 @@ public class IoTDBObjectInsertIT {
         }
       }
     }
-    Assert.assertTrue(success);
+    Assert.assertFalse(success);
   }
 
   @Test
-  public void insertObjectSegmentsTest()
+  public void dropObjectColumnTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // insert table data by tablet
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.OBJECT);
+      List<ColumnCategory> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
+      Tablet tablet = new Tablet("object_table", columnNameList, dataTypeList, columnTypeList, 1);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 1);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+      session.insert(tablet);
+      tablet.reset();
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select READ_OBJECT(file) from object_table where time = 1")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        while (iterator.next()) {
+          Binary binary = iterator.getBlob(1);
+          Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
+        }
+        session.executeNonQueryStatement("ALTER TABLE object_table drop column file");
+      }
+    }
+
+    // test object file path
+    boolean success = false;
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
+      File objectDir = new File(objectDirStr);
+      if (objectDir.exists() && objectDir.isDirectory()) {
+        File[] regionDirs = objectDir.listFiles();
+        if (regionDirs != null) {
+          for (File regionDir : regionDirs) {
+            if (regionDir.isDirectory()) {
+              File objectFile =
+                  new File(
+                      regionDir,
+                      convertPathString("object_table")
+                          + File.separator
+                          + convertPathString("1")
+                          + File.separator
+                          + convertPathString("5")
+                          + File.separator
+                          + convertPathString("3")
+                          + File.separator
+                          + convertPathString("file")
+                          + File.separator
+                          + "1.bin");
+              if (objectFile.exists() && objectFile.isFile()) {
+                success = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void deleteObjectSegmentsTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String testObject =
         System.getProperty("user.dir")
@@ -241,59 +311,13 @@ public class IoTDBObjectInsertIT {
         session.insert(tablet);
         tablet.reset();
       }
+      session.executeNonQueryStatement("DELETE FROM object_table where time = 1");
 
       try (SessionDataSet dataSet =
           session.executeQueryStatement("select file from object_table where time = 1")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();
         while (iterator.next()) {
           assertNull(iterator.getString(1));
-        }
-      }
-
-      // insert segment with wrong offset
-      try {
-        int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(rowIndex, 1);
-        tablet.addValue(rowIndex, 0, "1");
-        tablet.addValue(rowIndex, 1, "5");
-        tablet.addValue(rowIndex, 2, "3");
-        tablet.addValue(rowIndex, 3, 37.6F);
-        tablet.addValue(rowIndex, 4, false, 512L, objectSegments.get(1));
-        session.insert(tablet);
-      } catch (StatementExecutionException e) {
-        Assert.assertEquals(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getStatusCode());
-        Assert.assertEquals(
-            String.format(
-                "741: The file length %d is not equal to the offset %d",
-                ((objectSegments.size() - 1) * 512), 512L),
-            e.getMessage());
-      } finally {
-        tablet.reset();
-      }
-
-      // last segment
-      int rowIndex = tablet.getRowSize();
-      tablet.addTimestamp(rowIndex, 1);
-      tablet.addValue(rowIndex, 0, "1");
-      tablet.addValue(rowIndex, 1, "5");
-      tablet.addValue(rowIndex, 2, "3");
-      tablet.addValue(rowIndex, 3, 37.6F);
-      tablet.addValue(
-          rowIndex,
-          4,
-          true,
-          (objectSegments.size() - 1) * 512L,
-          objectSegments.get(objectSegments.size() - 1));
-      session.insert(tablet);
-      tablet.reset();
-
-      try (SessionDataSet dataSet =
-          session.executeQueryStatement(
-              "select READ_OBJECT(file) from object_table where time = 1")) {
-        SessionDataSet.DataIterator iterator = dataSet.iterator();
-        while (iterator.next()) {
-          Binary binary = iterator.getBlob(1);
-          Assert.assertArrayEquals(Files.readAllBytes(Paths.get(testObject)), binary.getValues());
         }
       }
     }
@@ -308,7 +332,7 @@ public class IoTDBObjectInsertIT {
         if (regionDirs != null) {
           for (File regionDir : regionDirs) {
             if (regionDir.isDirectory()) {
-              File objectFile =
+              File objectTmpFile =
                   new File(
                       regionDir,
                       convertPathString("object_table")
@@ -321,8 +345,8 @@ public class IoTDBObjectInsertIT {
                           + File.separator
                           + convertPathString("file")
                           + File.separator
-                          + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
+                          + "1.bin.tmp");
+              if (objectTmpFile.exists() && objectTmpFile.isFile()) {
                 success = true;
               }
             }
@@ -330,7 +354,7 @@ public class IoTDBObjectInsertIT {
         }
       }
     }
-    Assert.assertTrue(success);
+    Assert.assertFalse(success);
   }
 
   protected String convertPathString(String path) {
