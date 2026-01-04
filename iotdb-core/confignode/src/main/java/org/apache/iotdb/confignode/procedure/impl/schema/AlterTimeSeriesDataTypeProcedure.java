@@ -29,14 +29,19 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTimeSeriesDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -118,6 +123,7 @@ public class AlterTimeSeriesDataTypeProcedure
               measurementPath.getFullPath(),
               this::setFailure,
               true);
+          collectPayload4Pipe(env);
           break;
         default:
           setFailure(
@@ -266,6 +272,27 @@ public class AlterTimeSeriesDataTypeProcedure
             new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
         return;
       }
+    }
+  }
+
+  private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(
+                          new PipeAlterTimeSeriesPlan(measurementPath, operationType, dataType))
+                      : new PipeAlterTimeSeriesPlan(measurementPath, operationType, dataType));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
     }
   }
 

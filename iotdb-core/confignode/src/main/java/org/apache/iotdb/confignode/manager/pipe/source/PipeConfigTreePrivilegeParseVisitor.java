@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -33,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -368,6 +370,34 @@ public class PipeConfigTreePrivilegeParseVisitor
         return Optional.empty();
       } else {
         throw new AccessDeniedException("Not has privilege to transfer plan: " + setTTLPlan);
+      }
+    }
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeAlterTimeSeries(
+      final PipeAlterTimeSeriesPlan pipeAlterTimeSeriesPlan, final String userName) {
+    try {
+      final List<PartialPath> paths =
+          getAllIntersectedPatterns(
+              pipeAlterTimeSeriesPlan.getMeasurementPath(), userName, pipeAlterTimeSeriesPlan);
+      // The intersectionList is either a singleton list or an empty list, because the pipe
+      // pattern and TTL path are each either a prefix path or a full path
+      return !paths.isEmpty()
+              && paths.get(0).getNodeLength()
+                  == pipeAlterTimeSeriesPlan.getMeasurementPath().getNodeLength()
+          ? Optional.of(
+              new PipeAlterTimeSeriesPlan(
+                  new MeasurementPath(paths.get(0).getNodes()),
+                  pipeAlterTimeSeriesPlan.getOperationType(),
+                  pipeAlterTimeSeriesPlan.getDataType()))
+          : Optional.empty();
+    } catch (final AuthException e) {
+      if (skip) {
+        return Optional.empty();
+      } else {
+        throw new AccessDeniedException(
+            "Not has privilege to transfer plan: " + pipeAlterTimeSeriesPlan);
       }
     }
   }

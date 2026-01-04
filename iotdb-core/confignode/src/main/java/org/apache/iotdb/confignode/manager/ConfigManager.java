@@ -48,7 +48,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -251,6 +253,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -2337,7 +2340,13 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       switch (AlterTimeSeriesOperationType.getType(req.operationType)) {
         case ALTER_DATA_TYPE:
-          return procedureManager.alterTimeSeriesDataType(req);
+          return procedureManager.alterTimeSeriesDataType(
+              req.getQueryId(),
+              (MeasurementPath)
+                  PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
+              req.getOperationType(),
+              TSDataType.deserialize(req.updateInfo.get()),
+              false);
         default:
           throw new IllegalArgumentException(
               AlterOrDropTableOperationType.getType(req.operationType).toString());

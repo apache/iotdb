@@ -659,6 +659,7 @@ public class ConfigPlanExecutor {
       case PipeDeactivateTemplate:
       case PipeDeleteDevices:
       case PipeAlterEncodingCompressor:
+      case PipeAlterTimeSeries:
         // Pipe payload, used to trigger plan extraction.
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

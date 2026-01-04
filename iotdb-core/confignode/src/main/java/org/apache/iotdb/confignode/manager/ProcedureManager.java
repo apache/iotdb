@@ -133,7 +133,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -472,17 +471,17 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
-  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+  public TSStatus alterTimeSeriesDataType(
+      final String queryId,
+      final MeasurementPath measurementPath,
+      final byte operationType,
+      final TSDataType tsDataType,
+      final boolean isGeneratedByPipe) {
     AlterTimeSeriesDataTypeProcedure procedure;
     synchronized (this) {
       procedure =
           new AlterTimeSeriesDataTypeProcedure(
-              req.getQueryId(),
-              (MeasurementPath)
-                  PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
-              req.getOperationType(),
-              TSDataType.deserialize(req.updateInfo.get()),
-              false);
+              queryId, measurementPath, operationType, tsDataType, isGeneratedByPipe);
       this.executor.submitProcedure(procedure);
     }
     return waitingProcedureFinished(procedure);

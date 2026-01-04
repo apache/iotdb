@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -427,6 +428,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                                 new PartialPath(((SetTTLPlan) plan).getPathPattern())),
                             PrivilegeType.WRITE_SCHEMA))
                 .getStatus();
+      case PipeAlterTimeSeries:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    Collections.singletonList(
+                        ((PipeAlterTimeSeriesPlan) plan).getMeasurementPath()),
+                    PrivilegeType.WRITE_SCHEMA))
+            .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
@@ -720,6 +730,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             : configManager
                 .getTTLManager()
                 .setTTL((SetTTLPlan) plan, shouldMarkAsPipeRequest.get());
+      case PipeAlterTimeSeries:
+        return configManager
+            .getProcedureManager()
+            .alterTimeSeriesDataType(
+                queryId,
+                ((PipeAlterTimeSeriesPlan) plan).getMeasurementPath(),
+                ((PipeAlterTimeSeriesPlan) plan).getOperationType(),
+                ((PipeAlterTimeSeriesPlan) plan).getDataType(),
+                true);
       case PipeCreateTableOrView:
         return executeIdempotentCreateTableOrView(
             (PipeCreateTableOrViewPlan) plan, queryId, shouldMarkAsPipeRequest.get());

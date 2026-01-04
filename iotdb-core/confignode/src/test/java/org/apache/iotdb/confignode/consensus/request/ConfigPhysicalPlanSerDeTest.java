@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
@@ -94,6 +95,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPa
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -300,6 +302,18 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetTTLPlanTest() throws IOException {
     SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void PipeAlterTimeSeriesPlanTest() throws IOException {
+    PipeAlterTimeSeriesPlan req0 =
+        new PipeAlterTimeSeriesPlan(
+            new MeasurementPath(new String[] {"root", "sg0", "d1", "s1"}),
+            (byte) 0,
+            TSDataType.DOUBLE);
+    PipeAlterTimeSeriesPlan req1 =
+        (PipeAlterTimeSeriesPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
