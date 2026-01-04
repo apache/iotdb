@@ -671,6 +671,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
         return checkPermissionsWithGrantOption(
             context,
+            authorType,
             Arrays.stream(statement.getPrivilegeList())
                 .map(s -> PrivilegeType.valueOf(s.toUpperCase()))
                 .collect(Collectors.toList()),
@@ -1980,7 +1981,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   protected TSStatus checkPermissionsWithGrantOption(
-      IAuditEntity auditEntity, List<PrivilegeType> privilegeList, List<PartialPath> paths) {
+      IAuditEntity auditEntity,
+      AuthorType authorType,
+      List<PrivilegeType> privilegeList,
+      List<PartialPath> paths) {
     Supplier<String> supplier =
         () -> {
           StringJoiner joiner = new StringJoiner(" ");
@@ -2003,7 +2007,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
               AuthorityChecker.getTSStatus(
                   false,
                   "Has no permission to execute "
-                      + privilegeType
+                      + authorType
                       + ", please ensure you have these privileges and the grant option is TRUE when granted");
           break;
         }
@@ -2014,7 +2018,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
               AuthorityChecker.getTSStatus(
                   false,
                   "Has no permission to execute "
-                      + privilegeType
+                      + authorType
                       + ", please ensure you have these privileges and the grant option is TRUE when granted");
           break;
         }
