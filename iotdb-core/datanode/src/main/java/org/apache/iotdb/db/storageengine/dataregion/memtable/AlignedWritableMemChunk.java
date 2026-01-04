@@ -58,6 +58,7 @@ import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
@@ -365,62 +366,74 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     // timestamp: 1 bitmap: 011
     // timestamp: 2 bitmap: 101
     // timestamp: 4 bitmap: 110
-    for (int row = 0; row < rowCount; row++) {
-      // the row is deleted
-      if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
-        continue;
-      }
-      long timestamp = alignedTVList.getTime(row);
-      if (globalTimeFilter != null && !globalTimeFilter.satisfy(timestamp, null)) {
-        continue;
-      }
-
-      // Note that this method will only perform bitmap unmarking on the first occurrence of a
-      // non-null value in multiple timestamps for the same column.
-      BitMap currentRowNullValueBitmap = null;
-
-      for (int column = 0; column < schemaList.size(); column++) {
-        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
+    List<long[]> timestampsList = alignedTVList.getTimestamps();
+    List<int[]> indicesList = alignedTVList.getIndices();
+    int row = -1;
+    for (int i = 0; i < timestampsList.size(); i++) {
+      long[] timestamps = timestampsList.get(i);
+      int[] indices = indicesList == null ? null : indicesList.get(i);
+      int limit = (i == timestampsList.size() - 1) ? rowCount - i * ARRAY_SIZE : ARRAY_SIZE;
+      for (int j = 0; j < limit; j++) {
+        row++;
+        // the row is deleted
+        if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
+          continue;
+        }
+        long timestamp = timestamps[j];
+        if (globalTimeFilter != null && !globalTimeFilter.satisfy(timestamp, null)) {
           continue;
         }
 
-        // skip deleted row
-        if (valueColumnsDeletionList != null
-            && !valueColumnsDeletionList.isEmpty()
-            && isPointDeleted(
-                timestamp,
-                valueColumnsDeletionList.get(column),
-                valueColumnDeleteCursor.get(column))) {
-          continue;
+        // Note that this method will only perform bitmap unmarking on the first occurrence of a
+        // non-null value in multiple timestamps for the same column.
+        BitMap currentRowNullValueBitmap = null;
+        for (int column = 0; column < schemaList.size(); column++) {
+          if (alignedTVList.isNullValue(indices == null ? row : indices[j], column)) {
+            continue;
+          }
+
+          // skip deleted row
+          if (valueColumnsDeletionList != null && !valueColumnsDeletionList.isEmpty()) {
+            List<TimeRange> columnDeletionList = valueColumnsDeletionList.get(column);
+            int[] deleteCursor = valueColumnDeleteCursor.get(column);
+            if (columnDeletionList != null && !columnDeletionList.isEmpty()) {
+              if (!alignedTVList.isSorted()) {
+                deleteCursor[0] = 0;
+              }
+              if (isPointDeleted(timestamp, columnDeletionList, deleteCursor)) {
+                continue;
+              }
+            }
+          }
+          if (!columnHasNonNullValue.isMarked(column)) {
+            hasNonNullValueColumnCount.incrementAndGet();
+            columnHasNonNullValue.mark(column);
+            currentRowNullValueBitmap =
+                currentRowNullValueBitmap != null
+                    ? currentRowNullValueBitmap
+                    : timestampWithBitmap.computeIfAbsent(
+                        timestamp, k -> getAllMarkedBitmap(schemaList.size()));
+            currentRowNullValueBitmap.unmark(column);
+          }
         }
-        if (!columnHasNonNullValue.isMarked(column)) {
-          hasNonNullValueColumnCount.incrementAndGet();
-          columnHasNonNullValue.mark(column);
-          currentRowNullValueBitmap =
+
+        if (!ignoreAllNullRows) {
+          timestampWithBitmap.put(
+              timestamp,
               currentRowNullValueBitmap != null
                   ? currentRowNullValueBitmap
-                  : timestampWithBitmap.computeIfAbsent(
-                      timestamp, k -> getAllMarkedBitmap(schemaList.size()));
-          currentRowNullValueBitmap.unmark(column);
+                  : getAllMarkedBitmap(schemaList.size()));
+          return;
         }
-      }
+        if (currentRowNullValueBitmap == null) {
+          continue;
+        }
+        // found new column with non-null value
+        timestampWithBitmap.put(timestamp, currentRowNullValueBitmap);
 
-      if (!ignoreAllNullRows) {
-        timestampWithBitmap.put(
-            timestamp,
-            currentRowNullValueBitmap != null
-                ? currentRowNullValueBitmap
-                : getAllMarkedBitmap(schemaList.size()));
-        return;
-      }
-      if (currentRowNullValueBitmap == null) {
-        continue;
-      }
-      // found new column with non-null value
-      timestampWithBitmap.put(timestamp, currentRowNullValueBitmap);
-
-      if (hasNonNullValueColumnCount.get() == schemaList.size()) {
-        return;
+        if (hasNonNullValueColumnCount.get() == schemaList.size()) {
+          return;
+        }
       }
     }
   }
