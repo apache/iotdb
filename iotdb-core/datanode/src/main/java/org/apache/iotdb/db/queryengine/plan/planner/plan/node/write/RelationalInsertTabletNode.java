@@ -469,6 +469,9 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         continue;
       }
       byte[] binary = ((Binary[]) columns[column])[j].getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
       ByteBuffer buffer = ByteBuffer.wrap(binary);
       boolean isEoF = buffer.get() == 1;
       long offset = buffer.getLong();

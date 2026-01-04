@@ -127,6 +127,16 @@ public class IoTDBObjectInsertIT {
       session.insert(tablet);
       tablet.reset();
 
+      // insert another row without object value
+      rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 2);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      session.insert(tablet);
+      tablet.reset();
+
       try (SessionDataSet dataSet =
           session.executeQueryStatement("select file from object_table where time = 1")) {
         SessionDataSet.DataIterator iterator = dataSet.iterator();

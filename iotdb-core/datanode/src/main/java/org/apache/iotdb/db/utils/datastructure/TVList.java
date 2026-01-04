@@ -745,6 +745,10 @@ public abstract class TVList implements WALEntryValue {
     return timestamps;
   }
 
+  public List<int[]> getIndices() {
+    return indices;
+  }
+
   public void setOwnerQuery(QueryContext queryCtx) {
     this.ownerQuery = queryCtx;
   }
