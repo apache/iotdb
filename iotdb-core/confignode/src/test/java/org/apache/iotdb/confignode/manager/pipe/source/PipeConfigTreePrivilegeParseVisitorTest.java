@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -211,6 +212,18 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                             .get())
                     .getPatternTreeBytes())
             .getAllPathPatterns());
+    Assert.assertEquals(
+        Collections.singletonList(matchedPath),
+        PathPatternTree.deserialize(
+                ((PipeAlterEncodingCompressorPlan)
+                        skipVisitor
+                            .visitPipeAlterEncodingCompressor(
+                                new PipeAlterEncodingCompressorPlan(
+                                    buffer, (byte) 0, (byte) 0, false),
+                                FAKE_USER_ENTITY)
+                            .get())
+                    .getPatternTreeBytes())
+            .getAllPathPatterns());
     Assert.assertThrows(
         AccessDeniedException.class,
         () ->
@@ -221,6 +234,12 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
         () ->
             throwVisitor.visitPipeDeleteLogicalView(
                 new PipeDeleteLogicalViewPlan(buffer), FAKE_USER_ENTITY));
+    Assert.assertThrows(
+        AccessDeniedException.class,
+        () ->
+            throwVisitor.visitPipeAlterEncodingCompressor(
+                new PipeAlterEncodingCompressorPlan(buffer, (byte) 0, (byte) 0, false),
+                FAKE_USER_ENTITY));
 
     Assert.assertEquals(
         Collections.singleton(matchedPath),
