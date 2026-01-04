@@ -21,7 +21,6 @@ import torch
 from einops import rearrange, repeat
 from torch.utils.data import DataLoader
 
-from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.chronos2.dataset import Chronos2Dataset, DatasetMode
@@ -37,8 +36,35 @@ class Chronos2Pipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def preprocess(self, inputs):
-        inputs = super().preprocess(inputs)
+    def preprocess(self, inputs, **infer_kwargs):
+        """
+        Preprocess input data of chronos2.
+
+        Parameters
+        ----------
+        inputs : list of dict
+            A list of dictionaries containing input data. Each dictionary contains:
+            - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
+            - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+            - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+
+        infer_kwargs: Additional keyword arguments for inference, such as:
+            - `output_length`(int): Used to check validation of 'future_covariates' if provided.
+
+        Returns
+        -------
+        list of dict
+            Processed inputs with the following structure for each dictionary:
+            - 'target': torch.Tensor
+                The renamed target tensor (originally 'targets'), shape [target_count, input_length].
+            - 'past_covariates' (optional): dict of str to torch.Tensor
+                Unchanged past covariates.
+            - 'future_covariates' (optional): dict of str to torch.Tensor
+                Unchanged future covariates.
+        """
+        super().preprocess(inputs, **infer_kwargs)
+        for item in inputs:
+            item["target"] = item.pop("targets")
         return inputs
 
     @property
@@ -206,9 +232,28 @@ class Chronos2Pipeline(ForecastPipeline):
 
         return prediction, context, future_covariates
 
-    def forecast(self, inputs, **infer_kwargs):
+    def forecast(self, inputs, **infer_kwargs) -> list[torch.Tensor]:
+        """
+        Generate forecasts for the input time series.
+
+        Parameters
+        ----------
+        inputs :
+            - A 3D `torch.Tensor` or `np.ndarray` of shape (batch_size, n_variates, history_length).
+            - A list of 1D or 2D `torch.Tensor` or `np.ndarray`, where each element has shape (history_length,) or (n_variates, history_length).
+            - A list of dictionaries, each with:
+                - `target` (required): 1D or 2D `torch.Tensor` or `np.ndarray` of shape (history_length,) or (n_variates, history_length).
+                - `past_covariates` (optional): dict of past-only covariates with 1D `torch.Tensor` or `np.ndarray`.
+                - `future_covariates` (optional): dict of future covariates with 1D `torch.Tensor` or `np.ndarray`.
+
+        **infer_kwargs** : Additional arguments for inference.
+
+        Returns
+        -------
+        list of torch.Tensor : The model's predictions, each of shape (n_variates, n_quantiles, prediction_length).
+        """
         model_prediction_length = self.model_prediction_length
-        prediction_length = infer_kwargs.get("predict_length", 96)
+        prediction_length = infer_kwargs.get("output_length", 96)
         # The maximum number of output patches to generate in a single forward pass before the long-horizon heuristic kicks in. Note: A value larger
         # than the model's default max_output_patches may lead to degradation in forecast accuracy, defaults to a model-specific value
         max_output_patches = infer_kwargs.get(
@@ -218,10 +263,13 @@ class Chronos2Pipeline(ForecastPipeline):
         # are appended to the historical context and input into the model autoregressively to generate long-horizon predictions. Note that the
         # effective batch size increases by a factor of `len(unrolled_quantiles)` when making long-horizon predictions,
         # by default [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+        # Note that this parameter is used for long horizon forecasting, the default quantile_levels
+        # are [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+        # 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
         unrolled_quantiles = infer_kwargs.get(
             "unrolled_quantiles", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         )
-
         if not set(unrolled_quantiles).issubset(self.quantiles):
             raise ValueError(
                 f"Unrolled quantiles must be a subset of the model's quantiles. "
@@ -236,7 +284,9 @@ class Chronos2Pipeline(ForecastPipeline):
             )
             logger.warning(msg)
 
-        context_length = inputs.shape[-1]
+        # The maximum context length used during for inference,
+        # by default set to the model's default context length
+        context_length = infer_kwargs.get("context_length", self.model_context_length)
         if context_length > self.model_context_length:
             logger.warning(
                 f"The specified context_length {context_length} is greater than the model's default context length {self.model_context_length}. "
@@ -244,11 +294,16 @@ class Chronos2Pipeline(ForecastPipeline):
             )
             context_length = self.model_context_length
 
+        # The batch size used for prediction.
+        # Note that the batch size here means the number of time series,
+        # including target(s) and covariates,which are input into the model.
+        batch_size = infer_kwargs.get("batch_size", 256)
+
         test_dataset = Chronos2Dataset.convert_inputs(
             inputs=inputs,
             context_length=context_length,
             prediction_length=prediction_length,
-            batch_size=256,
+            batch_size=batch_size,
             output_patch_size=self.model_output_patch_size,
             mode=DatasetMode.TEST,
         )
@@ -267,6 +322,13 @@ class Chronos2Pipeline(ForecastPipeline):
             batch_group_ids = batch["group_ids"]
             batch_future_covariates = batch["future_covariates"]
             batch_target_idx_ranges = batch["target_idx_ranges"]
+
+            # If True, cross-learning is enabled,
+            # i.e., all the tasks in `inputs` will be predicted jointly and the model will share information across all inputs,
+            # by default False
+            predict_batches_jointly = infer_kwargs.get("predict_batches_jointly", False)
+            if predict_batches_jointly:
+                batch_group_ids = torch.zeros_like(batch_group_ids)
 
             batch_prediction = self._predict_batch(
                 context=batch_context,
@@ -387,5 +449,28 @@ class Chronos2Pipeline(ForecastPipeline):
 
         return prediction
 
-    def postprocess(self, output: torch.Tensor):
-        return output[0].mean(dim=1, keepdim=True)
+    def postprocess(
+        self, outputs: list[torch.Tensor], **infer_kwargs
+    ) -> list[torch.Tensor]:
+        """
+        Postprocesses the model's forecast outputs by selecting the 0.5 quantile or averaging over quantiles.
+
+        Args:
+            outputs (list[torch.Tensor]): List of forecast outputs, where each output is a 3D-tensor with shape [target_count, quantile_count, output_length].
+
+        Returns:
+            list[torch.Tensor]: Processed list of forecast outputs, each is a 2D-tensor with shape [target_count, output_length].
+        """
+        outputs_list = []
+        for output in outputs:
+            # Check if 0.5 quantile is available
+            if 0.5 in self.quantiles:
+                idx = self.quantiles.index(0.5)
+                # Get the 0.5 quantile value
+                outputs_list.append(output[:, idx, :])
+            else:
+                # If 0.5 quantile is not provided,
+                # get the mean of all quantiles
+                outputs_list.append(output.mean(dim=1))
+        super().postprocess(outputs_list, **infer_kwargs)
+        return outputs_list

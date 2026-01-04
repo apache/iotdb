@@ -113,7 +113,7 @@ public class AINodeForecastIT {
     }
   }
 
-  public void forecastTableFunctionErrorTest(
+  public static void forecastTableFunctionErrorTest(
       Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) throws SQLException {
     // OUTPUT_START_TIME error
     String invalidOutputStartTimeSQL =

@@ -1,7 +1,7 @@
 {
   "model_type": "sktime",
   "model_id": "stl_forecaster",
-  "predict_length": 1,
+  "output_length": 1,
   "sp": 2,
   "seasonal": 7,
   "trend": null,
