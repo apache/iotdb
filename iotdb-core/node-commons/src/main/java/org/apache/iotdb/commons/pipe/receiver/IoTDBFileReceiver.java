@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -75,10 +77,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Used to restore the original thread name when the receiver is closed.
   private String originalThreadName;
 
-  protected long userId = -1;
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-  protected String cliHostname = "";
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+  protected IAuditEntity userEntity;
 
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
@@ -288,6 +289,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
+    long userId = -1;
+    String cliHostname = "";
+
     final String userIdString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
     if (userIdString != null) {
@@ -303,6 +307,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (cliHostnameString != null) {
       cliHostname = cliHostnameString;
     }
+
+    userEntity = new UserEntity(userId, username, cliHostname);
+
     final String passwordString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
     if (passwordString != null) {

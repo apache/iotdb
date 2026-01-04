@@ -25,7 +25,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import java.util.function.Supplier;
 
 public abstract class AbstractAuditLogger {
-
+  public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
+      "User %s (ID=%d) requests authority on object %s with result %s";
   public static final String AUDIT_LOG_NODE_ID = "node_id";
   public static final String AUDIT_LOG_USER_ID = "user_id";
   public static final String AUDIT_LOG_USERNAME = "username";
@@ -46,5 +47,18 @@ public abstract class AbstractAuditLogger {
 
   public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
     return true;
+  }
+
+  public void recordObjectAuthenticationAuditLog(
+      final IAuditEntity auditEntity, final Supplier<String> auditObject) {
+    log(
+        auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
+        () ->
+            String.format(
+                OBJECT_AUTHENTICATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditObject.get(),
+                auditEntity.getResult()));
   }
 }

@@ -134,12 +134,6 @@ public class PermissionManager {
     return authorInfo.generateRawAuthorizedPTree(userName, type);
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)
-      throws AuthException {
-    union.setGrantOption(true);
-    return authorInfo.checkUserPrivileges(username, union);
-  }
-
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
       throws AuthException {
     return authorInfo.checkRoleOfUser(username, rolename);

@@ -1353,23 +1353,6 @@ public class ConfigManager implements IManager {
     }
   }
 
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union) {
-    TSStatus status = confirmLeader();
-    TPermissionInfoResp resp = new TPermissionInfoResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      try {
-        resp = permissionManager.checkUserPrivilegeGrantOpt(username, union);
-      } catch (AuthException e) {
-        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
-        resp.setStatus(status);
-        return resp;
-      }
-    } else {
-      resp.setStatus(status);
-    }
-    return resp;
-  }
-
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename) {
     TSStatus status = confirmLeader();
     TPermissionInfoResp resp = new TPermissionInfoResp();

@@ -22,7 +22,6 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -39,6 +38,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -360,8 +360,9 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQuery(senderEnv, "create database root.test1");
 
     // Shall be transferred
+    // The root.test may or may not be transferred due to delayed start of the config source
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases root.tes*", "count,", Collections.singleton("1,"));
+        receiverEnv, "count databases root.test1", "count,", Collections.singleton("1,"));
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection();
@@ -417,10 +418,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQuery(senderEnv, "revoke SYSTEM on root.** from user thulab");
 
     // A user shall only see its own pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Assert.assertEquals(
-          1, client.showPipe(new TShowPipeReq().setUserName("thulab")).pipeInfoList.size());
+    try (final Connection connection = senderEnv.getConnection("thulab", "passwD@123456");
+        final Statement statement = connection.createStatement()) {
+      // Will not throw any exception
+      final ResultSet resultSet = statement.executeQuery("show pipes");
+      Assert.assertTrue(resultSet.next());
+      Assert.assertFalse(resultSet.next());
     } catch (Exception e) {
       fail(e.getMessage());
     }
