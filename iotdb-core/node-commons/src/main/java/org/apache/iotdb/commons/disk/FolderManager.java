@@ -17,21 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.rescon.disk;
+package org.apache.iotdb.commons.disk;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,5 +150,22 @@ public class FolderManager {
 
   public List<String> getFolders() {
     return folders;
+  }
+
+  public String getFirstFolderOfSameDisk(String pathStr) {
+    Path path = Paths.get(pathStr);
+    try {
+      FileStore fileStore = Files.getFileStore(path);
+      for (String folder : folders) {
+        Path folderPath = Paths.get(folder);
+        FileStore folderFileStore = Files.getFileStore(folderPath);
+        if (folderFileStore.equals(fileStore)) {
+          return folder;
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read file store path '" + pathStr + "'", e);
+    }
+    return null;
   }
 }

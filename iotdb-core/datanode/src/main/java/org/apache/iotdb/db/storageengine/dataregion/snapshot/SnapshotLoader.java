@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -314,56 +314,69 @@ public class SnapshotLoader {
     }
   }
 
+  private File createLinksFromSnapshotToSourceDir(
+      String targetSuffix,
+      File file,
+      Map<String, String> fileTarget,
+      String fileKey,
+      String finalDir)
+      throws IOException {
+    File targetFile =
+        new File(finalDir + File.separator + targetSuffix + File.separator + file.getName());
+
+    try {
+      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+        throw new IOException(
+            String.format(
+                "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
+      }
+
+      try {
+        Files.createLink(targetFile.toPath(), file.toPath());
+        LOGGER.debug("Created hard link from {} to {}", file, targetFile);
+        fileTarget.put(fileKey, finalDir);
+        return targetFile;
+      } catch (IOException e) {
+        LOGGER.info("Cannot create link from {} to {}, fallback to copy", file, targetFile);
+      }
+
+      Files.copy(file.toPath(), targetFile.toPath());
+      fileTarget.put(fileKey, finalDir);
+      return targetFile;
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to process file {} in dir {}: {}", file.getName(), finalDir, e.getMessage(), e);
+      throw e;
+    }
+  }
+
   private void createLinksFromSnapshotToSourceDir(
-      String targetSuffix, File[] files, FolderManager folderManager)
-      throws DiskSpaceInsufficientException, IOException {
+      String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
     Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
       String fileKey = file.getName().split("\\.")[0];
       String dataDir = fileTarget.get(fileKey);
 
+      if (dataDir != null) {
+        createLinksFromSnapshotToSourceDir(targetSuffix, file, fileTarget, fileKey, dataDir);
+        continue;
+      }
+
       try {
-        folderManager.getNextWithRetry(
-            currentDataDir -> {
-              String effectiveDir = (dataDir != null) ? dataDir : currentDataDir;
-              File targetFile =
-                  new File(
-                      effectiveDir
-                          + File.separator
-                          + targetSuffix
-                          + File.separator
-                          + file.getName());
+        String firstFolderOfSameDisk =
+            IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+                ? folderManager.getFirstFolderOfSameDisk(file.getAbsolutePath())
+                : null;
 
-              try {
-                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-                  throw new IOException(
-                      String.format(
-                          "Cannot create directory %s",
-                          targetFile.getParentFile().getAbsolutePath()));
-                }
-
-                try {
-                  Files.createLink(targetFile.toPath(), file.toPath());
-                  LOGGER.debug("Created hard link from {} to {}", file, targetFile);
-                  return targetFile;
-                } catch (IOException e) {
-                  LOGGER.info(
-                      "Cannot create link from {} to {}, fallback to copy", file, targetFile);
-                }
-
-                Files.copy(file.toPath(), targetFile.toPath());
-                fileTarget.put(fileKey, effectiveDir);
-                return targetFile;
-              } catch (Exception e) {
-                LOGGER.warn(
-                    "Failed to process file {} in dir {}: {}",
-                    file.getName(),
-                    effectiveDir,
-                    e.getMessage(),
-                    e);
-                throw e;
-              }
-            });
+        if (firstFolderOfSameDisk != null) {
+          createLinksFromSnapshotToSourceDir(
+              targetSuffix, file, fileTarget, fileKey, firstFolderOfSameDisk);
+        } else {
+          folderManager.getNextWithRetry(
+              currentDataDir ->
+                  createLinksFromSnapshotToSourceDir(
+                      targetSuffix, file, fileTarget, fileKey, currentDataDir));
+        }
       } catch (Exception e) {
         throw new IOException(
             String.format(
