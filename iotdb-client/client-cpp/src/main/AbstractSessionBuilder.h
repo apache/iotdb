@@ -39,6 +39,8 @@ public:
     bool enableRedirections = true;
     bool enableRPCCompression = false;
     std::vector<std::string> nodeUrls;
+    bool useSSL = false;
+    std::string trustCertFilePath;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H
