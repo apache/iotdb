@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
@@ -83,13 +80,14 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    this(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+    this(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam(), Long.MIN_VALUE);
   }
 
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileResources,
-      EncryptParameter encryptParameter)
+      EncryptParameter encryptParameter,
+      long maxTsFileSetEndVersion)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isCurrentDeviceExistedInSourceSeqFiles = new boolean[seqFileResources.size()];
@@ -108,7 +106,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
               targetResources.get(i),
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
-              this.encryptParameter));
+              this.encryptParameter, maxTsFileSetEndVersion));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;

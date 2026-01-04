@@ -102,12 +102,13 @@ public class FastCompactionPerformer
   private final boolean isCrossCompaction;
 
   private EncryptParameter encryptParameter;
+  private final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
 
   @TestOnly
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
-      List<TsFileResource> targetFiles) {
+      List<TsFileResource> targetFiles, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
@@ -121,13 +122,14 @@ public class FastCompactionPerformer
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       List<TsFileResource> targetFiles,
-      EncryptParameter encryptParameter) {
+      EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
@@ -138,6 +140,7 @@ public class FastCompactionPerformer
       isCrossCompaction = true;
     }
     this.encryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @TestOnly
@@ -147,11 +150,13 @@ public class FastCompactionPerformer
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public FastCompactionPerformer(boolean isCrossCompaction, EncryptParameter encryptParameter) {
     this.isCrossCompaction = isCrossCompaction;
     this.encryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   @Override

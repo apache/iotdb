@@ -275,7 +275,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @throws IOException if io errors occurred
    */
-  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
+  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice(
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
@@ -292,12 +293,23 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
           true);
+      EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(
+          maxTsFileSetEndVersionAndMinResource.left);
+      if (evolvedSchema != null) {
+        // the device has been rewritten, should get the original name for rewriting
+        evolvedSchema.rewriteToFinal(evolvedSchema.getOriginalTableName(currentDevice.left.getTableName()), timeseriesMetadataList);
+      }
+
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
             && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+          MeasurementSchema measurementSchema = reader.getMeasurementSchema(
+              timeseriesMetadata.getChunkMetadataList());
+          // the column may be renamed
+          measurementSchema.setMeasurementName(timeseriesMetadata.getMeasurementId());
           schemaMap.put(
               timeseriesMetadata.getMeasurementId(),
-              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+              measurementSchema);
         }
       }
     }

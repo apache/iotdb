@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -231,8 +232,10 @@ public class EvolvedSchema {
       String originalTableName, List<TimeseriesMetadata> timeseriesMetadataList) {
     timeseriesMetadataList.forEach(
         timeseriesMetadata -> {
+          String finalColumnName = getFinalColumnName(originalTableName,
+              timeseriesMetadata.getMeasurementId());
           timeseriesMetadata.setMeasurementId(
-              getFinalColumnName(originalTableName, timeseriesMetadata.getMeasurementId()));
+              finalColumnName);
         });
   }
 

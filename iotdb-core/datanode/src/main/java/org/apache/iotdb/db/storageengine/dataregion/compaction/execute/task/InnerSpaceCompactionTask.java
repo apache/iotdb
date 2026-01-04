@@ -378,6 +378,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               new File(skippedSourceFile.getParentFile().getPath() + File.separator + newFileName),
               TsFileResourceStatus.COMPACTING);
       filesView.renamedTargetFiles.add(renamedTargetFile);
+      renamedTargetFile.setTsFileManager(tsFileManager);
     }
   }
 

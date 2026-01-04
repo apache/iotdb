@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -55,18 +56,22 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
-  private TsFileResource tsFileResource;
 
-  private EncryptParameter firstEncryptParameter;
+  private final TsFileResource tsFileResource;
+  private final EvolvedSchema evolvedSchema;
+
+  private final EncryptParameter firstEncryptParameter;
 
   @TestOnly
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    this(new TsFileResource(file), maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam());
+    this(new TsFileResource(file), maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
   }
 
   public CompactionTsFileWriter(
-      TsFileResource tsFile, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter)
+      TsFileResource tsFile, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter,
+      long maxTsFileSetEndVersion)
       throws IOException {
     super(tsFile.getTsFile(), maxMetadataSize, encryptParameter);
     this.tsFileResource = tsFile;
@@ -75,6 +80,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
+    evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
   }
 
   public EncryptParameter getEncryptParameter() {

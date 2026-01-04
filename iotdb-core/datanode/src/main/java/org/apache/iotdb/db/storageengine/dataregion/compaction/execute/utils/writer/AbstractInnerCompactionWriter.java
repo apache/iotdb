@@ -117,6 +117,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   private void useNewWriter() throws IOException {
+    long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
     fileWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex),
@@ -124,9 +125,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
             targetResources.get(currentFileIndex).isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
-            encryptParameter);
+            encryptParameter,
+            maxTsFileSetEndVersion);
     Schema schema = CompactionTableSchemaCollector.copySchema(schemas.get(0));
-    long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
     TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
     fileWriter.getTsFileResource().setTsFileManager(minVersionResource.getTsFileManager());
     EvolvedSchema evolvedSchema = fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);

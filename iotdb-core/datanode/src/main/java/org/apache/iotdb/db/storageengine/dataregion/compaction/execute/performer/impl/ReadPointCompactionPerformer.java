@@ -178,10 +178,10 @@ public class ReadPointCompactionPerformer
 
         if (isAligned) {
           compactAlignedSeries(
-              device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
+              device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource, maxTsFileSetEndVersionAndMinResource);
         } else {
           compactNonAlignedSeries(
-              device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
+              device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource, maxTsFileSetEndVersionAndMinResource);
         }
         summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
@@ -217,9 +217,10 @@ public class ReadPointCompactionPerformer
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
-      QueryDataSource queryDataSource)
+      QueryDataSource queryDataSource,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource)
       throws IOException, MetadataException {
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice(maxTsFileSetEndVersionAndMinResource);
     IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
@@ -242,13 +243,11 @@ public class ReadPointCompactionPerformer
             true);
 
     if (dataBlockReader.hasNextBatch()) {
-      // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
-      measurementSchemas.add(0, timeSchema);
       compactionWriter.startMeasurement(
           TsFileConstant.TIME_COLUMN_ID,
           new AlignedChunkWriterImpl(
-              measurementSchemas.remove(0),
+              timeSchema,
               measurementSchemas,
               EncryptUtils.getEncryptParameter(getEncryptParameter())),
           0);
@@ -265,9 +264,11 @@ public class ReadPointCompactionPerformer
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
-      QueryDataSource queryDataSource)
+      QueryDataSource queryDataSource,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource)
       throws IOException, InterruptedException, ExecutionException {
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice(
+        maxTsFileSetEndVersionAndMinResource);
     List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));
     int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);

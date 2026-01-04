@@ -70,7 +70,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
   private Schema schema = null;
 
-  private EncryptParameter firstEncryptParameter;
+  private final EncryptParameter firstEncryptParameter;
+  protected final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
@@ -80,8 +81,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles,
       TsFileResource targetFile,
-      EncryptParameter encryptParameter) {
-    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
+      EncryptParameter encryptParameter,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter, maxTsFileSetEndVersionAndMinResource);
   }
 
   @TestOnly
@@ -90,27 +92,32 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles,
       List<TsFileResource> targetFiles,
-      EncryptParameter encryptParameter) {
+      EncryptParameter encryptParameter,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(
-      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
+      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @TestOnly
@@ -119,10 +126,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
-  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
+  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.firstEncryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @Override
@@ -137,7 +146,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           CompactionTableSchemaCollector.collectSchema(
               seqFiles,
               deviceIterator.getReaderMap(),
-              deviceIterator.getDeprecatedTableSchemaMap());
+              deviceIterator.getDeprecatedTableSchemaMap(),
+              maxTsFileSetEndVersionAndMinResource);
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -208,7 +218,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             targetResources.get(currentTargetFileIndex),
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
-            firstEncryptParameter);
+            firstEncryptParameter, maxTsFileSetEndVersionAndMinResource.getLeft());
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
