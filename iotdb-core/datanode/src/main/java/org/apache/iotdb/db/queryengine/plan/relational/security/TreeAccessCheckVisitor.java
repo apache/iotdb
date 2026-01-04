@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
@@ -166,6 +167,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -213,6 +215,33 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         context.setResult(true),
         () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public static List<MeasurementPath> getIntersectedPaths4Pipe(
+      final List<MeasurementPath> paths, final TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.QUERY).setPrivilegeType(PrivilegeType.READ_DATA);
+    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(true),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return paths;
+    }
+    try {
+      final PathPatternTree originalTree = new PathPatternTree();
+      paths.forEach(originalTree::appendPathPattern);
+      originalTree.constructTree();
+      final PathPatternTree tree =
+          AuthorityChecker.getAuthorizedPathTree(context.getUsername(), PrivilegeType.READ_DATA);
+      recordObjectAuthenticationAuditLog(
+          context.setResult(true),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return originalTree.intersectWithFullPathPrefixTree(tree).getAllPathPatterns(true);
+    } catch (AuthException e) {
+      recordObjectAuthenticationAuditLog(
+          context.setResult(false),
+          () -> paths.stream().distinct().collect(Collectors.toList()).toString());
+      return Collections.emptyList();
+    }
   }
 
   // ====================== template related =================================
@@ -640,31 +669,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
             auditObject)) {
           return RpcUtils.SUCCESS_STATUS;
         }
-        for (String s : statement.getPrivilegeList()) {
-          PrivilegeType privilegeType = PrivilegeType.valueOf(s.toUpperCase());
-          if (privilegeType.isSystemPrivilege()) {
-            if (!checkHasGlobalAuth(context, privilegeType, auditObject, true)) {
-              return AuthorityChecker.getTSStatus(
-                  false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
-            }
-          } else if (privilegeType.isPathPrivilege()) {
-            if (!AuthorityChecker.checkPathPermissionGrantOption(
-                context.getUsername(), privilegeType, statement.getNodeNameList())) {
-              return AuthorityChecker.getTSStatus(
-                  false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
-            }
-          } else {
-            return AuthorityChecker.getTSStatus(
-                false, "Not support Relation statement in tree sql_dialect");
-          }
-        }
-        return RpcUtils.SUCCESS_STATUS;
+        return checkPermissionsWithGrantOption(
+            context,
+            authorType,
+            Arrays.stream(statement.getPrivilegeList())
+                .map(s -> PrivilegeType.valueOf(s.toUpperCase()))
+                .collect(Collectors.toList()),
+            statement.getNodeNameList());
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
@@ -1172,6 +1183,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           checkedPaths::toString);
     }
     return result;
+  }
+
+  public static List<Integer> checkTimeSeriesPermission4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    context.setPrivilegeType(permission);
+    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+      return Collections.emptyList();
+    }
+    final List<Integer> results =
+        AuthorityChecker.checkFullPathOrPatternListPermission(
+            context.getUsername(), checkedPaths, permission);
+    recordObjectAuthenticationAuditLog(context.setResult(true), checkedPaths::toString);
+    return results;
   }
 
   @Override
@@ -1953,6 +1978,61 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     recordObjectAuthenticationAuditLog(
         context.setPrivilegeType(requiredPrivilege).setResult(result), auditObject);
     return result;
+  }
+
+  protected TSStatus checkPermissionsWithGrantOption(
+      IAuditEntity auditEntity,
+      AuthorType authorType,
+      List<PrivilegeType> privilegeList,
+      List<PartialPath> paths) {
+    Supplier<String> supplier =
+        () -> {
+          StringJoiner joiner = new StringJoiner(" ");
+          if (paths != null) {
+            paths.forEach(path -> joiner.add(path.getFullPath()));
+          }
+          return joiner.toString();
+        };
+    auditEntity.setPrivilegeTypes(privilegeList);
+    if (AuthorityChecker.SUPER_USER.equals(auditEntity.getUsername())) {
+      recordObjectAuthenticationAuditLog(auditEntity.setResult(true), supplier);
+      return SUCCEED;
+    }
+    TSStatus status = SUCCEED;
+    for (PrivilegeType privilegeType : privilegeList) {
+      if (privilegeType.isSystemPrivilege()) {
+        if (!AuthorityChecker.checkSystemPermissionGrantOption(
+            auditEntity.getUsername(), privilegeType)) {
+          status =
+              AuthorityChecker.getTSStatus(
+                  false,
+                  "Has no permission to execute "
+                      + authorType
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+          break;
+        }
+      } else if (privilegeType.isPathPrivilege()) {
+        if (!AuthorityChecker.checkPathPermissionGrantOption(
+            auditEntity.getUsername(), privilegeType, paths)) {
+          status =
+              AuthorityChecker.getTSStatus(
+                  false,
+                  "Has no permission to execute "
+                      + authorType
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+          break;
+        }
+      } else {
+        status =
+            AuthorityChecker.getTSStatus(
+                false, "Not support Relation statement in tree sql_dialect");
+        break;
+      }
+    }
+    recordObjectAuthenticationAuditLog(
+        auditEntity.setResult(status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        supplier);
+    return status;
   }
 
   protected TSStatus checkWriteOnReadOnlyPath(IAuditEntity auditEntity, PartialPath path) {

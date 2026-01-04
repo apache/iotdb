@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingExcepti
 import com.google.common.base.CharMatcher;
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -35,6 +36,9 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class BinaryLiteral extends Literal {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(BinaryLiteral.class);
   // the grammar could possibly include whitespace in the value it passes to us
   private static final CharMatcher WHITESPACE_MATCHER = CharMatcher.whitespace();
   private static final CharMatcher HEX_DIGIT_MATCHER =
@@ -141,5 +145,12 @@ public class BinaryLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return new Binary(value);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + RamUsageEstimator.sizeOf(value);
   }
 }

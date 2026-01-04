@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class TimeRange extends Node {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
   // [startTime, endTime)
   private long startTime;
@@ -103,5 +108,12 @@ public class TimeRange extends Node {
 
   public org.apache.tsfile.read.common.TimeRange toTsFileTimeRange() {
     return new org.apache.tsfile.read.common.TimeRange(this.startTime, this.endTime);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

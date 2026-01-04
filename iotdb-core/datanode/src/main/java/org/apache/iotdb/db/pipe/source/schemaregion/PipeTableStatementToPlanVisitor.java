@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
-public class PipeStatementToPlanVisitor extends AstVisitor<PlanNode, Void> {
+public class PipeTableStatementToPlanVisitor extends AstVisitor<PlanNode, Void> {
   @Override
   public PlanNode visitNode(final Node node, final Void context) {
     throw new UnsupportedOperationException(

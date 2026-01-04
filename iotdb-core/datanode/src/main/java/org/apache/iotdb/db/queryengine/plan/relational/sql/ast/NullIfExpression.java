@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +29,9 @@ import static java.util.Objects.requireNonNull;
 
 /** NULLIF(V1,V2): CASE WHEN V1=V2 THEN NULL ELSE V1 END */
 public class NullIfExpression extends Expression {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NullIfExpression.class);
+
   private final Expression first;
   private final Expression second;
 
@@ -82,5 +86,14 @@ public class NullIfExpression extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(first);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(second);
+    return size;
   }
 }

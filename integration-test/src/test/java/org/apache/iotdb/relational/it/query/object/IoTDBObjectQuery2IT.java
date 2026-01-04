@@ -43,7 +43,7 @@ import java.time.LocalDate;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBObjectQueryIT2 {
+public class IoTDBObjectQuery2IT {
 
   private static final String DATABASE_NAME = "test";
 
@@ -116,6 +116,7 @@ public class IoTDBObjectQueryIT2 {
         Binary blob = iterator.getBlob(1);
         Assert.assertArrayEquals(expected, blob.getValues());
       }
+      sessionDataSet.close();
 
       sessionDataSet =
           session.executeQueryStatement(
@@ -126,6 +127,7 @@ public class IoTDBObjectQueryIT2 {
         Binary blob = iterator.getBlob(1);
         Assert.assertArrayEquals(expected, blob.getValues());
       }
+      sessionDataSet.close();
 
       sessionDataSet =
           session.executeQueryStatement(
@@ -136,6 +138,7 @@ public class IoTDBObjectQueryIT2 {
         Binary blob = iterator.getBlob(1);
         Assert.assertArrayEquals(expected, blob.getValues());
       }
+      sessionDataSet.close();
 
       sessionDataSet =
           session.executeQueryStatement(
@@ -145,6 +148,7 @@ public class IoTDBObjectQueryIT2 {
         long count = iterator.getLong(1);
         Assert.assertEquals(10, count);
       }
+      sessionDataSet.close();
 
       // read_object are not pushed down. Read remote files
       sessionDataSet =
@@ -156,6 +160,7 @@ public class IoTDBObjectQueryIT2 {
         Binary blob = iterator.getBlob(1);
         Assert.assertArrayEquals(expected, blob.getValues());
       }
+      sessionDataSet.close();
     }
   }
 
@@ -172,6 +177,8 @@ public class IoTDBObjectQueryIT2 {
       while (iterator.next()) {
         Assert.assertEquals(4, iterator.getLong(1));
       }
+      sessionDataSet.close();
+
       sessionDataSet =
           session.executeQueryStatement(
               "select count(s8), first(s8), last(s8), first_by(s8, time), last_by(s8, time) from table1 where device = 'd1' and cast(s8 as string) = '(Object) 4 B' and try_cast(s8 as string) = '(Object) 4 B'");
@@ -183,12 +190,14 @@ public class IoTDBObjectQueryIT2 {
         Assert.assertEquals("(Object) 4 B", iterator.getString(4));
         Assert.assertEquals("(Object) 4 B", iterator.getString(5));
       }
+      sessionDataSet.close();
 
       sessionDataSet = session.executeQueryStatement("select coalesce(s9, s8) from table1");
       iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         Assert.assertEquals("(Object) 4 B", iterator.getString(1));
       }
+      sessionDataSet.close();
 
       // MATCH_RECOGNIZE
       Assert.assertThrows(
@@ -209,6 +218,7 @@ public class IoTDBObjectQueryIT2 {
       while (iterator.next()) {
         Assert.assertEquals("(Object) 4 B", iterator.getString(1));
       }
+      sessionDataSet.close();
 
       // WHERE
       session.executeQueryStatement(
@@ -217,71 +227,90 @@ public class IoTDBObjectQueryIT2 {
       while (iterator.next()) {
         Assert.assertEquals("(Object) 4 B", iterator.getString(2));
       }
+      sessionDataSet.close();
 
       // GROUP BY
       Assert.assertThrows(
           StatementExecutionException.class,
-          () -> session.executeNonQueryStatement("select count(*) from table1 group by s8"));
+          () -> session.executeQueryStatement("select count(*) from table1 group by s8"));
 
       // ORDER BY
       Assert.assertThrows(
           StatementExecutionException.class,
-          () -> session.executeNonQueryStatement("select count(*) from table1 order by s8"));
+          () -> session.executeQueryStatement("select count(*) from table1 order by s8"));
 
       // FILL
-      Assert.assertThrows(
-          StatementExecutionException.class,
-          () ->
-              session.executeNonQueryStatement(
-                  "select time, s8 from table1 where device = 'd10' fill method linear"));
-      session.executeQueryStatement(
-          "select time, s8 from table1 where device = 'd10' fill method previous");
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select time, s8 from table1 where device = 'd10' fill method linear");
+      sessionDataSet.close();
+
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select time, s8 from table1 where device = 'd10' fill method previous");
       iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         Assert.assertEquals("(Object) 4 B", iterator.getString(2));
       }
+      sessionDataSet.close();
 
       // HAVING
-      session.executeQueryStatement(
-          "select device, count(s8) from table1 group by device having count(s8) > 0");
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select device, count(s8) from table1 group by device having count(s8) > 0");
       iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         long count = iterator.getLong(2);
         Assert.assertEquals(10, count);
       }
+      sessionDataSet.close();
 
       // WINDOW
       Assert.assertThrows(
           StatementExecutionException.class,
           () ->
-              session.executeNonQueryStatement(
+              session.executeQueryStatement(
                   "select *, nth_value(s8,2) over(partition by s8) from table1"));
       Assert.assertThrows(
           StatementExecutionException.class,
           () ->
-              session.executeNonQueryStatement(
+              session.executeQueryStatement(
                   "select *, nth_value(s8,2) over(order by s8) from table1"));
-      session.executeNonQueryStatement(
-          "select *, nth_value(s8,2) over(partition by device) from table1");
-      session.executeNonQueryStatement(
-          "select *, lead(s8) over(partition by device order by time) from table1");
-      session.executeNonQueryStatement(
-          "select *, first_value(s8) over(partition by device) from table1");
-      session.executeNonQueryStatement(
-          "select *, last_value(s8) over(partition by device) from table1");
-      session.executeNonQueryStatement(
-          "select *, lag(s8) over(partition by device order by time) from table1");
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select *, nth_value(s8,2) over(partition by device) from table1");
+      sessionDataSet.close();
+
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select *, lead(s8) over(partition by device order by time) from table1");
+      sessionDataSet.close();
+
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select *, first_value(s8) over(partition by device) from table1");
+      sessionDataSet.close();
+
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select *, last_value(s8) over(partition by device) from table1");
+      sessionDataSet.close();
+
+      sessionDataSet =
+          session.executeQueryStatement(
+              "select *, lag(s8) over(partition by device order by time) from table1");
+      sessionDataSet.close();
 
       // Table-value function
       Assert.assertThrows(
           StatementExecutionException.class,
           () ->
-              session.executeNonQueryStatement(
+              session.executeQueryStatement(
                   "select * from session(data => table1 partition by s8, timecol => 'time', gap => 1ms)"));
       Assert.assertThrows(
           StatementExecutionException.class,
           () ->
-              session.executeNonQueryStatement(
+              session.executeQueryStatement(
                   "select * from session(data => table1 order by s8, timecol => 'time', gap => 1ms)"));
       sessionDataSet =
           session.executeQueryStatement(
@@ -291,6 +320,7 @@ public class IoTDBObjectQueryIT2 {
         String str = iterator.getString("s8");
         Assert.assertEquals("(Object) 4 B", str);
       }
+      sessionDataSet.close();
     }
   }
 }

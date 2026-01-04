@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class SetSqlDialect extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SetSqlDialect.class);
   private final IClientSession.SqlDialect sqlDialect;
 
   public SetSqlDialect(IClientSession.SqlDialect sqlDialect, @Nullable NodeLocation location) {
@@ -75,5 +78,12 @@ public class SetSqlDialect extends Statement {
   @Override
   public String toString() {
     return "SET SQL_DIALECT=" + sqlDialect;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

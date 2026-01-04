@@ -73,6 +73,7 @@ public class IoTDBTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -883,7 +884,9 @@ public class IoTDBTableIT {
       statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
       try {
         statement.execute(
-            String.format("insert into test (a, b, c, d) values ('%s', 1, 1, 's')", illegal));
+            String.format(
+                "insert into test (a, b, c, d) values ('%s', 1, 1, to_object(true, 0, X'aa'))",
+                illegal));
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(

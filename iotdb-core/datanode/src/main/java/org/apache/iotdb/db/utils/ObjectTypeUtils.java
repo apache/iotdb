@@ -37,7 +37,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encoding.decoder.DecoderWrapper;
 import org.apache.tsfile.utils.Binary;
@@ -56,6 +55,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class ObjectTypeUtils {
@@ -262,14 +262,10 @@ public class ObjectTypeUtils {
   }
 
   public static Optional<File> getObjectPathFromBinary(Binary binary) {
-    byte[] bytes = binary.getValues();
-    String relativeObjectFilePath =
-        new String(bytes, 8, bytes.length - 8, TSFileConfig.STRING_CHARSET);
-    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath);
+    return getObjectPathFromBinary(binary, false);
   }
 
-  public static Optional<File> getNullableObjectPathFromBinary(
-      Binary binary, boolean needTempFile) {
+  public static Optional<File> getObjectPathFromBinary(Binary binary, boolean needTempFile) {
     byte[] bytes = binary.getValues();
     ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
     String relativeObjectFilePath =
@@ -278,7 +274,7 @@ public class ObjectTypeUtils {
   }
 
   public static void deleteObjectPathFromBinary(Binary binary) {
-    Optional<File> file = ObjectTypeUtils.getNullableObjectPathFromBinary(binary, true);
+    Optional<File> file = ObjectTypeUtils.getObjectPathFromBinary(binary, true);
     if (!file.isPresent()) {
       return;
     }
@@ -295,6 +291,37 @@ public class ObjectTypeUtils {
         deleteObjectFile(bakFile);
       } catch (IOException e) {
         logger.error("Failed to remove object file {}", file.get().getAbsolutePath(), e);
+      }
+    }
+  }
+
+  public static void deleteObjectPath(File file) {
+    File tmpFile = new File(file.getPath() + ".tmp");
+    File bakFile = new File(file.getPath() + ".back");
+    for (int i = 0; i < 2; i++) {
+      if (file.exists()) {
+        FileMetrics.getInstance().decreaseObjectFileNum(1);
+        FileMetrics.getInstance().decreaseObjectFileSize(file.length());
+      }
+      try {
+        deleteObjectFile(file);
+        deleteObjectFile(tmpFile);
+        deleteObjectFile(bakFile);
+      } catch (IOException e) {
+        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+      }
+    }
+    deleteEmptyParentDir(file);
+  }
+
+  private static void deleteEmptyParentDir(File file) {
+    File dir = file.getParentFile();
+    if (dir.isDirectory() && Objects.requireNonNull(dir.list()).length == 0) {
+      try {
+        Files.deleteIfExists(dir.toPath());
+        deleteEmptyParentDir(dir);
+      } catch (IOException e) {
+        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
       }
     }
   }

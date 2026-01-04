@@ -101,6 +101,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   }
 
   private void tryReleaseTvList(TVList tvList) {
+    long tvListRamSize = tvList.calculateRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
@@ -112,7 +113,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(tvList.calculateRamSize());
+          memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
+          tvList.setReservedMemoryBytes(tvListRamSize);
         }
         // update current TVList owner to first query in the list
         tvList.setOwnerQuery(firstQuery);

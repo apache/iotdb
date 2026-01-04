@@ -1073,52 +1073,51 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    final String userName = context.getSession().getUserName();
     accessControl.checkUserGlobalSysPrivilege(context);
 
-    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    final Map<String, String> sourceAttributes = node.getSourceAttributes();
     final String pipeName = node.getPipeName();
-    for (final String ExtractorAttribute : extractorAttributes.keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String sourceAttribute : sourceAttributes.keySet()) {
+      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                node.getPipeName(), sourceAttribute));
       }
-      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                node.getPipeName(), ExtractorAttribute));
+                node.getPipeName(), sourceAttribute));
       }
     }
 
     // Inject table model into the extractor attributes
-    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
     checkAndEnrichSourceUser(
         pipeName,
-        extractorAttributes,
+        sourceAttributes,
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
     checkAndEnrichSinkUser(
         pipeName,
-        node.getConnectorAttributes(),
+        node.getSinkAttributes(),
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
 
-    mayChangeSourcePattern(extractorAttributes);
+    mayChangeSourcePattern(sourceAttributes);
 
     return new CreatePipeTask(node);
   }
 
   public static void checkAndEnrichSourceUser(
       final String pipeName,
-      final Map<String, String> replacedExtractorAttributes,
+      final Map<String, String> replacedSourceAttributes,
       final UserEntity userEntity,
       final boolean isAlter) {
-    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
+    final PipeParameters sourceParameters = new PipeParameters(replacedSourceAttributes);
     final String pluginName =
-        extractorParameters
+        sourceParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -1129,18 +1128,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       return;
     }
 
-    if (!extractorParameters.hasAnyAttributes(
+    if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
         PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
         PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_USER_ID, String.valueOf(userEntity.getUserId()));
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userEntity.getUsername());
-      replacedExtractorAttributes.put(
+      replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
-    } else if (!extractorParameters.hasAnyAttributes(
+    } else if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
@@ -1150,11 +1149,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
   }
 
-  private static void mayChangeSourcePattern(final Map<String, String> extractorAttributes) {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+  private static void mayChangeSourcePattern(final Map<String, String> sourceAttributes) {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
     final String pluginName =
-        extractorParameters
+        sourceParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
@@ -1166,14 +1165,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     // Use lower case because database + table name are all in lower cases
-    extractorParameters.computeAttributeIfExists(
+    sourceParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
         PipeSourceConstant.EXTRACTOR_DATABASE_KEY,
         PipeSourceConstant.SOURCE_DATABASE_KEY,
         PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY,
         PipeSourceConstant.SOURCE_DATABASE_NAME_KEY);
 
-    extractorParameters.computeAttributeIfExists(
+    sourceParameters.computeAttributeIfExists(
         (k, v) -> v.toLowerCase(Locale.ENGLISH),
         PipeSourceConstant.EXTRACTOR_TABLE_KEY,
         PipeSourceConstant.SOURCE_TABLE_KEY,
