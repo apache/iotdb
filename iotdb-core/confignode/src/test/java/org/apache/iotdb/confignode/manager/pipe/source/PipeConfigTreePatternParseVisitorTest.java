@@ -490,8 +490,7 @@ public class PipeConfigTreePatternParseVisitorTest {
                 .orElseThrow(AssertionError::new));
 
     Assert.assertEquals(
-        new PartialPath("root.db.device.**"),
-        new PartialPath(plan.getMeasurementPath().getNodes()));
+        new PartialPath("root.db.device.a"), new PartialPath(plan.getMeasurementPath().getNodes()));
     Assert.assertEquals((byte) 0, plan.getOperationType());
     Assert.assertEquals(plan.getDataType(), TSDataType.DOUBLE);
   }

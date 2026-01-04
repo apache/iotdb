@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -71,7 +72,7 @@ public class PipeAlterTimeSeriesPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    measurementPath = MeasurementPath.deserialize(buffer);
+    measurementPath = (MeasurementPath) PathDeserializeUtil.deserialize(buffer);
     operationType = ReadWriteIOUtils.readByte(buffer);
     dataType = TSDataType.deserialize(ReadWriteIOUtils.readByte(buffer));
   }
