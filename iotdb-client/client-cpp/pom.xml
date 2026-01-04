@@ -129,7 +129,7 @@
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
                     <!-- Download the Catch2 header file. -->
-                    <execution>
+                    <!-- <execution>
                         <id>get-catch2</id>
                         <goals>
                             <goal>wget</goal>
@@ -141,7 +141,7 @@
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                             <skip>${ctest.skip.tests}</skip>
                         </configuration>
-                    </execution>
+                    </execution> -->
                 </executions>
             </plugin>
             <plugin>

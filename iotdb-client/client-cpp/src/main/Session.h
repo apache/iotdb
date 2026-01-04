@@ -535,7 +535,7 @@ class Session {
 private:
     std::string host_;
     int rpcPort_;
-    bool useSSL_;
+    bool useSSL_ = false;
     std::string trustCertFilePath_;
     std::vector<string> nodeUrls_;
     std::string username_;
