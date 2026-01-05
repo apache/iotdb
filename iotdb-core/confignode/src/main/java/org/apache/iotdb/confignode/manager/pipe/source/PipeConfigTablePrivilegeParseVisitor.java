@@ -372,7 +372,7 @@ public class PipeConfigTablePrivilegeParseVisitor
   }
 
   public Optional<ConfigPhysicalPlan> visitAlterColumnDataType(
-      final AlterColumnDataTypePlan alterColumnDataTypePlan, final String userName) {
-    return visitAbstractTablePlan(alterColumnDataTypePlan, userName);
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(alterColumnDataTypePlan, userEntity);
   }
 }
