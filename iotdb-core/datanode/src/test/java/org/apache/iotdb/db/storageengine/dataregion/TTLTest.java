@@ -23,6 +23,7 @@ package org.apache.iotdb.db.storageengine.dataregion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
@@ -327,7 +328,8 @@ public class TTLTest {
       throws StorageEngineException,
           WriteProcessException,
           IllegalPathException,
-          InterruptedException {
+          InterruptedException,
+          DiskSpaceInsufficientException {
     boolean isEnableCrossCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);

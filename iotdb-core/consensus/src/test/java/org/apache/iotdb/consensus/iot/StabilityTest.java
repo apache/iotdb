@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -60,6 +61,12 @@ public class StabilityTest {
 
   private final File storageDir = new File("target" + java.io.File.separator + "stability");
 
+  private final List<String> recvSnapshotDirs =
+      Arrays.asList(
+          "target" + File.separator + "1-1",
+          "target" + File.separator + "1-2",
+          "target" + File.separator + "1-3");
+
   private IoTConsensus consensusImpl;
 
   private final int basePort = 6667;
@@ -73,6 +80,7 @@ public class StabilityTest {
                         .setThisNodeId(1)
                         .setThisNode(new TEndPoint("0.0.0.0", basePort))
                         .setStorageDir(storageDir.getAbsolutePath())
+                        .setRecvSnapshotDirs(recvSnapshotDirs)
                         .setConsensusGroupType(TConsensusGroupType.DataRegion)
                         .build(),
                     gid -> new TestStateMachine())
