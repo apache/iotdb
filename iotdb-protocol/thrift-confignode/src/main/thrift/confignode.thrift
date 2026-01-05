@@ -944,6 +944,13 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TAlterTimeSeriesReq {
+  1: required string queryId
+  2: required binary measurementPath
+  3: required byte operationType
+  4: required binary updateInfo
+}
+
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1223,6 +1230,7 @@ struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+   4: optional map<string, byte> preAlteredColumns
 }
 
 struct TDescTable4InformationSchemaResp {
@@ -1233,6 +1241,7 @@ struct TDescTable4InformationSchemaResp {
 struct TTableColumnInfo {
    1: required binary tableInfo
    2: optional set<string> preDeletedColumns
+   3: optional map<string, byte> preAlteredColumns
 }
 
 struct TFetchTableResp {
@@ -1841,6 +1850,11 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 

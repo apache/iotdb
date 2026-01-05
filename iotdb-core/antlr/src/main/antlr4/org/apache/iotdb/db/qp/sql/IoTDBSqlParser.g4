@@ -170,6 +170,8 @@ alterTimeseries
 
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
+    // Change into new data type
+    | SET DATA TYPE newType=attributeValue
     | SET attributePair (COMMA attributePair)*
     | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
