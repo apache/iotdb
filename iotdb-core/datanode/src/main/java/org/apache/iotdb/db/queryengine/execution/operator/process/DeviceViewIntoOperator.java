@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -27,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -38,6 +42,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,6 +53,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final Map<String, Map<PartialPath, Map<String, InputLocation>>>
       deviceToTargetPathSourceInputLocationMap;
@@ -58,6 +64,8 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   private final int deviceColumnIndex;
   private String currentDevice;
+
+  private int batchedRowCount = 0;
 
   private final TsBlockBuilder resultTsBlockBuilder;
 
@@ -102,7 +110,12 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
           constructInsertMultiTabletsStatement(false);
       updateResultTsBlock();
 
-      insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
+      if (insertMultiTabletsStatement != null || insertTabletStatementGenerators == null) {
+        insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
+      } else {
+        insertTabletStatementGenerators.addAll(
+            constructInsertTabletStatementGeneratorsByDevice(device));
+      }
       currentDevice = device;
 
       if (insertMultiTabletsStatement != null) {
@@ -115,9 +128,15 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     int readIndex = 0;
     while (readIndex < inputTsBlock.getPositionCount()) {
       int lastReadIndex = readIndex;
-      for (AbstractIntoOperator.InsertTabletStatementGenerator generator :
-          insertTabletStatementGenerators) {
-        lastReadIndex = Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
+
+      if (!insertTabletStatementGenerators.isEmpty()) {
+        InsertTabletStatementGenerator generatorOfCurrentDevice =
+            insertTabletStatementGenerators.get(insertTabletStatementGenerators.size() - 1);
+        int rowCountBeforeProcess = generatorOfCurrentDevice.getRowCount();
+        lastReadIndex =
+            Math.max(
+                lastReadIndex, generatorOfCurrentDevice.processTsBlock(inputTsBlock, readIndex));
+        batchedRowCount += generatorOfCurrentDevice.getRowCount() - rowCountBeforeProcess;
       }
       readIndex = lastReadIndex;
       if (insertMultiTabletsInternally(true)) {
@@ -196,5 +215,39 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + resultTsBlockBuilder.getRetainedSizeInBytes();
+  }
+
+  @Override
+  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
+    if (insertTabletStatementGenerators == null
+        || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
+      return null;
+    }
+
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    try {
+      if (child.hasNextWithTimer()
+          && batchedRowCount < CONFIG.getSelectIntoInsertTabletPlanRowLimit()) {
+        return null;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IntoProcessException(e.getMessage());
+    } catch (Exception e) {
+      throw new IntoProcessException(e.getMessage());
+    }
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!generator.isEmpty()) {
+        insertTabletStatementList.add(generator.constructInsertTabletStatement());
+      }
+    }
+    if (insertTabletStatementList.isEmpty()) {
+      return null;
+    }
+
+    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
+    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    batchedRowCount = 0;
+    return insertMultiTabletsStatement;
   }
 }
