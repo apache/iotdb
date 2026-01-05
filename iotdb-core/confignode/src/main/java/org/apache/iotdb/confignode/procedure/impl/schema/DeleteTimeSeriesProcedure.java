@@ -185,6 +185,11 @@ public class DeleteTimeSeriesProcedure
             } else {
               failedRegionList.addAll(consensusGroupIdList);
             }
+            if (!failedRegionList.isEmpty()) {
+              failureMap.put(dataNodeLocation, response);
+            } else {
+              failureMap.remove(dataNodeLocation);
+            }
             return failedRegionList;
           }
         };
@@ -446,12 +451,12 @@ public class DeleteTimeSeriesProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete time series %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      "Delete time series %s failed when [%s] because failed to execute in all replicaset of %s %s. Failures: %s",
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

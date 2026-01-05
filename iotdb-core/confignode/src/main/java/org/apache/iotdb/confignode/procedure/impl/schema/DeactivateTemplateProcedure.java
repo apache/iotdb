@@ -465,12 +465,12 @@ public class DeactivateTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure: %s",
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -163,7 +163,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       return;
     }
     final List<TSStatus> successResult = new ArrayList<>();
-    new DataNodeRegionTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq, TSStatus>(
+    new DataNodeTSStatusTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq>(
         env,
         relatedSchemaRegionGroup,
         false,
@@ -194,6 +194,11 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         } else {
           failedRegionList.addAll(consensusGroupIdList);
         }
+        if (!failedRegionList.isEmpty()) {
+          failureMap.put(dataNodeLocation, response);
+        } else {
+          failureMap.remove(dataNodeLocation);
+        }
         return failedRegionList;
       }
 
@@ -205,13 +210,13 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             new ProcedureException(
                 new MetadataException(
                     String.format(
-                        "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                        "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failures: %s",
                         this.getClass().getSimpleName(),
                         database,
                         tableName,
                         consensusGroupId.type,
                         consensusGroupId.id,
-                        dataNodeLocationSet))));
+                        printFailureMap()))));
         interruptTask();
       }
     }.execute();

@@ -56,6 +56,7 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
       final TSStatus response) {
     final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      failureMap.remove(dataNodeLocation);
       return failedRegionList;
     }
 
@@ -68,6 +69,11 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
       }
     } else {
       failedRegionList.addAll(consensusGroupIdList);
+    }
+    if (!failedRegionList.isEmpty()) {
+      failureMap.put(dataNodeLocation, response);
+    } else {
+      failureMap.remove(dataNodeLocation);
     }
     return failedRegionList;
   }

@@ -164,6 +164,11 @@ public class DeleteLogicalViewProcedure
             } else {
               failedRegionList.addAll(consensusGroupIdList);
             }
+            if (!failedRegionList.isEmpty()) {
+              failureMap.put(dataNodeLocation, response);
+            } else {
+              failureMap.remove(dataNodeLocation);
+            }
             return failedRegionList;
           }
         };
@@ -357,8 +362,8 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failures: %s",
+                      requestMessage, taskName, consensusGroupId.id, printFailureMap()))));
       interruptTask();
     }
   }

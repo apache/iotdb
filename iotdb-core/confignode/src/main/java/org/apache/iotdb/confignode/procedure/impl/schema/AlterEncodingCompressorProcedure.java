@@ -51,7 +51,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -176,8 +175,6 @@ public class AlterEncodingCompressorProcedure
                     .setCompressor(compressor)
                     .setEncoding(encoding))) {
 
-          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
-
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -219,7 +216,7 @@ public class AlterEncodingCompressorProcedure
                     new MetadataException(
                         String.format(
                             "Alter encoding compressor %s in schema regions failed. Failures: %s",
-                            requestMessage, failureMap))));
+                            requestMessage, printFailureMap()))));
             interruptTask();
           }
         };
