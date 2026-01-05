@@ -1322,7 +1322,6 @@ public class IoTDBAlterColumnTypeIT {
                 "select first(s1),last(s1) from construct_and_alter_column_type");
         RowRecord rec = dataSet.next();
         while (rec != null) {
-          System.out.println(rec.getFields().toString());
           rec = dataSet.next();
         }
         dataSet.close();

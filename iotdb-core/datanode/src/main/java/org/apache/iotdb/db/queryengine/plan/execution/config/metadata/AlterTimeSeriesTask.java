@@ -44,14 +44,14 @@ public class AlterTimeSeriesTask implements IConfigTask {
         .getAlterType()
         .equals(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE)) {
       if (alterTimeSeriesStatement.getDataType() == null) {
-        throw new InterruptedException(
+        throw new IllegalArgumentException(
             String.format(
                 "Data type cannot be null executing the statement that alter timeseries %s set data type",
                 alterTimeSeriesStatement.getPath().getFullPath()));
       }
       return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
     } else {
-      throw new InterruptedException("Not support current statement");
+      throw new UnsupportedOperationException("Not support current statement");
     }
   }
 }

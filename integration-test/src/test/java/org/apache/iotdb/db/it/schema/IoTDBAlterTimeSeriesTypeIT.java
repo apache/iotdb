@@ -2471,13 +2471,6 @@ public class IoTDBAlterTimeSeriesTypeIT {
         }
       }
       RowRecord rec = dataSet.next();
-      //      if (newType == TSDataType.STRING
-      //          || newType == TSDataType.TEXT
-      //          || newType == TSDataType.BLOB) {
-      //        expectedValue[1] = 999;
-      //      } else if (newType == TSDataType.BOOLEAN) {
-      //        expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
-      //      }
       if (newType != TSDataType.BOOLEAN) {
         for (int i = 0; i < max; i++) {
           if (newType == TSDataType.BLOB) {

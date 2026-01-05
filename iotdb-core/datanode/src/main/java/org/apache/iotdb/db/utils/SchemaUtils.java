@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
@@ -298,7 +299,8 @@ public class SchemaUtils {
         || dataTypeColumnClassMap.get(dataType) == null) {
       return false;
     }
-    return dataTypeColumnClassMap.get(originalDataType) == dataTypeColumnClassMap.get(dataType);
+    return Objects.equals(
+        dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
   }
 
   public static void changeMetadataModified(

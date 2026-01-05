@@ -685,15 +685,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     String dataTypeString = parseAttributeValue(ctx);
-    try {
-      TSDataType dataType = TSDataType.valueOf(dataTypeString);
-      if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
-      }
-      return dataType;
-    } catch (Exception e) {
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
       throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
     }
+    return dataType;
   }
 
   @Override
