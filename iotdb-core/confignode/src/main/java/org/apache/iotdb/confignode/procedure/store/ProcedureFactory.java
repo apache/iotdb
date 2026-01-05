@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.NotifyRegionMigrationPr
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AliasTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
@@ -144,6 +145,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
+        break;
+      case ALIAS_TIMESERIES_PROCEDURE:
+        procedure = new AliasTimeSeriesProcedure(false);
         break;
       case DELETE_LOGICAL_VIEW_PROCEDURE:
         procedure = new DeleteLogicalViewProcedure(false);
@@ -428,6 +432,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof AliasTimeSeriesProcedure) {
+      return ProcedureType.ALIAS_TIMESERIES_PROCEDURE;
     } else if (procedure instanceof ReconstructRegionProcedure) {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof NotifyRegionMigrationProcedure) {

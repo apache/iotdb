@@ -39,6 +39,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
@@ -52,7 +54,14 @@ import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBui
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -94,6 +103,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegio
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.MeasurementInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
@@ -152,6 +162,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -980,6 +991,268 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!exist) {
       throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
     }
+    writeToMLog(node);
+  }
+
+  @Override
+  public void lockForAlias(final LockAliasNode node) throws MetadataException {
+    final PartialPath oldPath = node.getOldPath();
+    final PartialPath newPath = node.getNewPath();
+
+    // Get oldPath node and validate it exists
+    final IMeasurementMNode<IMemMNode> oldPathNode = mTree.getMeasurementMNode(oldPath);
+
+    // Check if oldPath is already being renamed (prevent concurrent rename operations)
+    if (oldPathNode.isRenaming()) {
+      throw new MetadataException(
+          String.format(
+              "Timeseries [%s] is already being renamed, cannot perform another rename operation",
+              oldPath.getFullPath()));
+    }
+
+    // Check if oldPath is pre-deleted (in deletion blacklist)
+    if (oldPathNode.isPreDeleted()) {
+      throw new MeasurementInBlackListException(oldPath);
+    }
+
+    // Check if oldPath is a logical view (logical views may not support alias series)
+    // Note: This check depends on the design decision. If logical views can have alias series,
+    // remove this check. Otherwise, keep it.
+    if (oldPathNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("Cannot create alias series for logical view [%s]", oldPath.getFullPath()));
+    }
+
+    // Check if oldPath is disabled (disabled series cannot be renamed/aliased)
+    if (oldPathNode.isDisabled()) {
+      throw new MetadataException(
+          String.format(
+              "Cannot create alias series for disabled timeseries [%s]", oldPath.getFullPath()));
+    }
+
+    // Mark oldPath as isRenaming to prevent concurrent operations
+    oldPathNode.setIsRenaming(true);
+
+    // Write log
+    writeToMLog(node);
+  }
+
+  @Override
+  public void createAliasSeries(final CreateAliasSeriesNode node) throws MetadataException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    }
+
+    final PartialPath oldPath = node.getOldPath(); // Physical path to be aliased
+    final PartialPath newPath = node.getNewPath(); // New alias path
+    final org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo timeSeriesInfo = node.getTimeSeriesInfo();
+
+    if (timeSeriesInfo == null) {
+      throw new MetadataException("TTimeSeriesInfo is required for createAliasSeries but is null");
+    }
+
+    // Check if newPath already exists
+    try {
+      mTree.getMeasurementMNode(newPath);
+      throw new PathAlreadyExistException(newPath.getFullPath());
+    } catch (PathNotExistException e) {
+      // Path doesn't exist, which is expected
+    }
+
+    // Extract schema information from TTimeSeriesInfo
+    final TSDataType dataType = TSDataType.values()[timeSeriesInfo.getDataType()];
+    final TSEncoding encoding = TSEncoding.values()[timeSeriesInfo.getEncoding()];
+    final CompressionType compressor = CompressionType.values()[timeSeriesInfo.getCompressor()];
+    final String alias = timeSeriesInfo.getMeasurementAlias();
+
+    // Build props map with alias series properties
+    Map<String, String> props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    // Copy original props if any
+    if (timeSeriesInfo.getProps() != null && !timeSeriesInfo.getProps().isEmpty()) {
+      props.putAll(timeSeriesInfo.getProps());
+    }
+    // Add alias series properties
+    props.put(MeasurementInfo.IS_RENAMED_KEY, "true");
+    props.put(MeasurementInfo.ORIGINAL_PATH_KEY, oldPath.getFullPath());
+
+    try {
+      // Check data type and encoding compatibility
+      SchemaUtils.checkDataTypeWithEncoding(dataType, encoding);
+
+      // Create alias measurement node at newPath using mTree.createTimeSeries
+      final IMeasurementMNode<IMemMNode> aliasMNode =
+          mTree.createTimeSeries(
+              newPath, dataType, encoding, compressor, props, alias, false, null);
+
+      // Should not merge (aliasMNode should not be null)
+      if (Objects.isNull(aliasMNode)) {
+        throw new MetadataException(
+            "Failed to create alias series at " + newPath.getFullPath() + ": merge detected");
+      }
+
+      // Update statistics
+      regionStatistics.addMeasurement(1L);
+
+      // Update tag index
+      // Note: For alias series creation during recovery, tags/attributes should be handled via
+      // offset recovery if available. Since alias series is created via Procedure, recovery
+      // scenarios may be limited, but we follow the same pattern as createTimeSeries for
+      // consistency.
+      long offset = -1;
+      if (timeSeriesInfo.getTags() != null && !timeSeriesInfo.getTags().isEmpty()) {
+        // Only add index if not recovering (during recovery, tags are recovered from tag file)
+        if (!isRecovering) {
+          tagManager.addIndex(timeSeriesInfo.getTags(), aliasMNode);
+        }
+      }
+
+      // Write log
+      if (!isRecovering) {
+        // Write tags and attributes to tag file if needed
+        if ((timeSeriesInfo.getTags() != null && !timeSeriesInfo.getTags().isEmpty())
+            || (timeSeriesInfo.getAttributes() != null
+                && !timeSeriesInfo.getAttributes().isEmpty())) {
+          offset =
+              tagManager.writeTagFile(timeSeriesInfo.getTags(), timeSeriesInfo.getAttributes());
+        }
+        writeToMLog(node);
+      }
+      if (offset != -1) {
+        aliasMNode.setOffset(offset);
+      }
+
+      // Note: Tags and attributes are already handled above via tagManager
+      // The alias node points to the same physical data as oldPath logically
+      // (handled at query/write time through ORIGINAL_PATH property)
+
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  @Override
+  public void markSeriesDisabled(final MarkSeriesDisabledNode node) throws MetadataException {
+    final PartialPath oldPath = node.getOldPath();
+    final PartialPath newPath = node.getNewPath();
+
+    // Get the physical measurement node (verify it exists)
+    final IMeasurementMNode<IMemMNode> physicalNode = mTree.getMeasurementMNode(oldPath);
+
+    // Validate that the physical node is not a logical view
+    if (physicalNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("Cannot mark logical view [%s] as disabled", oldPath.getFullPath()));
+    }
+
+    // Mark physical node as disabled (DISABLED=true)
+    physicalNode.setDisabled(true);
+
+    // Set ALIAS_PATH to point to the alias series (newPath)
+    physicalNode.setAliasPath(newPath);
+
+    // Write log
+    writeToMLog(node);
+  }
+
+  @Override
+  public void updatePhysicalAliasRef(final UpdatePhysicalAliasRefNode node)
+      throws MetadataException {
+    final PartialPath physicalPath = node.getPhysicalPath();
+    final PartialPath newAliasPath = node.getNewAliasPath();
+
+    // Get the physical measurement node (verify it exists)
+    final IMeasurementMNode<IMemMNode> physicalNode = mTree.getMeasurementMNode(physicalPath);
+
+    // Validate that the physical node is not a logical view
+    if (physicalNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format(
+              "Cannot update alias reference for logical view [%s]", physicalPath.getFullPath()));
+    }
+
+    // Update ALIAS_PATH to newAliasPath in the physical node
+    physicalNode.setAliasPath(newAliasPath);
+
+    // Write log
+    writeToMLog(node);
+  }
+
+  @Override
+  public void dropAliasSeries(final DropAliasSeriesNode node) throws MetadataException {
+    final PartialPath aliasPath = node.getAliasPath();
+
+    // Get the alias measurement node (verify it exists)
+    final IMeasurementMNode<IMemMNode> aliasNode = mTree.getMeasurementMNode(aliasPath);
+
+    // Verify it's an alias series (IS_RENAMED=true)
+    if (!aliasNode.isRenamed()) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is not an alias series (IS_RENAMED=false), cannot drop",
+              aliasPath.getFullPath()));
+    }
+
+    // Check if it's a logical view (logical views cannot be alias series, but double check)
+    if (aliasNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("Cannot drop logical view [%s] as alias series", aliasPath.getFullPath()));
+    }
+
+    // Physically delete the alias node
+    // Note: deleteTimeSeries will handle statistics update internally
+    mTree.deleteTimeSeries(aliasPath);
+
+    // Write log
+    writeToMLog(node);
+  }
+
+  @Override
+  public void enablePhysicalSeries(final EnablePhysicalSeriesNode node) throws MetadataException {
+    final PartialPath physicalPath = node.getPhysicalPath();
+
+    // Get the physical measurement node (verify it exists)
+    final IMeasurementMNode<IMemMNode> physicalNode = mTree.getMeasurementMNode(physicalPath);
+
+    // Validate that the physical node is not a logical view
+    if (physicalNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("Cannot enable logical view [%s]", physicalPath.getFullPath()));
+    }
+
+    // Remove DISABLED flag (set DISABLED=false)
+    physicalNode.setDisabled(false);
+
+    // Clear ALIAS_PATH reference pointer (set to null)
+    physicalNode.setAliasPath(null);
+
+    // Write log
+    writeToMLog(node);
+  }
+
+  @Override
+  public void unlockForAlias(final UnlockForAliasNode node) throws MetadataException {
+    final PartialPath oldPath = node.getOldPath();
+
+    // Get the oldPath node (verify it exists)
+    // Note: The node might have been deleted in some scenarios (e.g., when oldPath is an alias
+    // series that gets dropped), so we need to handle the case where it might not exist.
+    IMeasurementMNode<IMemMNode> oldPathNode;
+    try {
+      oldPathNode = mTree.getMeasurementMNode(oldPath);
+    } catch (PathNotExistException e) {
+      // If the node doesn't exist (e.g., it was deleted as part of the alias operation),
+      // we just log and continue - the unlock operation should be idempotent.
+      // Write log and return early
+      writeToMLog(node);
+      return;
+    }
+
+    // Clear the isRenaming flag that was set in lockForAlias
+    // This unlocks the node and allows other operations on it
+    oldPathNode.setIsRenaming(false);
+
+    // Write log
     writeToMLog(node);
   }
 
@@ -2094,6 +2367,74 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         alterEncodingCompressor(alterEncodingCompressorNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitCreateAliasSeries(
+        final CreateAliasSeriesNode createAliasSeriesNode, final SchemaRegionMemoryImpl context) {
+      try {
+        createAliasSeries(createAliasSeriesNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitMarkSeriesDisabled(
+        final MarkSeriesDisabledNode markSeriesDisabledNode, final SchemaRegionMemoryImpl context) {
+      try {
+        markSeriesDisabled(markSeriesDisabledNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitUpdatePhysicalAliasRef(
+        final UpdatePhysicalAliasRefNode updatePhysicalAliasRefNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        updatePhysicalAliasRef(updatePhysicalAliasRefNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDropAliasSeries(
+        final DropAliasSeriesNode dropAliasSeriesNode, final SchemaRegionMemoryImpl context) {
+      try {
+        dropAliasSeries(dropAliasSeriesNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitEnablePhysicalSeries(
+        final EnablePhysicalSeriesNode enablePhysicalSeriesNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        enablePhysicalSeries(enablePhysicalSeriesNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitUnlockForAlias(
+        final UnlockForAliasNode unlockForAliasNode, final SchemaRegionMemoryImpl context) {
+      try {
+        unlockForAlias(unlockForAliasNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

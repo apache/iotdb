@@ -114,6 +114,9 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -148,11 +151,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.EnablePhysicalSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.LockAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesDisabledNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UnlockForAliasNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.UpdatePhysicalAliasRefNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.ConstructLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
@@ -178,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.MeasurementInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -208,6 +219,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAliasTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAliasTimeSeriesResp;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
@@ -226,6 +239,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateAliasSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -242,9 +256,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDropAliasSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TEnablePhysicalSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsReq;
@@ -263,7 +279,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLockAndGetSchemaInfoForAliasReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMarkSeriesDisabledReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -300,6 +318,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterR
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdatePhysicalAliasRefReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -814,6 +833,445 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       : new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
         });
+  }
+
+  @Override
+  public TAliasTimeSeriesResp lockAndGetSchemaInfoForAlias(
+      final TLockAndGetSchemaInfoForAliasReq req) throws TException {
+    final PartialPath oldPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+
+    final TAliasTimeSeriesResp resp = new TAliasTimeSeriesResp();
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        resp.setStatus(
+            RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty"));
+        return resp;
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if oldPath belongs to this schema region
+      // Note: newPath may belong to a different database, which is allowed for alias operations
+      String database = schemaRegion.getDatabaseFullPath();
+      String oldPathFull = oldPath.getFullPath();
+      if (!oldPathFull.startsWith(database)) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PARAMETER,
+                String.format("Path %s does not belong to database %s", oldPathFull, database)));
+        return resp;
+      }
+
+      // Step 1: Execute lock operation through RegionWriteExecutor (consensus)
+      // This will lock the schema region and mark oldPath as isRenaming through consensus
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult lockResult =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new LockAliasNode(new PlanNodeId(""), oldPath, newPath))
+                  : new LockAliasNode(new PlanNodeId(""), oldPath, newPath));
+      if (!lockResult.isAccepted()
+          || lockResult.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        resp.setStatus(lockResult.getStatus());
+        return resp;
+      }
+
+      // Step 2: Fetch schema information for oldPath (including tags and attributes)
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendFullPath(oldPath);
+      ClusterSchemaTree schemaTree =
+          schemaRegion.fetchSeriesSchema(patternTree, null, true, true, false, false);
+
+      // Extract schema info for oldPath
+      Pair<List<MeasurementPath>, Integer> measurementPaths =
+          schemaTree.searchMeasurementPaths(oldPath);
+      if (measurementPaths == null || measurementPaths.left.isEmpty()) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.PATH_NOT_EXIST,
+                String.format("Timeseries [%s] does not exist", oldPathFull)));
+        return resp;
+      }
+
+      MeasurementPath measurementPath = measurementPaths.left.get(0);
+      DeviceSchemaInfo deviceSchemaInfo =
+          schemaTree.searchDeviceSchemaInfo(
+              measurementPath.getDevicePath(),
+              Collections.singletonList(measurementPath.getMeasurement()));
+      if (deviceSchemaInfo == null || deviceSchemaInfo.getMeasurementSchemaInfoList().isEmpty()) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR,
+                String.format("Failed to get schema info for [%s]", oldPathFull)));
+        return resp;
+      }
+
+      IMeasurementSchemaInfo schemaInfo = deviceSchemaInfo.getMeasurementSchemaInfoList().get(0);
+      IMeasurementSchema schema = schemaInfo.getSchema();
+
+      // Step 3: Build TTimeSeriesInfo
+      org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo timeSeriesInfo =
+          new org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo();
+
+      // Serialize path
+      ByteArrayOutputStream pathStream = new ByteArrayOutputStream();
+      try {
+        measurementPath.serialize(pathStream);
+        timeSeriesInfo.setPath(ByteBuffer.wrap(pathStream.toByteArray()));
+      } catch (IOException e) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Failed to serialize path: " + e.getMessage()));
+        return resp;
+      }
+
+      // Set data type, encoding, compressor
+      timeSeriesInfo.setDataType(schema.getType().ordinal());
+      timeSeriesInfo.setEncoding(schema.getEncodingType().ordinal());
+      timeSeriesInfo.setCompressor(schema.getCompressor().ordinal());
+
+      // Set alias
+      if (schemaInfo.getAlias() != null) {
+        timeSeriesInfo.setMeasurementAlias(schemaInfo.getAlias());
+      }
+
+      // Set props (from schema), excluding internal alias-related keys
+      if (schema instanceof org.apache.tsfile.write.schema.MeasurementSchema) {
+        Map<String, String> props =
+            ((org.apache.tsfile.write.schema.MeasurementSchema) schema).getProps();
+        if (props != null && !props.isEmpty()) {
+          // Remove internal alias-related keys if they exist
+          Map<String, String> propsCopy = new HashMap<>(props);
+          propsCopy.remove(MeasurementInfo.IS_RENAMED_KEY);
+          propsCopy.remove(MeasurementInfo.IS_RENAMING_KEY);
+          propsCopy.remove(MeasurementInfo.DISABLED_KEY);
+          propsCopy.remove(MeasurementInfo.ORIGINAL_PATH_KEY);
+          propsCopy.remove(MeasurementInfo.ALIAS_PATH_KEY);
+          if (!propsCopy.isEmpty()) {
+            timeSeriesInfo.setProps(propsCopy);
+          }
+        }
+      }
+
+      // Set tags and attributes
+      Map<String, String> tags = schemaInfo.getTagMap();
+      if (tags != null && !tags.isEmpty()) {
+        timeSeriesInfo.setTags(tags);
+      }
+      Map<String, String> attributes = schemaInfo.getAttributeMap();
+      if (attributes != null && !attributes.isEmpty()) {
+        timeSeriesInfo.setAttributes(attributes);
+      }
+
+      // Step 4: Determine if oldPath is an alias series and get physical path
+      PartialPath physicalPath = null;
+      boolean isRenamed = false;
+      if (schema instanceof org.apache.tsfile.write.schema.MeasurementSchema) {
+        Map<String, String> props =
+            ((org.apache.tsfile.write.schema.MeasurementSchema) schema).getProps();
+        if (props != null) {
+          String isRenamedValue = props.get(MeasurementInfo.IS_RENAMED_KEY);
+          isRenamed = Boolean.parseBoolean(isRenamedValue);
+          if (isRenamed) {
+            String originalPathStr = props.get(MeasurementInfo.ORIGINAL_PATH_KEY);
+            if (originalPathStr != null) {
+              try {
+                physicalPath = new PartialPath(originalPathStr);
+              } catch (IllegalPathException e) {
+                LOGGER.warn("Failed to parse original path: {}", originalPathStr, e);
+              }
+            }
+          }
+        }
+      }
+
+      resp.setTimeSeriesInfo(timeSeriesInfo);
+      resp.setIsRenamed(isRenamed);
+      if (physicalPath != null) {
+        ByteArrayOutputStream physicalPathStream = new ByteArrayOutputStream();
+        try {
+          physicalPath.serialize(physicalPathStream);
+          resp.setPhysicalPath(ByteBuffer.wrap(physicalPathStream.toByteArray()));
+        } catch (IOException e) {
+          LOGGER.warn("Failed to serialize physical path", e);
+        }
+      }
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (MetadataException e) {
+      LOGGER.error("Error locking and getting schema info for alias", e);
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    } catch (Exception e) {
+      LOGGER.error("Error locking and getting schema info for alias", e);
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.INTERNAL_SERVER_ERROR,
+              "Error locking and getting schema info: " + e.getMessage()));
+    }
+    return resp;
+  }
+
+  @Override
+  public TSStatus createAliasSeries(final TCreateAliasSeriesReq req) throws TException {
+    final PartialPath oldPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+
+    final org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo timeSeriesInfo = req.getTimeSeriesInfo();
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if oldPath belongs to this schema region
+      // Note: newPath may belong to a different database, which is allowed for alias operations
+      String database = schemaRegion.getDatabaseFullPath();
+      String newPathFull = newPath.getFullPath();
+      if (!newPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", newPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new CreateAliasSeriesNode(
+                          new PlanNodeId(""), oldPath, newPath, timeSeriesInfo))
+                  : new CreateAliasSeriesNode(
+                      new PlanNodeId(""), oldPath, newPath, timeSeriesInfo));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error creating alias series", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR, "Error creating alias series: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus markSeriesDisabled(final TMarkSeriesDisabledReq req) throws TException {
+    final PartialPath oldPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if oldPath belongs to this schema region
+      String database = schemaRegion.getDatabaseFullPath();
+      String oldPathFull = oldPath.getFullPath();
+      if (!oldPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", oldPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new MarkSeriesDisabledNode(new PlanNodeId(""), oldPath, newPath))
+                  : new MarkSeriesDisabledNode(new PlanNodeId(""), oldPath, newPath));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error marking series as disabled", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR,
+          "Error marking series as disabled: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus updatePhysicalAliasRef(final TUpdatePhysicalAliasRefReq req) throws TException {
+    final PartialPath physicalPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getPhysicalPath()));
+    final PartialPath newAliasPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewAliasPath()));
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if physicalPath belongs to this schema region
+      String database = schemaRegion.getDatabaseFullPath();
+      String physicalPathFull = physicalPath.getFullPath();
+      if (!physicalPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", physicalPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new UpdatePhysicalAliasRefNode(
+                          new PlanNodeId(""), physicalPath, newAliasPath))
+                  : new UpdatePhysicalAliasRefNode(new PlanNodeId(""), physicalPath, newAliasPath));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error updating physical alias reference", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR,
+          "Error updating physical alias reference: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus dropAliasSeries(final TDropAliasSeriesReq req) throws TException {
+    final PartialPath aliasPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getAliasPath()));
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if aliasPath belongs to this schema region
+      String database = schemaRegion.getDatabaseFullPath();
+      String aliasPathFull = aliasPath.getFullPath();
+      if (!aliasPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", aliasPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new DropAliasSeriesNode(new PlanNodeId(""), aliasPath))
+                  : new DropAliasSeriesNode(new PlanNodeId(""), aliasPath));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error dropping alias series", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR, "Error dropping alias series: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus enablePhysicalSeries(final TEnablePhysicalSeriesReq req) throws TException {
+    final PartialPath physicalPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getPhysicalPath()));
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if physicalPath belongs to this schema region
+      String database = schemaRegion.getDatabaseFullPath();
+      String physicalPathFull = physicalPath.getFullPath();
+      if (!physicalPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", physicalPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new EnablePhysicalSeriesNode(new PlanNodeId(""), physicalPath))
+                  : new EnablePhysicalSeriesNode(new PlanNodeId(""), physicalPath));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error enabling physical series", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR, "Error enabling physical series: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus unlockForAlias(final TAliasTimeSeriesReq req) throws TException {
+    final PartialPath oldPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getOldPath()));
+    final PartialPath newPath =
+        (PartialPath) PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getNewPath()));
+
+    try {
+      if (req.getSchemaRegionIdList().isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "SchemaRegionIdList is empty");
+      }
+
+      final SchemaRegionId schemaRegionId =
+          new SchemaRegionId(req.getSchemaRegionIdList().get(0).getId());
+      final ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+
+      // Check if oldPath belongs to this schema region
+      // Note: newPath may belong to a different database, which is allowed for alias operations
+      String database = schemaRegion.getDatabaseFullPath();
+      String oldPathFull = oldPath.getFullPath();
+      if (!oldPathFull.startsWith(database)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format("Path %s does not belong to database %s", oldPathFull, database));
+      }
+
+      RegionWriteExecutor executor = new RegionWriteExecutor();
+      RegionExecutionResult result =
+          executor.execute(
+              schemaRegionId,
+              req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                  ? new PipeEnrichedNonWritePlanNode(
+                      new UnlockForAliasNode(new PlanNodeId(""), oldPath, newPath))
+                  : new UnlockForAliasNode(new PlanNodeId(""), oldPath, newPath));
+
+      return result.getStatus();
+    } catch (Exception e) {
+      LOGGER.error("Error unlocking for alias", e);
+      return RpcUtils.getStatus(
+          TSStatusCode.INTERNAL_SERVER_ERROR, "Error unlocking for alias: " + e.getMessage());
+    }
   }
 
   @Override

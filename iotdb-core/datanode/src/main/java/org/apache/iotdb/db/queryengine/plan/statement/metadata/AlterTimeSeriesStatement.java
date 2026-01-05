@@ -159,7 +159,8 @@ public class AlterTimeSeriesStatement extends Statement {
   }
 
   public enum AlterType {
-    RENAME,
+    RENAME, // Rename tag/attribute key
+    RENAME_TO, // Rename the timeseries path itself
     SET,
     DROP,
     ADD_TAGS,

@@ -169,12 +169,13 @@ alterTimeseries
     ;
 
 alterClause
-    : RENAME beforeName=attributeKey TO currentName=attributeKey
-    | SET attributePair (COMMA attributePair)*
-    | DROP attributeKey (COMMA attributeKey)*
-    | ADD TAGS attributePair (COMMA attributePair)*
-    | ADD ATTRIBUTES attributePair (COMMA attributePair)*
-    | UPSERT aliasClause? tagClause? attributeClause?
+    : RENAME TO newPath=fullPath  #renameTimeseriesPath
+    | RENAME beforeName=attributeKey TO currentName=attributeKey  #renameTagOrAttribute
+    | SET attributePair (COMMA attributePair)*  #setAlter
+    | DROP attributeKey (COMMA attributeKey)*  #dropAlter
+    | ADD TAGS attributePair (COMMA attributePair)*  #addTagsAlter
+    | ADD ATTRIBUTES attributePair (COMMA attributePair)*  #addAttributesAlter
+    | UPSERT aliasClause? tagClause? attributeClause?  #upsertAlter
     ;
 
 alterEncodingCompressor
