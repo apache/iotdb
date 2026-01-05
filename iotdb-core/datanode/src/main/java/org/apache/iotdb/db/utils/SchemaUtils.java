@@ -295,10 +295,6 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
-    if (dataTypeColumnClassMap.get(originalDataType) == null
-        || dataTypeColumnClassMap.get(dataType) == null) {
-      return false;
-    }
     return Objects.equals(
         dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
   }
