@@ -1458,7 +1458,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     // audit db is read-only
     if (includeByAuditTreeDB(statement.getPath())
         && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
-      recordObjectAuthenticationAuditLog(
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(false),
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
       return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
