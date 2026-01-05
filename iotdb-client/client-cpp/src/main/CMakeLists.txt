@@ -68,13 +68,5 @@ target_link_libraries(iotdb_session
     PUBLIC
         OpenSSL::SSL
         OpenSSL::Crypto
-    PRIVATE
         ${THRIFT_STATIC_LIB}
 )
-
-# Linux only: avoid --as-needed dropping OpenSSL symbols
-if(UNIX AND NOT APPLE)
-    target_link_options(iotdb_session PRIVATE
-        -Wl,--no-as-needed
-    )
-endif()

@@ -105,3 +105,8 @@ ELSE()
     ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT COMMAND ${TARGET_NAME_RELATIONAL})
 ENDIF()
+
+if(UNIX AND NOT APPLE)
+  target_link_options(session_tests PRIVATE -Wl,--no-as-needed)
+  target_link_options(session_relational_tests PRIVATE -Wl,--no-as-needed)
+endif()
