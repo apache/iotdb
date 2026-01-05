@@ -978,7 +978,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
     }
     if (!exist) {
-      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
     }
     writeToMLog(node);
   }
