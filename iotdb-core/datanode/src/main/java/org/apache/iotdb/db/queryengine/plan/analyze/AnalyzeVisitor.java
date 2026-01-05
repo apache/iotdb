@@ -2437,7 +2437,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     intoComponent.validate(sourceColumns);
 
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
-    PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
     for (Pair<Expression, String> pair : outputExpressions) {
       Expression sourceExpression = pair.left;
@@ -2469,7 +2468,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       intoPathDescriptor.specifyDeviceAlignment(
           targetPath.getDevicePath().toString(), isAlignedDevice);
 
-      targetPathTree.appendFullPath(targetPath);
       intoPathDescriptor.recordSourceColumnDataType(
           sourceColumn, analysis.getType(sourceExpression));
 
@@ -2477,13 +2475,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     intoPathDescriptor.validate();
 
-    // fetch schema of target paths
-    long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
-    updateSchemaTreeByViews(analysis, targetSchemaTree, context);
-    QueryPlanCostMetricSet.getInstance()
-        .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
-    intoPathDescriptor.bindType(targetSchemaTree);
+    intoPathDescriptor.bindType();
 
     analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
