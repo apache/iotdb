@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.WindowsOSUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
@@ -435,11 +436,12 @@ public class TsTable {
     }
   }
 
-  public static boolean isInvalid4ObjectType(final String column) {
-    return column.equals(".")
-        || column.equals("..")
-        || column.contains("./")
-        || column.contains(".\\");
+  public static boolean isInvalid4ObjectType(final String path) {
+    return path.equals(".")
+        || path.equals("..")
+        || path.contains("./")
+        || path.contains(".\\")
+        || !WindowsOSUtils.isLegalPathSegment4Windows(path);
   }
 
   public static String getObjectStringError(final String columnType, final String columnName) {

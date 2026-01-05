@@ -19,6 +19,41 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 public class WindowsOSUtils {
-    
+  private static final String ILLEGAL_WINDOWS_CHARS = "\\/:*?\"<>|";
+  private static final Set<String> ILLEGAL_WINDOWS_NAMES =
+      new HashSet<>(Arrays.asList("CON", "PRN", "AUX", "NUL", "COM1-COM9, LPT1-LPT9"));
+
+  static {
+    for (int i = 0; i < 10; ++i) {
+      ILLEGAL_WINDOWS_NAMES.add("COM" + i);
+      ILLEGAL_WINDOWS_NAMES.add("LPT" + i);
+    }
+  }
+
+  public static boolean isLegalPathSegment4Windows(final String pathSegment) {
+    if (!SystemUtils.IS_OS_WINDOWS) {
+      return true;
+    }
+    for (final char illegalChar : ILLEGAL_WINDOWS_CHARS.toCharArray()) {
+      if (pathSegment.indexOf(illegalChar) != -1) {
+        return false;
+      }
+    }
+    if (pathSegment.endsWith(".") || pathSegment.endsWith(" ")) {
+      return false;
+    }
+    for (final String illegalName : ILLEGAL_WINDOWS_NAMES) {
+      if (pathSegment.equalsIgnoreCase(illegalName)) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
