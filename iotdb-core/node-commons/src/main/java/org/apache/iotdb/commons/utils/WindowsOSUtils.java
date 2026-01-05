@@ -37,6 +37,11 @@ public class WindowsOSUtils {
     }
   }
 
+  public static final String OS_SEGMENT_ERROR =
+      String.format(
+          "In Windows System, the path shall not contains %s, equals one of %s, or ends with '.' or ' '.",
+          ILLEGAL_WINDOWS_CHARS, ILLEGAL_WINDOWS_NAMES);
+
   public static boolean isLegalPathSegment4Windows(final String pathSegment) {
     if (!SystemUtils.IS_OS_WINDOWS) {
       return true;

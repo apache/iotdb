@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -784,6 +785,11 @@ public class IoTDBTableIT {
   @Test
   public void testTableObjectCheck() throws Exception {
     final Set<String> illegal = new HashSet<>(Arrays.asList("./", ".", "..", ".\\", "../hack"));
+    if (SystemUtils.IS_OS_WINDOWS) {
+      illegal.add("C.");
+      illegal.add("a:b<|");
+      illegal.add("COM1");
+    }
     for (final String single : illegal) {
       testObject4SingleIllegalPath(single);
     }
@@ -804,7 +810,7 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         Assert.assertEquals(
             String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
+                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
@@ -849,7 +855,7 @@ public class IoTDBTableIT {
       } catch (final Exception e) {
         Assert.assertEquals(
             String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
+                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
@@ -860,7 +866,7 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         Assert.assertEquals(
             String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
@@ -875,7 +881,7 @@ public class IoTDBTableIT {
       } catch (final Exception e) {
         Assert.assertEquals(
             String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
@@ -891,7 +897,7 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         Assert.assertEquals(
             String.format(
-                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'",
+                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
@@ -902,7 +908,7 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         Assert.assertEquals(
             String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
+                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
                 illegal),
             e.getMessage());
       }
