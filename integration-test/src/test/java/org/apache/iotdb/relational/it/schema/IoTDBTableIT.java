@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.utils.WindowsOSUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -804,15 +805,16 @@ public class IoTDBTableIT {
       statement.execute("use db2");
       statement.execute(String.format("create table \"%s\" ()", illegal));
 
+      String expectedError =
+          String.format(
+              "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'."
+                  + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
+              illegal);
       try {
         statement.execute(String.format("alter table \"%s\" add column a object", illegal));
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       // Test auto-create
@@ -853,22 +855,14 @@ public class IoTDBTableIT {
         session.executeNonQueryStatement("use db2");
         session.insert(tablet);
       } catch (final Exception e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       try {
         statement.execute(String.format("create table test (\"%s\" object)", illegal));
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       statement.execute("create table test (a tag, b attribute, c int32, d object)");
@@ -879,11 +873,7 @@ public class IoTDBTableIT {
         session.executeNonQueryStatement("use db2");
         session.insert(tablet);
       } catch (final Exception e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       // It's OK if you don't write object
@@ -895,22 +885,14 @@ public class IoTDBTableIT {
                 illegal));
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       try {
         statement.execute(String.format("alter table test add column \"%s\" object", illegal));
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'.",
-                illegal),
-            e.getMessage());
+        Assert.assertEquals(expectedError, e.getMessage());
       }
 
       statement.execute("drop database db2");
