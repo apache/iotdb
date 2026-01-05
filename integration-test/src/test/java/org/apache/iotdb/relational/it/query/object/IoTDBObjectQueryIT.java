@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -269,6 +270,37 @@ public class IoTDBObjectQueryIT {
           }
         }
         assertEquals(4, cnt);
+      }
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testIllegalObjectValue() {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE " + DATABASE_NAME);
+      try {
+        session.executeNonQueryStatement(
+            "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd1', X'cafebabe01', 1, 'cafebabe01', 0, 100)");
+        fail();
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains("data type is not consistent"));
+      }
+
+      try {
+        session.executeNonQueryStatement(
+            "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd1', X'cafebabe01', 'test', 'cafebabe01', 0, 100)");
+        fail();
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains("data type is not consistent"));
+      }
+
+      try {
+        session.executeNonQueryStatement(
+            "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd1', X'cafebabe01', X'cafebabe01', 'cafebabe01', 0, 100)");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(e.getMessage().contains("data type is not consistent"));
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       fail(e.getMessage());

@@ -85,6 +85,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
   @Test
   public void testOPCUAServerSink() throws Exception {
     int tcpPort = -1;
+    int httpsPort = -1;
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
@@ -101,7 +102,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
         tcpPort = ports[0];
-        final int httpsPort = ports[1];
+        httpsPort = ports[1];
         sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
 
@@ -133,10 +134,18 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         break;
       }
 
+      // Create the region first to avoid tsFile parsing
+      TestUtils.executeNonQueries(
+          env,
+          Arrays.asList(
+              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
+              "insert into root.db.opc(time, value, quality, other) values (0, 0, true, 1)"),
+          null);
+
       while (true) {
         final int[] ports = EnvUtils.searchAvailablePorts();
         tcpPort = ports[0];
-        final int httpsPort = ports[1];
+        httpsPort = ports[1];
         sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
         sinkAttributes.put("with-quality", "true");
@@ -166,12 +175,9 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         break;
       }
 
-      // Create aligned timeSeries to avoid tsFile parsing
-      TestUtils.executeNonQueries(
+      TestUtils.executeNonQuery(
           env,
-          Arrays.asList(
-              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
-              "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)"),
+          "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)",
           null);
 
       long startTime = System.currentTimeMillis();
@@ -241,11 +247,17 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       sinkAttributes.put("password", "conflict");
       try {
         TestUtils.executeNonQuery(
-            env, "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict')", null);
+            env,
+            String.format(
+                "create pipe test1 ('sink'='opc-ua-sink', 'password'='conflict@pswd', 'tcp.port'='%s', 'https.port'='%s')",
+                tcpPort, httpsPort),
+            null);
         Assert.fail();
       } catch (final Exception e) {
         Assert.assertEquals(
-            "org.apache.iotdb.jdbc.IoTDBSQLException: 1107: The existing server with tcp port 12686 and https port 8443's password **** conflicts to the new password ****, reject reusing.",
+            String.format(
+                "org.apache.iotdb.jdbc.IoTDBSQLException: 1107: The existing server with tcp port %s and https port %s's password **** conflicts to the new password ****, reject reusing.",
+                tcpPort, httpsPort),
             e.getMessage());
       }
     } finally {
