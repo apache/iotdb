@@ -167,30 +167,13 @@ public class DeleteTimeSeriesProcedure
               final TDataNodeLocation dataNodeLocation,
               final List<TConsensusGroupId> consensusGroupIdList,
               final TSStatus response) {
-            final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
             if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               isAllLogicalView = false;
-              successResult.add(response);
             } else if (response.getCode() == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
               successResult.add(response);
-            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              final List<TSStatus> subStatusList = response.getSubStatus();
-              for (int i = 0; i < subStatusList.size(); i++) {
-                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(subStatusList.get(i));
-                } else {
-                  failedRegionList.add(consensusGroupIdList.get(i));
-                }
-              }
-            } else {
-              failedRegionList.addAll(consensusGroupIdList);
             }
-            if (!failedRegionList.isEmpty()) {
-              failureMap.put(dataNodeLocation, response);
-            } else {
-              failureMap.remove(dataNodeLocation);
-            }
-            return failedRegionList;
+            return processResponseOfOneDataNodeWithSuccessResult(
+                dataNodeLocation, consensusGroupIdList, response);
           }
         };
     constructBlackListTask.execute();
