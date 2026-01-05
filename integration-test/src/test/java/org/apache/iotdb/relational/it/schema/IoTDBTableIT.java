@@ -842,12 +842,12 @@ public class IoTDBTableIT {
           String.format(
               "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'."
                   + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-              illegal);
+              illegal.toLowerCase());
       final String expectedObjectError =
           String.format(
               "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'."
                   + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-              illegal);
+              illegal.toLowerCase());
 
       try {
         session.executeNonQueryStatement("use db2");
@@ -912,7 +912,7 @@ public class IoTDBTableIT {
         statement.execute(String.format("alter table test add column \"%s\" object", illegal));
         fail();
       } catch (final SQLException e) {
-        Assert.assertEquals(expectedTableError, e.getMessage());
+        Assert.assertEquals(expectedObjectError, e.getMessage());
       }
 
       statement.execute("drop database db2");
