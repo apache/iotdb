@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -31,6 +32,8 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
@@ -223,23 +226,42 @@ public class LastAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateIntLastValue(
+            ((Number) statistics[0].getLastValue()).intValue(), statistics[0].getEndTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateLongLastValue(
+            ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
         break;
       case TEXT:
       case BLOB:
       case OBJECT:
       case STRING:
-        updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+        if (statistics[0] instanceof DateStatistics) {
+          updateBinaryLastValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics[0].getLastValue()),
+                  StandardCharsets.UTF_8),
+              statistics[0].getEndTime());
+        } else {
+          if (statistics[0].getLastValue() instanceof Binary) {
+            updateBinaryLastValue(
+                (Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
+                statistics[0].getEndTime());
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());

@@ -89,6 +89,12 @@ public abstract class TsTableColumnSchema {
     return Objects.hash(columnName);
   }
 
+  public void setDataType(final TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public abstract TsTableColumnSchema copy();
+
   @Override
   public String toString() {
     return toStringHelper(this)

@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Log
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -493,6 +494,7 @@ public class Coordinator {
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
         || statement instanceof AddColumn
+        || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable

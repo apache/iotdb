@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -613,11 +614,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
     AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
     alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
-    parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
+    alterTimeSeriesStatement = parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
     return alterTimeSeriesStatement;
   }
 
-  private void parseAlterClause(
+  private AlterTimeSeriesStatement parseAlterClause(
       IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     Map<String, String> alterMap = new HashMap<>();
     // Rename
@@ -625,9 +626,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
       alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
-      // Set
-      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
-      setMap(ctx, alterMap);
+      if (ctx.DATA() != null && ctx.TYPE() != null) {
+        MeasurementPath path = alterTimeSeriesStatement.getPath();
+        alterTimeSeriesStatement = new AlterTimeSeriesDataTypeStatement();
+        alterTimeSeriesStatement.setPath(path);
+        // Set data type
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE);
+        setMap(ctx, alterMap);
+        if (ctx.attributeValue() != null) {
+          alterTimeSeriesStatement.setDataType(parseDataTypeAttribute(ctx.attributeValue()));
+        }
+      } else {
+        // Set
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
+        setMap(ctx, alterMap);
+      }
     } else if (ctx.DROP() != null) {
       // Drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
@@ -642,7 +655,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // Add attribute
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
-    } else {
+    } else if (ctx.UPSERT() != null) {
       // Upsert
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
       if (ctx.aliasClause() != null) {
@@ -656,6 +669,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     alterTimeSeriesStatement.setAlterMap(alterMap);
+    return alterTimeSeriesStatement;
   }
 
   public void parseAliasClause(
@@ -663,6 +677,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
       alterTimeSeriesStatement.setAlias(parseAliasNode(ctx.alias()));
     }
+  }
+
+  private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeValueContext ctx) {
+    if (ctx == null) {
+      throw new SemanticException("Incorrect Data type");
+    }
+
+    String dataTypeString = parseAttributeValue(ctx);
+    TSDataType dataType = TSDataType.valueOf(dataTypeString);
+    if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+      throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+    }
+    return dataType;
   }
 
   @Override
