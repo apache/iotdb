@@ -803,22 +803,9 @@ public class IoTDBTableIT {
         final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       statement.execute("create database if not exists db2");
       statement.execute("use db2");
-      statement.execute(String.format("create table \"%s\" ()", illegal));
 
-      String expectedError =
-          String.format(
-              "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'."
-                  + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-              illegal);
-      try {
-        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(expectedError, e.getMessage());
-      }
-
-      // Test auto-create
-      String testObject =
+      // Test auto-create table
+      final String testObject =
           System.getProperty("user.dir")
               + File.separator
               + "target"
@@ -827,7 +814,7 @@ public class IoTDBTableIT {
               + File.separator
               + "object-example.pt";
 
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("a", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("b", TSDataType.STRING));
       schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
@@ -851,6 +838,28 @@ public class IoTDBTableIT {
       tablet.addValue(schemaList.get(2).getMeasurementName(), 0, 0);
       tablet.addValue(0, 3, true, 0, Files.readAllBytes(Paths.get(testObject)));
 
+      final String expectedError =
+          String.format(
+              "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'."
+                  + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
+              illegal);
+      try {
+        session.executeNonQueryStatement("use db2");
+        session.insert(tablet);
+      } catch (final Exception e) {
+        Assert.assertEquals(expectedError, e.getMessage());
+      }
+
+      statement.execute(String.format("create table \"%s\" ()", illegal));
+
+      try {
+        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(expectedError, e.getMessage());
+      }
+
+      // Test auto-create column
       try {
         session.executeNonQueryStatement("use db2");
         session.insert(tablet);
