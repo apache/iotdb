@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.pipe.source;
 
+import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
@@ -37,353 +39,334 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Optional;
 
 public class PipeConfigTablePrivilegeParseVisitor
-    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
+    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IAuditEntity> {
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
-      final ConfigPhysicalPlan plan, final String userName) {
+      final ConfigPhysicalPlan plan, final IAuditEntity userEntity) {
     return Optional.of(plan);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
-      final DatabaseSchemaPlan createDatabasePlan, final String userName) {
-    return visitDatabaseSchemaPlan(createDatabasePlan, userName);
+      final DatabaseSchemaPlan createDatabasePlan, final IAuditEntity userEntity) {
+    return visitDatabaseSchemaPlan(createDatabasePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitAlterDatabase(
-      final DatabaseSchemaPlan alterDatabasePlan, final String userName) {
-    return visitDatabaseSchemaPlan(alterDatabasePlan, userName);
+      final DatabaseSchemaPlan alterDatabasePlan, final IAuditEntity userEntity) {
+    return visitDatabaseSchemaPlan(alterDatabasePlan, userEntity);
   }
 
   public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
-      final DatabaseSchemaPlan databaseSchemaPlan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(
-                    userName, new PrivilegeUnion(databaseSchemaPlan.getSchema().getName(), null))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+      final DatabaseSchemaPlan databaseSchemaPlan, final IAuditEntity userEntity) {
+    return isDatabaseVisible(userEntity, databaseSchemaPlan.getSchema().getName())
         ? Optional.of(databaseSchemaPlan)
         : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
-      final DeleteDatabasePlan deleteDatabasePlan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(
-                    userName, new PrivilegeUnion(deleteDatabasePlan.getName(), null))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+      final DeleteDatabasePlan deleteDatabasePlan, final IAuditEntity userEntity) {
+    return isDatabaseVisible(userEntity, deleteDatabasePlan.getName())
         ? Optional.of(deleteDatabasePlan)
         : Optional.empty();
   }
 
-  @Override
-  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
-      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
+  private boolean isDatabaseVisible(final IAuditEntity userEntity, final String database) {
+    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
+    final CNAuditLogger logger = configManager.getAuditLogger();
+    final boolean result =
+        configManager
                 .getPermissionManager()
-                .checkUserPrivileges(
-                    userName,
-                    new PrivilegeUnion(
-                        pipeCreateTableOrViewPlan.getDatabase(),
-                        pipeCreateTableOrViewPlan.getTable().getTableName(),
-                        null))
+                .checkUserPrivileges(userEntity.getUsername(), new PrivilegeUnion(database, null))
                 .getStatus()
                 .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (result) {
+      logger.recordObjectAuthenticationAuditLog(
+          userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA).setResult(true), () -> database);
+      return true;
+    }
+    return PipeConfigTreePrivilegeParseVisitor.hasGlobalPrivilege(
+        userEntity, PrivilegeType.SYSTEM, database, true);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeCreateTableOrView(
+      final PipeCreateTableOrViewPlan pipeCreateTableOrViewPlan, final IAuditEntity userEntity) {
+    return isTableVisible(
+            userEntity,
+            pipeCreateTableOrViewPlan.getDatabase(),
+            pipeCreateTableOrViewPlan.getTable().getTableName())
         ? Optional.of(pipeCreateTableOrViewPlan)
         : Optional.empty();
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitAddTableColumn(
-      final AddTableColumnPlan addTableColumnPlan, final String userName) {
-    return visitAbstractTablePlan(addTableColumnPlan, userName);
+      final AddTableColumnPlan addTableColumnPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(addTableColumnPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableProperties(
-      final SetTablePropertiesPlan setTablePropertiesPlan, final String userName) {
-    return visitAbstractTablePlan(setTablePropertiesPlan, userName);
+      final SetTablePropertiesPlan setTablePropertiesPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(setTablePropertiesPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteColumn(
-      final CommitDeleteColumnPlan commitDeleteColumnPlan, final String userName) {
-    return visitAbstractTablePlan(commitDeleteColumnPlan, userName);
+      final CommitDeleteColumnPlan commitDeleteColumnPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(commitDeleteColumnPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRenameTableColumn(
-      final RenameTableColumnPlan renameTableColumnPlan, final String userName) {
-    return visitAbstractTablePlan(renameTableColumnPlan, userName);
+      final RenameTableColumnPlan renameTableColumnPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(renameTableColumnPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitCommitDeleteTable(
-      final CommitDeleteTablePlan commitDeleteTablePlan, final String userName) {
-    return visitAbstractTablePlan(commitDeleteTablePlan, userName);
+      final CommitDeleteTablePlan commitDeleteTablePlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(commitDeleteTablePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPipeDeleteDevices(
-      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final String userName) {
-    return visitAbstractTablePlan(pipeDeleteDevicesPlan, userName);
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(pipeDeleteDevicesPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableComment(
-      final SetTableCommentPlan setTableCommentPlan, final String userName) {
-    return visitAbstractTablePlan(setTableCommentPlan, userName);
+      final SetTableCommentPlan setTableCommentPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(setTableCommentPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitSetTableColumnComment(
-      final SetTableColumnCommentPlan setTableColumnCommentPlan, final String userName) {
-    return visitAbstractTablePlan(setTableColumnCommentPlan, userName);
+      final SetTableColumnCommentPlan setTableColumnCommentPlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(setTableColumnCommentPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRenameTable(
-      final RenameTablePlan renameTablePlan, final String userName) {
-    return visitAbstractTablePlan(renameTablePlan, userName);
+      final RenameTablePlan renameTablePlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(renameTablePlan, userEntity);
   }
 
   private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(
-      final AbstractTablePlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(
-                    userName, new PrivilegeUnion(plan.getDatabase(), plan.getTableName(), null))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+      final AbstractTablePlan plan, final IAuditEntity userEntity) {
+    return isTableVisible(userEntity, plan.getDatabase(), plan.getTableName())
         ? Optional.of(plan)
         : Optional.empty();
+  }
+
+  private boolean isTableVisible(
+      final IAuditEntity userEntity, final String database, final String tableName) {
+    final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
+    final CNAuditLogger logger = configManager.getAuditLogger();
+    final boolean result =
+        configManager
+                .getPermissionManager()
+                .checkUserPrivileges(
+                    userEntity.getUsername(), new PrivilegeUnion(database, tableName, null))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (result) {
+      logger.recordObjectAuthenticationAuditLog(
+          userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA).setResult(true), () -> database);
+      return true;
+    }
+    return PipeConfigTreePrivilegeParseVisitor.hasGlobalPrivilege(
+        userEntity, PrivilegeType.SYSTEM, tableName, true);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRCreateUser(
-      final AuthorRelationalPlan rCreateUserPlan, final String userName) {
-    return visitUserPlan(rCreateUserPlan, userName);
+      final AuthorRelationalPlan rCreateUserPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rCreateUserPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRCreateRole(
-      final AuthorRelationalPlan rCreateRolePlan, final String userName) {
-    return visitRolePlan(rCreateRolePlan, userName);
+      final AuthorRelationalPlan rCreateRolePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rCreateRolePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRUpdateUser(
-      final AuthorRelationalPlan rUpdateUserPlan, final String userName) {
-    return visitUserPlan(rUpdateUserPlan, userName);
+      final AuthorRelationalPlan rUpdateUserPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rUpdateUserPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRDropUserPlan(
-      final AuthorRelationalPlan rDropUserPlan, final String userName) {
-    return visitUserPlan(rDropUserPlan, userName);
+      final AuthorRelationalPlan rDropUserPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rDropUserPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRDropRolePlan(
-      final AuthorRelationalPlan rDropRolePlan, final String userName) {
-    return visitRolePlan(rDropRolePlan, userName);
+      final AuthorRelationalPlan rDropRolePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rDropRolePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserRole(
-      final AuthorRelationalPlan rGrantUserRolePlan, final String userName) {
-    return visitUserRolePlan(rGrantUserRolePlan, userName);
+      final AuthorRelationalPlan rGrantUserRolePlan, final IAuditEntity userEntity) {
+    return visitUserRolePlan(rGrantUserRolePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserRole(
-      final AuthorRelationalPlan rRevokeUserRolePlan, final String userName) {
-    return visitUserRolePlan(rRevokeUserRolePlan, userName);
+      final AuthorRelationalPlan rRevokeUserRolePlan, final IAuditEntity userEntity) {
+    return visitUserRolePlan(rRevokeUserRolePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserAny(
-      final AuthorRelationalPlan rGrantUserAnyPlan, final String userName) {
-    return visitUserPlan(rGrantUserAnyPlan, userName);
+      final AuthorRelationalPlan rGrantUserAnyPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rGrantUserAnyPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleAny(
-      final AuthorRelationalPlan rGrantRoleAnyPlan, final String userName) {
-    return visitRolePlan(rGrantRoleAnyPlan, userName);
+      final AuthorRelationalPlan rGrantRoleAnyPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rGrantRoleAnyPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserAll(
-      final AuthorRelationalPlan rGrantUserAllPlan, final String userName) {
-    return visitUserPlan(rGrantUserAllPlan, userName);
+      final AuthorRelationalPlan rGrantUserAllPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rGrantUserAllPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleAll(
-      final AuthorRelationalPlan rGrantRoleAllPlan, final String userName) {
-    return visitRolePlan(rGrantRoleAllPlan, userName);
+      final AuthorRelationalPlan rGrantRoleAllPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rGrantRoleAllPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserDB(
-      final AuthorRelationalPlan rGrantUserDBPlan, final String userName) {
-    return visitUserPlan(rGrantUserDBPlan, userName);
+      final AuthorRelationalPlan rGrantUserDBPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rGrantUserDBPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserTB(
-      final AuthorRelationalPlan rGrantUserTBPlan, final String userName) {
-    return visitUserPlan(rGrantUserTBPlan, userName);
+      final AuthorRelationalPlan rGrantUserTBPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rGrantUserTBPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleDB(
-      final AuthorRelationalPlan rGrantRoleDBPlan, final String userName) {
-    return visitRolePlan(rGrantRoleDBPlan, userName);
+      final AuthorRelationalPlan rGrantRoleDBPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rGrantRoleDBPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleTB(
-      final AuthorRelationalPlan rGrantRoleTBPlan, final String userName) {
-    return visitRolePlan(rGrantRoleTBPlan, userName);
+      final AuthorRelationalPlan rGrantRoleTBPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rGrantRoleTBPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserAny(
-      final AuthorRelationalPlan rRevokeUserAnyPlan, final String userName) {
-    return visitUserPlan(rRevokeUserAnyPlan, userName);
+      final AuthorRelationalPlan rRevokeUserAnyPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rRevokeUserAnyPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleAny(
-      final AuthorRelationalPlan rRevokeRoleAnyPlan, final String userName) {
-    return visitRolePlan(rRevokeRoleAnyPlan, userName);
+      final AuthorRelationalPlan rRevokeRoleAnyPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rRevokeRoleAnyPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserAll(
-      final AuthorRelationalPlan rRevokeUserAllPlan, final String userName) {
-    return visitUserPlan(rRevokeUserAllPlan, userName);
+      final AuthorRelationalPlan rRevokeUserAllPlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rRevokeUserAllPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleAll(
-      final AuthorRelationalPlan rRevokeRoleAllPlan, final String userName) {
-    return visitRolePlan(rRevokeRoleAllPlan, userName);
+      final AuthorRelationalPlan rRevokeRoleAllPlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rRevokeRoleAllPlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserDBPrivilege(
-      final AuthorRelationalPlan rRevokeUserDBPrivilegePlan, final String userName) {
-    return visitUserPlan(rRevokeUserDBPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeUserDBPrivilegePlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rRevokeUserDBPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserTBPrivilege(
-      final AuthorRelationalPlan rRevokeUserTBPrivilegePlan, final String userName) {
-    return visitUserPlan(rRevokeUserTBPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeUserTBPrivilegePlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rRevokeUserTBPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleDBPrivilege(
-      final AuthorRelationalPlan rRevokeRoleTBPrivilegePlan, final String userName) {
-    return visitRolePlan(rRevokeRoleTBPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeRoleTBPrivilegePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rRevokeRoleTBPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleTBPrivilege(
-      final AuthorRelationalPlan rRevokeRoleTBPrivilegePlan, final String userName) {
-    return visitRolePlan(rRevokeRoleTBPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeRoleTBPrivilegePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rRevokeRoleTBPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserSysPrivilege(
-      final AuthorRelationalPlan rGrantUserSysPrivilegePlan, final String userName) {
-    return visitUserPlan(rGrantUserSysPrivilegePlan, userName);
+      final AuthorRelationalPlan rGrantUserSysPrivilegePlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rGrantUserSysPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleSysPrivilege(
-      final AuthorRelationalPlan rGrantRoleSysPrivilegePlan, final String userName) {
-    return visitRolePlan(rGrantRoleSysPrivilegePlan, userName);
+      final AuthorRelationalPlan rGrantRoleSysPrivilegePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rGrantRoleSysPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserSysPrivilege(
-      final AuthorRelationalPlan rRevokeUserSysPrivilegePlan, final String userName) {
-    return visitUserPlan(rRevokeUserSysPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeUserSysPrivilegePlan, final IAuditEntity userEntity) {
+    return visitUserPlan(rRevokeUserSysPrivilegePlan, userEntity);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleSysPrivilege(
-      final AuthorRelationalPlan rRevokeRoleSysPrivilegePlan, final String userName) {
-    return visitRolePlan(rRevokeRoleSysPrivilegePlan, userName);
+      final AuthorRelationalPlan rRevokeRoleSysPrivilegePlan, final IAuditEntity userEntity) {
+    return visitRolePlan(rRevokeRoleSysPrivilegePlan, userEntity);
   }
 
   private Optional<ConfigPhysicalPlan> visitUserPlan(
-      final AuthorRelationalPlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(plan)
-        : Optional.empty();
+      final AuthorRelationalPlan plan, final IAuditEntity userEntity) {
+    return PipeConfigTreePrivilegeParseVisitor.visitUserPlan(plan, userEntity);
   }
 
   private Optional<ConfigPhysicalPlan> visitRolePlan(
-      final AuthorRelationalPlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                .getConfigManager()
-                .getPermissionManager()
-                .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
-                .getStatus()
-                .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(plan)
-        : Optional.empty();
+      final AuthorRelationalPlan plan, final IAuditEntity userEntity) {
+    return PipeConfigTreePrivilegeParseVisitor.visitRolePlan(plan, userEntity);
   }
 
   private Optional<ConfigPhysicalPlan> visitUserRolePlan(
-      final AuthorRelationalPlan plan, final String userName) {
-    return ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || ConfigNode.getInstance()
-                    .getConfigManager()
-                    .getPermissionManager()
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? Optional.of(plan)
-        : Optional.empty();
+      final AuthorRelationalPlan plan, final IAuditEntity userEntity) {
+    return PipeConfigTreePrivilegeParseVisitor.visitUserRolePlan(plan, userEntity);
   }
 }
