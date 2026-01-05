@@ -24,7 +24,7 @@ from typing import Dict, Optional
 
 import torch.multiprocessing as mp
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.inference_request import (
     InferenceRequest,
     InferenceRequestProxy,
@@ -374,7 +374,7 @@ class PoolController:
         if not self.has_request_pools(model_id):
             logger.error(f"[Inference] No pools found for model {model_id}.")
             infer_proxy.set_result(None)
-            raise InferenceModelInternalError(
+            raise InferenceModelInternalException(
                 "Dispatch request failed, because no inference pools are init."
             )
             # TODO: Implement adaptive scaling based on requests.(e.g. lazy initialization)

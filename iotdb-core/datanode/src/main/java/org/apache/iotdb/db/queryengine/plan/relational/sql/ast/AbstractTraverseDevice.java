@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonP
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +46,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQu
 // TODO table metadata: reuse query distinct logic
 // Show, Count, Update, Delete Devices
 public abstract class AbstractTraverseDevice extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AbstractTraverseDevice.class);
 
   protected String database;
 
@@ -187,6 +191,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.attributeColumns = attributeColumns;
   }
 
+  public List<String> getAttributeColumns() {
+    return attributeColumns;
+  }
+
   public List<ColumnHeader> getColumnHeaderList() {
     return columnHeaderList;
   }
@@ -240,5 +248,45 @@ public abstract class AbstractTraverseDevice extends Statement {
         + ", idFuzzyFilter="
         + tagFuzzyPredicate
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
+  }
+
+  protected long ramBytesUsedForCommonFields() {
+    long size = 0;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
+    if (tagDeterminedFilterList != null) {
+      size += RamUsageEstimator.shallowSizeOf(tagDeterminedFilterList);
+      for (List<SchemaFilter> filters : tagDeterminedFilterList) {
+        if (filters != null) {
+          size += RamUsageEstimator.shallowSizeOf(filters);
+          for (SchemaFilter filter : filters) {
+            size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(filter);
+          }
+        }
+      }
+    }
+    if (columnHeaderList != null) {
+      size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
+      for (ColumnHeader header : columnHeaderList) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(header);
+      }
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(attributeColumns);
+    if (partitionKeyList != null) {
+      size += RamUsageEstimator.shallowSizeOf(partitionKeyList);
+      for (IDeviceID deviceID : partitionKeyList) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(deviceID);
+      }
+    }
+    return size;
   }
 }

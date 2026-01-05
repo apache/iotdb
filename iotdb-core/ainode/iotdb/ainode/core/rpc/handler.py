@@ -40,7 +40,7 @@ from iotdb.thrift.ainode.ttypes import (
     TShowLoadedModelsResp,
     TShowModelsReq,
     TShowModelsResp,
-    TTrainingReq,
+    TTuningReq,
     TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
@@ -56,8 +56,8 @@ def _ensure_device_id_is_available(device_id_list: list[str]) -> TSStatus:
     for device_id in device_id_list:
         if device_id not in available_devices:
             return TSStatus(
-                code=TSStatusCode.INVALID_URI_ERROR.value,
-                message=f"Device ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
+                code=TSStatusCode.UNAVAILABLE_AI_DEVICE_ERROR.value,
+                message=f"AIDevice ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
             )
     return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
 
@@ -68,13 +68,26 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         self._model_manager = ModelManager()
         self._inference_manager = InferenceManager()
 
-    def stop(self) -> None:
+    # ==================== Cluster Management ====================
+
+    def stop(self):
         logger.info("Stopping the RPC service handler of IoTDB-AINode...")
         self._inference_manager.stop()
 
     def stopAINode(self) -> TSStatus:
         self._ainode.stop()
         return get_status(TSStatusCode.SUCCESS_STATUS, "AINode stopped successfully.")
+
+    def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
+        return ClusterManager.get_heart_beat(req)
+
+    def showAIDevices(self) -> TShowAIDevicesResp:
+        return TShowAIDevicesResp(
+            status=TSStatus(code=TSStatusCode.SUCCESS_STATUS.value),
+            deviceIdList=get_available_devices(),
+        )
+
+    # ==================== Model Management ====================
 
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
@@ -109,11 +122,15 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             return TShowLoadedModelsResp(status=status, deviceLoadedModelsMap={})
         return self._inference_manager.show_loaded_models(req)
 
-    def showAIDevices(self) -> TShowAIDevicesResp:
-        return TShowAIDevicesResp(
-            status=TSStatus(code=TSStatusCode.SUCCESS_STATUS.value),
-            deviceIdList=get_available_devices(),
-        )
+    def _ensure_model_is_registered(self, model_id: str) -> TSStatus:
+        if not self._model_manager.is_model_registered(model_id):
+            return TSStatus(
+                code=TSStatusCode.MODEL_NOT_EXIST_ERROR.value,
+                message=f"Model [{model_id}] is not registered yet. You can use 'SHOW MODELS' to retrieve the available models.",
+            )
+        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
+
+    # ==================== Inference ====================
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
         status = self._ensure_model_is_registered(req.modelId)
@@ -127,16 +144,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             return TForecastResp(status, [])
         return self._inference_manager.forecast(req)
 
-    def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
-        return ClusterManager.get_heart_beat(req)
+    # ==================== Tuning ====================
 
-    def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
+    def createTuningTask(self, req: TTuningReq) -> TSStatus:
         pass
-
-    def _ensure_model_is_registered(self, model_id: str) -> TSStatus:
-        if not self._model_manager.is_model_registered(model_id):
-            return TSStatus(
-                code=TSStatusCode.MODEL_NOT_FOUND_ERROR.value,
-                message=f"Model [{model_id}] is not registered yet. You can use 'SHOW MODELS' to retrieve the available models.",
-            )
-        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)

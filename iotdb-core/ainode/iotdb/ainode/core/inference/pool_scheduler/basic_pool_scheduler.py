@@ -20,7 +20,7 @@ from typing import Dict, List, Optional
 
 import torch
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     AbstractPoolScheduler,
@@ -113,7 +113,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         if model_id not in self._request_pool_map:
             pool_num = estimate_pool_size(self.DEFAULT_DEVICE, model_id)
             if pool_num <= 0:
-                raise InferenceModelInternalError(
+                raise InferenceModelInternalException(
                     f"Not enough memory to run model {model_id}."
                 )
             return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]

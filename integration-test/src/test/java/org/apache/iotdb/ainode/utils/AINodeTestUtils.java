@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.ainode.utils;
 
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.env.BaseEnv;
+
 import com.google.common.collect.ImmutableSet;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -34,9 +39,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -47,7 +54,9 @@ public class AINodeTestUtils {
               new AbstractMap.SimpleEntry<>(
                   "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
-                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")))
+                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")),
+              new AbstractMap.SimpleEntry<>(
+                  "chronos2", new FakeModelInfo("chronos2", "t5", "builtin", "active")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
@@ -101,6 +110,7 @@ public class AINodeTestUtils {
   public static void concurrentInference(
       Statement statement, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
+    AtomicBoolean allPass = new AtomicBoolean(true);
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
       threads[i] =
@@ -113,12 +123,23 @@ public class AINodeTestUtils {
                       while (resultSet.next()) {
                         outputCnt++;
                       }
-                      assertEquals(expectedOutputLength, outputCnt);
+                      if (expectedOutputLength != outputCnt) {
+                        allPass.set(false);
+                        fail(
+                            "Output count mismatch for SQL: "
+                                + sql
+                                + ". Expected: "
+                                + expectedOutputLength
+                                + ", but got: "
+                                + outputCnt);
+                      }
                     } catch (SQLException e) {
+                      allPass.set(false);
                       fail(e.getMessage());
                     }
                   }
                 } catch (Exception e) {
+                  allPass.set(false);
                   fail(e.getMessage());
                 }
               });
@@ -130,6 +151,7 @@ public class AINodeTestUtils {
         fail("Thread timeout after 10 minutes");
       }
     }
+    Assert.assertTrue(allPass.get());
   }
 
   public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
@@ -187,6 +209,45 @@ public class AINodeTestUtils {
       TimeUnit.SECONDS.sleep(3);
     }
     fail("Model " + modelId + " is still loaded on device " + device);
+  }
+
+  private static final String[] WRITE_SQL_IN_TREE =
+      new String[] {
+        "CREATE DATABASE root.AI",
+        "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.AI.s1 WITH DATATYPE=DOUBLE, ENCODING=RLE",
+        "CREATE TIMESERIES root.AI.s2 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.AI.s3 WITH DATATYPE=INT64, ENCODING=RLE",
+      };
+
+  /** Prepare root.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of data in tree. */
+  public static void prepareDataInTree() throws SQLException {
+    prepareData(WRITE_SQL_IN_TREE);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 5760; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.AI(timestamp,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
+                i, (float) i, (double) i, i, i));
+      }
+    }
+  }
+
+  /** Prepare db.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of data in table. */
+  public static void prepareDataInTable() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE db");
+      statement.execute(
+          "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)");
+      for (int i = 0; i < 5760; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
+                i, (float) i, (double) i, i, i));
+      }
+    }
   }
 
   public static class FakeModelInfo {

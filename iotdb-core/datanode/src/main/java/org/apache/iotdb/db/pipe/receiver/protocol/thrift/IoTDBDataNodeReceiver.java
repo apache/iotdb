@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
@@ -165,8 +164,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTreeStatementDataTypeConvertExecutionVisitor
       treeStatementDataTypeConvertExecutionVisitor =
           new PipeTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
-  private final PipeTreeStatementToBatchVisitor batchVisitor =
-      new PipeTreeStatementToBatchVisitor();
+  public final PipeTreeStatementToBatchVisitor batchVisitor = new PipeTreeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
@@ -1017,8 +1015,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
-    AuthorityChecker.getAccessControl()
-        .checkCanCreateDatabase(username, database, new UserEntity(userId, username, cliHostname));
+    AuthorityChecker.getAccessControl().checkCanCreateDatabase(username, database, userEntity);
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 

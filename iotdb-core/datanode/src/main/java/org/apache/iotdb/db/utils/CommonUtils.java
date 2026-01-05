@@ -160,6 +160,9 @@ public class CommonUtils {
             }
           }
           return new Binary(parseBlobStringToByteArray(value));
+        case OBJECT:
+          throw new NumberFormatException(
+              "data type is not consistent, input " + value + ", registered " + dataType);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -380,6 +383,7 @@ public class CommonUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valueColumn = new Binary[rowNum];
         break;
       case DATE:

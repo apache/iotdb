@@ -28,23 +28,21 @@ class ModelInfo:
         category: ModelCategory,
         state: ModelStates,
         model_type: str = "",
-        config_cls: str = "",
-        model_cls: str = "",
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
-        _transformers_registered: bool = False,
+        transformers_registered: bool = False,
     ):
         self.model_id = model_id
         self.model_type = model_type
         self.category = category
         self.state = state
-        self.config_cls = config_cls
-        self.model_cls = model_cls
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
-        self._transformers_registered = _transformers_registered  # Internal flag: whether registered to Transformers
+        self.transformers_registered = (
+            transformers_registered  # Internal flag: whether registered to Transformers
+        )
 
     def __repr__(self):
         return (
@@ -114,19 +112,37 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
         model_type="timer",
-        config_cls="configuration_timer.TimerConfig",
-        model_cls="modeling_timer.TimerForPrediction",
         pipeline_cls="pipeline_timer.TimerPipeline",
         repo_id="thuml/timer-base-84m",
+        auto_map={
+            "AutoConfig": "configuration_timer.TimerConfig",
+            "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
+        },
+        transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
         category=ModelCategory.BUILTIN,
         state=ModelStates.INACTIVE,
         model_type="sundial",
-        config_cls="configuration_sundial.SundialConfig",
-        model_cls="modeling_sundial.SundialForPrediction",
         pipeline_cls="pipeline_sundial.SundialPipeline",
         repo_id="thuml/sundial-base-128m",
+        auto_map={
+            "AutoConfig": "configuration_sundial.SundialConfig",
+            "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
+        },
+        transformers_registered=True,
+    ),
+    "chronos2": ModelInfo(
+        model_id="chronos2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="t5",
+        pipeline_cls="pipeline_chronos2.Chronos2Pipeline",
+        repo_id="amazon/chronos-2",
+        auto_map={
+            "AutoConfig": "config.Chronos2CoreConfig",
+            "AutoModelForCausalLM": "model.Chronos2Model",
+        },
     ),
 }

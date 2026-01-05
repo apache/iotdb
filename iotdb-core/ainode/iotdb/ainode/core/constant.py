@@ -81,33 +81,18 @@ DEFAULT_CHUNK_SIZE = 8192
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
     REDIRECTION_RECOMMEND = 400
-    MODEL_EXIST_ERROR = 1502
-    MODEL_NOT_FOUND_ERROR = 1505
-    UNAVAILABLE_AI_DEVICE_ERROR = 1507
-    AINODE_INTERNAL_ERROR = 1510
+    MODEL_EXISTED_ERROR = 1503
+    MODEL_NOT_EXIST_ERROR = 1504
+    CREATE_MODEL_ERROR = 1505
+    DROP_BUILTIN_MODEL_ERROR = 1506
+    DROP_MODEL_ERROR = 1507
+    UNAVAILABLE_AI_DEVICE_ERROR = 1508
+
     INVALID_URI_ERROR = 1511
     INVALID_INFERENCE_CONFIG = 1512
     INFERENCE_INTERNAL_ERROR = 1520
 
+    AINODE_INTERNAL_ERROR = 1599  # In case somebody too lazy to add a new error code
+
     def get_status_code(self) -> int:
-        return self.value
-
-
-class HyperparameterName(Enum):
-    # Training hyperparameter
-    LEARNING_RATE = "learning_rate"
-    EPOCHS = "epochs"
-    BATCH_SIZE = "batch_size"
-    USE_GPU = "use_gpu"
-    NUM_WORKERS = "num_workers"
-
-    # Structure hyperparameter
-    KERNEL_SIZE = "kernel_size"
-    INPUT_VARS = "input_vars"
-    BLOCK_TYPE = "block_type"
-    D_MODEL = "d_model"
-    INNER_LAYERS = "inner_layer"
-    OUTER_LAYERS = "outer_layer"
-
-    def name(self):
         return self.value

@@ -356,7 +356,7 @@ public class TableFunctionTest {
 
     String sql =
         "SELECT * FROM FORECAST("
-            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
             + "model_id => 'timer_xl')";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
@@ -416,7 +416,7 @@ public class TableFunctionTest {
 
     String sql =
         "SELECT * FROM FORECAST("
-            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
             + "model_id => 'timer_xl', timecol=>'TiME')";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 

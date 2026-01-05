@@ -221,6 +221,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
@@ -4777,11 +4778,15 @@ public class StatementAnalyzer {
           i ->
               i.getFields().stream()
                   .map(
-                      f ->
-                          Field.newUnqualified(
-                              f.getName(),
-                              UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType()),
-                              TsTableColumnCategory.FIELD))
+                      f -> {
+                        Type type =
+                            UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType());
+                        if (type == ObjectType.OBJECT) {
+                          throw new SemanticException(
+                              "OBJECT type is not supported as return type");
+                        }
+                        return Field.newUnqualified(f.getName(), type, TsTableColumnCategory.FIELD);
+                      })
                   .forEach(fields::add));
 
       // next, columns derived from table arguments, in order of argument declarations

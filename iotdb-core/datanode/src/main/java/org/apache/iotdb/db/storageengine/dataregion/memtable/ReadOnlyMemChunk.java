@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
@@ -135,6 +136,20 @@ public class ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
         tvList.sort();
+        long tvListRamSize = tvList.calculateRamSize();
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
   }
@@ -274,6 +289,20 @@ public class ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         tvList.sort();
+        long tvListRamSize = tvList.calculateRamSize();
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();

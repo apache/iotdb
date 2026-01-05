@@ -64,8 +64,7 @@ public class DataNodeMemoryConfig {
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** Max bytes of each FragmentInstance for DataExchange */
-  private long maxBytesPerFragmentInstance =
-      Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
+  private long maxBytesPerFragmentInstance = Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001;
 
   /** The memory manager of on heap */
   private MemoryManager onHeapMemoryManager;
@@ -487,7 +486,7 @@ public class DataNodeMemoryConfig {
       operatorsMemorySize += partForOperators;
     }
     // set max bytes per fragment instance
-    setMaxBytesPerFragmentInstance(dataExchangeMemorySize / getQueryThreadCount());
+    setMaxBytesPerFragmentInstance(dataExchangeMemorySize);
 
     bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(

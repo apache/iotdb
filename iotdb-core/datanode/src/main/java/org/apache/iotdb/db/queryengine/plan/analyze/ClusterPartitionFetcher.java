@@ -308,6 +308,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return partitionCache.updateGroupIdToReplicaSetMap(req.getTimestamp(), req.getRegionRouteMap());
   }
 
+  public List<TRegionReplicaSet> getRegionReplicaSet(List<TConsensusGroupId> consensusGroupIds) {
+    return partitionCache.getRegionReplicaSet(consensusGroupIds);
+  }
+
   @Override
   public void invalidAllCache() {
     partitionCache.invalidAllCache();

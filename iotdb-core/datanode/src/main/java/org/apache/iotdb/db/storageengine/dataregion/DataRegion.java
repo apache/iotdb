@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -102,6 +103,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
@@ -157,17 +159,21 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
+import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
@@ -184,8 +190,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -209,6 +218,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -1338,7 +1348,10 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
       throws OutOfTTLException {
     boolean noFailure;
-    int loc = insertTabletNode.checkTTL(results, getTTL(insertTabletNode));
+    int loc =
+        insertTabletNode.shouldCheckTTL()
+            ? insertTabletNode.checkTTL(results, getTTL(insertTabletNode))
+            : 0;
     noFailure = loc == 0;
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
@@ -1946,6 +1959,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
@@ -1978,6 +1992,43 @@ public class DataRegion implements IDataRegionForQuery {
         if (dataRegionDataFolder.exists()) {
           org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
               dataRegionDataFolder);
+        }
+      }
+    }
+  }
+
+  private void deleteAllObjectFiles(List<String> folders) {
+    for (String objectFolder : folders) {
+      File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
+      AtomicLong totalSize = new AtomicLong(0);
+      AtomicInteger count = new AtomicInteger(0);
+      try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(
+                path -> {
+                  String name = path.getFileName().toString();
+                  return name.endsWith(".bin");
+                })
+            .forEach(
+                path -> {
+                  count.incrementAndGet();
+                  totalSize.addAndGet(path.toFile().length());
+                });
+      } catch (IOException e) {
+        logger.error("Failed to check Object Files: {}", e.getMessage());
+      }
+      FileMetrics.getInstance().decreaseObjectFileNum(count.get());
+      FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
+      if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
+        try {
+          fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
+        } catch (IOException e) {
+          logger.error("Fail to delete data region object folder {}", dataRegionObjectFolder);
+        }
+      } else {
+        if (dataRegionObjectFolder.exists()) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dataRegionObjectFolder);
         }
       }
     }
@@ -2710,14 +2761,51 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      TableDeviceSchemaCache.getInstance()
-          .invalidateLastCache(getDatabaseName(), modEntries.get(0).getTableName());
+      String tableName = modEntries.get(0).getTableName();
+      TableDeviceSchemaCache.getInstance().invalidateLastCache(getDatabaseName(), tableName);
       List<WALFlushListener> walListeners = logDeletionInWAL(node);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
           logger.error("Fail to log delete to wal.", walFlushListener.getCause());
           throw walFlushListener.getCause();
+        }
+      }
+
+      List<File> objectTableDirs =
+          TierManager.getInstance().getAllMatchedObjectDirs(dataRegionIdString, tableName);
+      if (!objectTableDirs.isEmpty()) {
+        boolean droppingTable = false;
+        for (TableDeletionEntry entry : modEntries) {
+          if (entry.isDroppingTable()) {
+            AtomicLong totalSize = new AtomicLong(0);
+            AtomicInteger count = new AtomicInteger(0);
+            for (File objectTableDir : objectTableDirs) {
+              droppingTable = true;
+              try (Stream<Path> paths = Files.walk(objectTableDir.toPath())) {
+                paths
+                    .filter(Files::isRegularFile)
+                    .filter(
+                        path -> {
+                          String name = path.getFileName().toString();
+                          return name.endsWith(".bin");
+                        })
+                    .forEach(
+                        path -> {
+                          count.incrementAndGet();
+                          totalSize.addAndGet(path.toFile().length());
+                        });
+              } catch (IOException e) {
+                logger.error("Failed to check Object Files: {}", e.getMessage());
+              }
+              FileUtils.deleteQuietly(objectTableDir);
+            }
+            FileMetrics.getInstance().decreaseObjectFileNum(count.get());
+            FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
+          }
+        }
+        if (!droppingTable) {
+          deleteObjectFiles(objectTableDirs, modEntries);
         }
       }
 
@@ -2887,6 +2975,59 @@ public class DataRegion implements IDataRegionForQuery {
                       walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, deleteDataNode)));
     }
     return walFlushListeners;
+  }
+
+  private void deleteObjectFiles(List<File> matchedObjectDirs, List<TableDeletionEntry> modEntries)
+      throws IOException {
+    for (File matchedObjectDir : matchedObjectDirs) {
+      try (Stream<Path> paths =
+          Files.find(
+              matchedObjectDir.toPath(),
+              Integer.MAX_VALUE,
+              (path, attrs) ->
+                  attrs.isRegularFile()
+                      && (path.getFileName().toString().endsWith(".bin")
+                          || path.getFileName().toString().endsWith(".tmp")))) {
+        paths.forEach(
+            path -> {
+              Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
+              String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
+              for (int i = 0; i < ideviceIdSegments.length; i++) {
+                ideviceIdSegments[i] =
+                    CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
+                        ? relativePath.getName(i).toString()
+                        : new String(
+                            BaseEncoding.base32()
+                                .omitPadding()
+                                .decode(relativePath.getName(i).toString()),
+                            StandardCharsets.UTF_8);
+              }
+              IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
+              String measurementId =
+                  CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
+                      ? relativePath.getName(relativePath.getNameCount() - 2).toString()
+                      : new String(
+                          BaseEncoding.base32()
+                              .omitPadding()
+                              .decode(
+                                  relativePath.getName(relativePath.getNameCount() - 2).toString()),
+                          StandardCharsets.UTF_8);
+              String fileName = path.getFileName().toString();
+              long timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+              logger.debug(
+                  "timestamp {}, measurementId {}, ideviceId {}",
+                  timestamp,
+                  measurementId,
+                  iDeviceID);
+              for (TableDeletionEntry modEntry : modEntries) {
+                if (modEntry.affects(iDeviceID, timestamp, timestamp)
+                    && modEntry.affects(measurementId)) {
+                  ObjectTypeUtils.deleteObjectPath(path.toFile());
+                }
+              }
+            });
+      }
+    }
   }
 
   /**
@@ -3387,6 +3528,20 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
+  public void executeTTLCheckForObjectFiles() throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    List<String> allObjectDirs = TierManager.getInstance().getAllObjectFileFolders();
+    for (String objectDir : allObjectDirs) {
+      File regionObjectDir = new File(objectDir, dataRegionIdString);
+      if (!regionObjectDir.isDirectory()) {
+        continue;
+      }
+      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
+    }
+    CompactionMetrics.getInstance()
+        .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
+  }
+
   private boolean skipCurrentTTLAndModificationCheck() {
     if (this.databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
       return true;
@@ -3536,6 +3691,59 @@ public class DataRegion implements IDataRegionForQuery {
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
+      writeUnlock();
+    }
+  }
+
+  public void writeObject(ObjectNode objectNode) throws Exception {
+    writeLock("writeObject");
+    try {
+      String relativeTmpPathString = objectNode.getFilePathString() + ".tmp";
+      String objectFileDir = null;
+      File objectTmpFile = null;
+      for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, relativeTmpPathString);
+        if (tmpFile.exists()) {
+          objectFileDir = objectDir;
+          objectTmpFile = tmpFile;
+          break;
+        }
+      }
+      if (objectTmpFile == null) {
+        objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
+        objectTmpFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      }
+      try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+        writer.write(
+            objectNode.isGeneratedByRemoteConsensusLeader(),
+            objectNode.getOffset(),
+            objectNode.getContent());
+      }
+      if (objectNode.isEOF()) {
+        File objectFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
+        if (objectFile.exists()) {
+          String relativeBackPathString = objectNode.getFilePathString() + ".back";
+          File objectBackFile =
+              FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
+          Files.move(
+              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          FileMetrics.getInstance().decreaseObjectFileNum(1);
+          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
+          Files.delete(objectBackFile.toPath());
+        } else {
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        FileMetrics.getInstance().increaseObjectFileNum(1);
+        FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
+      }
+      getWALNode()
+          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
+    } finally {
       writeUnlock();
     }
   }

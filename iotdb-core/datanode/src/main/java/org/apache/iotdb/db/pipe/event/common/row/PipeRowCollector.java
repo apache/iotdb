@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.row;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -38,27 +39,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class PipeRowCollector implements RowCollector {
-
-  private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
+public class PipeRowCollector extends PipeRawTabletEventConverter implements RowCollector {
   private Tablet tablet = null;
-  private boolean isAligned = false;
-  private final PipeTaskMeta pipeTaskMeta; // Used to report progress
-  private final EnrichedEvent sourceEvent; // Used to report progress
-  private final String sourceEventDataBaseName;
-  private final Boolean isTableModel;
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.sourceEvent = sourceEvent;
-    if (sourceEvent instanceof PipeInsertionEvent) {
-      sourceEventDataBaseName =
-          ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
-      isTableModel = ((PipeInsertionEvent) sourceEvent).getRawIsTableModelEvent();
-    } else {
-      sourceEventDataBaseName = null;
-      isTableModel = null;
-    }
+    super(pipeTaskMeta, sourceEvent);
   }
 
   public PipeRowCollector(
@@ -66,10 +51,7 @@ public class PipeRowCollector implements RowCollector {
       EnrichedEvent sourceEvent,
       String sourceEventDataBase,
       Boolean isTableModel) {
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.sourceEvent = sourceEvent;
-    this.sourceEventDataBaseName = sourceEventDataBase;
-    this.isTableModel = isTableModel;
+    super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
   }
 
   @Override
@@ -142,14 +124,9 @@ public class PipeRowCollector implements RowCollector {
     this.tablet = null;
   }
 
+  @Override
   public List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport) {
     collectTabletInsertionEvent();
-
-    final int eventListSize = tabletInsertionEventList.size();
-    if (eventListSize > 0 && shouldReport) { // The last event should report progress
-      ((PipeRawTabletInsertionEvent) tabletInsertionEventList.get(eventListSize - 1))
-          .markAsNeedToReport();
-    }
-    return tabletInsertionEventList;
+    return super.convertToTabletInsertionEvents(shouldReport);
   }
 }
