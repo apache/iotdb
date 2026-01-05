@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -46,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCom
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -254,5 +256,13 @@ public class PipeConfigTablePatternParseVisitorTest {
         IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
             .process(falseInput2, tablePattern)
             .isPresent());
+  }
+
+  @Test
+  public void testAlterTableColumnDataType() {
+    testInput(
+        new AlterColumnDataTypePlan("db1", "ab", "a", TSDataType.INT64),
+        new AlterColumnDataTypePlan("db1", "ac", "a", TSDataType.BLOB),
+        new AlterColumnDataTypePlan("da", "ac", "a", TSDataType.DATE));
   }
 }

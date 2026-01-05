@@ -116,7 +116,7 @@ public class DropTableColumnProcedure
           dropColumn(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(new ProcedureException("Unrecognized DropTableColumnState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;

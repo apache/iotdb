@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -74,6 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Ext
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterColumnDataTypeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableCommentColumnTask;
@@ -134,8 +136,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -500,8 +502,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitShowAvailableUrls(
       final ShowAvailableUrls showAvailableUrls, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
-    ITableAuthCheckerImpl.recordAuditLog(
-        context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true), () -> "");
+    DNAuditLogger.getInstance()
+        .recordObjectAuthenticationAuditLog(
+            context.setAuditLogOperation(AuditLogOperation.QUERY).setResult(true), () -> "");
     return new ShowAvailableUrlsTask();
   }
 
@@ -614,6 +617,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       }
     }
     return new Pair<>(database, table);
+  }
+
+  @Override
+  protected IConfigTask visitAlterColumnDataType(
+      AlterColumnDataType node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+    final String columnName = node.getColumnName().getValue();
+    final DataType dataType = node.getDataType();
+    final boolean ifTableExists = node.isIfTableExists();
+    final boolean ifColumnExists = node.isIfColumnExists();
+    return new AlterColumnDataTypeTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        context.getQueryId().getId(),
+        ifTableExists,
+        ifColumnExists,
+        columnName,
+        getDataType(dataType),
+        node.isView());
   }
 
   private boolean checkTimeColumnIdempotent(

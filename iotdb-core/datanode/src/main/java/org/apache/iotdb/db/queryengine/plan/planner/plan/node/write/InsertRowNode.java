@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -158,6 +161,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         + time
         + ", values="
         + Arrays.toString(values)
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", dataTypes="
+        + Arrays.toString(dataTypes)
         + '}';
   }
 
@@ -921,5 +928,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             timeValuePairs,
             isAligned,
             measurementSchemas);
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    IWritableMemChunkGroup writableMemChunkGroup = memTable.getWritableMemChunkGroup(getDeviceID());
+    if (writableMemChunkGroup != null) {
+      writableMemChunkGroup.checkDataType(this);
+    }
   }
 }
