@@ -666,7 +666,7 @@ public class TableHeaderSchemaValidator {
       try {
         tsTable.checkTableNameAndObjectNames4Object();
       } catch (final MetadataException e) {
-        throw new SemanticException(e.getMessage(), e.getErrorCode());
+        throw new SemanticException(e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode());
       }
     }
     return tsTable;
