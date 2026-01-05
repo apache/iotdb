@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -629,6 +630,7 @@ public class TableHeaderSchemaValidator {
       return tsTable;
     }
 
+    boolean hasObject = false;
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] == null) {
         continue;
@@ -657,8 +659,15 @@ public class TableHeaderSchemaValidator {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnName + " datatype is not provided");
       }
-
+      hasObject |= dataType == TSDataType.OBJECT;
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
+    }
+    if (hasObject) {
+      try {
+        tsTable.checkTableNameAndObjectNames4Object();
+      } catch (final MetadataException e) {
+        throw new SemanticException(e.getMessage(), e.getErrorCode());
+      }
     }
     return tsTable;
   }

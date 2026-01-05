@@ -580,7 +580,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
-      hasObject |= dataType.equals(TSDataType.OBJECT);
+      hasObject |= dataType == TSDataType.OBJECT;
       final String comment = columnDefinition.getComment();
       if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
           && !hasTimeColumn) {
