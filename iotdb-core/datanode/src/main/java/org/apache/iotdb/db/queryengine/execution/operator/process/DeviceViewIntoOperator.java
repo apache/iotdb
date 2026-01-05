@@ -144,6 +144,16 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     return resultTsBlockBuilder.build();
   }
 
+  @Override
+  protected TsBlock tryToReturnPartialResult() {
+    if (resultTsBlockBuilder.isFull()) {
+      TsBlock res = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return res;
+    }
+    return null;
+  }
+
   private List<AbstractIntoOperator.InsertTabletStatementGenerator>
       constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
     Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =

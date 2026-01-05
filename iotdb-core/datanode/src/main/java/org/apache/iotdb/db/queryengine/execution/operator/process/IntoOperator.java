@@ -102,6 +102,11 @@ public class IntoOperator extends AbstractIntoOperator {
     return constructResultTsBlock();
   }
 
+  @Override
+  protected TsBlock tryToReturnPartialResult() {
+    return null;
+  }
+
   private TsBlock constructResultTsBlock() {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.selectIntoColumnHeaders.stream()
