@@ -250,4 +250,19 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     batchedRowCount = 0;
     return insertMultiTabletsStatement;
   }
+
+  @Override
+  protected int findWritten(String device, String measurement) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!Objects.equals(generator.getDevice(), device)) {
+        continue;
+      }
+      int writtenCountInCurrentGenerator = generator.getWrittenCount(measurement);
+      if (writtenCountInCurrentGenerator >= 0) {
+        return writtenCountInCurrentGenerator;
+      }
+      continue;
+    }
+    return 0;
+  }
 }

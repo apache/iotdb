@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -192,7 +191,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             String.format(
                 "Error occurred while inserting tablets in SELECT INTO: %s",
                 executionStatus.getMessage());
-        throw new IoTDBRuntimeException(message, executionStatus.getCode());
+        throw new IntoProcessException(message);
       }
 
       for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
