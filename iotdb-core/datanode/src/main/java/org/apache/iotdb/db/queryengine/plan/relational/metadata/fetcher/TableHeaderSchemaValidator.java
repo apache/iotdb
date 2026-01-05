@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -666,7 +667,8 @@ public class TableHeaderSchemaValidator {
       try {
         tsTable.checkTableNameAndObjectNames4Object();
       } catch (final MetadataException e) {
-        throw new SemanticException(e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+        throw new IoTDBRuntimeException(
+            e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode());
       }
     }
     return tsTable;
