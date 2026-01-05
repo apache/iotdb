@@ -30,14 +30,20 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -49,17 +55,32 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
 
+  private static final long maxTsBlockSize =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final long tsBlockInitialSize =
+      TsBlock.INSTANCE_SIZE
+          + RamUsageEstimator.shallowSizeOfInstance(TimeColumn.class)
+          + 3 * RamUsageEstimator.shallowSizeOfInstance(BinaryColumn.class)
+          + RamUsageEstimator.shallowSizeOfInstance(LongColumn.class);
+
   private final Map<String, Map<PartialPath, Map<String, InputLocation>>>
       deviceToTargetPathSourceInputLocationMap;
   private final Map<String, Map<PartialPath, Map<String, TSDataType>>>
       deviceToTargetPathDataTypeMap;
   private final Map<String, Boolean> targetDeviceToAlignedMap;
   private final Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
+  private Iterator<String> deviceIterator;
+  // Device -> current index in the source-target path pair list, used for batching result TsBlocks
+  private final Map<String, Integer> deviceToSourceTargetPathPairIndex;
+  // Target path -> number of written rows, used to show operation results to users
+  private final Map<PartialPath, Long> targetPathToWriteCountMap;
 
   private final int deviceColumnIndex;
   private String currentDevice;
 
   private final TsBlockBuilder resultTsBlockBuilder;
+  private String resultTsBlockDevice;
 
   @SuppressWarnings("squid:S107")
   public DeviceViewIntoOperator(
@@ -79,6 +100,10 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
     this.deviceToSourceTargetPathPairListMap = deviceToSourceTargetPathPairListMap;
+    this.deviceToSourceTargetPathPairIndex =
+        deviceToSourceTargetPathPairListMap.keySet().stream()
+            .collect(Collectors.toMap(device -> device, device -> 0));
+    this.targetPathToWriteCountMap = new HashMap<>();
 
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
@@ -138,7 +163,55 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
       executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
       return null;
     }
+    if (deviceIterator == null) {
+      deviceIterator = deviceToSourceTargetPathPairListMap.keySet().iterator();
+    }
+    return constructResultTsBlock();
+  }
 
+  private TsBlock constructResultTsBlock() {
+    resultTsBlockBuilder.reset();
+    long estimatedTsBlockSize = tsBlockInitialSize;
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+
+    while (resultTsBlockDevice != null || deviceIterator.hasNext()) {
+      if (resultTsBlockDevice == null) {
+        resultTsBlockDevice = deviceIterator.next();
+      }
+      int sourceTargetPathPairIndex = deviceToSourceTargetPathPairIndex.get(resultTsBlockDevice);
+      List<Pair<String, PartialPath>> sourceTargetPathPairList =
+          deviceToSourceTargetPathPairListMap.get(resultTsBlockDevice);
+      for (;
+          sourceTargetPathPairIndex < sourceTargetPathPairList.size();
+          sourceTargetPathPairIndex++) {
+        Pair<String, PartialPath> sourceTargetPathPair =
+            sourceTargetPathPairList.get(sourceTargetPathPairIndex);
+        timeColumnBuilder.writeLong(0);
+        Binary device = new Binary(resultTsBlockDevice, TSFileConfig.STRING_CHARSET);
+        columnBuilders[0].writeBinary(device);
+        Binary sourceColumn = new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET);
+        columnBuilders[1].writeBinary(sourceColumn);
+        Binary targetPath =
+            new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET);
+        columnBuilders[2].writeBinary(targetPath);
+        columnBuilders[3].writeLong(
+            targetPathToWriteCountMap.getOrDefault(sourceTargetPathPair.right, 0L));
+        resultTsBlockBuilder.declarePosition();
+
+        estimatedTsBlockSize +=
+            TimeColumn.SIZE_IN_BYTES_PER_POSITION
+                + device.ramBytesUsed()
+                + sourceColumn.ramBytesUsed()
+                + targetPath.ramBytesUsed()
+                + LongColumn.SIZE_IN_BYTES_PER_POSITION;
+        if (estimatedTsBlockSize >= maxTsBlockSize) {
+          deviceToSourceTargetPathPairIndex.put(resultTsBlockDevice, sourceTargetPathPairIndex + 1);
+          return resultTsBlockBuilder.build();
+        }
+      }
+      resultTsBlockDevice = null;
+    }
     finished = true;
     return resultTsBlockBuilder.build();
   }
@@ -161,22 +234,13 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
     if (currentDevice == null) {
       return;
     }
-
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     for (Pair<String, PartialPath> sourceTargetPathPair :
         deviceToSourceTargetPathPairListMap.get(currentDevice)) {
-      timeColumnBuilder.writeLong(0);
-      columnBuilders[0].writeBinary(new Binary(currentDevice, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(
-          new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeLong(
+      targetPathToWriteCountMap.put(
+          sourceTargetPathPair.right,
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));
-      resultTsBlockBuilder.declarePosition();
     }
   }
 

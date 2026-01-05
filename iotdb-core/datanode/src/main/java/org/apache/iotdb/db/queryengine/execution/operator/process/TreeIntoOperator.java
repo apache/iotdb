@@ -29,9 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -47,7 +51,19 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TreeIntoOperator.class);
 
+  private static final long maxTsBlockSize =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final long tsBlockInitialSize =
+      TsBlock.INSTANCE_SIZE
+          + RamUsageEstimator.shallowSizeOfInstance(TimeColumn.class)
+          + 2 * RamUsageEstimator.shallowSizeOfInstance(BinaryColumn.class)
+          + RamUsageEstimator.shallowSizeOfInstance(LongColumn.class);
+
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
+  private int sourceTargetPathPairIndex = 0;
+
+  private final TsBlockBuilder resultTsBlockBuilder;
 
   @SuppressWarnings("squid:S107")
   public TreeIntoOperator(
@@ -69,6 +85,12 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
             targetDeviceToAlignedMap,
             inputColumnTypes,
             maxRowNumberInStatement);
+
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.selectIntoColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   @Override
@@ -98,30 +120,42 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
       return null;
     }
 
-    finished = true;
     return constructResultTsBlock();
   }
 
   private TsBlock constructResultTsBlock() {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.selectIntoColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    resultTsBlockBuilder.reset();
+    long estimatedTsBlockSize = tsBlockInitialSize;
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+    for (;
+        sourceTargetPathPairIndex < sourceTargetPathPairList.size();
+        sourceTargetPathPairIndex++) {
+      Pair<String, PartialPath> sourceTargetPathPair =
+          sourceTargetPathPairList.get(sourceTargetPathPairIndex);
       timeColumnBuilder.writeLong(0);
-      columnBuilders[0].writeBinary(
-          new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
+      Binary sourceColumn = new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET);
+      columnBuilders[0].writeBinary(sourceColumn);
+      Binary targetPath =
+          new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET);
+      columnBuilders[1].writeBinary(targetPath);
       columnBuilders[2].writeLong(
           findWritten(
               sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
+
+      estimatedTsBlockSize +=
+          TimeColumn.SIZE_IN_BYTES_PER_POSITION
+              + sourceColumn.ramBytesUsed()
+              + targetPath.ramBytesUsed()
+              + LongColumn.SIZE_IN_BYTES_PER_POSITION;
+      if (estimatedTsBlockSize >= maxTsBlockSize) {
+        sourceTargetPathPairIndex++;
+        return resultTsBlockBuilder.build();
+      }
     }
+    finished = true;
     return resultTsBlockBuilder.build();
   }
 
