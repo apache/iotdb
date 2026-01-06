@@ -38,6 +38,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
@@ -82,18 +83,22 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
+  protected final TsBlockBuilder resultTsBlockBuilder;
+
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
       ExecutorService intoOperationExecutor,
-      long statementSizePerLine) {
+      long statementSizePerLine,
+      List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
     this.writeOperationExecutor = intoOperationExecutor;
+    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     initMemoryEstimates(statementSizePerLine);
   }
 

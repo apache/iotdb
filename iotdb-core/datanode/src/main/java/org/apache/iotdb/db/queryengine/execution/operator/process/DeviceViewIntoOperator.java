@@ -36,7 +36,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -67,8 +66,6 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   private int batchedRowCount = 0;
 
-  private final TsBlockBuilder resultTsBlockBuilder;
-
   @SuppressWarnings("squid:S107")
   public DeviceViewIntoOperator(
       OperatorContext operatorContext,
@@ -82,18 +79,19 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
+    super(
+        operatorContext,
+        child,
+        inputColumnTypes,
+        intoOperationExecutor,
+        statementSizePerLine,
+        ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList()));
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
     this.deviceToSourceTargetPathPairListMap = deviceToSourceTargetPathPairListMap;
-
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-
     this.deviceColumnIndex =
         sourceColumnToInputLocationMap.get(ColumnHeaderConstant.DEVICE).getValueColumnIndex();
   }
