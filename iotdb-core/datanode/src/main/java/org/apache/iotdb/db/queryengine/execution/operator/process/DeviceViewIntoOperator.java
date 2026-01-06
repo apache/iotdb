@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -27,17 +30,18 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,6 +52,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final Map<String, Map<PartialPath, Map<String, InputLocation>>>
       deviceToTargetPathSourceInputLocationMap;
@@ -59,7 +64,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   private final int deviceColumnIndex;
   private String currentDevice;
 
-  private final TsBlockBuilder resultTsBlockBuilder;
+  private int batchedRowCount = 0;
 
   @SuppressWarnings("squid:S107")
   public DeviceViewIntoOperator(
@@ -74,18 +79,19 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
+    super(
+        operatorContext,
+        child,
+        inputColumnTypes,
+        intoOperationExecutor,
+        statementSizePerLine,
+        ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList()));
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
     this.deviceToSourceTargetPathPairListMap = deviceToSourceTargetPathPairListMap;
-
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-
     this.deviceColumnIndex =
         sourceColumnToInputLocationMap.get(ColumnHeaderConstant.DEVICE).getValueColumnIndex();
   }
@@ -102,7 +108,12 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
           constructInsertMultiTabletsStatement(false);
       updateResultTsBlock();
 
-      insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
+      if (insertMultiTabletsStatement != null || insertTabletStatementGenerators == null) {
+        insertTabletStatementGenerators = constructInsertTabletStatementGeneratorsByDevice(device);
+      } else {
+        insertTabletStatementGenerators.addAll(
+            constructInsertTabletStatementGeneratorsByDevice(device));
+      }
       currentDevice = device;
 
       if (insertMultiTabletsStatement != null) {
@@ -115,9 +126,15 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     int readIndex = 0;
     while (readIndex < inputTsBlock.getPositionCount()) {
       int lastReadIndex = readIndex;
-      for (AbstractIntoOperator.InsertTabletStatementGenerator generator :
-          insertTabletStatementGenerators) {
-        lastReadIndex = Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
+
+      if (!insertTabletStatementGenerators.isEmpty()) {
+        InsertTabletStatementGenerator generatorOfCurrentDevice =
+            insertTabletStatementGenerators.get(insertTabletStatementGenerators.size() - 1);
+        int rowCountBeforeProcess = generatorOfCurrentDevice.getRowCount();
+        lastReadIndex =
+            Math.max(
+                lastReadIndex, generatorOfCurrentDevice.processTsBlock(inputTsBlock, readIndex));
+        batchedRowCount += generatorOfCurrentDevice.getRowCount() - rowCountBeforeProcess;
       }
       readIndex = lastReadIndex;
       if (insertMultiTabletsInternally(true)) {
@@ -142,6 +159,16 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
     finished = true;
     return resultTsBlockBuilder.build();
+  }
+
+  @Override
+  protected TsBlock tryToReturnPartialResult() {
+    if (resultTsBlockBuilder.isFull()) {
+      TsBlock res = resultTsBlockBuilder.build();
+      resultTsBlockBuilder.reset();
+      return res;
+    }
+    return null;
   }
 
   private List<AbstractIntoOperator.InsertTabletStatementGenerator>
@@ -186,5 +213,61 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + resultTsBlockBuilder.getRetainedSizeInBytes();
+  }
+
+  @Override
+  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
+    if (insertTabletStatementGenerators == null) {
+      return null;
+    }
+    boolean hasFullStatement = existFullStatement(insertTabletStatementGenerators);
+    if (needCheck) {
+      // When needCheck is true, we only proceed if there already exists a full statement.
+      if (!hasFullStatement) {
+        return null;
+      }
+    } else {
+      // When needCheck is false, we may delay flushing to accumulate more rows
+      // if the batch is not yet at the configured row limit and the child has more data.
+      try {
+        if (batchedRowCount < CONFIG.getSelectIntoInsertTabletPlanRowLimit()
+            && child.hasNextWithTimer()) {
+          return null;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IntoProcessException(e.getMessage());
+      } catch (Exception e) {
+        throw new IntoProcessException(e.getMessage());
+      }
+    }
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!generator.isEmpty()) {
+        insertTabletStatementList.add(generator.constructInsertTabletStatement());
+      }
+    }
+    if (insertTabletStatementList.isEmpty()) {
+      return null;
+    }
+
+    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
+    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    batchedRowCount = 0;
+    return insertMultiTabletsStatement;
+  }
+
+  @Override
+  protected int findWritten(String device, String measurement) {
+    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+      if (!Objects.equals(generator.getDevice(), device)) {
+        continue;
+      }
+      int writtenCountInCurrentGenerator = generator.getWrittenCount(measurement);
+      if (writtenCountInCurrentGenerator >= 0) {
+        return writtenCountInCurrentGenerator;
+      }
+    }
+    return 0;
   }
 }

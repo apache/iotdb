@@ -156,8 +156,7 @@ public class TreeModelPlanner implements IPlanner {
   }
 
   @Override
-  public void setRedirectInfo(
-      IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
+  public void setRedirectInfo(IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus) {
     Analysis analysis = (Analysis) iAnalysis;
 
     // Get the inner statement of PipeEnrichedStatement
@@ -173,7 +172,7 @@ public class TreeModelPlanner implements IPlanner {
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+        if (tsstatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           boolean needRedirect = false;
           List<TSStatus> subStatus = new ArrayList<>();
           for (TEndPoint endPoint : redirectNodeList) {

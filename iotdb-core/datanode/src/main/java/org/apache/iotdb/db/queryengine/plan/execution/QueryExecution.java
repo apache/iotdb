@@ -617,7 +617,7 @@ public class QueryExecution implements IQueryExecution {
     // info to client
     if (!CONFIG.isEnable13DataInsertAdapt()
         || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
-      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus, statusCode);
+      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus);
     }
 
     return new ExecutionResult(context.getQueryId(), tsstatus);
