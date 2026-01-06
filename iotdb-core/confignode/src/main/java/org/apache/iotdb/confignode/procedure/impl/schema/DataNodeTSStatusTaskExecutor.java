@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -72,7 +73,7 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
       failedRegionList.addAll(consensusGroupIdList);
     }
     if (!failedRegionList.isEmpty()) {
-      failureMap.put(dataNodeLocation, response);
+      failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
     } else {
       failureMap.remove(dataNodeLocation);
     }
@@ -99,7 +100,7 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
       failedRegionList.addAll(consensusGroupIdList);
     }
     if (!failedRegionList.isEmpty()) {
-      failureMap.put(dataNodeLocation, response);
+      failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
     } else {
       failureMap.remove(dataNodeLocation);
     }

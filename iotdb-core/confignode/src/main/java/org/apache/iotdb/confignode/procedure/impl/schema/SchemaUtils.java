@@ -43,6 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -197,7 +198,8 @@ public class SchemaUtils {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
                 if (!failedRegionList.isEmpty()) {
-                  failureMap.put(dataNodeLocation, response.getStatus());
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
                 } else {
                   failureMap.remove(dataNodeLocation);
                 }

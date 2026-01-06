@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -218,7 +219,7 @@ public class AlterTimeSeriesDataTypeProcedure
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
-              failureMap.put(dataNodeLocation, response);
+              failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
             } else {
               failureMap.remove(dataNodeLocation);
             }

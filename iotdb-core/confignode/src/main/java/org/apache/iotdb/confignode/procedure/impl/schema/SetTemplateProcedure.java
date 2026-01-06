@@ -51,6 +51,7 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -310,7 +311,8 @@ public class SetTemplateProcedure
                   failedRegionList.addAll(consensusGroupIdList);
                 }
                 if (!failedRegionList.isEmpty()) {
-                  failureMap.put(dataNodeLocation, response.getStatus());
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
                 } else {
                   failureMap.remove(dataNodeLocation);
                 }
