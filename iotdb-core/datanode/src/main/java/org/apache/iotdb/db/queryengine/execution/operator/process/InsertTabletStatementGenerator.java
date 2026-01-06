@@ -169,6 +169,10 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     return rowCount == 0;
   }
 
+  public int getRowCount() {
+    return rowCount;
+  }
+
   public String getDevice() {
     return devicePath.toString();
   }

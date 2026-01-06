@@ -102,7 +102,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {
-      return null;
+      return tryToReturnPartialResult();
     }
     cachedTsBlock = null;
     if (child.hasNextWithTimer()) {
@@ -110,7 +110,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       processTsBlock(inputTsBlock);
 
       // call child.next only once
-      return null;
+      return tryToReturnPartialResult();
     } else {
       return tryToReturnResultTsBlock();
     }
@@ -203,6 +203,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected abstract boolean processTsBlock(TsBlock inputTsBlock);
 
   protected abstract TsBlock tryToReturnResultTsBlock();
+
+  protected abstract TsBlock tryToReturnPartialResult();
 
   protected abstract void resetInsertTabletStatementGenerators();
 
