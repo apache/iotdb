@@ -54,7 +54,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -292,14 +291,13 @@ public class SymbolMapper {
 
   public TopKRankingNode map(TopKRankingNode node, PlanNode source) {
     return new TopKRankingNode(
-      node.getPlanNodeId(),
-      source,
-      mapAndDistinct(node.getSpecification()),
-      node.getRankingType(),
-      map(node.getRankingSymbol()),
-      node.getMaxRankingPerPartition(),
-      node.isPartial()
-    );
+        node.getPlanNodeId(),
+        source,
+        mapAndDistinct(node.getSpecification()),
+        node.getRankingType(),
+        map(node.getRankingSymbol()),
+        node.getMaxRankingPerPartition(),
+        node.isPartial());
   }
 
   public RowNumberNode map(RowNumberNode node, PlanNode source) {
@@ -309,8 +307,7 @@ public class SymbolMapper {
         map(node.getPartitionBy()),
         node.isOrderSensitive(),
         map(node.getRowNumberSymbol()),
-        node.getMaxRowCountPerPartition()
-    );
+        node.getMaxRowCountPerPartition());
   }
 
   public TopKNode map(TopKNode node, List<PlanNode> source) {

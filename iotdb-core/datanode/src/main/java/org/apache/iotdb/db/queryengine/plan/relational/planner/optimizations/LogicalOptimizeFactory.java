@@ -377,8 +377,7 @@ public class LogicalOptimizeFactory {
                 .add(new PushDownFilterIntoWindow(plannerContext))
                 .add(new ReplaceWindowWithRowNumber(metadata))
                 .addAll(GatherAndMergeWindows.rules())
-                .build()
-        ),
+                .build()),
         new TransformAggregationToStreamable(),
         new PushAggregationIntoTableScan(),
         new TransformSortToStreamSort(),
