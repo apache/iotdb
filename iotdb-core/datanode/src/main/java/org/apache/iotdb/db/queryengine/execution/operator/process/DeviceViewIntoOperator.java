@@ -219,23 +219,31 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   @Override
   protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
-    if (insertTabletStatementGenerators == null
-        || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
+    if (insertTabletStatementGenerators == null) {
       return null;
     }
-
-    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
-    try {
-      if (child.hasNextWithTimer()
-          && batchedRowCount < CONFIG.getSelectIntoInsertTabletPlanRowLimit()) {
+    boolean hasFullStatement = existFullStatement(insertTabletStatementGenerators);
+    if (needCheck) {
+      // When needCheck is true, we only proceed if there already exists a full statement.
+      if (!hasFullStatement) {
         return null;
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IntoProcessException(e.getMessage());
-    } catch (Exception e) {
-      throw new IntoProcessException(e.getMessage());
+    } else {
+      // When needCheck is false, we may delay flushing to accumulate more rows
+      // if the batch is not yet at the configured row limit and the child has more data.
+      try {
+        if (batchedRowCount < CONFIG.getSelectIntoInsertTabletPlanRowLimit()
+            && child.hasNextWithTimer()) {
+          return null;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IntoProcessException(e.getMessage(), e);
+      } catch (Exception e) {
+        throw new IntoProcessException(e.getMessage(), e);
+      }
     }
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (!generator.isEmpty()) {
         insertTabletStatementList.add(generator.constructInsertTabletStatement());
@@ -261,7 +269,6 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       if (writtenCountInCurrentGenerator >= 0) {
         return writtenCountInCurrentGenerator;
       }
-      continue;
     }
     return 0;
   }
