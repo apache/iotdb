@@ -40,6 +40,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -332,7 +333,12 @@ public class ReadOnlyMemChunk {
           break;
         case INT32:
         case DATE:
-          builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
+          if (builder.getColumnBuilder(0) instanceof BinaryColumnBuilder) {
+            ((BinaryColumnBuilder) builder.getColumnBuilder(0))
+                .writeDate(tvPair.getValue().getInt());
+          } else {
+            builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
+          }
           break;
         case INT64:
         case TIMESTAMP:

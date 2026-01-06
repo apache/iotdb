@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class BackIntTVList extends QuickIntTVList {
   private final BackwardSort policy;
 
   BackIntTVList() {
     policy = new BackwardSort(this);
+  }
+
+  BackIntTVList(TSDataType dataType) {
+    policy = new BackwardSort(this);
+    this.dataType = dataType;
   }
 
   @Override

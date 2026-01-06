@@ -330,6 +330,16 @@ public interface ISchemaRegion {
   void renameTagOrAttributeKey(final String oldKey, final String newKey, final PartialPath fullPath)
       throws MetadataException, IOException;
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException;
+
   // endregion
 
   // region Interfaces for Template operations

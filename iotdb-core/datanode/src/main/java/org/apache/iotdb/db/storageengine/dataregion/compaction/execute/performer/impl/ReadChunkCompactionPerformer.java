@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -331,9 +332,13 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         readerAndChunkMetadataList) {
       boolean dataTypeConsistent = true;
       for (ChunkMetadata chunkMetadata : tsFileSequenceReaderListPair.getRight()) {
-        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
+        if (chunkMetadata != null
+            && !MetadataUtils.canAlter(chunkMetadata.getDataType(), correctDataType)) {
           dataTypeConsistent = false;
           break;
+        }
+        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
+          chunkMetadata.setNewType(correctDataType);
         }
       }
       if (!dataTypeConsistent) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -472,5 +474,24 @@ public class PipeConfigTreePatternParseVisitorTest {
     Assert.assertEquals(
         new PartialPath("root.db.device.**"), new PartialPath(plan.getPathPattern()));
     Assert.assertEquals(Long.MAX_VALUE, plan.getTTL());
+  }
+
+  @Test
+  public void testPipeAlterTimeSeries() throws IllegalPathException {
+    final PipeAlterTimeSeriesPlan plan =
+        ((PipeAlterTimeSeriesPlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .visitPipeAlterTimeSeries(
+                    new PipeAlterTimeSeriesPlan(
+                        new MeasurementPath(new String[] {"root", "db", "device", "a"}),
+                        (byte) 0,
+                        TSDataType.DOUBLE),
+                    prefixPathPattern)
+                .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        new PartialPath("root.db.device.a"), new PartialPath(plan.getMeasurementPath().getNodes()));
+    Assert.assertEquals((byte) 0, plan.getOperationType());
+    Assert.assertEquals(plan.getDataType(), TSDataType.DOUBLE);
   }
 }

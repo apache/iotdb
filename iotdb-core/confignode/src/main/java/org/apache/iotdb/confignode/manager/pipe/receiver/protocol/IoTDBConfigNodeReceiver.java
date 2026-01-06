@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -68,6 +69,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -102,6 +104,7 @@ import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
@@ -438,6 +441,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 PrivilegeType.WRITE_SCHEMA,
                 Collections.singletonList(new PartialPath(paths)),
                 true);
+      case PipeAlterTimeSeries:
+        return checkPathsStatus(
+            userEntity,
+            PrivilegeType.WRITE_SCHEMA,
+            Collections.singletonList(((PipeAlterTimeSeriesPlan) plan).getMeasurementPath()),
+            true);
       case UpdateTriggerStateInTable:
         triggerName = ((UpdateTriggerStateInTablePlan) plan).getTriggerName();
         return checkGlobalStatus(userEntity, PrivilegeType.USE_TRIGGER, triggerName, true);
@@ -463,6 +472,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RenameViewColumn:
       case RenameTable:
       case RenameView:
+      case AlterColumnDataType:
         return checkTableStatus(
             userEntity,
             PrivilegeType.ALTER,
@@ -831,6 +841,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             : configManager
                 .getTTLManager()
                 .setTTL((SetTTLPlan) plan, shouldMarkAsPipeRequest.get());
+      case PipeAlterTimeSeries:
+        return configManager
+            .getProcedureManager()
+            .alterTimeSeriesDataType(
+                queryId,
+                ((PipeAlterTimeSeriesPlan) plan).getMeasurementPath(),
+                ((PipeAlterTimeSeriesPlan) plan).getOperationType(),
+                ((PipeAlterTimeSeriesPlan) plan).getDataType(),
+                true);
       case PipeCreateTableOrView:
         return executeIdempotentCreateTableOrView(
             (PipeCreateTableOrViewPlan) plan, queryId, shouldMarkAsPipeRequest.get());
@@ -923,6 +942,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteViewColumnPlan) plan).getTableName(),
                     queryId,
                     ((CommitDeleteViewColumnPlan) plan).getColumnName(),
+                    shouldMarkAsPipeRequest.get()));
+      case AlterColumnDataType:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AlterColumnDataTypePlan) plan).getDatabase(),
+                null,
+                ((AlterColumnDataTypePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE,
+                new AlterTableColumnDataTypeProcedure(
+                    ((AlterColumnDataTypePlan) plan).getDatabase(),
+                    ((AlterColumnDataTypePlan) plan).getTableName(),
+                    queryId,
+                    ((AlterColumnDataTypePlan) plan).getColumnName(),
+                    ((AlterColumnDataTypePlan) plan).getNewType(),
                     shouldMarkAsPipeRequest.get()));
       case RenameTableColumn:
         return configManager
