@@ -633,7 +633,6 @@ public class IoTDBDatabaseIT {
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,false,",
-                  "information_schema,models,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,false,",
