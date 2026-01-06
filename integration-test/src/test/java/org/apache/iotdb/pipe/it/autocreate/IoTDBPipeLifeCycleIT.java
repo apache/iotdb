@@ -802,6 +802,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         "test",
         "test123");
     tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
-    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
+    executeQueryWithRetry(senderEnv, "show pipePlugins", "test", "test123");
   }
 }
