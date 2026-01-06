@@ -315,8 +315,7 @@ public class DeleteLogicalViewProcedure
         getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
-  private class DeleteLogicalViewRegionTaskExecutor<Q>
-      extends DataNodeTSStatusTaskExecutor<Q> {
+  private class DeleteLogicalViewRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
