@@ -1206,7 +1206,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         operatorContext,
         node.getPlanNodeId(),
         node.getDataStore(),
-        context.getInstanceContext().getMemoryReservationContext());
+        context.getFragmentInstanceId().getQueryId());
   }
 
   @Override

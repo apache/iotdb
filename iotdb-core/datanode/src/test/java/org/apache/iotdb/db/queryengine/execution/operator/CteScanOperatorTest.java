@@ -24,7 +24,6 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -62,7 +61,7 @@ public class CteScanOperatorTest {
   private OperatorContext operatorContext;
   private PlanNodeId planNodeId;
   private CteDataStore cteDataStore;
-  private ThreadSafeMemoryReservationManager memoryReservationManager;
+  private QueryId queryId;
   private CteScanOperator cteScanOperator;
 
   @Before
@@ -86,7 +85,7 @@ public class CteScanOperatorTest {
       cteDataStore.addTsBlock(tsBlock);
     }
 
-    memoryReservationManager = new ThreadSafeMemoryReservationManager(new QueryId("1"), "test");
+    queryId = new QueryId("1");
   }
 
   @After
@@ -98,8 +97,7 @@ public class CteScanOperatorTest {
 
   @Test
   public void testConstructor() throws Exception {
-    cteScanOperator =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+    cteScanOperator = new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     assertEquals(1, cteDataStore.getCount());
     cteScanOperator.close();
   }
@@ -110,8 +108,7 @@ public class CteScanOperatorTest {
     TableSchema tableSchema = createTestTableSchema();
     CteDataStore emptyDataStore = new CteDataStore(tableSchema, Arrays.asList(0, 1, 2));
 
-    cteScanOperator =
-        new CteScanOperator(operatorContext, planNodeId, emptyDataStore, memoryReservationManager);
+    cteScanOperator = new CteScanOperator(operatorContext, planNodeId, emptyDataStore, queryId);
     // Should not have data
     assertFalse(cteScanOperator.hasNext());
 
@@ -120,8 +117,7 @@ public class CteScanOperatorTest {
 
   @Test
   public void testNextWithData() throws Exception {
-    cteScanOperator =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+    cteScanOperator = new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     // Should have data
     assertTrue(cteScanOperator.hasNext());
     TsBlock firstBlock = cteScanOperator.next();
@@ -145,8 +141,7 @@ public class CteScanOperatorTest {
 
   @Test
   public void testIsFinished() throws Exception {
-    cteScanOperator =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+    cteScanOperator = new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
 
     // Initially not finished
     assertFalse(cteScanOperator.isFinished());
@@ -162,8 +157,7 @@ public class CteScanOperatorTest {
 
   @Test
   public void testMemory() throws Exception {
-    cteScanOperator =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+    cteScanOperator = new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
 
     long maxReturnSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     assertEquals(maxReturnSize, cteScanOperator.calculateMaxPeekMemory());
@@ -177,10 +171,10 @@ public class CteScanOperatorTest {
   public void testMultipleCteScanOperators() throws Exception {
     // Test reference counting with multiple operators
     CteScanOperator operator1 =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+        new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     assertEquals(1, cteDataStore.getCount());
     CteScanOperator operator2 =
-        new CteScanOperator(operatorContext, planNodeId, cteDataStore, memoryReservationManager);
+        new CteScanOperator(operatorContext, planNodeId, cteDataStore, queryId);
     assertEquals(2, cteDataStore.getCount());
 
     assertEquals(896, cteDataStore.ramBytesUsed());

@@ -22,7 +22,8 @@
 package org.apache.iotdb.db.utils.cte;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -31,18 +32,17 @@ public class MemoryReader implements CteDataReader {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MemoryReader.class);
 
-  // thread-safe memory manager
-  private final MemoryReservationManager memoryReservationManager;
+  private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
   // all the data in MemoryReader lies in memory
   private final CteDataStore dataStore;
   private int tsBlockIndex;
 
-  public MemoryReader(CteDataStore dataStore, MemoryReservationManager memoryReservationManager) {
+  public MemoryReader(CteDataStore dataStore, QueryId queryId) {
     this.dataStore = dataStore;
     this.tsBlockIndex = 0;
-    this.memoryReservationManager = memoryReservationManager;
     if (dataStore.incrementAndGetCount() == 1) {
-      memoryReservationManager.reserveMemoryCumulatively(dataStore.ramBytesUsed());
+      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+          dataStore.ramBytesUsed(), 0L, queryId.getId(), MemoryReader.class.getName());
     }
   }
 
@@ -62,7 +62,7 @@ public class MemoryReader implements CteDataReader {
   @Override
   public void close() throws IoTDBException {
     if (dataStore.decrementAndGetCount() == 0) {
-      memoryReservationManager.releaseMemoryCumulatively(dataStore.ramBytesUsed());
+      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(dataStore.ramBytesUsed());
     }
   }
 

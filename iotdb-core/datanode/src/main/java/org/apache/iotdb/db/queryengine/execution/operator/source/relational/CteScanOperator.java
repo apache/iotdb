@@ -21,10 +21,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.utils.cte.CteDataReader;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
@@ -54,11 +54,11 @@ public class CteScanOperator implements SourceOperator {
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       CteDataStore dataStore,
-      MemoryReservationManager memoryReservationManager) {
+      QueryId queryId) {
     requireNonNull(dataStore, "dataStore is null");
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
-    this.dataReader = new MemoryReader(dataStore, memoryReservationManager);
+    this.dataReader = new MemoryReader(dataStore, queryId);
   }
 
   @Override
