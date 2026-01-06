@@ -238,9 +238,9 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new IntoProcessException(e.getMessage(), e);
+        throw new IntoProcessException(e.getMessage());
       } catch (Exception e) {
-        throw new IntoProcessException(e.getMessage(), e);
+        throw new IntoProcessException(e.getMessage());
       }
     }
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
