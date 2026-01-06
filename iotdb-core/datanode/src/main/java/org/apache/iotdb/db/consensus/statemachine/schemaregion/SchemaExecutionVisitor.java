@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -96,7 +97,7 @@ import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
-  private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
+  private static Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
   public TSStatus visitCreateTimeSeries(
@@ -858,7 +859,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     return null;
   }
 
-  private static void logMetaDataException(
+  public static void logMetaDataException(
       final @Nonnull String message, final @Nonnull MetadataException e) {
     if (e.isUserException()) {
       logger.info(message);
@@ -867,11 +868,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     }
   }
 
-  private static void logMetaDataException(final @Nonnull MetadataException e) {
+  public static void logMetaDataException(final @Nonnull MetadataException e) {
     if (e.isUserException()) {
       logger.info(e.getMessage());
     } else {
       logger.error(e.getMessage(), e);
     }
+  }
+
+  @TestOnly
+  public static void setLogger(final Logger logger) {
+    SchemaExecutionVisitor.logger = logger;
   }
 }
