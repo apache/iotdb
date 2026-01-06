@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,7 +55,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -195,8 +195,6 @@ public class AlterTimeSeriesDataTypeProcedure
                   ByteBuffer.wrap(stream.toByteArray()));
             })) {
 
-          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
-
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -221,7 +219,7 @@ public class AlterTimeSeriesDataTypeProcedure
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
-              failureMap.put(dataNodeLocation, response);
+              failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
             } else {
               failureMap.remove(dataNodeLocation);
             }
@@ -240,7 +238,7 @@ public class AlterTimeSeriesDataTypeProcedure
                             measurementPath.getFullPath(),
                             measurementPath.getSeriesType(),
                             dataType,
-                            failureMap))));
+                            printFailureMap()))));
             interruptTask();
           }
         };

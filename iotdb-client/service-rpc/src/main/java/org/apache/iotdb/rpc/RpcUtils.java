@@ -190,6 +190,18 @@ public class RpcUtils {
     return status;
   }
 
+  public static TSStatus extractFailureStatues(final TSStatus input) {
+    return input.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+        ? new TSStatus(input.getCode())
+            .setMessage(input.getMessage())
+            .setSubStatus(
+                input.getSubStatus().stream()
+                    .filter(
+                        status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                    .collect(Collectors.toList()))
+        : input;
+  }
+
   /**
    * Convert from {@link TSStatusCode} to {@link TSStatus}, which has message appended with existing
    * status message
