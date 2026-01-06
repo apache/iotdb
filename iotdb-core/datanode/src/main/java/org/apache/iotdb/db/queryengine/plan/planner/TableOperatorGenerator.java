@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import io.airlift.units.DataSize;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -32,7 +31,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
@@ -266,7 +264,6 @@ import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
@@ -309,7 +306,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
@@ -4223,8 +4219,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         outputChannels.build(),
         partitionChannels,
         node.getMaxRowCountPerPartition(),
-        10_000
-    );
+        10_000);
   }
 
   @Override
@@ -4244,9 +4239,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
-    List<TSDataType> partitionTypes = partitionChannels.stream()
-        .map(inputDataTypes::get)
-        .collect(toImmutableList());
+    List<TSDataType> partitionTypes =
+        partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
 
     List<Symbol> orderBySymbols = new ArrayList<>();
     Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
@@ -4257,9 +4251,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<SortOrder> sortOrder = new ArrayList<>();
     List<Integer> sortChannels = getChannelsForSymbols(orderBySymbols, childLayout);
     if (orderingScheme.isPresent()) {
-      sortOrder = orderBySymbols.stream()
-          .map(symbol -> orderingScheme.get().getOrdering(symbol))
-          .collect(toImmutableList());
+      sortOrder =
+          orderBySymbols.stream()
+              .map(symbol -> orderingScheme.get().getOrdering(symbol))
+              .collect(toImmutableList());
     }
 
     ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
@@ -4291,7 +4286,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         node.isPartial(),
         Optional.empty(),
         1000,
-        Optional.empty()
-    );
+        Optional.empty());
   }
 }

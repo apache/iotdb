@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
 import org.apache.iotdb.db.utils.HeapTraversal;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -32,8 +31,6 @@ import java.util.function.LongConsumer;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
-import static java.lang.Math.abs;
-import static java.lang.Math.max;
 import static java.util.Objects.requireNonNull;
 
 public class GroupedTopNRowNumberAccumulator {
