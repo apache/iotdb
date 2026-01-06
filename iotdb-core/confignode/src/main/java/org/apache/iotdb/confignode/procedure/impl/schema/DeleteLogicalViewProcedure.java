@@ -316,7 +316,7 @@ public class DeleteLogicalViewProcedure
   }
 
   private class DeleteLogicalViewRegionTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+      extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -328,29 +328,6 @@ public class DeleteLogicalViewProcedure
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
-    }
-
-    @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        TDataNodeLocation dataNodeLocation,
-        List<TConsensusGroupId> consensusGroupIdList,
-        TSStatus response) {
-      List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
     }
 
     @Override
