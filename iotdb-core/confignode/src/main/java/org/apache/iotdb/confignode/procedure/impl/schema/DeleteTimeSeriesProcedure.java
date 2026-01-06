@@ -55,6 +55,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -170,6 +171,7 @@ public class DeleteTimeSeriesProcedure
               isAllLogicalView = false;
             } else if (response.getCode() == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
               successResult.add(response);
+              return Collections.emptyList();
             }
             return processResponseOfOneDataNodeWithSuccessResult(
                 dataNodeLocation, consensusGroupIdList, response);
