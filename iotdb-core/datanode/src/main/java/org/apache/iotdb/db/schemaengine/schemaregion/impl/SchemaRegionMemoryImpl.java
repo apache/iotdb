@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -124,7 +125,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -978,7 +978,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
     }
     if (!exist) {
-      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
     }
     writeToMLog(node);
   }
@@ -1364,6 +1364,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     // tags, attributes
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
+  }
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
+    mTree.alterTimeSeriesDataType(
+        leafMNode.getMeasurementPath(), leafMNode.getPartialPath().getMeasurement(), newDataType);
   }
 
   /** remove the node from the tag inverted index */

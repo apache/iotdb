@@ -39,8 +39,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.ainode.it.AINodeCallInferenceIT.callInferenceTest;
+import static org.apache.iotdb.ainode.it.AINodeForecastIT.forecastTableFunctionTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -54,6 +58,8 @@ public class AINodeModelManageIT {
   public static void setUp() throws Exception {
     // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
+    prepareDataInTree();
+    prepareDataInTable();
   }
 
   @AfterClass
@@ -61,47 +67,61 @@ public class AINodeModelManageIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  //  @Test
+  @Test
   public void userDefinedModelManagementTestInTree() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      userDefinedModelManagementTest(statement);
+      registerUserDefinedModel(statement);
+      callInferenceTest(
+          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
+      dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
-  //  @Test
+  @Test
   public void userDefinedModelManagementTestInTable() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      userDefinedModelManagementTest(statement);
+      registerUserDefinedModel(statement);
+      forecastTableFunctionTest(
+          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
+      dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
-  private void userDefinedModelManagementTest(Statement statement)
+  private void registerUserDefinedModel(Statement statement)
       throws SQLException, InterruptedException {
     final String alterConfigSQL = "set configuration \"trusted_uri_pattern\"='.*'";
-    final String registerSql = "create model operationTest using uri \"" + "\"";
-    final String showSql = "SHOW MODELS operationTest";
-    final String dropSql = "DROP MODEL operationTest";
-
+    final String registerSql = "create model user_chronos using uri \"file:///data/chronos2\"";
+    final String showSql = "SHOW MODELS user_chronos";
     statement.execute(alterConfigSQL);
     statement.execute(registerSql);
     boolean loading = true;
-    int count = 0;
     for (int retryCnt = 0; retryCnt < 100; retryCnt++) {
       try (ResultSet resultSet = statement.executeQuery(showSql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
         while (resultSet.next()) {
           String modelId = resultSet.getString(1);
+          String modelType = resultSet.getString(2);
           String category = resultSet.getString(3);
           String state = resultSet.getString(4);
-          assertEquals("operationTest", modelId);
-          assertEquals("USER-DEFINED", category);
-          if (state.equals("ACTIVE")) {
+          assertEquals("user_chronos", modelId);
+          assertEquals("custom_t5", modelType);
+          assertEquals("user_defined", category);
+          if (state.equals("active")) {
             loading = false;
-            count++;
-          } else if (state.equals("LOADING")) {
+          } else if (state.equals("loading")) {
             break;
           } else {
             fail("Unexpected status of model: " + state);
@@ -114,12 +134,16 @@ public class AINodeModelManageIT {
       TimeUnit.SECONDS.sleep(1);
     }
     assertFalse(loading);
-    assertEquals(1, count);
+  }
+
+  private void dropUserDefinedModel(Statement statement) throws SQLException {
+    final String showSql = "SHOW MODELS user_chronos";
+    final String dropSql = "DROP MODEL user_chronos";
     statement.execute(dropSql);
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
-      count = 0;
+      int count = 0;
       while (resultSet.next()) {
         count++;
       }

@@ -27,10 +27,12 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -377,7 +379,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void writeAlignedTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
-
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null
@@ -1088,5 +1089,14 @@ public abstract class AbstractMemTable implements IMemTable {
     for (IWritableMemChunkGroup memChunkGroup : memTableMap.values()) {
       memChunkGroup.setEncryptParameter(EncryptDBUtils.getSecondEncryptParamFromDatabase(database));
     }
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    node.checkDataType(this);
+  }
+
+  public IWritableMemChunkGroup getWritableMemChunkGroup(IDeviceID deviceID) {
+    return memTableMap.get(deviceID);
   }
 }

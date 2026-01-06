@@ -215,16 +215,8 @@ public class PipePluginInfo implements SnapshotProcessor {
       final String className = pipePluginMeta.getClassName();
       final String jarName = pipePluginMeta.getJarName();
 
-      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
-      dropPipePlugin(new DropPipePluginPlan(pluginName));
-
-      pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
-      pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
-
       if (createPipePluginPlan.getJarFile() != null) {
-        pipePluginExecutableManager.savePluginToInstallDir(
-            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
-        computeFromPluginClass(pluginName, className);
+        savePipePluginWithRollback(createPipePluginPlan);
       } else {
         final String existed = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
         if (Objects.nonNull(existed)) {
@@ -238,6 +230,12 @@ public class PipePluginInfo implements SnapshotProcessor {
         }
       }
 
+      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
+      dropPipePlugin(new DropPipePluginPlan(pluginName));
+
+      pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
+      pipePluginMetaKeeper.addJarNameAndMd5(jarName, pipePluginMeta.getJarMD5());
+
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
       final String errorMessage =
@@ -247,6 +245,23 @@ public class PipePluginInfo implements SnapshotProcessor {
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
+    }
+  }
+
+  private void savePipePluginWithRollback(final CreatePipePluginPlan createPipePluginPlan)
+      throws Exception {
+    final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
+    final String pluginName = pipePluginMeta.getPluginName();
+    final String className = pipePluginMeta.getClassName();
+    final String jarName = pipePluginMeta.getJarName();
+    try {
+      pipePluginExecutableManager.savePluginToInstallDir(
+          ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()), pluginName, jarName);
+      computeFromPluginClass(pluginName, className);
+    } catch (final Exception e) {
+      // We need to rollback if the creation has failed
+      pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);
+      throw e;
     }
   }
 

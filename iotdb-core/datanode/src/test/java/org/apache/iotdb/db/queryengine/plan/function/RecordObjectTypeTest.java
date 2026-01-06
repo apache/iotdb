@@ -133,6 +133,8 @@ public class RecordObjectTypeTest {
     Optional<File> objectFile = record.getObjectFile(0);
     assertTrue(objectFile.isPresent());
 
+    assertEquals(100L, record.objectLength(0));
+
     assertEquals("(Object) 100 B", record.getString(0));
     Assert.assertFalse(recordIterator.hasNext());
   }

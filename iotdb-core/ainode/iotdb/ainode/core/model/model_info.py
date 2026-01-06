@@ -31,7 +31,7 @@ class ModelInfo:
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
-        _transformers_registered: bool = False,
+        transformers_registered: bool = False,
     ):
         self.model_id = model_id
         self.model_type = model_type
@@ -40,7 +40,9 @@ class ModelInfo:
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
-        self._transformers_registered = _transformers_registered  # Internal flag: whether registered to Transformers
+        self.transformers_registered = (
+            transformers_registered  # Internal flag: whether registered to Transformers
+        )
 
     def __repr__(self):
         return (
@@ -116,7 +118,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_timer.TimerConfig",
             "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
         },
-        _transformers_registered=True,
+        transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
@@ -129,7 +131,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_sundial.SundialConfig",
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
         },
-        _transformers_registered=True,
+        transformers_registered=True,
     ),
     "chronos2": ModelInfo(
         model_id="chronos2",
@@ -139,7 +141,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         pipeline_cls="pipeline_chronos2.Chronos2Pipeline",
         repo_id="amazon/chronos-2",
         auto_map={
-            "AutoConfig": "config.Chronos2ForecastingConfig",
+            "AutoConfig": "config.Chronos2CoreConfig",
             "AutoModelForCausalLM": "model.Chronos2Model",
         },
     ),

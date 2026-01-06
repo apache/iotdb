@@ -20,16 +20,19 @@
 package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -38,7 +41,6 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,7 +56,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
+public class PipeConfigTreePatternParseVisitorTest {
 
   private final IoTDBTreePatternOperations prefixPathPattern =
       new UnionIoTDBTreePattern(new IoTDBTreePattern("root.db.device.**"));
@@ -472,5 +474,24 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
     Assert.assertEquals(
         new PartialPath("root.db.device.**"), new PartialPath(plan.getPathPattern()));
     Assert.assertEquals(Long.MAX_VALUE, plan.getTTL());
+  }
+
+  @Test
+  public void testPipeAlterTimeSeries() throws IllegalPathException {
+    final PipeAlterTimeSeriesPlan plan =
+        ((PipeAlterTimeSeriesPlan)
+            IoTDBConfigRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .visitPipeAlterTimeSeries(
+                    new PipeAlterTimeSeriesPlan(
+                        new MeasurementPath(new String[] {"root", "db", "device", "a"}),
+                        (byte) 0,
+                        TSDataType.DOUBLE),
+                    prefixPathPattern)
+                .orElseThrow(AssertionError::new));
+
+    Assert.assertEquals(
+        new PartialPath("root.db.device.a"), new PartialPath(plan.getMeasurementPath().getNodes()));
+    Assert.assertEquals((byte) 0, plan.getOperationType());
+    Assert.assertEquals(plan.getDataType(), TSDataType.DOUBLE);
   }
 }

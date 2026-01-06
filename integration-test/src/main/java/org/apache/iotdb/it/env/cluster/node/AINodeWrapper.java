@@ -60,7 +60,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   public static final String CONFIG_PATH = "conf";
   public static final String SCRIPT_PATH = "sbin";
   public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/builtin";
-  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models/weights";
+  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models";
 
   private void replaceAttribute(String[] keys, String[] values, String filePath) {
     Properties props = new Properties();

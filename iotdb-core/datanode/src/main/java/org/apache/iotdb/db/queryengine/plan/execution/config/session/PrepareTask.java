@@ -26,7 +26,6 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.AstMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -69,7 +68,7 @@ public class PrepareTask implements IConfigTask {
     }
 
     // Estimate memory size of the AST
-    long memorySizeInBytes = AstMemoryEstimator.estimateMemorySize(sql);
+    long memorySizeInBytes = sql == null ? 0L : sql.ramBytesUsed();
 
     // Allocate memory from CoordinatorMemoryManager
     // This memory is shared across all sessions using a single MemoryBlock

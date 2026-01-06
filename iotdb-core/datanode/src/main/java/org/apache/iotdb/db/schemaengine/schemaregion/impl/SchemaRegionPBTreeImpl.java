@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -98,7 +99,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAligne
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -1376,6 +1376,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } finally {
       mtree.unPinMNode(leafMNode.getAsMNode());
     }
+  }
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException {
+    throw new UnsupportedOperationException(
+        "PBTree does not support altering timeseries data type.");
   }
 
   /** remove the node from the tag inverted index */

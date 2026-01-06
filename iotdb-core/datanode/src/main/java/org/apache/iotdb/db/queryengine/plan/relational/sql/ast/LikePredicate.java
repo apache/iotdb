@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -34,6 +35,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class LikePredicate extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LikePredicate.class);
 
   private final Expression value;
   private final Expression pattern;
@@ -146,5 +150,14 @@ public class LikePredicate extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(escape);
   }
 }

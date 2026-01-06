@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.rescon.disk;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedS
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
+import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -36,7 +38,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -172,6 +176,16 @@ public class TierManager {
       } catch (DiskSpaceInsufficientException e) {
         logger.error("All disks of tier {} are full.", tierLevel, e);
       }
+      // try to remove empty objectDirs
+      for (String dir : objectDirs) {
+        File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+        if (dirFile.isDirectory() && Objects.requireNonNull(dirFile.list()).length == 0) {
+          try {
+            Files.delete(dirFile.toPath());
+          } catch (IOException ignore) {
+          }
+        }
+      }
     }
 
     tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
@@ -270,6 +284,41 @@ public class TierManager {
       }
     }
     return Optional.empty();
+  }
+
+  public List<File> getAllMatchedObjectDirs(String regionIdStr, String... path) {
+    List<File> matchedDirs = new ArrayList<>();
+    boolean hasObjectDir = false;
+    for (String objectDir : objectDirs) {
+      File objectDirPath = FSFactoryProducer.getFSFactory().getFile(objectDir);
+      if (objectDirPath.exists()) {
+        hasObjectDir = true;
+        break;
+      }
+    }
+    if (!hasObjectDir) {
+      return matchedDirs;
+    }
+    StringBuilder objectPath = new StringBuilder();
+    objectPath.append(regionIdStr);
+    for (String str : path) {
+      objectPath
+          .append(File.separator)
+          .append(
+              CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
+                  ? str
+                  : BaseEncoding.base32()
+                      .omitPadding()
+                      .encode(str.getBytes(StandardCharsets.UTF_8)));
+    }
+    for (String objectDir : objectDirs) {
+      File objectFilePath =
+          FSFactoryProducer.getFSFactory().getFile(objectDir, objectPath.toString());
+      if (objectFilePath.exists()) {
+        matchedDirs.add(objectFilePath);
+      }
+    }
+    return matchedDirs;
   }
 
   public int getTiersNum() {

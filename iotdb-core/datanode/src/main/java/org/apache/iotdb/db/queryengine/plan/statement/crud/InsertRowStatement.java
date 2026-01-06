@@ -234,6 +234,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         // if the type is binary and the value is already binary, do not convert
         if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        } else if (dataTypes[i] == TSDataType.OBJECT && values[i] instanceof Binary) {
+          if (((Binary) values[i]).getValues().length < 9
+              || ((Binary) values[i]).getValues()[0] != 0
+                  && ((Binary) values[i]).getValues()[0] != 1) {
+            throw new IllegalArgumentException(
+                "data type is not consistent, input " + values[i] + ", registered " + dataTypes[i]);
+          }
         }
       } catch (Exception e) {
         LOGGER.warn(

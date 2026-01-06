@@ -40,8 +40,8 @@ struct TAIHeartbeatResp {
 }
 
 struct TRegisterModelReq {
-  1: required string uri
-  2: required string modelId
+  1: required string modelId
+  2: required string uri
 }
 
 struct TConfigs {

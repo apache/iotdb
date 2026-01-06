@@ -172,7 +172,8 @@ public class PipeSinkTest {
               false, "root.db", "db", "root.db", tablet, false, "pipe", 0L, null, null, false);
       event.increaseReferenceCount("");
       normalOPC.transfer(event);
-      Assert.assertThrows(UnsupportedOperationException.class, () -> qualityOPC.transfer(event));
+      // Shall not throw
+      qualityOPC.transfer(event);
       event.decreaseReferenceCount("", false);
 
       qualityOPC.transfer(

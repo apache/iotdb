@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Objects;
 
 public class PipeEnriched extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PipeEnriched.class);
 
   private final Statement innerStatement;
 
@@ -67,5 +72,13 @@ public class PipeEnriched extends Statement {
 
   public Statement getInnerStatement() {
     return innerStatement;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(innerStatement);
+    return size;
   }
 }

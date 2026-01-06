@@ -173,7 +173,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.2.0-251218-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.2.1-260103-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -407,6 +407,16 @@
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
                 <artifactId>stack-server</artifactId>
+                <version>${milo.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>stack-client</artifactId>
+                <version>${milo.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>sdk-client</artifactId>
                 <version>${milo.version}</version>
             </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->

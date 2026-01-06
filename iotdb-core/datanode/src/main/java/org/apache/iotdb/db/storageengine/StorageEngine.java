@@ -1082,6 +1082,9 @@ public class StorageEngine implements IService {
     List<String> folders = TierManager.getInstance().getAllObjectFileFolders();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir);
+      if (!fileFolder.exists()) {
+        continue;
+      }
       try (Stream<Path> paths = Files.walk(fileFolder.toPath())) {
         paths
             .filter(Files::isRegularFile)
