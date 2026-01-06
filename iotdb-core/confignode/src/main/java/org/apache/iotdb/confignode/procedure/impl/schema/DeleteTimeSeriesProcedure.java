@@ -153,7 +153,6 @@ public class DeleteTimeSeriesProcedure
       return 0;
     }
     isAllLogicalView = true;
-    final List<TSStatus> successResult = new ArrayList<>();
     final DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
         new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
             "construct schema engine black list",
@@ -179,7 +178,7 @@ public class DeleteTimeSeriesProcedure
     constructBlackListTask.execute();
 
     return !isFailed()
-        ? successResult.stream()
+        ? constructBlackListTask.getSuccessResult().stream()
             .mapToLong(resp -> Long.parseLong(resp.getMessage()))
             .reduce(Long::sum)
             .orElse(0L)

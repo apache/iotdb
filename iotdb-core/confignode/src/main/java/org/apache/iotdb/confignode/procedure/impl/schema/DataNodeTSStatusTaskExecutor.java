@@ -34,7 +34,7 @@ import java.util.function.BiFunction;
 
 public abstract class DataNodeTSStatusTaskExecutor<Q>
     extends DataNodeRegionTaskExecutor<Q, TSStatus> {
-  private List<TSStatus> successResult = new ArrayList<>();
+  protected List<TSStatus> successResult = new ArrayList<>();
 
   protected DataNodeTSStatusTaskExecutor(
       final ConfigNodeProcedureEnv env,
