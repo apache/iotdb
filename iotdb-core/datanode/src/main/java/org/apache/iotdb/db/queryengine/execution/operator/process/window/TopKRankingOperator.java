@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperato
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.NoChannelGroupByHash;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -60,7 +61,7 @@ public class TopKRankingOperator implements ProcessOperator {
   private final List<Integer> partitionChannels;
   private final List<TSDataType> partitionTSDataTypes;
   private final List<Integer> sortChannels;
-  private final List<SortItem> sortItems;
+  private final List<SortOrder> sortOrders;
   private final int maxRowCountPerPartition;
   private final boolean partial;
   private final boolean generateRanking;
@@ -87,7 +88,7 @@ public class TopKRankingOperator implements ProcessOperator {
       List<Integer> partitionChannels,
       List<TSDataType> partitionTSDataTypes,
       List<Integer> sortChannels,
-      List<SortItem> sortItems,
+      List<SortOrder> sortOrders,
       int maxRowCountPerPartition,
       boolean generateRanking,
       Optional<Integer> hashChannel,
@@ -100,7 +101,7 @@ public class TopKRankingOperator implements ProcessOperator {
     this.partitionChannels = partitionChannels;
     this.partitionTSDataTypes = partitionTSDataTypes;
     this.sortChannels = sortChannels;
-    this.sortItems = sortItems;
+    this.sortOrders = sortOrders;
     this.maxRowCountPerPartition = maxRowCountPerPartition;
     this.partial = !generateRanking;
     this.generateRanking = generateRanking;
@@ -141,7 +142,7 @@ public class TopKRankingOperator implements ProcessOperator {
   private Supplier<GroupedTopNBuilder> getGroupedTopNBuilderSupplier() {
     if (rankingType == TopKRankingNode.RankingType.ROW_NUMBER) {
       TsBlockWithPositionComparator comparator =
-          new SimpleTsBlockWithPositionComparator(inputTypes, sortChannels, sortItems);
+          new SimpleTsBlockWithPositionComparator(inputTypes, sortChannels, sortOrders);
       return () ->
           new GroupedTopNRowNumberBuilder(
               inputTypes,

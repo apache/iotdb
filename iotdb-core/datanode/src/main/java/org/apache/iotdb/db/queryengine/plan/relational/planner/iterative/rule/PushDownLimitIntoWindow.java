@@ -86,7 +86,7 @@ public class PushDownLimitIntoWindow implements Rule<LimitNode> {
     TopKRankingNode topNRowNumberNode =
         new TopKRankingNode(
             source.getPlanNodeId(),
-            source.getChildren(),
+            source.getChild(),
             source.getSpecification(),
             rankingType.get(),
             getOnlyElement(source.getWindowFunctions().keySet()),

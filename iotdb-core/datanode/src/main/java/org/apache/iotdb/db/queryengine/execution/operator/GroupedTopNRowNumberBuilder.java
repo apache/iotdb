@@ -163,7 +163,7 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
         }
         if (produceRowNumber) {
           ColumnBuilder builder = tsBlockBuilder.getColumnBuilder(sourceTypes.size());
-          builder.writeLong(currentGroupId + 1);
+          builder.writeLong(currentIndexInGroup + 1);
         }
         tsBlockBuilder.declarePosition();
         currentIndexInGroup++;

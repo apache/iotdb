@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceVi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -777,11 +778,15 @@ public abstract class PlanVisitor<R, C> {
   public R visitTopKRanking(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode node,
       C context) {
-    return visitMultiChildProcess(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitRowNumber(RowNumberNode node, C context) {
     return visitSingleChildProcess(node, context);
+  }
+
+  public R visitValuesNode(ValuesNode node, C context) {
+    return visitPlan(node, context);
   }
 
   public R visitJoin(

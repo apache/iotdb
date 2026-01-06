@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
@@ -38,7 +39,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class TopKRankingNode extends MultiChildProcessNode {
+public class TopKRankingNode extends SingleChildProcessNode {
   public enum RankingType {
     ROW_NUMBER,
     RANK,
@@ -69,13 +70,13 @@ public class TopKRankingNode extends MultiChildProcessNode {
 
   public TopKRankingNode(
       PlanNodeId id,
-      List<PlanNode> children,
+      PlanNode child,
       DataOrganizationSpecification specification,
       RankingType rankingType,
       Symbol rankingSymbol,
       int maxRankingPerPartition,
       boolean partial) {
-    super(id, children);
+    super(id, child);
 
     this.specification = specification;
     this.rankingType = rankingType;
@@ -98,6 +99,26 @@ public class TopKRankingNode extends MultiChildProcessNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTopKRanking(this, context);
+  }
+
+  public DataOrganizationSpecification getSpecification() {
+    return specification;
+  }
+
+  public boolean isPartial() {
+    return partial;
+  }
+
+  public Symbol getRankingSymbol() {
+    return rankingSymbol;
+  }
+
+  public int getMaxRankingPerPartition() {
+    return maxRankingPerPartition;
+  }
+
+  public RankingType getRankingType() {
+    return rankingType;
   }
 
   @Override
@@ -141,19 +162,6 @@ public class TopKRankingNode extends MultiChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return Collections.singletonList(rankingSymbol);
-  }
-
-  @Override
-  public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(children.size() == newChildren.size(), "wrong number of new children");
-    return new TopKRankingNode(
-        id,
-        newChildren,
-        specification,
-        rankingType,
-        rankingSymbol,
-        maxRankingPerPartition,
-        partial);
   }
 
   @Override

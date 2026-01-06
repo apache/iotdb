@@ -33,7 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
@@ -265,17 +267,10 @@ public class SymbolMapper {
                       function.isIgnoreNulls()));
             });
 
-    ImmutableList<Symbol> newPartitionBy =
-        node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
-    Optional<OrderingScheme> newOrderingScheme =
-        node.getSpecification().getOrderingScheme().map(this::map);
-    DataOrganizationSpecification newSpecification =
-        new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
-
     return new WindowNode(
         node.getPlanNodeId(),
         source,
-        newSpecification,
+        mapAndDistinct(node.getSpecification()),
         newFunctions.buildOrThrow(),
         node.getHashSymbol().map(this::map),
         node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
@@ -293,6 +288,29 @@ public class SymbolMapper {
         frame.getSortKeyCoercedForFrameEndComparison().map(this::map),
         frame.getOriginalStartValue(),
         frame.getOriginalEndValue());
+  }
+
+  public TopKRankingNode map(TopKRankingNode node, PlanNode source) {
+    return new TopKRankingNode(
+      node.getPlanNodeId(),
+      source,
+      mapAndDistinct(node.getSpecification()),
+      node.getRankingType(),
+      map(node.getRankingSymbol()),
+      node.getMaxRankingPerPartition(),
+      node.isPartial()
+    );
+  }
+
+  public RowNumberNode map(RowNumberNode node, PlanNode source) {
+    return new RowNumberNode(
+        node.getPlanNodeId(),
+        source,
+        map(node.getPartitionBy()),
+        node.isOrderSensitive(),
+        map(node.getRowNumberSymbol()),
+        node.getMaxRowCountPerPartition()
+    );
   }
 
   public TopKNode map(TopKNode node, List<PlanNode> source) {

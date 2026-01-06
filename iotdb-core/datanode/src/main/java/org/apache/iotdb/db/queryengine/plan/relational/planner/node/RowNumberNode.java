@@ -81,6 +81,18 @@ public class RowNumberNode extends SingleChildProcessNode {
     this.maxRowCountPerPartition = maxRowCountPerPartition;
   }
 
+  public Symbol getRowNumberSymbol() {
+    return rowNumberSymbol;
+  }
+
+  public Optional<Integer> getMaxRowCountPerPartition() {
+    return maxRowCountPerPartition;
+  }
+
+  public boolean isOrderSensitive() {
+    return orderSensitive;
+  }
+
   @Override
   public PlanNode clone() {
     return new RowNumberNode(
@@ -111,6 +123,10 @@ public class RowNumberNode extends SingleChildProcessNode {
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
+  }
+
+  public List<Symbol> getPartitionBy() {
+    return partitionBy;
   }
 
   @Override

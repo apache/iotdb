@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -34,8 +35,8 @@ public class SimpleTsBlockWithPositionComparator implements TsBlockWithPositionC
   private final Comparator<SortKey> comparator;
 
   public SimpleTsBlockWithPositionComparator(
-      List<TSDataType> types, List<Integer> sortChannels, List<SortItem> sortItems) {
-    this.comparator = MergeSortComparator.getComparator(sortItems, sortChannels, types);
+      List<TSDataType> types, List<Integer> sortChannels, List<SortOrder> sortOrders) {
+    this.comparator = MergeSortComparator.getComparatorForTable(sortOrders, sortChannels, types);
   }
 
   @Override

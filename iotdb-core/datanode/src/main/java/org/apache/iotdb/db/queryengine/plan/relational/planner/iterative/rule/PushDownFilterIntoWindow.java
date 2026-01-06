@@ -93,7 +93,7 @@ public class PushDownFilterIntoWindow implements Rule<FilterNode> {
     TopKRankingNode newSource =
         new TopKRankingNode(
             windowNode.getPlanNodeId(),
-            windowNode.getChildren(),
+            windowNode.getChild(),
             windowNode.getSpecification(),
             rankingType.get(),
             rankingSymbol,

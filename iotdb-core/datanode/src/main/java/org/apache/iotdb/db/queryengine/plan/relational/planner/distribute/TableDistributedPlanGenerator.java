@@ -75,16 +75,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -1836,6 +1839,51 @@ public class TableDistributedPlanGenerator
     } else {
       return splitForEachChild(node, childrenNodes);
     }
+  }
+
+  @Override
+  public List<PlanNode> visitValuesNode(ValuesNode node, PlanContext context) {
+    return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitRowNumber(RowNumberNode node, PlanContext context) {
+    return dealWithPlainSingleChildNode(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitTopKRanking(TopKRankingNode node, PlanContext context) {
+    Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+    if (orderingScheme.isPresent()) {
+      context.setExpectedOrderingScheme(orderingScheme.get());
+      nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme.get());
+    }
+
+    // TODO: per partition topk eliminate
+    checkArgument(
+        node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
+    List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    TopKRankingNode newTopKNode = (TopKRankingNode) node.clone();
+    for (PlanNode child : childrenNodes) {
+      PlanNode newChild =
+          new TopKRankingNode(
+              queryId.genPlanNodeId(),
+              child,
+              node.getSpecification(),
+              node.getRankingType(),
+              node.getRankingSymbol(),
+              node.getMaxRankingPerPartition(),
+              node.isPartial());
+      newTopKNode.addChild(newChild);
+    }
+    orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(newTopKNode.getPlanNodeId(), scheme));
+
+    return Collections.singletonList(newTopKNode);
   }
 
   @Override
