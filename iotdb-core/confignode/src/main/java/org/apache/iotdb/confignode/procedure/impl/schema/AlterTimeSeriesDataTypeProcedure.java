@@ -54,7 +54,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -195,8 +194,6 @@ public class AlterTimeSeriesDataTypeProcedure
                   ByteBuffer.wrap(stream.toByteArray()));
             })) {
 
-          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
-
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -240,7 +237,7 @@ public class AlterTimeSeriesDataTypeProcedure
                             measurementPath.getFullPath(),
                             measurementPath.getSeriesType(),
                             dataType,
-                            failureMap))));
+                            printFailureMap()))));
             interruptTask();
           }
         };
