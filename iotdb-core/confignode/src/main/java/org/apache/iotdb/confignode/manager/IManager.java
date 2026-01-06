@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -144,6 +145,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowExternalServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -861,6 +863,16 @@ public interface IManager {
   TSStatus dropCQ(TDropCQReq req);
 
   TShowCQResp showCQ();
+
+  TSStatus createExternalService(TCreateExternalServiceReq req);
+
+  TSStatus startExternalService(int dataNodeId, String serviceName);
+
+  TSStatus stopExternalService(int dataNodeId, String serviceName);
+
+  TSStatus dropExternalService(int dataNodeId, String serviceName);
+
+  TShowExternalServiceResp showExternalService(int dataNodeId);
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 

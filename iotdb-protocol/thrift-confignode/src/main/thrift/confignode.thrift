@@ -1089,6 +1089,25 @@ struct TShowCQResp {
   2: required list<TCQEntry> cqList
 }
 
+// ====================================================
+// ExternalService
+// ====================================================
+struct TCreateExternalServiceReq {
+  1: required i32 dataNodeId
+  2: required string serviceName
+  3: required string className
+}
+
+struct TExternalServiceEntry {
+  1: required string serviceName
+  2: required string className
+  3: required byte state
+}
+
+struct TShowExternalServiceResp {
+  1: required common.TSStatus status
+  2: required list<TExternalServiceEntry> externalServiceInfos
+}
 
 struct TDeactivateSchemaTemplateReq {
   1: required string queryId
@@ -1982,6 +2001,19 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ExternalService
+  // ====================================================
+  common.TSStatus createExternalService(TCreateExternalServiceReq req)
+
+  common.TSStatus startExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus stopExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus dropExternalService(i32 dataNodeId, string serviceName)
+
+  TShowCQResp showExternalService(i32 dataNodeId)
 
   // ======================================================
   // Quota

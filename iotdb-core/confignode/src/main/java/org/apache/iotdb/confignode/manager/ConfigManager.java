@@ -109,6 +109,7 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
@@ -154,6 +155,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -225,6 +227,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowExternalServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -315,6 +318,9 @@ public class ConfigManager implements IManager {
   /** Manage procedure. */
   private final ProcedureManager procedureManager;
 
+  /** ExternalService. */
+  private final ExternalServiceManager externalServiceManager;
+
   /** UDF. */
   private final UDFManager udfManager;
 
@@ -389,6 +395,7 @@ public class ConfigManager implements IManager {
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = createPermissionManager(authorInfo);
     this.procedureManager = createProcedureManager(procedureInfo);
+    this.externalServiceManager = new ExternalServiceManager(this);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
@@ -2598,6 +2605,46 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? cqManager.showCQ()
         : new TShowCQResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createExternalService(TCreateExternalServiceReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.createService(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus startExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.startService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.stopService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.dropService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TShowExternalServiceResp showExternalService(int dataNodeId) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.showService(dataNodeId)
+        : new TShowExternalServiceResp(status, Collections.emptyList());
   }
 
   /**
