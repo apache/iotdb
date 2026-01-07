@@ -853,7 +853,14 @@ public class ConfigMTree {
           final IConfigMNode child = databaseNode.getChildren().get(table);
           if (child instanceof ConfigTableNode
               && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING)) {
-            result.put(table, ((ConfigTableNode) child).getTable());
+            TsTable resultTable = ((ConfigTableNode) child).getTable();
+            if (!((ConfigTableNode) child).getPreDeletedColumns().isEmpty()) {
+              resultTable = new TsTable(resultTable);
+              ((ConfigTableNode) child)
+                  .getPreDeletedColumns()
+                  .forEach(resultTable::removeColumnSchema);
+            }
+            result.put(table, resultTable);
           } else {
             result.put(table, null);
           }
