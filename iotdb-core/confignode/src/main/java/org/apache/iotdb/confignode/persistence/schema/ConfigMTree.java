@@ -828,7 +828,17 @@ public class ConfigMTree {
             child ->
                 child instanceof ConfigTableNode
                     && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING))
-        .map(child -> ((ConfigTableNode) child).getTable())
+        .map(
+            child -> {
+              TsTable resultTable = ((ConfigTableNode) child).getTable();
+              if (!((ConfigTableNode) child).getPreDeletedColumns().isEmpty()) {
+                resultTable = new TsTable(resultTable);
+                ((ConfigTableNode) child)
+                    .getPreDeletedColumns()
+                    .forEach(resultTable::removeColumnSchema);
+              }
+              return resultTable;
+            })
         .collect(Collectors.toList());
   }
 
