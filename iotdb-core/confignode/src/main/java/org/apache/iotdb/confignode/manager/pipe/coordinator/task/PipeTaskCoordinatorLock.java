@@ -22,10 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * {@link PipeTaskCoordinatorLock} is a cross thread lock for pipe task coordinator. It is used to
@@ -35,46 +33,27 @@ public class PipeTaskCoordinatorLock {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinatorLock.class);
 
-  private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
-  private final AtomicLong idGenerator = new AtomicLong(0);
+  private final ReentrantLock lock = new ReentrantLock();
 
   public void lock() {
-    try {
-      final long id = idGenerator.incrementAndGet();
-      LOGGER.debug(
-          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
-          id,
-          Thread.currentThread().getName());
-      deque.put(id);
-      LOGGER.debug(
-          "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
-          id,
-          Thread.currentThread().getName());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error(
-          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
-          Thread.currentThread().getName());
-    }
+    LOGGER.debug(
+        "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
+    lock.lock();
+    LOGGER.debug(
+        "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
   }
 
   public boolean tryLock() {
     try {
-      final long id = idGenerator.incrementAndGet();
       LOGGER.debug(
-          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
-          id,
-          Thread.currentThread().getName());
-      if (deque.offer(id, 10, TimeUnit.SECONDS)) {
+          "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
+      if (lock.tryLock(10, TimeUnit.SECONDS)) {
         LOGGER.debug(
-            "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
-            id,
-            Thread.currentThread().getName());
+            "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
         return true;
       } else {
         LOGGER.info(
-            "PipeTaskCoordinator lock (id: {}) failed to acquire by thread {} because of timeout",
-            id,
+            "PipeTaskCoordinator lock failed to acquire by thread {} because of timeout",
             Thread.currentThread().getName());
         return false;
       }
@@ -88,20 +67,12 @@ public class PipeTaskCoordinatorLock {
   }
 
   public void unlock() {
-    final Long id = deque.poll();
-    if (id == null) {
-      LOGGER.error(
-          "PipeTaskCoordinator lock released by thread {} but the lock is not acquired by any thread",
-          Thread.currentThread().getName());
-    } else {
-      LOGGER.debug(
-          "PipeTaskCoordinator lock (id: {}) released by thread {}",
-          id,
-          Thread.currentThread().getName());
-    }
+    lock.unlock();
+    LOGGER.debug(
+        "PipeTaskCoordinator lock released by thread {}", Thread.currentThread().getName());
   }
 
   public boolean isLocked() {
-    return !deque.isEmpty();
+    return lock.isLocked();
   }
 }
