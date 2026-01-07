@@ -1818,7 +1818,7 @@ public class SeriesScanUtil implements Accountable {
     /*
      * find end time of the first TimeSeriesMetadata
      */
-    long endTime = -1L;
+    Long endTime = null;
     if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
       // only has seq
       endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
@@ -1836,7 +1836,7 @@ public class SeriesScanUtil implements Accountable {
     /*
      * unpack all directly overlapped seq/unseq files with first TimeSeriesMetadata
      */
-    if (endTime != -1) {
+    if (endTime != null) {
       unpackAllOverlappedTsFilesToTimeSeriesMetadata(endTime);
     }
 
