@@ -20,7 +20,6 @@ import threading
 import time
 from typing import Dict
 
-import pandas as pd
 import torch
 import torch.multiprocessing as mp
 
@@ -183,6 +182,13 @@ class InferenceManager:
 
             inference_attrs = extract_attrs(req)
             output_length = int(inference_attrs.pop("output_length", 96))
+
+            # model_inputs_list: Each element is a dict, which contains the following keys:
+            #   `targets`: The input tensor for the target variable(s), whose shape is [target_count, input_length].
+            model_inputs_list: list[
+                dict[str, torch.Tensor | dict[str, torch.Tensor]]
+            ] = [{"targets": inputs[0]}]
+
             if (
                 output_length
                 > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
@@ -200,17 +206,21 @@ class InferenceManager:
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
                     model_id=model_id,
-                    inputs=inputs,
+                    inputs=torch.stack(
+                        [data["targets"] for data in model_inputs_list], dim=0
+                    ),
                     output_length=output_length,
                 )
                 outputs = self._process_request(infer_req)
             else:
                 model_info = self._model_manager.get_model_info(model_id)
                 inference_pipeline = load_pipeline(model_info, device="cpu")
-                inputs = inference_pipeline.preprocess(inputs)
+                inputs = inference_pipeline.preprocess(
+                    model_inputs_list, output_length=output_length
+                )
                 if isinstance(inference_pipeline, ForecastPipeline):
                     outputs = inference_pipeline.forecast(
-                        inputs, predict_length=output_length, **inference_attrs
+                        inputs, output_length=output_length, **inference_attrs
                     )
                 elif isinstance(inference_pipeline, ClassificationPipeline):
                     outputs = inference_pipeline.classify(inputs)
@@ -223,8 +233,8 @@ class InferenceManager:
 
             # convert tensor into tsblock for the output in each batch
             output_list = []
-            for batch_idx in range(outputs.size(0)):
-                output = convert_tensor_to_tsblock(outputs[batch_idx])
+            for batch_idx, output in enumerate(outputs):
+                output = convert_tensor_to_tsblock(output)
                 output_list.append(output)
 
             return resp_cls(
