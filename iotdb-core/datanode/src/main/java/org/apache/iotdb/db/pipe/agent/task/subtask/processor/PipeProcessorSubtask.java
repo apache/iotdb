@@ -240,7 +240,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                 ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
+        LOGGER.info(
+            "Exception in pipe event processing, ignored because pipe is dropped.{}",
+            e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
