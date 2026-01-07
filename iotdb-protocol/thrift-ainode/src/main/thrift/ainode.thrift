@@ -118,7 +118,7 @@ struct TShowLoadedModelsResp {
 
 struct TShowAIDevicesResp {
     1: required common.TSStatus status
-    2: required list<string> deviceIdList
+    2: required map<string, string> deviceIdMap
 }
 
 struct TLoadModelReq {

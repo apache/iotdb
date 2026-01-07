@@ -42,9 +42,9 @@ from iotdb.ainode.core.inference.pipeline.pipeline_loader import load_pipeline
 from iotdb.ainode.core.inference.pool_controller import PoolController
 from iotdb.ainode.core.inference.utils import generate_req_id
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
-from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.ainode.core.util.serde import (
     convert_tensor_to_tsblock,
     convert_tsblock_to_tensor,
@@ -71,6 +71,7 @@ class InferenceManager:
 
     def __init__(self):
         self._model_manager = ModelManager()
+        self._backend = DeviceManager()
         self._model_mem_usage_map: Dict[str, int] = (
             {}
         )  # store model memory usage for each model
@@ -85,22 +86,30 @@ class InferenceManager:
         self._result_handler_thread.start()
         self._pool_controller = PoolController(self._result_queue)
 
-    def load_model(self, req: TLoadModelReq) -> TSStatus:
-        devices_to_be_processed = []
-        devices_not_to_be_processed = []
-        for device_id in req.deviceIdList:
+    def load_model(self, existing_model_id: str, device_id_list: list[torch.device]) -> TSStatus:
+        """
+        Load a model to specified devices.
+        Args:
+            existing_model_id (str): The ID of the model to be loaded.
+            device_id_list (list[torch.device]): List of device IDs to load the model onto.
+        Returns:
+            TSStatus: The status of the load model operation.
+        """
+        devices_to_be_processed: list[torch.device] = []
+        devices_not_to_be_processed: list[torch.device] = []
+        for device_id in device_id_list:
             if self._pool_controller.has_request_pools(
-                model_id=req.existingModelId, device_id=device_id
+                model_id=existing_model_id, device_id=device_id
             ):
                 devices_not_to_be_processed.append(device_id)
             else:
                 devices_to_be_processed.append(device_id)
         if len(devices_to_be_processed) > 0:
             self._pool_controller.load_model(
-                model_id=req.existingModelId, device_id_list=devices_to_be_processed
+                model_id=existing_model_id, device_id_list=devices_to_be_processed
             )
         logger.info(
-            f"[Inference] Start loading model [{req.existingModelId}] to devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they have already loaded this model."
+            f"[Inference] Start loading model [{existing_model_id}] to devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they have already loaded this model."
         )
         return TSStatus(
             code=TSStatusCode.SUCCESS_STATUS.value,
@@ -135,7 +144,7 @@ class InferenceManager:
             deviceLoadedModelsMap=self._pool_controller.show_loaded_models(
                 req.deviceIdList
                 if len(req.deviceIdList) > 0
-                else get_available_devices()
+                else self._backend.str_device_ids_with_cpu()
             ),
         )
 

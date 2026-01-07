@@ -20,7 +20,6 @@ from typing import Dict, List, Optional
 
 import torch
 
-from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     AbstractPoolScheduler,
@@ -33,11 +32,9 @@ from iotdb.ainode.core.manager.utils import (
     INFERENCE_EXTRA_MEMORY_RATIO,
     INFERENCE_MEMORY_USAGE_RATIO,
     MODEL_MEM_USAGE_MAP,
-    estimate_pool_size,
     evaluate_system_resources,
 )
 from iotdb.ainode.core.model.model_info import ModelInfo
-from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 logger = Logger()
 
@@ -74,7 +71,7 @@ def _estimate_shared_pool_size_by_total_mem(
     usable_mem = total_mem * INFERENCE_MEMORY_USAGE_RATIO
     if usable_mem <= 0:
         logger.error(
-            f"[Inference][Device-{device}] No usable memory on device. total={total_mem / 1024 ** 2:.2f} MB, usable={usable_mem / 1024 ** 2:.2f} MB"
+            f"[Inference][{device}] No usable memory on device. total={total_mem / 1024 ** 2:.2f} MB, usable={usable_mem / 1024 ** 2:.2f} MB"
         )
 
     # Each model gets an equal share of the TOTAL memory
@@ -87,39 +84,32 @@ def _estimate_shared_pool_size_by_total_mem(
         pool_num = int(per_model_share // mem_usages[model_info.model_id])
         if pool_num <= 0:
             logger.warning(
-                f"[Inference][Device-{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_info.model_id}, no pool will be scheduled for this model. "
+                f"[Inference][{device}] Not enough TOTAL memory to guarantee at least 1 pool for model {model_info.model_id}, no pool will be scheduled for this model. "
                 f"Per-model share={per_model_share / 1024 ** 2:.2f} MB, need>={mem_usages[model_info.model_id] / 1024 ** 2:.2f} MB"
             )
         allocation[model_info.model_id] = pool_num
     logger.info(
-        f"[Inference][Device-{device}] Shared pool allocation (by TOTAL memory): {allocation}"
+        f"[Inference][{device}] Shared pool allocation (by TOTAL memory): {allocation}"
     )
     return allocation
 
 
 class BasicPoolScheduler(AbstractPoolScheduler):
     """
-    A basic scheduler to init the request pools. In short, different kind of models will equally share the available resource of the located device, and scale down actions are always ahead of scale up.
+    A basic scheduler to init the request pools. In short,
+    different kind of models will equally share the available resource of the located device,
+    and scale down actions are always ahead of scale up.
     """
 
-    def __init__(self, request_pool_map: Dict[str, Dict[str, PoolGroup]]):
+    def __init__(self, request_pool_map: Dict[str, Dict[torch.device, PoolGroup]]):
         super().__init__(request_pool_map)
         self._model_manager = ModelManager()
 
     def schedule(self, model_id: str) -> List[ScaleAction]:
-        """
-        Schedule a scaling action for the given model_id.
-        """
-        if model_id not in self._request_pool_map:
-            pool_num = estimate_pool_size(self.DEFAULT_DEVICE, model_id)
-            if pool_num <= 0:
-                raise InferenceModelInternalException(
-                    f"Not enough memory to run model {model_id}."
-                )
-            return [ScaleAction(ScaleActionType.SCALE_UP, pool_num, model_id)]
+        pass
 
     def schedule_load_model_to_device(
-        self, model_info: ModelInfo, device_id: str
+        self, model_info: ModelInfo, device_id: torch.device
     ) -> List[ScaleAction]:
         existing_model_infos = [
             self._model_manager.get_model_info(existing_model_id)
@@ -127,7 +117,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
             if existing_model_id != model_info.model_id and device_id in pool_group_map
         ]
         allocation_result = _estimate_shared_pool_size_by_total_mem(
-            device=convert_device_id_to_torch_device(device_id),
+            device=device_id,
             existing_model_infos=existing_model_infos,
             new_model_info=model_info,
         )
@@ -136,7 +126,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         )
 
     def schedule_unload_model_from_device(
-        self, model_info: ModelInfo, device_id: str
+        self, model_info: ModelInfo, device_id: torch.device
     ) -> List[ScaleAction]:
         existing_model_infos = [
             self._model_manager.get_model_info(existing_model_id)
@@ -145,7 +135,7 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         ]
         allocation_result = (
             _estimate_shared_pool_size_by_total_mem(
-                device=convert_device_id_to_torch_device(device_id),
+                device=device_id,
                 existing_model_infos=existing_model_infos,
                 new_model_info=None,
             )
@@ -159,10 +149,11 @@ class BasicPoolScheduler(AbstractPoolScheduler):
         )
 
     def _convert_allocation_result_to_scale_actions(
-        self, allocation_result: Dict[str, int], device_id: str
+        self, allocation_result: Dict[str, int], device_id: torch.device
     ) -> List[ScaleAction]:
         """
-        Convert the model allocation result to List[ScaleAction], where the scale down actions are always ahead of the scale up.
+        Convert the model allocation result to List[ScaleAction],
+        where the scale down actions are always ahead of the scale up.
         """
         actions = []
         for model_id, target_num in allocation_result.items():
