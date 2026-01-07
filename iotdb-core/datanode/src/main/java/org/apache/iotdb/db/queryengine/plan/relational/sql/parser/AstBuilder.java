@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -291,7 +290,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -305,7 +303,6 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -338,10 +335,6 @@ import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_PERCENTILE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -855,15 +848,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final List<String> columnNames =
         identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
-    for (int i = 0; i < columnNames.size(); i++) {
-      if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
-        if (timeColumnIndex == -1) {
-          timeColumnIndex = i;
-        } else {
-          throw new SemanticException("One row should only have one time value");
+
+    // retrieve the table schema to identify the actual time column
+    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    List<TsTableColumnSchema> timeColumnCandidates =
+        table.getColumnList().stream()
+            .filter(col -> col.getColumnCategory() == TIME)
+            .collect(toList());
+    if (timeColumnCandidates.size() != 1) {
+      throw new SemanticException("the table should only have one column found with TIME category");
+    } else {
+      // locate the time column index in the input identifiers if time column exists in the schema
+      for (int i = 0; i < columnNames.size(); i++) {
+        if (timeColumnCandidates.get(0).getColumnName().equalsIgnoreCase(columnNames.get(i))) {
+          if (timeColumnIndex == -1) {
+            timeColumnIndex = i;
+          } else {
+            throw new SemanticException("One row should only have one time value");
+          }
         }
       }
     }
+
     if (timeColumnIndex != -1) {
       columnNames.remove(timeColumnIndex);
     }
@@ -3417,29 +3423,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
-    // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
-    // So do last and last_by.
-    if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
-        || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
-      if (arguments.size() == 1) {
-        appendTimeArgument(arguments);
-      } else if (arguments.size() == 2) {
-        check(
-            checkArgumentIsTime(arguments.get(1)),
-            "The second argument of 'first' or 'last' function must be 'time'",
-            ctx);
-      }
-    } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
-        || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
-      if (arguments.size() == 2) {
-        appendTimeArgument(arguments);
-      } else if (arguments.size() == 3) {
-        check(
-            checkArgumentIsTime(arguments.get(2)),
-            "The third argument of 'first_by' or 'last_by' function must be 'time'",
-            ctx);
-      }
-    } else if (name.toString().equalsIgnoreCase(APPROX_COUNT_DISTINCT)) {
+    if (name.toString().equalsIgnoreCase(APPROX_COUNT_DISTINCT)) {
       if (arguments.size() == 2
           && !(arguments.get(1) instanceof DoubleLiteral
               || arguments.get(1) instanceof LongLiteral
@@ -3465,30 +3449,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new FunctionCall(getLocation(ctx), name, window, nulls, distinct, mode, arguments);
-  }
-
-  private void appendTimeArgument(List<Expression> arguments) {
-    if (arguments.get(0) instanceof DereferenceExpression) {
-      arguments.add(
-          new DereferenceExpression(
-              ((DereferenceExpression) arguments.get(0)).getBase(),
-              new Identifier(
-                  TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH))));
-    } else {
-      arguments.add(
-          new Identifier(TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
-    }
-  }
-
-  private boolean checkArgumentIsTime(Expression argument) {
-    if (argument instanceof DereferenceExpression) {
-      return ((DereferenceExpression) argument)
-          .getField()
-          .get()
-          .toString()
-          .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING);
-    }
-    return argument.toString().equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING);
   }
 
   @Override

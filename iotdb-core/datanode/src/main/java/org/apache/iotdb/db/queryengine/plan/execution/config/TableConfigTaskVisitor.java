@@ -580,8 +580,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       table.addProp(TsTable.COMMENT_KEY, node.getComment());
     }
 
+    // check if the time column has been specified
+    long timeColumnCount =
+        node.getElements().stream()
+            .filter(
+                columnDefinition ->
+                    columnDefinition.getColumnCategory() == TsTableColumnCategory.TIME)
+            .count();
+    if (timeColumnCount > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeColumnCount == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      table.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    }
+
     // TODO: Place the check at statement analyzer
-    boolean hasTimeColumn = false;
     final Set<String> sourceNameSet = new HashSet<>();
     boolean hasObject = false;
     for (final ColumnDefinition columnDefinition : node.getElements()) {
@@ -590,15 +604,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final TSDataType dataType = getDataType(columnDefinition.getType());
       hasObject |= dataType == TSDataType.OBJECT;
       final String comment = columnDefinition.getComment();
-      if (checkTimeColumnIdempotent(category, columnName, dataType, comment, table)
-          && !hasTimeColumn) {
-        hasTimeColumn = true;
-        continue;
-      }
+
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
+
+      //  allow the user create time column
+      if (category == TsTableColumnCategory.TIME) {
+        validateAndGenerateTimeColumn(columnName, dataType, comment, table);
+        continue;
+      }
+
       final TsTableColumnSchema schema =
           TableHeaderSchemaValidator.generateColumnSchema(
               category,
@@ -627,6 +644,25 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     return new Pair<>(database, table);
   }
 
+  private void validateAndGenerateTimeColumn(
+      final String columnName,
+      final TSDataType dataType,
+      final String comment,
+      final TsTable table) {
+
+    if (dataType == TSDataType.TIMESTAMP) {
+      final TsTableColumnSchema timeColumnSchema =
+          new TimeColumnSchema(columnName, TSDataType.TIMESTAMP);
+      if (Objects.nonNull(comment)) {
+        timeColumnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+      }
+      table.addColumnSchema(timeColumnSchema);
+
+    } else {
+      throw new SemanticException("The time column's type shall be 'timestamp'.");
+    }
+  }
+
   @Override
   protected IConfigTask visitAlterColumnDataType(
       AlterColumnDataType node, MPPQueryContext context) {
@@ -645,34 +681,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         columnName,
         getDataType(dataType),
         node.isView());
-  }
-
-  private boolean checkTimeColumnIdempotent(
-      final TsTableColumnCategory category,
-      final String columnName,
-      final TSDataType dataType,
-      final String comment,
-      final TsTable table) {
-    if (category == TsTableColumnCategory.TIME || columnName.equals(TIME_COLUMN_NAME)) {
-      if (category == TsTableColumnCategory.TIME
-          && columnName.equals(TIME_COLUMN_NAME)
-          && dataType == TSDataType.TIMESTAMP) {
-        if (Objects.nonNull(comment)) {
-          final TsTableColumnSchema columnSchema =
-              new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
-          columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
-          table.addColumnSchema(columnSchema);
-        }
-        return true;
-      } else if (dataType == TSDataType.TIMESTAMP) {
-        throw new SemanticException(
-            "The time column category shall be bounded with column name 'time'.");
-      } else {
-        throw new SemanticException("The time column's type shall be 'timestamp'.");
-      }
-    }
-
-    return false;
   }
 
   @Override
