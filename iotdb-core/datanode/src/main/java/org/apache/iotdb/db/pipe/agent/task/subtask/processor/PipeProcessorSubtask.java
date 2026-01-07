@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
@@ -215,15 +216,17 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.info(
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-          e);
+      PipeLogger.log(
+          LOGGER::info,
+          e,
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
       return false;
     } catch (final Exception e) {
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
-        LOGGER.info(
-            "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-            e);
+        PipeLogger.log(
+            LOGGER::info,
+            e,
+            "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
         return false;
       }
       if (!isClosed.get()) {
@@ -237,7 +240,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                 ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
+        LOGGER.info(
+            "Exception in pipe event processing, ignored because pipe is dropped.{}",
+            e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
@@ -307,15 +312,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public int getRegionId() {
     return regionId;
-  }
-
-  public int getEventCount(final boolean ignoreHeartbeat) {
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
   }
 
   //////////////////////////// Error report ////////////////////////////
