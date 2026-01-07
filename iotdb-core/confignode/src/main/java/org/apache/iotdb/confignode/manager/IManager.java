@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -654,6 +655,8 @@ public interface IManager {
   TSStatus dropSchemaTemplate(String templateName);
 
   TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
+
+  TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req);
 
   /** Delete timeseries. */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);

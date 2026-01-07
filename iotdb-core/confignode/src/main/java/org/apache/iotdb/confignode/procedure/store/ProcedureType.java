@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -45,6 +46,7 @@ public enum ProcedureType {
 
   /** Timeseries */
   DELETE_TIMESERIES_PROCEDURE((short) 300),
+  ALTER_ENCODING_COMPRESSOR_PROCEDURE((short) 301),
 
   /** Trigger */
   CREATE_TRIGGER_PROCEDURE((short) 400),
@@ -110,6 +112,7 @@ public enum ProcedureType {
   PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE((short) 1409),
   PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE((short) 1410),
   PIPE_ENRICHED_SET_TTL_PROCEDURE((short) 1411),
+  PIPE_ENRICHED_ALTER_ENCODING_COMPRESSOR_PROCEDURE((short) 148),
 
   /** Subscription */
   CREATE_TOPIC_PROCEDURE((short) 1500),

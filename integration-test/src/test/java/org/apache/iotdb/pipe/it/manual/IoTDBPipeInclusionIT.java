@@ -91,8 +91,18 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
 
       TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("insert into root.ln.wf01.wt01(time,status) values(now(),false)", "flush"),
+          Arrays.asList(
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
+              "insert into root.ln.wf01.wt01(time,status) values(now(),false)",
+              "flush"),
           null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());

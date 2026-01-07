@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -207,6 +208,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
+
+  SettableFuture<ConfigTaskResult> alterEncodingCompressor(
+      String queryId, AlterEncodingCompressorStatement alterEncodingCompressorStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);

@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -994,6 +995,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.alterSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterEncodingCompressor(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.write.req;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.ActivateTemplateInClusterPlanImpl;
@@ -77,6 +78,8 @@ public class SchemaRegionWritePlanFactory {
         return new PreDeleteTimeSeriesPlanImpl();
       case ROLLBACK_PRE_DELETE_TIMESERIES:
         return new RollbackPreDeleteTimeSeriesPlanImpl();
+      case ALTER_ENCODING_COMPRESSOR:
+        return AlterEncodingCompressorNode.MOCK_INSTANCE;
       case PRE_DEACTIVATE_TEMPLATE:
         return new PreDeactivateTemplatePlanImpl();
       case ROLLBACK_PRE_DEACTIVATE_TEMPLATE:

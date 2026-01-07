@@ -69,7 +69,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean skipIfNoPrivileges) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         username,
@@ -81,7 +82,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        skipIfNoPrivileges);
   }
 
   @Override

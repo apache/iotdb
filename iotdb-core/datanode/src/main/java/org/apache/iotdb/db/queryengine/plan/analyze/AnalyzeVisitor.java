@@ -3228,7 +3228,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitShowStorageGroup(
+  public Analysis visitShowDatabase(
       ShowDatabaseStatement showDatabaseStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(showDatabaseStatement);
