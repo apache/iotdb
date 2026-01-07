@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -91,8 +91,8 @@ public class CompactionTableSchemaCollector {
         continue;
       }
 
-      EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(
-          maxTsFileSetEndVersionAndAssociatedResource.getLeft());
+      EvolvedSchema evolvedSchema =
+          resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndAssociatedResource.getLeft());
 
       for (Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
         String tableName = entry.getKey();
@@ -102,6 +102,7 @@ public class CompactionTableSchemaCollector {
         }
         if (evolvedSchema != null) {
           currentTableSchema = evolvedSchema.rewriteToFinal(currentTableSchema);
+          tableName = currentTableSchema.getTableName();
         }
 
         // merge all id columns, measurement schema will be generated automatically when end chunk

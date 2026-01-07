@@ -121,11 +121,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   @Override
   protected void calculateSourceFilesAndTargetFiles() throws IOException {
     filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
-    TsFileResource targetResource = new TsFileResource(generateTargetFile(),
-        TsFileResourceStatus.COMPACTING);
+    TsFileResource targetResource =
+        new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
     targetResource.setTsFileManager(tsFileManager);
-    filesView.targetFilesInLog =
-        Collections.singletonList(targetResource);
+    filesView.targetFilesInLog = Collections.singletonList(targetResource);
     filesView.targetFilesInPerformer = filesView.targetFilesInLog;
   }
 

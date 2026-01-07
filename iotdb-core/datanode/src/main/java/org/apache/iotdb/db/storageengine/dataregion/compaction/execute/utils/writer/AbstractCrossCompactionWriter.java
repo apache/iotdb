@@ -80,7 +80,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    this(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam(), Long.MIN_VALUE);
+    this(
+        targetResources,
+        seqFileResources,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
   }
 
   protected AbstractCrossCompactionWriter(
@@ -106,7 +110,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
               targetResources.get(i),
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
-              this.encryptParameter, maxTsFileSetEndVersion));
+              this.encryptParameter,
+              maxTsFileSetEndVersion));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -270,7 +275,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void setSchemaForAllTargetFile(List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+  public void setSchemaForAllTargetFile(
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     for (int i = 0; i < targetFileWriters.size(); i++) {
       CompactionTsFileWriter compactionTsFileWriter = targetFileWriters.get(i);
       Schema schema = schemas.get(i);

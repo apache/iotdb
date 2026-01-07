@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -55,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -83,7 +85,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
-      boolean isSeq)
+      boolean isSeq,
+      long maxTsFileSetEndVersion)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -94,9 +97,13 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
         // we should not ignore the non-exist of device in TsFileMetadata
-        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
         IDeviceID deviceId = seriesPath.getDeviceId();
         String measurement = seriesPath.getMeasurement();
+        if (evolvedSchema != null) {
+          measurement = evolvedSchema.getOriginalColumnName(deviceId.getTableName(), measurement);
+          deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+        }
 
         timeSeriesMetadata =
             TimeSeriesMetadataCache.getInstance()
@@ -186,7 +193,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long maxTsFileSetEndVersion)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -196,7 +204,7 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows, maxTsFileSetEndVersion);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -262,7 +270,8 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      long maxTsFileSetEndVersion)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -274,6 +283,15 @@ public class FileLoaderUtils {
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();
+
+    EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    if (evolvedSchema != null) {
+      IDeviceID finalDeviceId = deviceId;
+      valueMeasurementList = valueMeasurementList.stream().map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m)).collect(
+          Collectors.toList());
+      allSensors = allSensors.stream().map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m)).collect(Collectors.toSet());
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+    }
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -296,7 +314,7 @@ public class FileLoaderUtils {
                 resource,
                 timeColumn,
                 Collections.emptyList(),
-                alignedPath,
+                deviceId,
                 context,
                 globalTimeFilter,
                 false);
@@ -325,7 +343,7 @@ public class FileLoaderUtils {
                   resource,
                   timeColumn,
                   valueTimeSeriesMetadataList,
-                  alignedPath,
+                  deviceId,
                   context,
                   globalTimeFilter,
                   ignoreAllNullRows);
@@ -339,7 +357,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       TimeseriesMetadata timeColumnMetadata,
       List<TimeseriesMetadata> valueColumnMetadataList,
-      AlignedFullPath alignedPath,
+      IDeviceID deviceID,
       QueryContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows) {
@@ -348,7 +366,7 @@ public class FileLoaderUtils {
     // deal with time column
     List<ModEntry> timeModifications =
         context.getPathModifications(
-            resource, alignedPath.getDeviceId(), timeColumnMetadata.getMeasurementId());
+            resource, deviceID, timeColumnMetadata.getMeasurementId());
     // all rows are deleted, just return null to skip device data in this file
     if (ModificationUtils.isAllDeletedByMods(
         timeModifications,
@@ -371,7 +389,7 @@ public class FileLoaderUtils {
       if (valueColumnMetadata != null) {
         List<ModEntry> modifications =
             context.getPathModifications(
-                resource, alignedPath.getDeviceId(), valueColumnMetadata.getMeasurementId());
+                resource, deviceID, valueColumnMetadata.getMeasurementId());
         valueColumnMetadata.setModified(!modifications.isEmpty());
         valueColumnsModifications.add(modifications);
         modified = (modified || !modifications.isEmpty());

@@ -19,26 +19,28 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
-import java.io.IOException;
-import java.util.function.Function;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 
+import java.io.IOException;
+import java.util.function.Function;
+
 public class TransformedTsFileDeviceIterator extends TsFileDeviceIterator {
 
   protected Function<IDeviceID, IDeviceID> transformer;
 
-  public TransformedTsFileDeviceIterator(TsFileSequenceReader reader, Function<IDeviceID, IDeviceID> transformer)
-      throws IOException {
+  public TransformedTsFileDeviceIterator(
+      TsFileSequenceReader reader, Function<IDeviceID, IDeviceID> transformer) throws IOException {
     super(reader);
     this.transformer = transformer;
   }
 
-  public TransformedTsFileDeviceIterator(TsFileSequenceReader reader, String tableName, Function<IDeviceID, IDeviceID> transformer)
+  public TransformedTsFileDeviceIterator(
+      TsFileSequenceReader reader, String tableName, Function<IDeviceID, IDeviceID> transformer)
       throws IOException {
-    super(reader, tableName);
+    super(reader, tableName, null);
     this.transformer = transformer;
   }
 

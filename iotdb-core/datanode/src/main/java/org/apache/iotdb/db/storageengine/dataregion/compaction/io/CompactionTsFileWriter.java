@@ -65,12 +65,19 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   @TestOnly
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    this(new TsFileResource(file), maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam(),
+    this(
+        new TsFileResource(file),
+        maxMetadataSize,
+        type,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
         Long.MIN_VALUE);
   }
 
   public CompactionTsFileWriter(
-      TsFileResource tsFile, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter,
+      TsFileResource tsFile,
+      long maxMetadataSize,
+      CompactionType type,
+      EncryptParameter encryptParameter,
       long maxTsFileSetEndVersion)
       throws IOException {
     super(tsFile.getTsFile(), maxMetadataSize, encryptParameter);
@@ -101,7 +108,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     if (!chunkWriter.isEmpty()) {
       isEmptyTargetFile = false;
     }
-    chunkWriter.writeToFileWriter(this);
+    chunkWriter.writeToFileWriter(
+        this,
+        evolvedSchema == null
+            ? null
+            : measurementName ->
+                evolvedSchema.getOriginalColumnName(
+                    evolvedSchema.getFinalTableName(currentDeviceId.getTableName()), measurementName));
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(
@@ -115,6 +128,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     if (chunkMetadata.getNumOfPoints() != 0) {
       isEmptyTargetFile = false;
+    }
+    if (evolvedSchema != null) {
+      chunk
+          .getHeader()
+          .setMeasurementID(
+              evolvedSchema.getOriginalColumnName(
+                  currentDeviceId.getTableName(), chunk.getHeader().getMeasurementID()));
     }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
@@ -133,6 +153,10 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       TSEncoding encodingType,
       Statistics<? extends Serializable> statistics)
       throws IOException {
+    if (evolvedSchema != null) {
+      measurementId =
+          evolvedSchema.getOriginalColumnName(currentDeviceId.getTableName(), measurementId);
+    }
     long beforeOffset = this.getPos();
     super.writeEmptyValueChunk(
         measurementId, compressionType, tsDataType, encodingType, statistics);
@@ -150,6 +174,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public int startChunkGroup(IDeviceID deviceId) throws IOException {
+    if (evolvedSchema != null) {
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+    }
     currentDeviceId = deviceId;
     return super.startChunkGroup(deviceId);
   }

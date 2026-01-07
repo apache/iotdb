@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
@@ -43,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class TsFileManager {
   private final String storageGroupName;
@@ -518,20 +518,25 @@ public class TsFileManager {
   public void addTsFileSet(TsFileSet newSet, long partitionId) {
     writeLock("addTsFileSet");
     try {
-      List<TsFileSet> tsFileSetList = tsfileSets.computeIfAbsent(partitionId,
-          p -> new ArrayList<>());
+      List<TsFileSet> tsFileSetList =
+          tsfileSets.computeIfAbsent(partitionId, p -> new ArrayList<>());
       tsFileSetList.add(newSet);
     } finally {
       writeUnlock();
     }
   }
 
-  public List<TsFileSet> getTsFileSet(long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
+  public List<TsFileSet> getTsFileSet(
+      long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
     readLock();
     try {
       List<TsFileSet> tsFileSetList = tsfileSets.get(partitionId);
-      return tsFileSetList.stream().filter(s -> s.getEndVersion() < maxFileVersionExcluded && s.getEndVersion() >= minFileVersionIncluded).collect(
-          Collectors.toList());
+      return tsFileSetList.stream()
+          .filter(
+              s ->
+                  s.getEndVersion() < maxFileVersionExcluded
+                      && s.getEndVersion() >= minFileVersionIncluded)
+          .collect(Collectors.toList());
     } finally {
       readUnlock();
     }

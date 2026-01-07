@@ -130,8 +130,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     Schema schema = CompactionTableSchemaCollector.copySchema(schemas.get(0));
     TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
     fileWriter.getTsFileResource().setTsFileManager(minVersionResource.getTsFileManager());
-    EvolvedSchema evolvedSchema = fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);
-    fileWriter.setSchema(evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new));
+    EvolvedSchema evolvedSchema =
+        fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    fileWriter.setSchema(evolvedSchema != null ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new) : schema);
   }
 
   @Override
@@ -184,7 +185,8 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void setSchemaForAllTargetFile(List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+  public void setSchemaForAllTargetFile(
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.schemas = schemas;
     this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }

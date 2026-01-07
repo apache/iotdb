@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import java.sql.SQLException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
@@ -50,6 +49,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -328,7 +328,8 @@ public class IoTDBLoadTsFileIT {
 
       // cannot query using INT322INT32
       try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
+          statement.executeQuery(
+              String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
         fail();
       } catch (SQLException e) {
         assertEquals("616: Column 'int322int32' cannot be resolved", e.getMessage());
@@ -336,7 +337,8 @@ public class IoTDBLoadTsFileIT {
 
       // can query with INT322INT32_NEW
       try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
+          statement.executeQuery(
+              String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
         if (resultSet.next()) {
           Assert.assertEquals(lineCount, resultSet.getLong(1));
         } else {

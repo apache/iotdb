@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
@@ -74,6 +72,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FastCompactionPerformer
     implements ICrossCompactionPerformer, ISeqCompactionPerformer, IUnseqCompactionPerformer {
@@ -108,7 +108,7 @@ public class FastCompactionPerformer
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
-      List<TsFileResource> targetFiles, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      List<TsFileResource> targetFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
@@ -122,14 +122,14 @@ public class FastCompactionPerformer
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       List<TsFileResource> targetFiles,
-      EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      EncryptParameter encryptParameter) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.targetFiles = targetFiles;
@@ -140,7 +140,9 @@ public class FastCompactionPerformer
       isCrossCompaction = true;
     }
     this.encryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(
+            Stream.concat(seqFiles.stream(), unseqFiles.stream()).collect(Collectors.toList()));
   }
 
   @TestOnly
@@ -162,22 +164,30 @@ public class FastCompactionPerformer
   @Override
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
+    List<TsFileResource> allSourceFiles =
+        Stream.concat(seqFiles.stream(), unseqFiles.stream())
+            .sorted(TsFileResource::compareFileName)
+            .collect(Collectors.toList());
+    Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(allSourceFiles);
+
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(
-                    targetFiles, seqFiles, readerCacheMap, encryptParameter)
+                    targetFiles,
+                    seqFiles,
+                    readerCacheMap,
+                    encryptParameter,
+                    maxTsFileSetEndVersionAndMinResource.left)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
-
-      List<TsFileResource> allSourceFiles = Stream.concat(seqFiles.stream(), unseqFiles.stream())
-          .sorted(TsFileResource::compareFileName)
-          .collect(Collectors.toList());
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource = TsFileResource.getMaxTsFileSetEndVersionAndMinResource(
-          allSourceFiles);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
-              seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap(),
+              seqFiles,
+              unseqFiles,
+              readerCacheMap,
+              deviceIterator.getDeprecatedTableSchemaMap(),
               maxTsFileSetEndVersionAndMinResource);
 
       compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileSetEndVersionAndMinResource);

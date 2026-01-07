@@ -850,8 +850,8 @@ public class AbstractCompactionTest {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
         boolean isAlign = iDeviceIDBooleanPair.getRight();
-        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice(
-            new Pair<>(Long.MIN_VALUE, null));
+        Map<String, MeasurementSchema> schemaMap =
+            deviceIterator.getAllSchemasOfCurrentDevice(new Pair<>(Long.MIN_VALUE, null));
         IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
         List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
         if (measurementSchemas.isEmpty()) {

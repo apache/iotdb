@@ -97,12 +97,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
-    long maxTsFileSetEndVersion = this.tsFileResourcesSortedByDesc.stream().mapToLong(
-        // max endVersion of all filesets of a TsFile
-        resource -> resource.getTsFileSets().stream().mapToLong(TsFileSet::getEndVersion).max()
-            .orElse(Long.MAX_VALUE))
-        // overall max endVersion
-        .max().orElse(Long.MAX_VALUE);
+    long maxTsFileSetEndVersion =
+        this.tsFileResourcesSortedByDesc.stream()
+            .mapToLong(
+                // max endVersion of all filesets of a TsFile
+                resource ->
+                    resource.getTsFileSets().stream()
+                        .mapToLong(TsFileSet::getEndVersion)
+                        .max()
+                        .orElse(Long.MAX_VALUE))
+            // overall max endVersion
+            .max()
+            .orElse(Long.MAX_VALUE);
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         CompactionTsFileReader reader =
@@ -114,8 +120,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         TsFileDeviceIterator tsFileDeviceIterator;
         EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
         if (evolvedSchema != null) {
-          tsFileDeviceIterator = new ReorderedTsFileDeviceIterator(reader,
-              evolvedSchema::rewriteToFinal);
+          tsFileDeviceIterator =
+              new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
         } else {
           tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
         }
@@ -144,12 +150,35 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
+
+    long maxTsFileSetEndVersion =
+        this.tsFileResourcesSortedByDesc.stream()
+            .mapToLong(
+                // max endVersion of all filesets of a TsFile
+                resource ->
+                    resource.getTsFileSets().stream()
+                        .mapToLong(TsFileSet::getEndVersion)
+                        .max()
+                        .orElse(Long.MAX_VALUE))
+            // overall max endVersion
+            .max()
+            .orElse(Long.MAX_VALUE);
+
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(tsFileResource.getTsFilePath(), tsFileResource.getTsFileID(), true);
       readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+
+      TsFileDeviceIterator tsFileDeviceIterator;
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      if (evolvedSchema != null) {
+        tsFileDeviceIterator =
+            new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
+      } else {
+        tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      }
+      deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
     }
   }
 
@@ -171,6 +200,19 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
 
+    long maxTsFileSetEndVersion =
+        this.tsFileResourcesSortedByDesc.stream()
+            .mapToLong(
+                // max endVersion of all filesets of a TsFile
+                resource ->
+                    resource.getTsFileSets().stream()
+                        .mapToLong(TsFileSet::getEndVersion)
+                        .max()
+                        .orElse(Long.MAX_VALUE))
+            // overall max endVersion
+            .max()
+            .orElse(Long.MAX_VALUE);
+
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
       type = CompactionType.CROSS_COMPACTION;
@@ -187,11 +229,20 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               type,
               EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
       readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+
+      TsFileDeviceIterator tsFileDeviceIterator;
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      if (evolvedSchema != null) {
+        tsFileDeviceIterator =
+            new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
+      } else {
+        tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      }
+      deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
     }
   }
 
-  public boolean hasNextDevice() {
+  public boolean hasNextDevice() throws IOException {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
       hasNext =
@@ -212,7 +263,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @return Pair of device full path and whether this device is aligned
    */
   @SuppressWarnings({"squid:S135", "java:S2259"})
-  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException {
+  public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException, IOException {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<IDeviceID, Boolean> minDevice = null;
     // get the device from source files sorted from the newest to the oldest by version
@@ -292,24 +343,25 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           timeseriesMetadataList,
           deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
-          true);
-      EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(
-          maxTsFileSetEndVersionAndMinResource.left);
+          true,
+          null);
+      EvolvedSchema evolvedSchema =
+          resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.left);
       if (evolvedSchema != null) {
         // the device has been rewritten, should get the original name for rewriting
-        evolvedSchema.rewriteToFinal(evolvedSchema.getOriginalTableName(currentDevice.left.getTableName()), timeseriesMetadataList);
+        evolvedSchema.rewriteToFinal(
+            evolvedSchema.getOriginalTableName(currentDevice.left.getTableName()),
+            timeseriesMetadataList);
       }
 
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
             && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
-          MeasurementSchema measurementSchema = reader.getMeasurementSchema(
-              timeseriesMetadata.getChunkMetadataList());
+          MeasurementSchema measurementSchema =
+              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList());
           // the column may be renamed
           measurementSchema.setMeasurementName(timeseriesMetadata.getMeasurementId());
-          schemaMap.put(
-              timeseriesMetadata.getMeasurementId(),
-              measurementSchema);
+          schemaMap.put(timeseriesMetadata.getMeasurementId(), measurementSchema);
         }
       }
     }

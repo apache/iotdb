@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.util.function.Function;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
@@ -28,13 +26,13 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.enums.ColumnCategory;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,8 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.apache.tsfile.write.schema.Schema;
 
 public class EvolvedSchema {
   // the evolved table names after applying all schema evolution operations
@@ -106,7 +104,7 @@ public class EvolvedSchema {
     return finalToOriginalTableNames.getOrDefault(finalTableName, finalTableName);
   }
 
-  private String getFinalTableName(String originalTableName) {
+  public String getFinalTableName(String originalTableName) {
     return originalToFinalTableNames.getOrDefault(originalTableName, originalTableName);
   }
 
@@ -232,10 +230,9 @@ public class EvolvedSchema {
       String originalTableName, List<TimeseriesMetadata> timeseriesMetadataList) {
     timeseriesMetadataList.forEach(
         timeseriesMetadata -> {
-          String finalColumnName = getFinalColumnName(originalTableName,
-              timeseriesMetadata.getMeasurementId());
-          timeseriesMetadata.setMeasurementId(
-              finalColumnName);
+          String finalColumnName =
+              getFinalColumnName(originalTableName, timeseriesMetadata.getMeasurementId());
+          timeseriesMetadata.setMeasurementId(finalColumnName);
         });
   }
 
@@ -263,11 +260,15 @@ public class EvolvedSchema {
               getOriginalColumnName(
                   tableSchema.getTableName(), measurementSchema.getMeasurementName()),
               measurementSchema.getType(),
-              measurementSchema.getEncodingType(), measurementSchema.getCompressor()));
+              measurementSchema.getEncodingType(),
+              measurementSchema.getCompressor()));
       columnCategories.add(tableSchema.getColumnTypes().get(i));
     }
 
-    return new TableSchema(originalTableName, measurementSchemas, columnCategories);
+    TableSchema schema = new TableSchema(originalTableName, measurementSchemas,
+        columnCategories);
+    schema.setUpdatable(tableSchema.isUpdatable());
+    return schema;
   }
 
   public TableSchema rewriteToFinal(TableSchema tableSchema) {
@@ -288,7 +289,10 @@ public class EvolvedSchema {
       columnCategories.add(tableSchema.getColumnTypes().get(i));
     }
 
-    return new TableSchema(finalTableName, measurementSchemas, columnCategories);
+    TableSchema schema = new TableSchema(finalTableName, measurementSchemas,
+        columnCategories);
+    schema.setUpdatable(tableSchema.isUpdatable());
+    return schema;
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
@@ -310,6 +314,10 @@ public class EvolvedSchema {
         new LinkedHashMap<>(evolvedSchema.finalToOriginalTableNames);
     newEvolvedSchema.finalToOriginalColumnNames =
         new LinkedHashMap<>(evolvedSchema.finalToOriginalColumnNames);
+    newEvolvedSchema.originalToFinalTableNames =
+        new LinkedHashMap<>(evolvedSchema.originalToFinalTableNames);
+    newEvolvedSchema.originalToFinalColumnNames =
+        new LinkedHashMap<>(evolvedSchema.originalToFinalColumnNames);
     return newEvolvedSchema;
   }
 
@@ -322,6 +330,9 @@ public class EvolvedSchema {
         i++;
         break;
       }
+    }
+    if (i == schemas.length) {
+      return firstNotNullSchema;
     }
 
     if (firstNotNullSchema == null) {
@@ -359,7 +370,9 @@ public class EvolvedSchema {
   public Schema rewriteToOriginal(Schema schema) {
     return rewriteToOriginal(schema, null);
   }
-  public Schema rewriteToOriginal(Schema schema, Function<TableSchema, TableSchema> tableSchemaTransformer) {
+
+  public Schema rewriteToOriginal(
+      Schema schema, Function<TableSchema, TableSchema> tableSchemaTransformer) {
     Schema copySchema = new Schema();
     for (TableSchema tableSchema : schema.getTableSchemaMap().values()) {
       TableSchema originalSchema = rewriteToOriginal(tableSchema);
@@ -370,6 +383,4 @@ public class EvolvedSchema {
     }
     return copySchema;
   }
-
-
 }

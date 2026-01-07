@@ -71,7 +71,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private Schema schema = null;
 
   private final EncryptParameter firstEncryptParameter;
-  protected final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  protected Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
@@ -81,9 +81,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles,
       TsFileResource targetFile,
-      EncryptParameter encryptParameter,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
-    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter, maxTsFileSetEndVersionAndMinResource);
+      EncryptParameter encryptParameter) {
+    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
   }
 
   @TestOnly
@@ -98,12 +97,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles,
       List<TsFileResource> targetFiles,
-      EncryptParameter encryptParameter,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      EncryptParameter encryptParameter) {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
   }
 
   @TestOnly
@@ -114,10 +113,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   public ReadChunkCompactionPerformer(
-      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
   }
 
   @TestOnly
@@ -129,9 +129,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
-  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
     this.firstEncryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @Override
@@ -218,7 +217,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             targetResources.get(currentTargetFileIndex),
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
-            firstEncryptParameter, maxTsFileSetEndVersionAndMinResource.getLeft());
+            firstEncryptParameter,
+            maxTsFileSetEndVersionAndMinResource.getLeft());
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
@@ -357,6 +357,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(seqFiles);
   }
 
   @Override

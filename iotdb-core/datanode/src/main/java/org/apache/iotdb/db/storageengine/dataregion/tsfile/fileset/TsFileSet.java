@@ -23,11 +23,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSche
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 
+import org.apache.tsfile.external.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.tsfile.external.commons.io.FileUtils;
 
 /** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
@@ -65,7 +66,7 @@ public class TsFileSet implements Comparable<TsFileSet> {
     if (schemaEvolutionFile == null) {
       schemaEvolutionFile =
           new SchemaEvolutionFile(
-              fileSetsDir + File.separator + 0 + SchemaEvolutionFile.FILE_SUFFIX);
+              fileSetDir + File.separator + 0 + SchemaEvolutionFile.FILE_SUFFIX);
     }
   }
 

@@ -53,7 +53,11 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
-    super(targetResources, seqSourceResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+    super(
+        targetResources,
+        seqSourceResources,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
     this.readerMap = readerMap;
   }
 
@@ -61,9 +65,10 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       List<TsFileResource> targetResources,
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
-      EncryptParameter encryptParameter)
+      EncryptParameter encryptParameter,
+      long maxTsFileSetEndVersion)
       throws IOException {
-    super(targetResources, seqSourceResources, encryptParameter);
+    super(targetResources, seqSourceResources, encryptParameter, maxTsFileSetEndVersion);
     this.readerMap = readerMap;
   }
 
