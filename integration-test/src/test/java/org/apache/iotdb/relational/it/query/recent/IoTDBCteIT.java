@@ -38,6 +38,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -65,6 +67,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBCteIT {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCteIT.class);
   private static final String DATABASE_NAME = "testdb";
 
   private static final String[] creationSqls =
@@ -494,42 +497,68 @@ public class IoTDBCteIT {
 
                     // Execute multiple CTE queries in each thread
                     for (int j = 0; j < queriesPerThread; j++) {
-                      try {
-                        // Test different types of CTE queries
-                        String[] queries = {
-                          String.format(
-                              "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte ORDER BY deviceid",
-                              cteKeywords[j % cteKeywords.length]),
-                          String.format(
-                              "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
-                              cteKeywords[j % cteKeywords.length]),
-                          String.format(
-                              "WITH cte as %s (select * from testtb WHERE time > 1000) select count(*) as cnt from cte",
-                              cteKeywords[j % cteKeywords.length])
-                        };
+                      // Test different types of CTE queries
+                      String[] queries = {
+                        String.format(
+                            "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte ORDER BY deviceid",
+                            cteKeywords[j % cteKeywords.length]),
+                        String.format(
+                            "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
+                            cteKeywords[j % cteKeywords.length]),
+                        String.format(
+                            "WITH cte as %s (select * from testtb WHERE time > 1000) select count(*) as cnt from cte",
+                            cteKeywords[j % cteKeywords.length])
+                      };
 
-                        String query = queries[j % queries.length];
-                        ResultSet resultSet = statement.executeQuery(query);
+                      String query = queries[j % queries.length];
 
-                        // Verify results
-                        int rowCount = 0;
-                        while (resultSet.next()) {
-                          rowCount++;
+                      // Execute query with retry on MemoryNotEnoughException
+                      boolean queryFinish = false;
+                      int attempt = 0;
+                      final int maxAttempts = 2;
+
+                      while (attempt < maxAttempts && !queryFinish) {
+                        try {
+                          ResultSet resultSet = statement.executeQuery(query);
+                          // Verify results
+                          int rowCount = 0;
+                          while (resultSet.next()) {
+                            rowCount++;
+                          }
+                          totalCount.getAndAdd(rowCount);
+                          successCount.incrementAndGet();
+                          queryFinish = true;
+                        } catch (SQLException e) {
+                          attempt++;
+                          boolean isMemoryException =
+                              e.getMessage().contains("There is not enough memory");
+                          if (isMemoryException && attempt < maxAttempts) {
+                            // Retry once on MemoryNotEnoughException
+                            LOGGER.warn(
+                                "Thread {} query {} encountered MemoryNotEnoughException, retrying (attempt {}/{})",
+                                threadId,
+                                j,
+                                attempt,
+                                maxAttempts);
+                            try {
+                              Thread.sleep(100); // Brief pause before retry
+                            } catch (InterruptedException ie) {
+                              Thread.currentThread().interrupt();
+                            }
+                          } else {
+                            // No more retries or different exception
+                            failureCount.incrementAndGet();
+                            LOGGER.error(
+                                "Thread {} query {} failed: {}", threadId, j, e.getMessage());
+                            queryFinish = true; // Exit retry loop
+                          }
                         }
-                        totalCount.getAndAdd(rowCount);
-
-                        successCount.incrementAndGet();
-
-                      } catch (SQLException e) {
-                        failureCount.incrementAndGet();
-                        System.err.println(
-                            "Thread " + threadId + " query " + j + " failed: " + e.getMessage());
                       }
                     }
                   }
                 } catch (Exception e) {
                   failureCount.incrementAndGet();
-                  System.err.println("Thread " + threadId + " failed: " + e.getMessage());
+                  LOGGER.error("Thread {} failed: {}", threadId, e.getMessage());
                 } finally {
                   finishLatch.countDown();
                 }
