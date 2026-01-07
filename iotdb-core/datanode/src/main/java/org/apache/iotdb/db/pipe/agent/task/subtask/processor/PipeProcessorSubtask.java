@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
@@ -215,15 +216,17 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.info(
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-          e);
+      PipeLogger.log(
+          LOGGER::info,
+          e,
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
       return false;
     } catch (final Exception e) {
       if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
-        LOGGER.info(
-            "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-            e);
+        PipeLogger.log(
+            LOGGER::info,
+            e,
+            "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
         return false;
       }
       if (!isClosed.get()) {
