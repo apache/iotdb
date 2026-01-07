@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -75,6 +76,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,7 +86,7 @@ import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
-  private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
+  private static Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
   public TSStatus visitCreateTimeSeries(
@@ -91,7 +94,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     try {
       schemaRegion.createTimeSeries(node, -1);
     } catch (final MetadataException e) {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -118,7 +121,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         schemaRegion.createAlignedTimeSeries(node);
       }
     } catch (final MetadataException e) {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -144,7 +147,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(node.isGeneratedByPipe());
           schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
         } catch (final MetadataException e) {
-          logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+          logMetaDataException(
+              String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
           failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
       }
@@ -286,7 +290,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             RpcUtils.getStatus(
                 e.getErrorCode(), PartialPath.transformDataToString(e.getMeasurementPath())));
       } catch (final MetadataException e) {
-        logger.warn("{}: MetaData error: ", e.getMessage(), e);
+        logMetaDataException(String.format("%s: MetaData error: ", e.getMessage()), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -421,7 +425,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           break;
       }
     } catch (MetadataException e) {
-      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (IOException e) {
       logger.error("{}: IO error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -439,7 +443,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -462,7 +466,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         if (e.getErrorCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
           alreadyActivatedDeviceList.add(entry.getKey());
         } else {
-          logger.error(e.getMessage(), e);
+          logMetaDataException(e);
           statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
       }
@@ -470,7 +474,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     if (!alreadyActivatedDeviceList.isEmpty()) {
       final TemplateIsInUseException e =
           new TemplateIsInUseException(alreadyActivatedDeviceList.toString());
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
@@ -494,7 +498,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
                 "Device Template has already been activated on path %s, there's no need to activate again.",
                 entry.getKey()));
       } catch (final MetadataException e) {
-        logger.error(e.getMessage(), e);
+        logMetaDataException(e);
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
     }
@@ -513,7 +517,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
               : TSStatusCode.SUCCESS_STATUS,
           String.valueOf(preDeletedNumAndIsAllLogicalView.getLeft()));
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -525,7 +529,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.rollbackSchemaBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -537,7 +541,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.deleteTimeseriesInBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -550,7 +554,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           TSStatusCode.SUCCESS_STATUS,
           String.valueOf(schemaRegion.constructSchemaBlackListWithTemplate(node)));
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -562,7 +566,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.rollbackSchemaBlackListWithTemplate(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -574,7 +578,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.deactivateTemplateInBlackList(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -629,7 +633,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           TSStatusCode.SUCCESS_STATUS,
           String.valueOf(schemaRegion.constructLogicalViewBlackList(node.getPatternTree())));
     } catch (MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -641,7 +645,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.rollbackLogicalViewBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -652,7 +656,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.deleteLogicalView(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
-      logger.error(e.getMessage(), e);
+      logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
@@ -689,7 +693,29 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitPlan(PlanNode node, ISchemaRegion context) {
+  public TSStatus visitPlan(final PlanNode node, final ISchemaRegion context) {
     return null;
+  }
+
+  public static void logMetaDataException(
+      final @Nonnull String message, final @Nonnull MetadataException e) {
+    if (e.isUserException()) {
+      logger.info(message);
+    } else {
+      logger.error(message, e);
+    }
+  }
+
+  public static void logMetaDataException(final @Nonnull MetadataException e) {
+    if (e.isUserException()) {
+      logger.info(e.getMessage());
+    } else {
+      logger.error(e.getMessage(), e);
+    }
+  }
+
+  @TestOnly
+  public static void setLogger(final Logger logger) {
+    SchemaExecutionVisitor.logger = logger;
   }
 }
