@@ -161,7 +161,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
             e);
       } else {
         LOGGER.info(
-            "Exception in pipe transfer, ignored because the connector subtask is dropped.{}",
+            "Exception in pipe transfer, ignored because the sink subtask is dropped.{}",
             e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
