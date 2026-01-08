@@ -101,8 +101,6 @@ public class TsTable {
   private transient long ttlValue = Long.MIN_VALUE;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
-  private transient int idNums = 0;
-  private transient int measurementNum = 0;
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -122,8 +120,8 @@ public class TsTable {
     this.idColumnIndexMap.putAll(origin.idColumnIndexMap);
     this.props = origin.props == null ? null : new HashMap<>(origin.props);
     this.ttlValue = origin.ttlValue;
-    this.idNums = origin.idNums;
-    this.measurementNum = origin.measurementNum;
+    this.tagNums = origin.tagNums;
+    this.fieldNum = origin.fieldNum;
   }
 
   public String getTableName() {
