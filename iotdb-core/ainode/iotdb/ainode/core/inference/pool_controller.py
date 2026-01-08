@@ -168,7 +168,9 @@ class PoolController:
                 if device_id in device_map:
                     pool_group = device_map[device_id]
                     device_models[model_id] = pool_group.get_running_pool_count()
-            device_key = device_id.type if device_id.index is None else str(device_id.index)
+            device_key = (
+                device_id.type if device_id.index is None else str(device_id.index)
+            )
             result[device_key] = device_models
         return result
 
