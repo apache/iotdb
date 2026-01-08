@@ -25,13 +25,17 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class InsertRows extends WrappedInsertStatement {
 
@@ -117,8 +121,14 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<Object[]> getDeviceIdList() {
-        Object[] idSegments = insertRowStatement.getTableDeviceID().getSegments();
-        return Collections.singletonList(Arrays.copyOfRange(idSegments, 1, idSegments.length));
+        final Object[] tagSegments = insertRowStatement.getTableDeviceID().getSegments();
+        if (Objects.nonNull(insertRowStatement.getMeasurementSchemas())
+            && Arrays.stream(insertRowStatement.getMeasurementSchemas())
+                .anyMatch(
+                    schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+          TableDeviceSchemaValidator.checkObject4DeviceId(tagSegments);
+        }
+        return Collections.singletonList(Arrays.copyOfRange(tagSegments, 1, tagSegments.length));
       }
 
       @Override

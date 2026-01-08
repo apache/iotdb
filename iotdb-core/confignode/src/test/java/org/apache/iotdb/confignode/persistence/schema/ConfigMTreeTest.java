@@ -261,7 +261,7 @@ public class ConfigMTreeTest {
   public void testSerialization() throws Exception {
     final PartialPath[] pathList =
         new PartialPath[] {
-          new PartialPath("root.sg"),
+          new PartialPath("root.`root`"),
           new PartialPath("root.a.sg"),
           new PartialPath("root.a.b.sg"),
           new PartialPath("root.a.a.b.sg")

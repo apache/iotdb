@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -45,6 +47,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
+  private final PipeMemoryBlock allocatedMemoryBlock;
 
   protected volatile boolean isClosed = false;
 
@@ -56,6 +59,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     // limit in buffer size
     this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
+    this.allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory().forceAllocate(requestMaxBatchSizeInBytes);
     if (recordMetric != null) {
       this.recordMetric = recordMetric;
     } else {
@@ -142,6 +147,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
     events.clear();
+    allocatedMemoryBlock.close();
   }
 
   /**

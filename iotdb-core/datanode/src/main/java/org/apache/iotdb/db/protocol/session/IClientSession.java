@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
@@ -57,7 +58,7 @@ public abstract class IClientSession {
 
   @Nullable private String databaseName;
 
-  private long lastActiveTime;
+  private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
   public abstract String getClientAddress();
 

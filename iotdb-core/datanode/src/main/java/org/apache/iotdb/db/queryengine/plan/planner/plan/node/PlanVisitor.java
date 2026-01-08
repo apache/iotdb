@@ -118,12 +118,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -214,6 +216,10 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitTimeSeriesRegionScan(TimeseriesRegionScanNode node, C context) {
     return visitRegionScan(node, context);
+  }
+
+  public R visitCteScan(CteScanNode node, C context) {
+    return visitSourceNode(node, context);
   }
 
   // single child --------------------------------------------------------------------------------
@@ -513,6 +519,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitAlterTimeSeriesDataType(AlterTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
     return visitPlan(node, context);
   }
@@ -640,6 +650,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteData(RelationalDeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitWriteObjectFile(ObjectNode node, C context) {
     return visitPlan(node, context);
   }
 

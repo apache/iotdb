@@ -1,7 +1,7 @@
 {
   "model_type": "sktime",
   "model_id": "arima",
-  "predict_length": 1,
+  "output_length": 1,
   "order": [1, 0, 0],
   "seasonal_order": [0, 0, 0, 0],
   "start_params": null,

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionSeriesContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -181,8 +183,7 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(unseqFiles);
         boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl = deviceIterator.getTTLForCurrentDevice();
-        sortedSourceFiles.removeIf(
-            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
+        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
         // checked above
         //noinspection OptionalGetWithoutIsPresent
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
@@ -191,6 +192,13 @@ public class FastCompactionPerformer
           ttlDeletion =
               CompactionUtils.convertTtlToDeletion(
                   device, deviceIterator.getTimeLowerBoundForCurrentDevice());
+          for (TsFileResource sourceFile : sortedSourceFiles) {
+            modificationCache
+                .computeIfAbsent(
+                    sourceFile.getTsFile().getName(),
+                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
+                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
+          }
         }
         compactionWriter.setTTLDeletion(ttlDeletion);
 
@@ -280,7 +288,18 @@ public class FastCompactionPerformer
     // offset later. Here we don't need to deserialize chunk metadata, we can deserialize them and
     // get their schema later.
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
+        new LinkedHashMap<>();
+
+    Map<String, TSDataType> measurementDataTypeMap = new LinkedHashMap<>();
+
+    Map<String, CompactionSeriesContext> compactionSeriesContextMap =
+        deviceIterator.getCompactionSeriesContextOfCurrentDevice();
+
+    for (Map.Entry<String, CompactionSeriesContext> entry : compactionSeriesContextMap.entrySet()) {
+      timeseriesMetadataOffsetMap.put(
+          entry.getKey(), entry.getValue().getFileTimeseriesMetdataOffsetMap());
+      measurementDataTypeMap.put(entry.getKey(), entry.getValue().getFinalType());
+    }
 
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
     allMeasurements.sort((String::compareTo));
@@ -305,8 +324,8 @@ public class FastCompactionPerformer
           CompactionTaskManager.getInstance()
               .submitSubTask(
                   new FastCompactionPerformerSubTask(
+                      compactionSeriesContextMap,
                       fastCrossCompactionWriter,
-                      timeseriesMetadataOffsetMap,
                       readerCacheMap,
                       modificationCache,
                       sortedSourceFiles,

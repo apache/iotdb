@@ -120,11 +120,19 @@ class InferenceRequestPool(mp.Process):
         grouped_requests = list(grouped_requests.values())
 
         for requests in grouped_requests:
-            batch_inputs = self._batcher.batch_request(requests).to(self.device)
+            batch_inputs = self._batcher.batch_request(requests).to(
+                "cpu"
+            )  # The input data should first load to CPU in current version
+            batch_input_list = []
+            for i in range(batch_inputs.size(0)):
+                batch_input_list.append({"targets": batch_inputs[i]})
+            batch_inputs = self._inference_pipeline.preprocess(
+                batch_input_list, output_length=requests[0].output_length
+            )
             if isinstance(self._inference_pipeline, ForecastPipeline):
                 batch_output = self._inference_pipeline.forecast(
                     batch_inputs,
-                    predict_length=requests[0].output_length,
+                    output_length=requests[0].output_length,
                     revin=True,
                 )
             elif isinstance(self._inference_pipeline, ClassificationPipeline):
@@ -138,7 +146,11 @@ class InferenceRequestPool(mp.Process):
                     # more infer kwargs can be added here
                 )
             else:
+                batch_output = None
                 self._logger.error("[Inference] Unsupported pipeline type.")
+            batch_output_list = self._inference_pipeline.postprocess(batch_output)
+            batch_output = torch.stack([output for output in batch_output_list], dim=0)
+
             offset = 0
             for request in requests:
                 request.output_tensor = request.output_tensor.to(self.device)

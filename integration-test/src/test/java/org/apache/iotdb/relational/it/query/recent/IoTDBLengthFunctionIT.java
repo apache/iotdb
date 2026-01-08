@@ -107,7 +107,7 @@ public class IoTDBLengthFunctionIT {
   public void testLengthFunctionOnInvalidInputs() {
     String expectedErrorMessage =
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text, string, or blob data type.";
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.";
 
     // Exception 1: Using LENGTH() on non-TEXT/BLOB/STRING types
     tableAssertTestFail("SELECT length(c_int) FROM table1", expectedErrorMessage, DATABASE_NAME);

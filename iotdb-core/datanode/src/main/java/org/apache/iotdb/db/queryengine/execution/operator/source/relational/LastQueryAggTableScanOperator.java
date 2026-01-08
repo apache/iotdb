@@ -726,6 +726,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         return new TsPrimitiveType.TsDouble(originalValue.getDouble());
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return new TsPrimitiveType.TsBinary(originalValue.getBinary());
       case VECTOR:

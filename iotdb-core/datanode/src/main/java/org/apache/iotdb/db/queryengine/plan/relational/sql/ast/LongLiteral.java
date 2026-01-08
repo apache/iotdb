@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,6 +31,9 @@ import java.nio.ByteBuffer;
 import static java.util.Objects.requireNonNull;
 
 public class LongLiteral extends Literal {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LongLiteral.class);
 
   private final String value;
   private final long parsedValue;
@@ -99,7 +103,7 @@ public class LongLiteral extends Literal {
     return parsedValue == ((LongLiteral) other).parsedValue;
   }
 
-  private static long parse(String value) {
+  public static long parse(String value) {
     value = value.replace("_", "");
 
     if (value.startsWith("0x") || value.startsWith("0X")) {
@@ -133,5 +137,12 @@ public class LongLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return parsedValue;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + RamUsageEstimator.sizeOf(value);
   }
 }

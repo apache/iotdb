@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSch
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -121,7 +122,8 @@ import static org.junit.Assert.assertTrue;
 public class StatementGeneratorTest {
 
   @Test
-  public void testShowQueries() {
+  public void testShowDiskUsage() {
+
     Statement showDiskUsage =
         StatementGenerator.createStatement(
             "show disk_usage from root.test.** order by database, datanodeid, regionid, timepartition, sizeinbytes",
@@ -142,11 +144,41 @@ public class StatementGeneratorTest {
     Assert.assertEquals(
         ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(4),
         new SortItem(OrderByKey.SIZEINBYTES, Ordering.ASC));
+
     Assert.assertThrows(
         SemanticException.class,
         () ->
             StatementGenerator.createStatement(
                 "show disk_usage from root.test.** order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testShowQueries() {
+    Statement showQueries =
+        StatementGenerator.createStatement(
+            "show queries order by time, queryid, datanodeid, elapsedtime, statement",
+            ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showQueries instanceof ShowQueriesStatement);
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(0),
+        new SortItem(OrderByKey.TIME, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(1),
+        new SortItem(OrderByKey.QUERYID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(2),
+        new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(3),
+        new SortItem(OrderByKey.ELAPSEDTIME, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(4),
+        new SortItem(OrderByKey.STATEMENT, Ordering.ASC));
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show queries order by a", ZonedDateTime.now().getOffset()));
   }
 
   @Test

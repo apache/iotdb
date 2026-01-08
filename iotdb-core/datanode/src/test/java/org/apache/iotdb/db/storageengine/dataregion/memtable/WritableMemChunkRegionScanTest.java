@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -239,6 +242,53 @@ public class WritableMemChunkRegionScanTest {
   }
 
   @Test
+  public void testAlignedWritableMemChunkRegionScan2() throws IllegalPathException {
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    try {
+      List<IMeasurementSchema> measurementSchemas =
+          Arrays.asList(
+              new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s2", TSDataType.INT32),
+              new MeasurementSchema("s3", TSDataType.INT32));
+      AlignedWritableMemChunk writableMemChunk = null;
+      for (int i = 1000; i < 2000; i++) {
+        memTable.writeAlignedRow(
+            new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+      }
+      for (int i = 1; i < 100; i++) {
+        memTable.writeAlignedRow(
+            new StringArrayDeviceID("root.test.d1"),
+            measurementSchemas,
+            i,
+            new Object[] {i, null, i});
+      }
+
+      memTable.delete(
+          new TreeDeletionEntry(
+              new MeasurementPath(new StringArrayDeviceID("root.test.d1"), "s1"),
+              new TimeRange(1, 1500)));
+      writableMemChunk =
+          (AlignedWritableMemChunk)
+              memTable.getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "");
+      writableMemChunk.sortTvListForFlush();
+      List<BitMap> bitMaps = new ArrayList<>();
+      long[] timestamps =
+          writableMemChunk.getAnySatisfiedTimestamp(
+              Arrays.asList(
+                  Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+              bitMaps,
+              true,
+              null);
+      Assert.assertEquals(3, timestamps.length);
+      Assert.assertEquals(1, timestamps[0]);
+      Assert.assertEquals(1000, timestamps[1]);
+      Assert.assertEquals(1501, timestamps[2]);
+    } finally {
+      memTable.release();
+    }
+  }
+
+  @Test
   public void testTableWritableMemChunkRegionScan() {
     List<IMeasurementSchema> measurementSchemas =
         Arrays.asList(
@@ -352,6 +402,42 @@ public class WritableMemChunkRegionScanTest {
       Assert.assertEquals(1, chunkHandleMap.size());
       Assert.assertArrayEquals(
           new long[] {2, 2}, chunkHandleMap.get("s1").get(0).getPageStatisticsTime());
+    } finally {
+      memTable.release();
+    }
+  }
+
+  @Test
+  public void testNonAlignedWritableMemChunkRegionScan2() throws IllegalPathException {
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    try {
+      MeasurementSchema measurementSchema = new MeasurementSchema("s1", TSDataType.INT32);
+      for (int i = 1000; i < 2000; i++) {
+        memTable.write(
+            new StringArrayDeviceID("root.test.d1"),
+            Collections.singletonList(measurementSchema),
+            i,
+            new Object[] {i});
+      }
+      for (int i = 1; i < 100; i++) {
+        memTable.write(
+            new StringArrayDeviceID("root.test.d1"),
+            Collections.singletonList(measurementSchema),
+            i,
+            new Object[] {i});
+      }
+      memTable.delete(
+          new TreeDeletionEntry(
+              new MeasurementPath(new StringArrayDeviceID("root.test.d1"), "s1"),
+              new TimeRange(1, 1500)));
+      WritableMemChunk writableMemChunk =
+          (WritableMemChunk)
+              memTable.getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "s1");
+      writableMemChunk.sortTvListForFlush();
+      Optional<Long> timestamp = writableMemChunk.getAnySatisfiedTimestamp(null, null);
+      Assert.assertTrue(timestamp.isPresent());
+      Assert.assertEquals(1501, timestamp.get().longValue());
+
     } finally {
       memTable.release();
     }

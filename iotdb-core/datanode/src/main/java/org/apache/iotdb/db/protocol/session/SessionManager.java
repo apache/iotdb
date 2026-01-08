@@ -255,6 +255,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
+    return closeSession(session, releaseByQueryId, true);
+  }
+
+  public boolean closeSession(
+      IClientSession session, LongConsumer releaseByQueryId, boolean mustCurrent) {
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -264,11 +269,11 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
+    if (mustCurrent && session1 != null && session != session1) {
       LOGGER.info(
           String.format(
               "The client-%s is trying to close another session %s, pls check if it's a bug",
-              session, session1));
+              session1, session));
       return false;
     } else {
       LOGGER.info(String.format("Session-%s is closing", session));
@@ -497,8 +502,8 @@ public class SessionManager implements SessionManagerMBean {
     session.setUsername(username);
     session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
-    session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setLogin(true);
   }
 
   public void closeDataset(
@@ -581,7 +586,7 @@ public class SessionManager implements SessionManagerMBean {
 
   public List<ConnectionInfo> getAllSessionConnectionInfo() {
     return sessions.keySet().stream()
-        .filter(s -> StringUtils.isNotEmpty(s.getUsername()))
+        .filter(s -> StringUtils.isNotEmpty(s.getUsername()) && s.isLogin())
         .map(IClientSession::convertToConnectionInfo)
         .sorted(Comparator.comparingLong(ConnectionInfo::getLastActiveTime))
         .collect(Collectors.toList());

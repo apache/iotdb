@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -32,38 +33,51 @@ import static java.util.Objects.requireNonNull;
 
 public class WithQuery extends Node {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WithQuery.class);
+
   private final Identifier name;
   private final Query query;
+  private final boolean materialized;
 
   @Nullable private final List<Identifier> columnNames;
 
-  public WithQuery(Identifier name, Query query) {
+  public WithQuery(Identifier name, Query query, boolean materialized) {
     super(null);
     this.name = name;
     this.query = requireNonNull(query, "query is null");
     this.columnNames = null;
-  }
-
-  public WithQuery(Identifier name, Query query, List<Identifier> columnNames) {
-    super(null);
-    this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = requireNonNull(columnNames, "columnNames is null");
-  }
-
-  public WithQuery(NodeLocation location, Identifier name, Query query) {
-    super(requireNonNull(location, "location is null"));
-    this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = null;
+    this.materialized = materialized;
   }
 
   public WithQuery(
-      NodeLocation location, Identifier name, Query query, List<Identifier> columnNames) {
+      Identifier name, Query query, List<Identifier> columnNames, boolean materialized) {
+    super(null);
+    this.name = name;
+    this.query = requireNonNull(query, "query is null");
+    this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.materialized = materialized;
+  }
+
+  public WithQuery(NodeLocation location, Identifier name, Query query, boolean materialized) {
+    super(requireNonNull(location, "location is null"));
+    this.name = name;
+    this.query = requireNonNull(query, "query is null");
+    this.columnNames = null;
+    this.materialized = materialized;
+  }
+
+  public WithQuery(
+      NodeLocation location,
+      Identifier name,
+      Query query,
+      List<Identifier> columnNames,
+      boolean materialized) {
     super(requireNonNull(location, "location is null"));
     this.name = name;
     this.query = requireNonNull(query, "query is null");
     this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.materialized = materialized;
   }
 
   public Identifier getName() {
@@ -76,6 +90,10 @@ public class WithQuery extends Node {
 
   public Optional<List<Identifier>> getColumnNames() {
     return Optional.ofNullable(columnNames);
+  }
+
+  public boolean isMaterialized() {
+    return materialized;
   }
 
   @Override
@@ -94,13 +112,14 @@ public class WithQuery extends Node {
         .add("name", name)
         .add("query", query)
         .add("columnNames", columnNames)
+        .add("materialized", materialized)
         .omitNullValues()
         .toString();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, query, columnNames);
+    return Objects.hash(name, query, columnNames, materialized);
   }
 
   @Override
@@ -114,7 +133,8 @@ public class WithQuery extends Node {
     WithQuery o = (WithQuery) obj;
     return Objects.equals(name, o.name)
         && Objects.equals(query, o.query)
-        && Objects.equals(columnNames, o.columnNames);
+        && Objects.equals(columnNames, o.columnNames)
+        && Objects.equals(materialized, o.materialized);
   }
 
   @Override
@@ -126,5 +146,15 @@ public class WithQuery extends Node {
     WithQuery otherRelation = (WithQuery) other;
     return name.equals(otherRelation.name)
         && Objects.equals(columnNames, otherRelation.columnNames);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(columnNames);
+    return size;
   }
 }

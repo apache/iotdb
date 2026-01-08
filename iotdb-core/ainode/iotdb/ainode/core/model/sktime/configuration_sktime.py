@@ -20,11 +20,11 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Union
 
 from iotdb.ainode.core.exception import (
-    BuiltInModelNotSupportError,
+    BuiltInModelNotSupportException,
     ListRangeException,
     NumericalRangeException,
     StringRangeException,
-    WrongAttributeTypeError,
+    WrongAttributeTypeException,
 )
 from iotdb.ainode.core.log import Logger
 
@@ -49,7 +49,7 @@ class AttributeConfig:
             if value is None:
                 return True  # Allow None for optional int parameters
             if not isinstance(value, int):
-                raise WrongAttributeTypeError(self.name, "int")
+                raise WrongAttributeTypeException(self.name, "int")
             if self.low is not None and self.high is not None:
                 if not (self.low <= value <= self.high):
                     raise NumericalRangeException(self.name, value, self.low, self.high)
@@ -57,7 +57,7 @@ class AttributeConfig:
             if value is None:
                 return True  # Allow None for optional float parameters
             if not isinstance(value, (int, float)):
-                raise WrongAttributeTypeError(self.name, "float")
+                raise WrongAttributeTypeException(self.name, "float")
             value = float(value)
             if self.low is not None and self.high is not None:
                 if not (self.low <= value <= self.high):
@@ -66,26 +66,26 @@ class AttributeConfig:
             if value is None:
                 return True  # Allow None for optional str parameters
             if not isinstance(value, str):
-                raise WrongAttributeTypeError(self.name, "str")
+                raise WrongAttributeTypeException(self.name, "str")
             if self.choices and value not in self.choices:
                 raise StringRangeException(self.name, value, self.choices)
         elif self.type == "bool":
             if value is None:
                 return True  # Allow None for optional bool parameters
             if not isinstance(value, bool):
-                raise WrongAttributeTypeError(self.name, "bool")
+                raise WrongAttributeTypeException(self.name, "bool")
         elif self.type == "list":
             if not isinstance(value, list):
-                raise WrongAttributeTypeError(self.name, "list")
+                raise WrongAttributeTypeException(self.name, "list")
             for item in value:
                 if not isinstance(item, self.value_type):
-                    raise WrongAttributeTypeError(self.name, self.value_type)
+                    raise WrongAttributeTypeException(self.name, self.value_type)
         elif self.type == "tuple":
             if not isinstance(value, tuple):
-                raise WrongAttributeTypeError(self.name, "tuple")
+                raise WrongAttributeTypeException(self.name, "tuple")
             for item in value:
                 if not isinstance(item, self.value_type):
-                    raise WrongAttributeTypeError(self.name, self.value_type)
+                    raise WrongAttributeTypeException(self.name, self.value_type)
         return True
 
     def parse(self, string_value: str):
@@ -96,14 +96,14 @@ class AttributeConfig:
             try:
                 return int(string_value)
             except:
-                raise WrongAttributeTypeError(self.name, "int")
+                raise WrongAttributeTypeException(self.name, "int")
         elif self.type == "float":
             if string_value.lower() == "none" or string_value.strip() == "":
                 return None
             try:
                 return float(string_value)
             except:
-                raise WrongAttributeTypeError(self.name, "float")
+                raise WrongAttributeTypeException(self.name, "float")
         elif self.type == "str":
             if string_value.lower() == "none" or string_value.strip() == "":
                 return None
@@ -116,14 +116,14 @@ class AttributeConfig:
             elif string_value.lower() == "none" or string_value.strip() == "":
                 return None
             else:
-                raise WrongAttributeTypeError(self.name, "bool")
+                raise WrongAttributeTypeException(self.name, "bool")
         elif self.type == "list":
             try:
                 list_value = eval(string_value)
             except:
-                raise WrongAttributeTypeError(self.name, "list")
+                raise WrongAttributeTypeException(self.name, "list")
             if not isinstance(list_value, list):
-                raise WrongAttributeTypeError(self.name, "list")
+                raise WrongAttributeTypeException(self.name, "list")
             for i in range(len(list_value)):
                 try:
                     list_value[i] = self.value_type(list_value[i])
@@ -136,9 +136,9 @@ class AttributeConfig:
             try:
                 tuple_value = eval(string_value)
             except:
-                raise WrongAttributeTypeError(self.name, "tuple")
+                raise WrongAttributeTypeException(self.name, "tuple")
             if not isinstance(tuple_value, tuple):
-                raise WrongAttributeTypeError(self.name, "tuple")
+                raise WrongAttributeTypeException(self.name, "tuple")
             list_value = list(tuple_value)
             for i in range(len(list_value)):
                 try:
@@ -153,7 +153,7 @@ class AttributeConfig:
 # Model configuration definitions - using concise dictionary format
 MODEL_CONFIGS = {
     "NAIVE_FORECASTER": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "strategy": AttributeConfig(
             "strategy", "last", "str", choices=["last", "mean", "drift"]
         ),
@@ -161,7 +161,7 @@ MODEL_CONFIGS = {
         "sp": AttributeConfig("sp", 1, "int", 1, 5000),
     },
     "EXPONENTIAL_SMOOTHING": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "damped_trend": AttributeConfig("damped_trend", False, "bool"),
         "initialization_method": AttributeConfig(
             "initialization_method",
@@ -174,7 +174,7 @@ MODEL_CONFIGS = {
         "use_brute": AttributeConfig("use_brute", False, "bool"),
     },
     "ARIMA": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "order": AttributeConfig("order", (1, 0, 0), "tuple", value_type=int),
         "seasonal_order": AttributeConfig(
             "seasonal_order", (0, 0, 0, 0), "tuple", value_type=int
@@ -212,7 +212,7 @@ MODEL_CONFIGS = {
         "concentrate_scale": AttributeConfig("concentrate_scale", False, "bool"),
     },
     "STL_FORECASTER": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "sp": AttributeConfig("sp", 2, "int", 1, 5000),
         "seasonal": AttributeConfig("seasonal", 7, "int", 1, 5000),
         "trend": AttributeConfig("trend", None, "int"),
@@ -390,7 +390,7 @@ def get_attributes(model_id: str) -> Dict[str, AttributeConfig]:
     """Get attribute configuration for Sktime model"""
     model_id = "EXPONENTIAL_SMOOTHING" if model_id == "HOLTWINTERS" else model_id
     if model_id not in MODEL_CONFIGS:
-        raise BuiltInModelNotSupportError(model_id)
+        raise BuiltInModelNotSupportException(model_id)
     return MODEL_CONFIGS[model_id]
 
 

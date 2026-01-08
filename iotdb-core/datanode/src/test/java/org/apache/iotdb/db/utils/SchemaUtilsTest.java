@@ -22,11 +22,18 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -71,6 +78,38 @@ public class SchemaUtilsTest {
       Assert.fail("expect exception");
     } catch (MetadataException e) {
       // do nothing
+    }
+  }
+
+  @Test
+  public void rewriteAlignedChunkMetadataStatistics() {
+    for (TSDataType targetDataType : Arrays.asList(TSDataType.STRING, TSDataType.TEXT)) {
+      for (TSDataType tsDataType : TSDataType.values()) {
+        if (tsDataType == TSDataType.UNKNOWN) {
+          continue;
+        }
+        List<IChunkMetadata> valueChunkMetadatas =
+            Collections.singletonList(
+                new ChunkMetadata(
+                    "s0",
+                    tsDataType,
+                    TSEncoding.RLE,
+                    CompressionType.LZ4,
+                    0,
+                    Statistics.getStatsByType(tsDataType)));
+        AlignedChunkMetadata alignedChunkMetadata =
+            new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+        try {
+          AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
+              SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+                  alignedChunkMetadata, targetDataType);
+          Assert.assertEquals(
+              targetDataType,
+              abstractAlignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
+        } catch (ClassCastException e) {
+          Assert.fail(e.getMessage());
+        }
+      }
     }
   }
 }

@@ -19,25 +19,31 @@
 import importlib
 import json
 import os.path
+import shutil
 import sys
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict, Tuple
 
+from huggingface_hub import snapshot_download
+
+from iotdb.ainode.core.exception import InvalidModelUriException
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
     MODEL_CONFIG_FILE_IN_JSON,
     MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
     UriType,
 )
 
+logger = Logger()
+
 
 def parse_uri_type(uri: str) -> UriType:
-    if uri.startswith("repo://"):
-        return UriType.REPO
-    elif uri.startswith("file://"):
+    if uri.startswith("file://"):
         return UriType.FILE
     else:
-        raise ValueError(
-            f"Unsupported URI type: {uri}. Supported formats: repo:// or file://"
+        raise InvalidModelUriException(
+            f"Unknown uri type {uri}, currently supporting formats: file://"
         )
 
 
@@ -70,9 +76,13 @@ def validate_model_files(model_dir: str) -> Tuple[str, str]:
     weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
 
     if not os.path.exists(config_path):
-        raise ValueError(f"Model config file does not exist: {config_path}")
+        raise InvalidModelUriException(
+            f"Model config file does not exist: {config_path}"
+        )
     if not os.path.exists(weights_path):
-        raise ValueError(f"Model weights file does not exist: {weights_path}")
+        raise InvalidModelUriException(
+            f"Model weights file does not exist: {weights_path}"
+        )
 
     # Create __init__.py file to ensure model directory can be imported as a module
     init_file = os.path.join(model_dir, "__init__.py")
@@ -96,3 +106,32 @@ def ensure_init_file(dir_path: str):
     if not os.path.exists(init_file):
         with open(init_file, "w"):
             pass
+
+
+def _fetch_model_from_local(source_path: str, storage_path: str):
+    logger.info(f"Copying model from local path: {source_path} -> {storage_path}")
+    source_dir = Path(source_path)
+    if not source_dir.exists():
+        raise InvalidModelUriException(f"Source path does not exist: {source_path}")
+    if not source_dir.is_dir():
+        raise InvalidModelUriException(f"Source path is not a directory: {source_path}")
+    storage_dir = Path(storage_path)
+    for file in source_dir.iterdir():
+        if file.is_file():
+            shutil.copy2(file, storage_dir / file.name)
+
+
+def _fetch_model_from_hf_repo(repo_id: str, storage_path: str):
+    logger.info(
+        f"Downloading model from HuggingFace repository: {repo_id} -> {storage_path}"
+    )
+    # Use snapshot_download to download entire repository (including config.json and model.safetensors)
+    try:
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=storage_path,
+            local_dir_use_symlinks=False,
+        )
+    except Exception as e:
+        logger.error(f"Failed to download model from HuggingFace: {e}")
+        raise
