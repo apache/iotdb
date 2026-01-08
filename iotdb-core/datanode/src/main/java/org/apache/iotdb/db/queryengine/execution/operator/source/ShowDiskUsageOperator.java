@@ -82,7 +82,7 @@ public class ShowDiskUsageOperator implements SourceOperator {
                     Object[] row = new Object[4];
                     row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
                     row[1] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-                    row[2] = Integer.parseInt(dataRegion.getDataRegionId());
+                    row[2] = Integer.parseInt(dataRegion.getDataRegionIdString());
                     row[3] = timePartition;
                     if (!pushDownFilter.satisfyRow(0, row)) {
                       return false;
@@ -127,7 +127,7 @@ public class ShowDiskUsageOperator implements SourceOperator {
         tsBlockBuilder.getValueColumnBuilders()[1].writeInt(
             IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
         tsBlockBuilder.getValueColumnBuilders()[2].writeInt(
-            Integer.parseInt(timePartitionIterator.currentDataRegion().getDataRegionId()));
+            Integer.parseInt(timePartitionIterator.currentDataRegion().getDataRegionIdString()));
         tsBlockBuilder.getValueColumnBuilders()[3].writeLong(
             timePartitionIterator.currentTimePartition());
         tsBlockBuilder.getValueColumnBuilders()[4].writeLong(statisticUtil.getResult()[0]);

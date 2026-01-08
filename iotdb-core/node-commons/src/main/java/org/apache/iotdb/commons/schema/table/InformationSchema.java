@@ -361,7 +361,7 @@ public class InformationSchema {
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(
-        new FieldColumnSchema(ColumnHeaderConstant.NODE_ID_TABLE_MODEL, TSDataType.INT32));
+        new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
     tableDiskUsageTable.addColumnSchema(
@@ -394,7 +394,7 @@ public class InformationSchema {
         ImmutableSet.of(
             ColumnHeaderConstant.DATABASE,
             ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
-            ColumnHeaderConstant.NODE_ID_TABLE_MODEL,
+            ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
 
