@@ -36,8 +36,6 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -45,8 +43,6 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 
 /** To read one chunk from disk, and only used in iotdb server module. */
 public class DiskChunkLoader implements IChunkLoader {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DiskChunkLoader.class);
 
   private final QueryContext context;
 
@@ -95,16 +91,6 @@ public class DiskChunkLoader implements IChunkLoader {
       byte chunkType = chunk.getHeader().getChunkType();
       if (chunkType != MetaMarker.CHUNK_HEADER
           && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        if (context.getQueryStatistics().getChunkWithMetadataErrorsCount().getAndAdd(1) == 0) {
-          LOGGER.warn(
-              "Unexpected chunk type detected when reading non-aligned chunk reader. "
-                  + "The chunk metadata indicates a non-aligned chunk, "
-                  + "but the actual chunk read from tsfile is a value chunk of aligned series. "
-                  + "tsFile={}, chunkOffset={}, chunkType={}",
-              resource.getTsFilePath(),
-              chunkMetaData.getOffsetOfChunkHeader(),
-              chunkType);
-        }
         throw new ChunkTypeInconsistentException();
       }
 

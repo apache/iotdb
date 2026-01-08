@@ -25,18 +25,24 @@ import java.io.IOException;
 
 public class ChunkTypeInconsistentException extends IOException {
 
+  public String filePath;
+  public IDeviceID deviceId;
+  public String measurement;
+  public long offsetOfChunkHeader;
+
   public ChunkTypeInconsistentException() {}
 
   public ChunkTypeInconsistentException(
       String filePath, IDeviceID deviceID, String measurement, long offsetOfChunk) {
-    super(
-        "Unexpected chunk type detected when reading non-aligned chunk reader. File path: "
-            + filePath
-            + ", offsetOfChunk: "
-            + offsetOfChunk
-            + ", deviceID: "
-            + deviceID
-            + ", measurement: "
-            + measurement);
+    this.filePath = filePath;
+    this.deviceId = deviceID;
+    this.measurement = measurement;
+    this.offsetOfChunkHeader = offsetOfChunk;
+  }
+
+  @Override
+  @SuppressWarnings("java:S3551")
+  public Throwable fillInStackTrace() {
+    return this;
   }
 }
