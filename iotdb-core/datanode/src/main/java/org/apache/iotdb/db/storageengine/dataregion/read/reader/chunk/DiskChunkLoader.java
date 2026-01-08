@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
@@ -34,6 +36,8 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -41,6 +45,8 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 
 /** To read one chunk from disk, and only used in iotdb server module. */
 public class DiskChunkLoader implements IChunkLoader {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DiskChunkLoader.class);
 
   private final QueryContext context;
 
@@ -86,6 +92,21 @@ public class DiskChunkLoader implements IChunkLoader {
                   chunkMetaData.getDeleteIntervalList(),
                   chunkMetaData.getStatistics(),
                   context);
+      byte chunkType = chunk.getHeader().getChunkType();
+      if (chunkType != MetaMarker.CHUNK_HEADER
+          && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        if (context.getQueryStatistics().getChunkWithMetadataErrorsCount().getAndAdd(1) == 0) {
+          LOGGER.warn(
+              "Unexpected chunk type detected when reading non-aligned chunk reader. "
+                  + "The chunk metadata indicates a non-aligned chunk, "
+                  + "but the actual chunk read from tsfile is a value chunk of aligned series. "
+                  + "tsFile={}, chunkOffset={}, chunkType={}",
+              resource.getTsFilePath(),
+              chunkMetaData.getOffsetOfChunkHeader(),
+              chunkType);
+        }
+        throw new ChunkTypeInconsistentException();
+      }
 
       final TsFileID tsFileID = getTsFileID();
       if (tsFileID.regionId > 0 && chunkMetaData.getDataType() == TSDataType.OBJECT) {

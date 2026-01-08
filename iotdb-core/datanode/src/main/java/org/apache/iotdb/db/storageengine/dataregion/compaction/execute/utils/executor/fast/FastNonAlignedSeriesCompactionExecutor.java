@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -220,6 +222,15 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
           readerCacheMap
               .get(chunkMetadataElement.fileElement.resource)
               .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
+    }
+    byte chunkType = chunkMetadataElement.chunk.getHeader().getChunkType();
+    if (chunkType != MetaMarker.CHUNK_HEADER
+        && chunkType != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      throw new ChunkTypeInconsistentException(
+          chunkMetadataElement.fileElement.resource.getTsFilePath(),
+          deviceId,
+          chunkMetadataElement.chunkMetadata.getMeasurementUid(),
+          chunkMetadataElement.chunkMetadata.getOffsetOfChunkHeader());
     }
     if (!hasStartMeasurement) {
       // for nonAligned sensors, only after getting chunkMetadatas can we create metadata to
