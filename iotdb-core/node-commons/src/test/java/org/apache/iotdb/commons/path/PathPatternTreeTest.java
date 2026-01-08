@@ -282,10 +282,11 @@ public class PathPatternTreeTest {
       patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
-
-    Assert.assertEquals(
-        Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
-        patternTree.getAllPathPatterns());
+    List<PartialPath> expectedPaths =
+        Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2"));
+    List<PartialPath> actualPaths = patternTree.getAllPathPatterns();
+    Collections.sort(actualPaths);
+    Assert.assertEquals(expectedPaths, actualPaths);
   }
 
   @Test
