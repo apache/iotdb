@@ -96,12 +96,9 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
-<<<<<<< refs/remotes/upstream/clean
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
-=======
->>>>>>> local
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -1121,22 +1118,12 @@ public class ConfigMTree {
   }
 
   private void serializeDatabaseNode(
-<<<<<<< refs/remotes/upstream/clean
-      final IDatabaseMNode<IConfigMNode> storageGroupNode, final OutputStream outputStream)
-      throws IOException {
-    serializeChildren(storageGroupNode.getAsMNode(), outputStream);
-
-    ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
-    ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
-=======
-      IDatabaseMNode<IConfigMNode> databaseNode, OutputStream outputStream) throws IOException {
+      final IDatabaseMNode<IConfigMNode> databaseNode, final OutputStream outputStream) throws IOException {
     serializeChildren(databaseNode.getAsMNode(), outputStream);
 
     ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(databaseNode.getName(), outputStream);
     ReadWriteIOUtils.write(databaseNode.getAsMNode().getSchemaTemplateId(), outputStream);
->>>>>>> local
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
         databaseNode.getAsMNode().getDatabaseSchema(), outputStream);
   }

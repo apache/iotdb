@@ -72,10 +72,10 @@ public class SyntaxConventionRelatedExample {
 
   /**
    * if you want to create a time series named root.db1.a, a possible SQL statement would be like:
-   * create timeseries root.sg1.a with datatype=FLOAT, encoding=RLE The path should be written as
-   * "root.sg1.a".
+   * create timeseries root.db1.a with datatype=FLOAT, encoding=RLE The path should be written as
+   * "root.db1.a".
    */
-  private static final String ROOT_DB1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
+  private static final String ROOT_DB1_NORMAL_NODE_EXAMPLE = "root.db1.a";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -93,7 +93,7 @@ public class SyntaxConventionRelatedExample {
     session.setFetchSize(10000);
 
     try {
-      session.setStorageGroup("root.sg1");
+      session.setStorageGroup("root.db1");
     } catch (StatementExecutionException e) {
       if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
@@ -102,9 +102,9 @@ public class SyntaxConventionRelatedExample {
 
     // createTimeSeries
     createTimeSeries();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.*");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.db1.*");
     // the expected paths would be:
-    // [root.sg1.select, root.sg1.`111`, root.sg1.`a"b'c```, root.sg1.a]
+    // [root.db1.select, root.db1.`111`, root.db1.`a"b'c```, root.db1.a]
     // You could see that time series in dataSet are exactly the same as
     // the initial String you used as path. Node names consist of digits or contain special
     // characters are quoted with ``, both in SQL statement and in header of result dataset.

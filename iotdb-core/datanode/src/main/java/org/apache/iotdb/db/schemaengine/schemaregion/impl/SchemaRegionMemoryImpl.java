@@ -200,12 +200,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private final String databaseDirPath;
   private final String schemaRegionDirPath;
-<<<<<<< refs/remotes/upstream/clean
 
   // For table model db: without "root."
   // For tree model db: with "root."
-=======
->>>>>>> local
   private final String databaseFullPath;
   private final SchemaRegionId schemaRegionId;
 
@@ -227,11 +224,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-<<<<<<< refs/remotes/upstream/clean
     databaseFullPath = schemaRegionParams.getDatabase();
-=======
-    databaseFullPath = schemaRegionParams.getDatabase().getFullPath();
->>>>>>> local
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     databaseDirPath = config.getSchemaDir() + File.separator + databaseFullPath;
@@ -283,11 +276,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mTree =
           new MTreeBelowSGMemoryImpl(
-<<<<<<< refs/remotes/upstream/clean
               PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
-=======
-              new PartialPath(databaseFullPath),
->>>>>>> local
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -413,12 +402,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             databaseFullPath);
         return idx;
       } catch (final Exception e) {
-<<<<<<< refs/remotes/upstream/clean
-        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin", e);
-=======
-        e.printStackTrace();
         throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin for err:" + e);
->>>>>>> local
       }
     } else {
       return 0;

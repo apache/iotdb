@@ -186,23 +186,22 @@ public class ConfigMTreeTest {
   @Test
   public void testIllegalStorageGroup() {
     try {
-      root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
+      root.setStorageGroup(new PartialPath("root.\"db.ln\""));
     } catch (final MetadataException e) {
-      Assert.assertEquals("root.\"sg.ln\" is not a legal path", e.getMessage());
+      Assert.assertEquals("root.\"db.ln\" is not a legal path", e.getMessage());
     }
   }
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
     root.setStorageGroup(new PartialPath("1"));
-    root.setStorageGroup(new PartialPath("root.a.sg1"));
-    root.setStorageGroup(new PartialPath("root.a.b.sg1"));
+    root.setStorageGroup(new PartialPath("root.a.db1"));
+    root.setStorageGroup(new PartialPath("root.a.b.db1"));
     root.setStorageGroup(new PartialPath("root.db2"));
-    root.setStorageGroup(new PartialPath("root.a.sg2"));
+    root.setStorageGroup(new PartialPath("root.a.db2"));
     root.setStorageGroup(new PartialPath("root.db3"));
-    root.setStorageGroup(new PartialPath("root.a.b.sg3"));
+    root.setStorageGroup(new PartialPath("root.a.b.db3"));
 
-<<<<<<< refs/remotes/upstream/clean
     assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), ALL_MATCH_SCOPE, false, false));
     assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
@@ -210,23 +209,13 @@ public class ConfigMTreeTest {
     assertEquals(
         2, root.getDatabaseNum(new PartialPath("root.*.*.*"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        1, root.getDatabaseNum(new PartialPath("root.*.sg1"), ALL_MATCH_SCOPE, false, false));
+        1, root.getDatabaseNum(new PartialPath("root.*.db1"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        2, root.getDatabaseNum(new PartialPath("root.**.sg1"), ALL_MATCH_SCOPE, false, false));
+        2, root.getDatabaseNum(new PartialPath("root.**.db1"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
-        1, root.getDatabaseNum(new PartialPath("root.sg3"), ALL_MATCH_SCOPE, false, false));
+        1, root.getDatabaseNum(new PartialPath("root.db3"), ALL_MATCH_SCOPE, false, false));
     assertEquals(
         2, root.getDatabaseNum(new PartialPath("root.*.b.*"), ALL_MATCH_SCOPE, false, false));
-=======
-    assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), ALL_MATCH_SCOPE, false));
-    assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), ALL_MATCH_SCOPE, false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*"), ALL_MATCH_SCOPE, false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*.*"), ALL_MATCH_SCOPE, false));
-    assertEquals(1, root.getDatabaseNum(new PartialPath("root.*.sg1"), ALL_MATCH_SCOPE, false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.**.sg1"), ALL_MATCH_SCOPE, false));
-    assertEquals(1, root.getDatabaseNum(new PartialPath("root.db3"), ALL_MATCH_SCOPE, false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.b.*"), ALL_MATCH_SCOPE, false));
->>>>>>> local
   }
 
   @Test
@@ -272,14 +261,10 @@ public class ConfigMTreeTest {
   public void testSerialization() throws Exception {
     final PartialPath[] pathList =
         new PartialPath[] {
-<<<<<<< refs/remotes/upstream/clean
           new PartialPath("root.`root`"),
-=======
-          new PartialPath("root.db"),
->>>>>>> local
-          new PartialPath("root.a.sg"),
-          new PartialPath("root.a.b.sg"),
-          new PartialPath("root.a.a.b.sg")
+          new PartialPath("root.a.db"),
+          new PartialPath("root.a.b.db"),
+          new PartialPath("root.a.a.b.db")
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
@@ -310,22 +295,22 @@ public class ConfigMTreeTest {
 
     assertEquals(
         3,
-        newTree.getMatchedDatabases(new PartialPath("root.**.sg"), ALL_MATCH_SCOPE, false).size());
+        newTree.getMatchedDatabases(new PartialPath("root.**.db"), ALL_MATCH_SCOPE, false).size());
     assertEquals(
         2,
         newTree
-            .getMatchedDatabases(new PartialPath("root.**.b.sg"), ALL_MATCH_SCOPE, false)
+            .getMatchedDatabases(new PartialPath("root.**.b.db"), ALL_MATCH_SCOPE, false)
             .size());
     assertEquals(
         1,
-        newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), ALL_MATCH_SCOPE, false).size());
+        newTree.getMatchedDatabases(new PartialPath("root.*.*.db"), ALL_MATCH_SCOPE, false).size());
     assertEquals(
         3, newTree.getMatchedDatabases(new PartialPath("root.a"), ALL_MATCH_SCOPE, true).size());
     assertEquals(
         1, newTree.getMatchedDatabases(new PartialPath("root.a.b"), ALL_MATCH_SCOPE, true).size());
     assertEquals(
         1,
-        newTree.getMatchedDatabases(new PartialPath("root.a.b.sg"), ALL_MATCH_SCOPE, true).size());
+        newTree.getMatchedDatabases(new PartialPath("root.a.b.db"), ALL_MATCH_SCOPE, true).size());
   }
 
   @Test
@@ -334,10 +319,10 @@ public class ConfigMTreeTest {
 
     final PartialPath[] pathList =
         new PartialPath[] {
-          new PartialPath("root.sg"),
-          new PartialPath("root.a.sg"),
-          new PartialPath("root.a.b.sg"),
-          new PartialPath("root.a.a.b.sg")
+          new PartialPath("root.db"),
+          new PartialPath("root.a.db"),
+          new PartialPath("root.a.b.db"),
+          new PartialPath("root.a.a.b.db")
         };
 
     for (int i = 0; i < pathList.length; i++) {
@@ -384,22 +369,22 @@ public class ConfigMTreeTest {
 
     assertEquals(
         3,
-        newTree.getMatchedDatabases(new PartialPath("root.**.sg"), ALL_MATCH_SCOPE, false).size());
+        newTree.getMatchedDatabases(new PartialPath("root.**.db"), ALL_MATCH_SCOPE, false).size());
     assertEquals(
         2,
         newTree
-            .getMatchedDatabases(new PartialPath("root.**.b.sg"), ALL_MATCH_SCOPE, false)
+            .getMatchedDatabases(new PartialPath("root.**.b.db"), ALL_MATCH_SCOPE, false)
             .size());
     assertEquals(
         1,
-        newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), ALL_MATCH_SCOPE, false).size());
+        newTree.getMatchedDatabases(new PartialPath("root.*.*.db"), ALL_MATCH_SCOPE, false).size());
     assertEquals(
         3, newTree.getMatchedDatabases(new PartialPath("root.a"), ALL_MATCH_SCOPE, true).size());
     assertEquals(
         1, newTree.getMatchedDatabases(new PartialPath("root.a.b"), ALL_MATCH_SCOPE, true).size());
     assertEquals(
         1,
-        newTree.getMatchedDatabases(new PartialPath("root.a.b.sg"), ALL_MATCH_SCOPE, true).size());
+        newTree.getMatchedDatabases(new PartialPath("root.a.b.db"), ALL_MATCH_SCOPE, true).size());
 
     for (int i = 0; i < pathList.length; i++) {
       final List<TsTable> tables = newTree.getAllUsingTablesUnderSpecificDatabase(pathList[i]);

@@ -384,13 +384,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-<<<<<<< refs/remotes/upstream/clean
     Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR2, schemaList);
-=======
-    Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR2, schemaList);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
->>>>>>> local
 
     for (long time = 100; time < 200; time++) {
       int row = tablet.getRowSize();

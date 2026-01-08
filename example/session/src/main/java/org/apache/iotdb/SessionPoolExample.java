@@ -101,8 +101,6 @@ public class SessionPoolExample {
     }
   }
 
-<<<<<<< refs/remotes/upstream/clean
-=======
   private static void queryByRowRecord() {
     for (int i = 0; i < 1; i++) {
       service.submit(
@@ -125,7 +123,6 @@ public class SessionPoolExample {
     }
   }
 
->>>>>>> local
   private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
       service.submit(

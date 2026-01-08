@@ -1059,50 +1059,6 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
-<<<<<<< refs/remotes/upstream/clean
-=======
-  public void testAsyncLoadLocally() throws Exception {
-    registerSchema();
-
-    final long writtenPoint1;
-    // device 0, device 1, sg 0
-    try (final TsFileGenerator generator =
-        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
-      generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
-      writtenPoint1 = generator.getTotalNumber();
-    }
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(
-          String.format(
-              "load \"%s\" with ('async'='true','database-level'='2')", tmpDir.getAbsolutePath()));
-
-      for (int i = 0; i < 20; i++) {
-        try (final ResultSet resultSet =
-            statement.executeQuery("select count(*) from root.** group by level=1,2")) {
-          if (resultSet.next()) {
-            final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
-            Assert.assertEquals(writtenPoint1, sg1Count);
-          } else {
-            Assert.fail("This ResultSet is empty.");
-          }
-        } catch (final Throwable e) {
-          if (i < 19) {
-            Thread.sleep(1000);
-          } else {
-            throw e;
-          }
-        }
-      }
-    }
-  }
-
-  @Test
->>>>>>> local
   @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTreeModel() throws Exception {
 
@@ -1172,13 +1128,8 @@ public class IoTDBLoadTsFileIT {
   }
 
   private static class SchemaConfig {
-<<<<<<< refs/remotes/upstream/clean
-    private static final String DATABASE_0 = "root.sg.test_0";
-    private static final String DATABASE_1 = "root.sg.test_1";
-=======
     private static final String DATABASE_0 = "root.db.test_0";
     private static final String DATABASE_1 = "root.db.test_1";
->>>>>>> local
 
     // device 0, nonaligned, sg 0
     private static final String DEVICE_0 = "root.db.test_0.d_0";

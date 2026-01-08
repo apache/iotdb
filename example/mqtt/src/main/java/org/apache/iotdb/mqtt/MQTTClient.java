@@ -67,12 +67,8 @@ public class MQTTClient {
     // publish a json array
     sb.insert(0, "[");
     sb.replace(sb.lastIndexOf(","), sb.length(), "]");
-<<<<<<< refs/remotes/upstream/clean
-    connection.publish("root.sg.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
-  }
-=======
     connection.publish("root.db.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
->>>>>>> local
+  }
 
   // The database must be created in advance
   private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
