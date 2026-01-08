@@ -16,8 +16,6 @@
 # under the License.
 #
 
-from contextlib import nullcontext
-
 import torch
 
 from iotdb.ainode.core.device.backend.base import BackendAdapter, BackendType

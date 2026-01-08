@@ -16,7 +16,6 @@
 # under the License.
 #
 
-from dataclasses import dataclass
 from typing import Optional
 
 import torch
@@ -29,13 +28,10 @@ from iotdb.ainode.core.device.env import DistEnv, read_dist_env
 from iotdb.ainode.core.util.decorator import singleton
 
 
-@dataclass(frozen=True)
-class DeviceManagerConfig:
-    use_local_rank_if_distributed: bool = True
-
-
 @singleton
 class DeviceManager:
+    use_local_rank_if_distributed: bool = True
+
     """
     Unified device entry point:
     - Select backend (cuda/npu/cpu)
@@ -43,8 +39,7 @@ class DeviceManager:
     - Provide device, autocast, grad scaler, synchronize, dist backend recommendation, etc.
     """
 
-    def __init__(self, cfg: DeviceManagerConfig):
-        self.cfg = cfg
+    def __init__(self):
         self.env: DistEnv = read_dist_env()
 
         self.backends: dict[BackendType, BackendAdapter] = {
@@ -72,7 +67,7 @@ class DeviceManager:
     def _select_default_index(self) -> Optional[int]:
         if self.backend.type == BackendType.CPU:
             return None
-        if self.cfg.use_local_rank_if_distributed and self.env.world_size > 1:
+        if self.use_local_rank_if_distributed and self.env.world_size > 1:
             return self.env.local_rank
         return 0
 
@@ -108,6 +103,8 @@ class DeviceManager:
                 a string (e.g., "0", "cuda:0", "cpu", ...),
                 a torch.device object, return itself if so.
         """
+        if device is None:
+            return self.device
         if isinstance(device, torch.device):
             return device
         spec = parse_device_like(device)

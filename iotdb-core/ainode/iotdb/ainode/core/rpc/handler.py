@@ -151,9 +151,11 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         available_devices = self._backend.device_ids()
         for device_id in device_id_list:
             try:
-                if device_id != "cpu" and int(device_id) not in available_devices:
+                if device_id == "cpu":
+                    continue
+                if int(device_id) not in available_devices:
                     raise ValueError(f"Invalid device ID [{device_id}]")
-            except ValueError:
+            except (TypeError, ValueError):
                 return TSStatus(
                     code=TSStatusCode.UNAVAILABLE_AI_DEVICE_ERROR.value,
                     message=f"AIDevice ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
