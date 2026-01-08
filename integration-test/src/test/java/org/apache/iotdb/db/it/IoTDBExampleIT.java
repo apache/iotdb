@@ -55,11 +55,19 @@ public class IoTDBExampleIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+<<<<<<< refs/remotes/upstream/clean
       statement.execute("CREATE DATABASE root.sg");
       try (ResultSet resultSet = statement.executeQuery("show databases root.sg")) {
         if (resultSet.next()) {
           String databasePath = resultSet.getString(ColumnHeaderConstant.DATABASE);
           Assert.assertEquals("root.sg", databasePath);
+=======
+      statement.execute("CREATE DATABASE root.db");
+      try (ResultSet resultSet = statement.executeQuery("show databases")) {
+        if (resultSet.next()) {
+          String storageGroupPath = resultSet.getString(ColumnHeaderConstant.DATABASE);
+          Assert.assertEquals("root.db", storageGroupPath);
+>>>>>>> local
         } else {
           Assert.fail("This ResultSet is empty.");
         }

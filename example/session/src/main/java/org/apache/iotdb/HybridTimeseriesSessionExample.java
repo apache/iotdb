@@ -44,9 +44,9 @@ public class HybridTimeseriesSessionExample {
       LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
 
   private static Session session;
-  private static final String ROOT_SG1_ALIGNEDDEVICE = "root.sg_1.aligned_device";
-  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
-  private static final String ROOT_SG1_D2 = "root.sg_1.d2";
+  private static final String ROOT_SG1_ALIGNEDDEVICE = "root.db_1.aligned_device";
+  private static final String ROOT_SG1_D1 = "root.db_1.d1";
+  private static final String ROOT_SG1_D2 = "root.db_1.d2";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -66,7 +66,7 @@ public class HybridTimeseriesSessionExample {
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg_1");
+    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.db_1");
     LOGGER.info("columnNames = {}", dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       LOGGER.info("data = {}", dataSet.next());

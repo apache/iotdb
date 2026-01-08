@@ -605,6 +605,7 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
     cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+<<<<<<< refs/remotes/upstream/clean
     return this;
   }
 
@@ -619,6 +620,8 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     cnConfig.setEnableInternalSSL(enableInternalSSL);
     dnConfig.setEnableInternalSSL(enableInternalSSL);
+=======
+>>>>>>> local
     return this;
   }
 

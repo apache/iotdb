@@ -49,29 +49,29 @@ public class SyntaxConventionRelatedExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   /**
-   * if you want to create a time series named root.sg1.select, a possible SQL statement would be
-   * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,
+   * if you want to create a time series named root.db1.select, a possible SQL statement would be
+   * like: create timeseries root.db1.select with datatype=FLOAT, encoding=RLE As described before,
    * when using session API, path is represented using String. The path should be written as
-   * "root.sg1.select".
+   * "root.db1.select".
    */
-  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.sg1.select";
+  private static final String ROOT_SG1_KEYWORD_EXAMPLE = "root.db1.select";
 
   /**
-   * if you want to create a time series named root.sg1.111, a possible SQL statement would be like:
-   * create timeseries root.sg1.`111` with datatype=FLOAT, encoding=RLE The path should be written
-   * as "root.sg1.`111`".
+   * if you want to create a time series named root.db1.111, a possible SQL statement would be like:
+   * create timeseries root.db1.`111` with datatype=FLOAT, encoding=RLE The path should be written
+   * as "root.db1.`111`".
    */
-  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.sg1.`111`";
+  private static final String ROOT_SG1_DIGITS_EXAMPLE = "root.db1.`111`";
 
   /**
-   * if you want to create a time series named root.sg1.`a"b'c``, a possible SQL statement would be
-   * like: create timeseries root.sg1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
-   * written as "root.sg1.`a"b`c```".
+   * if you want to create a time series named root.db1.`a"b'c``, a possible SQL statement would be
+   * like: create timeseries root.db1.`a"b'c``` with datatype=FLOAT, encoding=RLE The path should be
+   * written as "root.db1.`a"b`c```".
    */
-  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.sg1.`a\"b'c```";
+  private static final String ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE = "root.db1.`a\"b'c```";
 
   /**
-   * if you want to create a time series named root.sg1.a, a possible SQL statement would be like:
+   * if you want to create a time series named root.db1.a, a possible SQL statement would be like:
    * create timeseries root.sg1.a with datatype=FLOAT, encoding=RLE The path should be written as
    * "root.sg1.a".
    */

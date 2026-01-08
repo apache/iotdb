@@ -582,6 +582,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     setProperty("default_database_level", String.valueOf(defaultDatabaseLevel));
+<<<<<<< refs/remotes/upstream/clean
     return this;
   }
 
@@ -618,6 +619,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
     setProperty("trust_store_pwd", trustStorePwd);
+=======
+>>>>>>> local
     return this;
   }
 

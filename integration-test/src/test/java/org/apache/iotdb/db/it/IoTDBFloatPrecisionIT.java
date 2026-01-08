@@ -177,10 +177,10 @@ public class IoTDBFloatPrecisionIT {
       float[] floats = new float[] {6.5536403E8F, 3.123456768E20F, Float.NaN};
       double[] doubles = new double[] {9.223372036854E18, 9.223372036854E100, Double.NaN};
 
-      statement.execute("create timeseries root.sg.d1.s1 with datatype=float, encoding=rle");
-      statement.execute("create timeseries root.sg.d1.s2 with datatype=double, encoding=rle");
+      statement.execute("create timeseries root.db.d1.s1 with datatype=float, encoding=rle");
+      statement.execute("create timeseries root.db.d1.s2 with datatype=double, encoding=rle");
       statement.execute(
-          "insert into root.sg.d1(time, s1, s2) values (1, 6.5536403E8, 9.223372036854E18)");
+          "insert into root.db.d1(time, s1, s2) values (1, 6.5536403E8, 9.223372036854E18)");
       statement.execute(
           "insert into root.sg.d1(time, s1, s2) values (2, 3.123456768E20, 9.223372036854E100)");
       statement.execute("insert into root.sg.d1(time, s1, s2) values (3, NaN, NaN)");

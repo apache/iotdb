@@ -82,7 +82,7 @@ public class SessionPoolExample {
 
   // more insert example, see SessionExample.java
   private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = "root.db1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -101,13 +101,38 @@ public class SessionPoolExample {
     }
   }
 
+<<<<<<< refs/remotes/upstream/clean
+=======
+  private static void queryByRowRecord() {
+    for (int i = 0; i < 1; i++) {
+      service.submit(
+          () -> {
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = sessionPool.executeQueryStatement("select * from root.db1.d1");
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (wrapper.hasNext()) {
+                System.out.println(wrapper.next());
+              }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              LOGGER.error("Query by row record error", e);
+            } finally {
+              // remember to close data set finally!
+              sessionPool.closeResultSet(wrapper);
+            }
+          });
+    }
+  }
+
+>>>>>>> local
   private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = sessionPool.executeQueryStatement("select * from root.db1.d1");
               // get DataIterator like JDBC
               DataIterator dataIterator = wrapper.iterator();
               System.out.println(wrapper.getColumnNames());

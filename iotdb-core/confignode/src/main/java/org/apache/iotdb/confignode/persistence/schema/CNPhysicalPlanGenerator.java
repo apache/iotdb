@@ -76,7 +76,11 @@ import java.util.Stack;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
+<<<<<<< refs/remotes/upstream/clean
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+=======
+import static org.apache.iotdb.commons.utils.IOUtils.readAuthString;
+>>>>>>> local
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
 public class CNPhysicalPlanGenerator
@@ -440,8 +444,11 @@ public class CNPhysicalPlanGenerator
       IConfigMNode internalMNode;
       ConfigTableNode tableNode;
 
+<<<<<<< refs/remotes/upstream/clean
       final Set<TsTable> tableSet = new HashSet<>();
 
+=======
+>>>>>>> local
       if (type == DATABASE_MNODE_TYPE) {
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();

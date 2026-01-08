@@ -96,9 +96,12 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+<<<<<<< refs/remotes/upstream/clean
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+=======
+>>>>>>> local
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -196,8 +199,8 @@ public class ConfigMTree {
   /**
    * Get the database that given path pattern matches or belongs to.
    *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
+   * <p>Suppose we have (root.db1.d1.s1, root.db2.d2.s2), refer the following cases: 1. given path
+   * "root.db1", ("root.db1") will be returned. 2. given path "root.*", ("root.db1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
@@ -1118,6 +1121,7 @@ public class ConfigMTree {
   }
 
   private void serializeDatabaseNode(
+<<<<<<< refs/remotes/upstream/clean
       final IDatabaseMNode<IConfigMNode> storageGroupNode, final OutputStream outputStream)
       throws IOException {
     serializeChildren(storageGroupNode.getAsMNode(), outputStream);
@@ -1125,8 +1129,16 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
+=======
+      IDatabaseMNode<IConfigMNode> databaseNode, OutputStream outputStream) throws IOException {
+    serializeChildren(databaseNode.getAsMNode(), outputStream);
+
+    ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(databaseNode.getName(), outputStream);
+    ReadWriteIOUtils.write(databaseNode.getAsMNode().getSchemaTemplateId(), outputStream);
+>>>>>>> local
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
-        storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
+        databaseNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
   private void serializeTableNode(final ConfigTableNode tableNode, final OutputStream outputStream)

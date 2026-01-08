@@ -75,13 +75,13 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
 
       try {
-        statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
+        statement.execute("INSERT INTO root.db1(timestamp, s0) VALUES (1, 1)");
         fail();
       } catch (SQLException e) {
-        assertTrue(e.getMessage().contains("Path [root.sg1.s0] does not exist"));
+        assertTrue(e.getMessage().contains("Path [root.db1.s0] does not exist"));
       }
     }
   }
@@ -91,12 +91,12 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 datatype=text");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 datatype=double");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 datatype=text");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 datatype=double");
 
       try {
-        statement.execute("INSERT INTO root.sg.d1(time,s1,s2) VALUES(100,'test','test')");
+        statement.execute("INSERT INTO root.db.d1(time,s1,s2) VALUES(100,'test','test')");
       } catch (SQLException e) {
         // ignore
       }
@@ -124,7 +124,7 @@ public class IoTDBPartialInsertionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.db.d1")) {
         assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {

@@ -72,10 +72,10 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.s1")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.d0.s1")) {
         if (resultSet.next()) {
           assertEquals("PLAIN", resultSet.getString(ColumnHeaderConstant.ENCODING).toUpperCase());
         }
@@ -91,10 +91,10 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       try {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
+            "CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
         fail();
       } catch (Exception e) {
         assertEquals(

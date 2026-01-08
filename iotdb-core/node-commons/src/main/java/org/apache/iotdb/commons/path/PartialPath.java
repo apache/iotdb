@@ -84,7 +84,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
-   * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
+   * = "root.db.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
    */
@@ -93,8 +93,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     if (nodes.length == 0) {
       throw new IllegalPathException(path);
     }
-    // path is root.sg.`abc`, fullPath is root.sg.abc
-    // path is root.sg.`select`, fullPath is root.sg.select
+    // path is root.db.`abc`, fullPath is root.db.abc
+    // path is root.db.`select`, fullPath is root.db.select
     // path is root.sg.`111`, fullPath is root.sg.`111`
     // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
     // path is root.sg.`a``b`, fullPath is root.sg.`a``b`

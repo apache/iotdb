@@ -211,9 +211,10 @@ public class PartitionManager {
    * Get SchemaPartition and create a new one if it does not exist.
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @return SchemaPartitionResp with DataPartition and TSStatus. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some StorageGroup don't exist.
    */
   public SchemaPartitionResp getOrCreateSchemaPartition(final GetOrCreateSchemaPartitionPlan req) {
     // Check if the related Databases exist

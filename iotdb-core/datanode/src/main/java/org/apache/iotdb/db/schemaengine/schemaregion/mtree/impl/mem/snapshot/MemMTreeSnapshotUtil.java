@@ -62,7 +62,10 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE
 import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
+<<<<<<< refs/remotes/upstream/clean
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
+=======
+>>>>>>> local
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {

@@ -54,15 +54,15 @@ public class SessionExample {
 
   private static Session session;
   private static Session sessionEnableRedirect;
-  private static final String ROOT_SG1_D1_S1 = "root.sg1.d1.s1";
-  private static final String ROOT_SG1_D1_S2 = "root.sg1.d1.s2";
-  private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
-  private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
-  private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
-  private static final String ROOT_SG1_D1 = "root.sg1.d1";
-  private static final String ROOT_SG1 = "root.sg1";
+  private static final String ROOT_SG1_D1_S1 = "root.db1.d1.s1";
+  private static final String ROOT_SG1_D1_S2 = "root.db1.d1.s2";
+  private static final String ROOT_SG1_D1_S3 = "root.db1.d1.s3";
+  private static final String ROOT_SG1_D1_S4 = "root.db1.d1.s4";
+  private static final String ROOT_SG1_D1_S5 = "root.db1.d1.s5";
+  private static final String ROOT_SG1_D1 = "root.db1.d1";
+  private static final String ROOT_SG1 = "root.db1";
   private static final String LOCAL_HOST = "127.0.0.1";
-  public static final String SELECT_D1 = "select * from root.sg1.d1";
+  public static final String SELECT_D1 = "select * from root.db1.d1";
 
   private static final Random RANDOM = new Random();
 
@@ -82,7 +82,7 @@ public class SessionExample {
     session.setFetchSize(10000);
 
     try {
-      session.createDatabase("root.sg1");
+      session.createDatabase("root.db1");
     } catch (StatementExecutionException e) {
       if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw e;
@@ -131,16 +131,16 @@ public class SessionExample {
       throws StatementExecutionException, IoTDBConnectionException {
     session.executeNonQueryStatement(
         "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT max_value(s1) INTO temperature_max FROM root.sg1.* "
+            + "BEGIN SELECT max_value(s1) INTO temperature_max FROM root.db1.* "
             + "GROUP BY time(10s) END");
     session.executeNonQueryStatement(
         "CREATE CONTINUOUS QUERY cq2 "
-            + "BEGIN SELECT count(s2) INTO temperature_cnt FROM root.sg1.* "
+            + "BEGIN SELECT count(s2) INTO temperature_cnt FROM root.db1.* "
             + "GROUP BY time(10s), level=1 END");
     session.executeNonQueryStatement(
         "CREATE CONTINUOUS QUERY cq3 "
             + "RESAMPLE EVERY 20s FOR 20s "
-            + "BEGIN SELECT avg(s3) INTO temperature_avg FROM root.sg1.* "
+            + "BEGIN SELECT avg(s3) INTO temperature_avg FROM root.db1.* "
             + "GROUP BY time(10s), level=1 END");
     session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq1");
     session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq2");
@@ -204,11 +204,11 @@ public class SessionExample {
   private static void createMultiTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d2.s1")
-        && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
+    if (!session.checkTimeseriesExists("root.db1.d2.s1")
+        && !session.checkTimeseriesExists("root.db1.d2.s2")) {
       List<String> paths = new ArrayList<>();
-      paths.add("root.sg1.d2.s1");
-      paths.add("root.sg1.d2.s2");
+      paths.add("root.db1.d2.s1");
+      paths.add("root.db1.d2.s2");
       List<TSDataType> tsDataTypes = new ArrayList<>();
       tsDataTypes.add(TSDataType.INT64);
       tsDataTypes.add(TSDataType.INT64);
@@ -304,7 +304,7 @@ public class SessionExample {
     template.addToTemplate(mNodeS3);
 
     session.createSchemaTemplate(template);
-    session.setSchemaTemplate("template1", "root.sg1");
+    session.setSchemaTemplate("template1", "root.db1");
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
@@ -584,7 +584,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(ROOT_SG1_D1, schemaList, 100);
-    Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
+    Tablet tablet2 = new Tablet("root.db1.d2", schemaList, 100);
     Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();

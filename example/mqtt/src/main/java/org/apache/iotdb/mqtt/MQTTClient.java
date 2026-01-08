@@ -52,7 +52,7 @@ public class MQTTClient {
       String payload =
           String.format(
               "{\n"
-                  + "\"device\":\"root.sg.d1\",\n"
+                  + "\"device\":\"root.db.d1\",\n"
                   + "\"timestamp\":%d,\n"
                   + "\"measurements\":[\"s1\"],\n"
                   + "\"values\":[%f]\n"
@@ -62,13 +62,17 @@ public class MQTTClient {
 
       // publish a json object
       Thread.sleep(1);
-      connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+      connection.publish("root.db.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     }
     // publish a json array
     sb.insert(0, "[");
     sb.replace(sb.lastIndexOf(","), sb.length(), "]");
+<<<<<<< refs/remotes/upstream/clean
     connection.publish("root.sg.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
   }
+=======
+    connection.publish("root.db.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
+>>>>>>> local
 
   // The database must be created in advance
   private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
