@@ -72,7 +72,7 @@ class DeviceManager:
         return 0
 
     def _set_device_for_process(self) -> None:
-        if self.backend.type in (BackendType.CUDA) and self.default_index is not None:
+        if self.backend.type in (BackendType.CUDA,) and self.default_index is not None:
             self.backend.set_device(self.default_index)
 
     # ==================== public API ====================
