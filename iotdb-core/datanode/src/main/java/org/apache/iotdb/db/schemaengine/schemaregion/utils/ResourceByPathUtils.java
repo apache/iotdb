@@ -542,6 +542,14 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     boolean isModified = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       isModified = (isModified || chunkMetadata.isModified());
+      TSDataType targetDataType = fullPath.getMeasurementSchema().getType();
+      if (targetDataType.equals(TSDataType.STRING)
+          && (chunkMetadata.getDataType() != targetDataType)) {
+        // create new statistics object via new data type, and merge statistics information
+        SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
+            (ChunkMetadata) chunkMetadata, targetDataType);
+        chunkMetadata.setModified(true);
+      }
       if (!useFakeStatistics) {
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
         continue;

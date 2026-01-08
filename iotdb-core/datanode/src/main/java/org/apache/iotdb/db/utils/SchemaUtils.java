@@ -404,108 +404,7 @@ public class SchemaUtils {
     List<IChunkMetadata> newValueChunkMetadataList = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
-      switch (valueChunkMetadata.getDataType()) {
-        case INT32:
-        case DATE:
-        case INT64:
-        case TIMESTAMP:
-        case FLOAT:
-        case DOUBLE:
-        case BOOLEAN:
-          if (targetDataType == TSDataType.STRING) {
-            Binary[] binaryValues = new Binary[4];
-            binaryValues[0] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getFirstValue().toString(),
-                    StandardCharsets.UTF_8);
-            binaryValues[1] =
-                new Binary(
-                    valueChunkMetadata.getStatistics().getLastValue().toString(),
-                    StandardCharsets.UTF_8);
-            if (valueChunkMetadata.getDataType() == TSDataType.BOOLEAN) {
-              binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
-              binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
-            } else {
-              binaryValues[2] =
-                  new Binary(
-                      valueChunkMetadata.getStatistics().getMinValue().toString(),
-                      StandardCharsets.UTF_8);
-              binaryValues[3] =
-                  new Binary(
-                      valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                      StandardCharsets.UTF_8);
-            }
-            long[] longValues = new long[4];
-            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
-            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
-            longValues[2] = longValues[1];
-            longValues[3] = longValues[1];
-            statistics.update(longValues, binaryValues, binaryValues.length);
-          } else if (targetDataType == TSDataType.TEXT) {
-            Binary[] binaryValues = new Binary[2];
-            if (valueChunkMetadata.getDataType() == TSDataType.BOOLEAN) {
-              binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
-              binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
-            } else {
-              binaryValues[0] =
-                  new Binary(
-                      valueChunkMetadata.getStatistics().getMinValue().toString(),
-                      StandardCharsets.UTF_8);
-              binaryValues[1] =
-                  new Binary(
-                      valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                      StandardCharsets.UTF_8);
-            }
-            long[] longValues = new long[2];
-            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
-            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
-            statistics.update(longValues, binaryValues, binaryValues.length);
-          } else {
-            statistics = valueChunkMetadata.getStatistics();
-          }
-          break;
-        case STRING:
-          if (targetDataType == TSDataType.TEXT) {
-            Binary[] binaryValues = new Binary[2];
-            binaryValues[0] =
-                new Binary(
-                    Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
-                            .contains(valueChunkMetadata.getDataType())
-                        ? ""
-                        : valueChunkMetadata.getStatistics().getMinValue().toString(),
-                    StandardCharsets.UTF_8);
-            binaryValues[1] =
-                new Binary(
-                    Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
-                            .contains(valueChunkMetadata.getDataType())
-                        ? ""
-                        : valueChunkMetadata.getStatistics().getMaxValue().toString(),
-                    StandardCharsets.UTF_8);
-            long[] longValues = new long[2];
-            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
-            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
-            statistics.update(longValues, binaryValues, binaryValues.length);
-          } else {
-            statistics = valueChunkMetadata.getStatistics();
-          }
-          break;
-        case TEXT:
-        case BLOB:
-          if (targetDataType == TSDataType.STRING) {
-            Binary[] binaryValues = new Binary[2];
-            binaryValues[0] = new Binary("", StandardCharsets.UTF_8);
-            binaryValues[1] = new Binary("", StandardCharsets.UTF_8);
-            long[] longValues = new long[2];
-            longValues[0] = valueChunkMetadata.getStatistics().getStartTime();
-            longValues[1] = valueChunkMetadata.getStatistics().getEndTime();
-            statistics.update(longValues, binaryValues, binaryValues.length);
-          } else {
-            statistics = valueChunkMetadata.getStatistics();
-          }
-          break;
-        default:
-          break;
-      }
+      statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
       ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
       newChunkMetadata.setTsDataType(targetDataType);
@@ -516,10 +415,120 @@ public class SchemaUtils {
         alignedChunkMetadata.getTimeChunkMetadata(), newValueChunkMetadataList);
   }
 
+  public static void rewriteNonAlignedChunkMetadataStatistics(
+      ChunkMetadata chunkMetadata, TSDataType targetDataType) {
+    Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+    statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
+
+    chunkMetadata.setTsDataType(targetDataType);
+    chunkMetadata.setStatistics(statistics);
+  }
+
   public static TSEncoding getDataTypeCompatibleEncoding(TSDataType dataType, TSEncoding encoding) {
     if (!encoding.isSupported(dataType)) {
       return EncodingInferenceUtils.getDefaultEncoding(dataType);
     }
     return encoding;
+  }
+
+  public static Statistics<?> getNewStatistics(
+      IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+    switch (chunkMetadata.getDataType()) {
+      case INT32:
+      case DATE:
+      case INT64:
+      case TIMESTAMP:
+      case FLOAT:
+      case DOUBLE:
+      case BOOLEAN:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(
+                  chunkMetadata.getStatistics().getFirstValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  chunkMetadata.getStatistics().getLastValue().toString(), StandardCharsets.UTF_8);
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+            binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[2] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[3] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[4];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+            binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[0] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case STRING:
+        if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] =
+              new Binary(
+                  Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
+                          .contains(chunkMetadata.getDataType())
+                      ? ""
+                      : chunkMetadata.getStatistics().getMinValue().toString(),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)
+                          .contains(chunkMetadata.getDataType())
+                      ? ""
+                      : chunkMetadata.getStatistics().getMaxValue().toString(),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case TEXT:
+      case BLOB:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = new Binary("", StandardCharsets.UTF_8);
+          binaryValues[1] = new Binary("", StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      default:
+        break;
+    }
+    return statistics;
   }
 }
