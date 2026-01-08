@@ -38,36 +38,46 @@ public class WithQuery extends Node {
 
   private final Identifier name;
   private final Query query;
+  private final boolean materialized;
 
   @Nullable private final List<Identifier> columnNames;
 
-  public WithQuery(Identifier name, Query query) {
+  public WithQuery(Identifier name, Query query, boolean materialized) {
     super(null);
     this.name = name;
     this.query = requireNonNull(query, "query is null");
     this.columnNames = null;
-  }
-
-  public WithQuery(Identifier name, Query query, List<Identifier> columnNames) {
-    super(null);
-    this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = requireNonNull(columnNames, "columnNames is null");
-  }
-
-  public WithQuery(NodeLocation location, Identifier name, Query query) {
-    super(requireNonNull(location, "location is null"));
-    this.name = name;
-    this.query = requireNonNull(query, "query is null");
-    this.columnNames = null;
+    this.materialized = materialized;
   }
 
   public WithQuery(
-      NodeLocation location, Identifier name, Query query, List<Identifier> columnNames) {
+      Identifier name, Query query, List<Identifier> columnNames, boolean materialized) {
+    super(null);
+    this.name = name;
+    this.query = requireNonNull(query, "query is null");
+    this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.materialized = materialized;
+  }
+
+  public WithQuery(NodeLocation location, Identifier name, Query query, boolean materialized) {
+    super(requireNonNull(location, "location is null"));
+    this.name = name;
+    this.query = requireNonNull(query, "query is null");
+    this.columnNames = null;
+    this.materialized = materialized;
+  }
+
+  public WithQuery(
+      NodeLocation location,
+      Identifier name,
+      Query query,
+      List<Identifier> columnNames,
+      boolean materialized) {
     super(requireNonNull(location, "location is null"));
     this.name = name;
     this.query = requireNonNull(query, "query is null");
     this.columnNames = requireNonNull(columnNames, "columnNames is null");
+    this.materialized = materialized;
   }
 
   public Identifier getName() {
@@ -80,6 +90,10 @@ public class WithQuery extends Node {
 
   public Optional<List<Identifier>> getColumnNames() {
     return Optional.ofNullable(columnNames);
+  }
+
+  public boolean isMaterialized() {
+    return materialized;
   }
 
   @Override
@@ -98,13 +112,14 @@ public class WithQuery extends Node {
         .add("name", name)
         .add("query", query)
         .add("columnNames", columnNames)
+        .add("materialized", materialized)
         .omitNullValues()
         .toString();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, query, columnNames);
+    return Objects.hash(name, query, columnNames, materialized);
   }
 
   @Override
@@ -118,7 +133,8 @@ public class WithQuery extends Node {
     WithQuery o = (WithQuery) obj;
     return Objects.equals(name, o.name)
         && Objects.equals(query, o.query)
-        && Objects.equals(columnNames, o.columnNames);
+        && Objects.equals(columnNames, o.columnNames)
+        && Objects.equals(materialized, o.materialized);
   }
 
   @Override

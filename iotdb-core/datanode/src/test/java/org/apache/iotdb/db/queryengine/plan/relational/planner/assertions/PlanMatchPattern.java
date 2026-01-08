@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -222,9 +223,36 @@ public final class PlanMatchPattern {
   }
 
   public static PlanMatchPattern tableScan(
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      Expression pushDownPredicate) {
+    PlanMatchPattern pattern =
+        node(DeviceTableScanNode.class)
+            .with(
+                new DeviceTableScanMatcher(
+                    expectedTableName,
+                    Optional.empty(),
+                    outputSymbols,
+                    assignmentsKeys,
+                    pushDownPredicate));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
+  }
+
+  public static PlanMatchPattern tableScan(
       String expectedTableName, Map<String, String> columnReferences) {
     PlanMatchPattern result = tableScan(expectedTableName);
     return result.addColumnReferences(expectedTableName, columnReferences);
+  }
+
+  public static PlanMatchPattern cteScan(String expectedCteName, List<String> outputSymbols) {
+    PlanMatchPattern pattern =
+        node(CteScanNode.class).with(new CteScanMatcher(expectedCteName, outputSymbols));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedCteName, symbol)));
+    return pattern;
   }
 
   public static PlanMatchPattern tableFunctionProcessor(
