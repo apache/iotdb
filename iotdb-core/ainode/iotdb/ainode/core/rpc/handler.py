@@ -95,7 +95,10 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        return self._inference_manager.load_model(req)
+        return self._inference_manager.load_model(
+            req.existingModelId,
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList],
+        )
 
     def unloadModel(self, req: TUnloadModelReq) -> TSStatus:
         status = self._ensure_model_is_registered(req.modelId)
@@ -104,13 +107,18 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        return self._inference_manager.unload_model(req)
+        return self._inference_manager.unload_model(
+            req.modelId,
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList],
+        )
 
     def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
         status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TShowLoadedModelsResp(status=status, deviceLoadedModelsMap={})
-        return self._inference_manager.show_loaded_models(req)
+        return self._inference_manager.show_loaded_models(
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList]
+        )
 
     def _ensure_model_is_registered(self, model_id: str) -> TSStatus:
         if not self._model_manager.is_model_registered(model_id):
@@ -142,7 +150,10 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         """
         available_devices = self._backend.device_ids()
         for device_id in device_id_list:
-            if device_id != "cpu" and int(device_id) not in available_devices:
+            try:
+                if device_id != "cpu" and int(device_id) not in available_devices:
+                    raise ValueError(f"Invalid device ID [{device_id}]")
+            except ValueError:
                 return TSStatus(
                     code=TSStatusCode.UNAVAILABLE_AI_DEVICE_ERROR.value,
                     message=f"AIDevice ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",

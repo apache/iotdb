@@ -16,16 +16,18 @@
 # under the License.
 #
 from dataclasses import dataclass
-from typing import Union, Optional
+from typing import Optional, Union
 
 import torch
 
 DeviceLike = Union[torch.device, str, int]
 
+
 @dataclass(frozen=True)
 class DeviceSpec:
     type: str
     index: Optional[int]
+
 
 def parse_device_like(x: DeviceLike) -> DeviceSpec:
     if isinstance(x, int):

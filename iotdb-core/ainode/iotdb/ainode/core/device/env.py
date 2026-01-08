@@ -19,11 +19,13 @@
 import os
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class DistEnv:
     rank: int
     local_rank: int
     world_size: int
+
 
 def read_dist_env() -> DistEnv:
     # torchrun:

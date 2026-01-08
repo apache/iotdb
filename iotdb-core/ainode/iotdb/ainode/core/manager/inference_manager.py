@@ -54,10 +54,7 @@ from iotdb.thrift.ainode.ttypes import (
     TForecastResp,
     TInferenceReq,
     TInferenceResp,
-    TLoadModelReq,
-    TShowLoadedModelsReq,
     TShowLoadedModelsResp,
-    TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
 
@@ -86,7 +83,9 @@ class InferenceManager:
         self._result_handler_thread.start()
         self._pool_controller = PoolController(self._result_queue)
 
-    def load_model(self, existing_model_id: str, device_id_list: list[torch.device]) -> TSStatus:
+    def load_model(
+        self, existing_model_id: str, device_id_list: list[torch.device]
+    ) -> TSStatus:
         """
         Load a model to specified devices.
         Args:
@@ -116,35 +115,39 @@ class InferenceManager:
             message='Successfully submitted load model task, please use "SHOW LOADED MODELS" to check progress.',
         )
 
-    def unload_model(self, req: TUnloadModelReq) -> TSStatus:
+    def unload_model(
+        self, model_id: str, device_id_list: list[torch.device]
+    ) -> TSStatus:
         devices_to_be_processed = []
         devices_not_to_be_processed = []
-        for device_id in req.deviceIdList:
+        for device_id in device_id_list:
             if self._pool_controller.has_request_pools(
-                model_id=req.modelId, device_id=device_id
+                model_id=model_id, device_id=device_id
             ):
                 devices_to_be_processed.append(device_id)
             else:
                 devices_not_to_be_processed.append(device_id)
         if len(devices_to_be_processed) > 0:
             self._pool_controller.unload_model(
-                model_id=req.modelId, device_id_list=req.deviceIdList
+                model_id=model_id, device_id_list=device_id_list
             )
         logger.info(
-            f"[Inference] Start unloading model [{req.modelId}] from devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they haven't loaded this model."
+            f"[Inference] Start unloading model [{model_id}] from devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they haven't loaded this model."
         )
         return TSStatus(
             code=TSStatusCode.SUCCESS_STATUS.value,
             message='Successfully submitted unload model task, please use "SHOW LOADED MODELS" to check progress.',
         )
 
-    def show_loaded_models(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
+    def show_loaded_models(
+        self, device_id_list: list[torch.device]
+    ) -> TShowLoadedModelsResp:
         return TShowLoadedModelsResp(
             status=get_status(TSStatusCode.SUCCESS_STATUS),
             deviceLoadedModelsMap=self._pool_controller.show_loaded_models(
-                req.deviceIdList
-                if len(req.deviceIdList) > 0
-                else self._backend.str_device_ids_with_cpu()
+                device_id_list
+                if len(device_id_list) > 0
+                else self._backend.available_devices_with_cpu()
             ),
         )
 
@@ -211,7 +214,7 @@ class InferenceManager:
                     output_length,
                 )
 
-            if self._pool_controller.has_request_pools(model_id):
+            if self._pool_controller.has_request_pools(model_id=model_id):
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
                     model_id=model_id,
@@ -223,7 +226,9 @@ class InferenceManager:
                 outputs = self._process_request(infer_req)
             else:
                 model_info = self._model_manager.get_model_info(model_id)
-                inference_pipeline = load_pipeline(model_info, device="cpu")
+                inference_pipeline = load_pipeline(
+                    model_info, device=self._backend.torch_device("cpu")
+                )
                 inputs = inference_pipeline.preprocess(
                     model_inputs_list, output_length=output_length
                 )

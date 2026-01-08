@@ -21,16 +21,17 @@ from abc import ABC, abstractmethod
 import torch
 
 from iotdb.ainode.core.exception import InferenceModelInternalException
-from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.manager.device_manager import DeviceManager
+from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.model.model_loader import load_model
 
 BACKEND = DeviceManager()
 
+
 class BasicPipeline(ABC):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         self.model_info = model_info
-        self.device = model_kwargs.get("device", "cpu")
+        self.device = model_kwargs.get("device", BACKEND.torch_device("cpu"))
         self.model = load_model(model_info, device_map=self.device, **model_kwargs)
 
     @abstractmethod

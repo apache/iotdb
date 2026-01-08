@@ -17,6 +17,7 @@
 #
 
 from contextlib import nullcontext
+
 import torch
 
 from iotdb.ainode.core.device.backend.base import BackendAdapter, BackendType
@@ -38,21 +39,3 @@ class CUDABackend(BackendAdapter):
 
     def set_device(self, index: int) -> None:
         torch.cuda.set_device(index)
-
-    def synchronize(self) -> None:
-        torch.cuda.synchronize()
-
-    def autocast(self, enabled: bool, dtype: torch.dtype):
-        if not enabled:
-            return nullcontext()
-        return torch.autocast(device_type="cuda", dtype=dtype, enabled=True)
-
-    def make_grad_scaler(self, enabled: bool):
-        return torch.cuda.amp.GradScaler(enabled=enabled)
-
-    def default_dist_backend(self) -> str:
-        return "nccl"
-
-    def supports_bf16(self) -> bool:
-        fn = getattr(torch.cuda, "is_bf16_supported", None)
-        return bool(fn()) if callable(fn) else True

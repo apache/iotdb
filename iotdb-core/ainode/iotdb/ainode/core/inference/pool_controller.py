@@ -124,12 +124,12 @@ class PoolController:
         # if not ready_event.wait(timeout=30):
         #     self._erase_pool(model_id, device_id, 0)
         #     logger.error(
-        #         f"[Inference][Device-{device}][Pool-0] Pool failed to be ready in time"
+        #         f"[Inference][{device}][Pool-0] Pool failed to be ready in time"
         #     )
         # else:
         #     self.set_state(model_id, device_id, 0, PoolState.RUNNING)
         #     logger.info(
-        #         f"[Inference][Device-{device}][Pool-0] Pool started running for model {model_id}"
+        #         f"[Inference][{device}][Pool-0] Pool started running for model {model_id}"
         #     )
 
     # =============== Pool Management ===============
@@ -239,7 +239,9 @@ class PoolController:
             unload_model_futures, return_when=concurrent.futures.ALL_COMPLETED
         )
 
-    def _expand_pools_on_device(self, model_id: str, device_id: torch.device, count: int):
+    def _expand_pools_on_device(
+        self, model_id: str, device_id: torch.device, count: int
+    ):
         """
         Expand the pools for the given model_id and device_id sequentially.
         Args:
@@ -281,7 +283,9 @@ class PoolController:
             expand_pool_futures, return_when=concurrent.futures.ALL_COMPLETED
         )
 
-    def _shrink_pools_on_device(self, model_id: str, device_id: torch.device, count: int):
+    def _shrink_pools_on_device(
+        self, model_id: str, device_id: torch.device, count: int
+    ):
         """
         Shrink the pools for the given model_id by count sequentially.
         TODO: shrink pools in parallel
@@ -353,7 +357,7 @@ class PoolController:
             f"[Inference][{device_id}][Pool-{pool_id}] Pool initializing for model {model_id}"
         )
 
-    def _erase_pool(self, model_id: str, device_id: str, pool_id: int):
+    def _erase_pool(self, model_id: str, device_id: torch.device, pool_id: int):
         """
         Erase the specified inference request pool for the given model_id, device_id and pool_id.
         """
@@ -388,7 +392,9 @@ class PoolController:
         self._request_pool_map[model_id][device_id].dispatch_request(req, infer_proxy)
 
     # =============== Getters / Setters ===============
-    def get_state(self, model_id: str, device_id: torch.device, pool_id: int) -> Optional[PoolState]:
+    def get_state(
+        self, model_id: str, device_id: torch.device, pool_id: int
+    ) -> Optional[PoolState]:
         """
         Get the state of the specified pool based on model_id, device_id, and pool_id.
         """
@@ -397,7 +403,9 @@ class PoolController:
             return pool_group.get_state(pool_id)
         return None
 
-    def set_state(self, model_id: str, device_id: torch.device, pool_id: int, state: PoolState):
+    def set_state(
+        self, model_id: str, device_id: torch.device, pool_id: int, state: PoolState
+    ):
         """
         Set the state of the specified pool based on model_id, device_id, and pool_id.
         """
@@ -422,7 +430,7 @@ class PoolController:
             return pool_group.get_pool_ids()
         return []
 
-    def has_request_pools(self, model_id: str, device_id: Optional[torch.device]) -> bool:
+    def has_request_pools(self, model_id: str, device_id: torch.device = None) -> bool:
         """
         Check if there are request pools for the given model_id ((optional) and device_id).
         """
@@ -451,7 +459,9 @@ class PoolController:
             return pool_group.get_request_pool(pool_id)
         return None
 
-    def get_request_queue(self, model_id: str, device_id: torch.device, pool_id: int) -> Optional[mp.Queue]:
+    def get_request_queue(
+        self, model_id: str, device_id: torch.device, pool_id: int
+    ) -> Optional[mp.Queue]:
         pool_group = self.get_request_pools_group(model_id, device_id)
         if pool_group:
             return pool_group.get_request_queue(pool_id)
@@ -476,7 +486,7 @@ class PoolController:
             pool_id, request_pool, request_queue
         )
         logger.info(
-            f"[Inference][Device-{device_id}][Pool-{pool_id}] Registered pool for model {model_id}"
+            f"[Inference][{device_id}][Pool-{pool_id}] Registered pool for model {model_id}"
         )
 
     def get_load(self, model_id: str, device_id: torch.device, pool_id: int) -> int:

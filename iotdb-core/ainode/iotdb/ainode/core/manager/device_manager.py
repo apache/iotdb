@@ -17,21 +17,22 @@
 #
 
 from dataclasses import dataclass
-from typing import Optional, ContextManager
-import os
+from typing import Optional
+
 import torch
 
-from iotdb.ainode.core.device.env import read_dist_env, DistEnv
-from iotdb.ainode.core.device.device_utils import (DeviceLike, parse_device_like)
 from iotdb.ainode.core.device.backend.base import BackendAdapter, BackendType
-from iotdb.ainode.core.device.backend.cuda_backend import CUDABackend
 from iotdb.ainode.core.device.backend.cpu_backend import CPUBackend
+from iotdb.ainode.core.device.backend.cuda_backend import CUDABackend
+from iotdb.ainode.core.device.device_utils import DeviceLike, parse_device_like
+from iotdb.ainode.core.device.env import DistEnv, read_dist_env
 from iotdb.ainode.core.util.decorator import singleton
 
 
 @dataclass(frozen=True)
 class DeviceManagerConfig:
     use_local_rank_if_distributed: bool = True
+
 
 @singleton
 class DeviceManager:
@@ -41,6 +42,7 @@ class DeviceManager:
     - Parse device expression (None/int/str/torch.device/DeviceSpec)
     - Provide device, autocast, grad scaler, synchronize, dist backend recommendation, etc.
     """
+
     def __init__(self, cfg: DeviceManagerConfig):
         self.cfg = cfg
         self.env: DistEnv = read_dist_env()
@@ -87,13 +89,13 @@ class DeviceManager:
             return []
         return list(range(self.backend.device_count()))
 
-    def str_device_ids_with_cpu(self) -> list[str]:
+    def available_devices_with_cpu(self) -> list[torch.device]:
         """
-        Returns a list of available device IDs as strings, including "cpu".
+        Returns the list of available torch.devices, including "cpu".
         """
         device_id_list = self.device_ids()
-        device_id_list = [str(device_id) for device_id in device_id_list]
-        device_id_list.append("cpu")
+        device_id_list = [self.torch_device(device_id) for device_id in device_id_list]
+        device_id_list.append(self.torch_device("cpu"))
         return device_id_list
 
     def torch_device(self, device: DeviceLike) -> torch.device:
@@ -113,24 +115,12 @@ class DeviceManager:
             return torch.device("cpu")
         return self.backend.make_device(spec.index)
 
-    def move_model(self, model: torch.nn.Module, device: DeviceLike = None) -> torch.nn.Module:
+    def move_model(
+        self, model: torch.nn.Module, device: DeviceLike = None
+    ) -> torch.nn.Module:
         return model.to(self.torch_device(device))
 
-    def move_tensor(self, tensor: torch.Tensor, device: DeviceLike = None) -> torch.Tensor:
+    def move_tensor(
+        self, tensor: torch.Tensor, device: DeviceLike = None
+    ) -> torch.Tensor:
         return tensor.to(self.torch_device(device))
-
-    def synchronize(self) -> None:
-        self.backend.synchronize()
-
-    def autocast(self, enabled: bool, dtype: torch.dtype) -> ContextManager:
-        return self.backend.autocast(enabled=enabled, dtype=dtype)
-
-    def make_grad_scaler(self, enabled: bool):
-        return self.backend.make_grad_scaler(enabled=enabled)
-
-    def default_dist_backend(self) -> str:
-        # allow user override
-        return os.environ.get("TORCH_DIST_BACKEND", self.backend.default_dist_backend())
-
-    def supports_bf16(self) -> bool:
-        return self.backend.supports_bf16()

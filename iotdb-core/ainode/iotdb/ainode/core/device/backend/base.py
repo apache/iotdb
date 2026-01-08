@@ -17,8 +17,10 @@
 #
 
 from enum import Enum
-from typing import Protocol, Optional, ContextManager
+from typing import ContextManager, Optional, Protocol
+
 import torch
+
 
 class BackendType(Enum):
     """
@@ -28,6 +30,7 @@ class BackendType(Enum):
 
     CUDA = "cuda"
     CPU = "cpu"
+
 
 class BackendAdapter(Protocol):
     type: BackendType

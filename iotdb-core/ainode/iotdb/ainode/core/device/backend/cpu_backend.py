@@ -17,6 +17,7 @@
 #
 
 from contextlib import nullcontext
+
 import torch
 
 from iotdb.ainode.core.device.backend.base import BackendAdapter, BackendType
@@ -36,25 +37,3 @@ class CPUBackend(BackendAdapter):
 
     def set_device(self, index: int) -> None:
         return None
-
-    def synchronize(self) -> None:
-        return None
-
-    def autocast(self, enabled: bool, dtype: torch.dtype):
-        return nullcontext()
-
-    def make_grad_scaler(self, enabled: bool):
-        class _NoopScaler:
-            def scale(self, loss): return loss
-            def step(self, optim): optim.step()
-            def update(self): return None
-            def unscale_(self, optim): return None
-            @property
-            def is_enabled(self): return False
-        return _NoopScaler()
-
-    def default_dist_backend(self) -> str:
-        return "gloo"
-
-    def supports_bf16(self) -> bool:
-        return True
