@@ -44,9 +44,9 @@ public class HybridTimeseriesSessionExample {
       LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
 
   private static Session session;
-  private static final String ROOT_SG1_ALIGNEDDEVICE = "root.db_1.aligned_device";
-  private static final String ROOT_SG1_D1 = "root.db_1.d1";
-  private static final String ROOT_SG1_D2 = "root.db_1.d2";
+  private static final String ROOT_DB1_ALIGNEDDEVICE = "root.db_1.aligned_device";
+  private static final String ROOT_DB1_D1 = "root.db_1.d1";
+  private static final String ROOT_DB1_D2 = "root.db_1.d2";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -56,9 +56,9 @@ public class HybridTimeseriesSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    insertRecord(ROOT_SG1_D2, 0, 100);
+    insertRecord(ROOT_DB1_D2, 0, 100);
     insertTabletWithAlignedTimeseriesMethod(0, 100);
-    insertRecord(ROOT_SG1_D1, 0, 100);
+    insertRecord(ROOT_DB1_D1, 0, 100);
     session.executeNonQueryStatement("flush");
     selectTest();
 
@@ -84,7 +84,7 @@ public class HybridTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-    Tablet tablet = new Tablet(ROOT_SG1_ALIGNEDDEVICE, schemaList);
+    Tablet tablet = new Tablet(ROOT_DB1_ALIGNEDDEVICE, schemaList);
     long timestamp = minTime;
 
     for (long row = minTime; row < maxTime; row++) {

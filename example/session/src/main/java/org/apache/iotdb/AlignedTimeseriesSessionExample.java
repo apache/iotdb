@@ -311,7 +311,7 @@ public class AlignedTimeseriesSessionExample {
     alias.add(null);
 
     session.createAlignedTimeseries(
-        ROOT_SG1_D1,
+        ROOT_DB1_D1,
         measurements,
         dataTypes,
         encodings,
@@ -385,7 +385,7 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
 <<<<<<< refs/remotes/upstream/clean
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
+    Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR2, schemaList);
 =======
     Tablet tablet = new Tablet(ROOT_DB1_D1_VECTOR2, schemaList);
     long[] timestamps = tablet.timestamps;
@@ -645,14 +645,14 @@ public class AlignedTimeseriesSessionExample {
     schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
 
-    Tablet tablet1 = new Tablet(ROOT_SG2_D1_VECTOR6, schemaList1, 100);
-    Tablet tablet2 = new Tablet(ROOT_SG2_D1_VECTOR7, schemaList2, 100);
-    Tablet tablet3 = new Tablet(ROOT_SG2_D1_VECTOR8, schemaList3, 100);
+    Tablet tablet1 = new Tablet(ROOT_DB2_D1_VECTOR6, schemaList1, 100);
+    Tablet tablet2 = new Tablet(ROOT_DB2_D1_VECTOR7, schemaList2, 100);
+    Tablet tablet3 = new Tablet(ROOT_DB2_D1_VECTOR8, schemaList3, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    tabletMap.put(ROOT_SG2_D1_VECTOR6, tablet1);
-    tabletMap.put(ROOT_SG2_D1_VECTOR7, tablet2);
-    tabletMap.put(ROOT_SG2_D1_VECTOR8, tablet3);
+    tabletMap.put(ROOT_DB2_D1_VECTOR6, tablet1);
+    tabletMap.put(ROOT_DB2_D1_VECTOR7, tablet2);
+    tabletMap.put(ROOT_DB2_D1_VECTOR8, tablet3);
 
     // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
