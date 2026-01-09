@@ -98,7 +98,7 @@ public class IoTDBLoadTsFileIT {
 
   @After
   public void tearDown() throws Exception {
-    deletedb();
+    deleteDB();
     EnvFactory.getEnv().cleanClusterEnvironment();
 
     if (!deleteDir()) {
@@ -162,7 +162,7 @@ public class IoTDBLoadTsFileIT {
     return sql;
   }
 
-  private void deleteSG() throws SQLException {
+  private void deleteDB() throws SQLException {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
