@@ -268,11 +268,11 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      final IDatabaseMNode<IConfigMNode> storageGroupMNode =
+      final IDatabaseMNode<IConfigMNode> databaseMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
+      databaseMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
+      databaseMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
+      databaseMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
       root.getNodeWithAutoCreate(pathList[i].concatNode("a")).setSchemaTemplateId(i);
     }
 
@@ -284,11 +284,11 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      final TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema databaseSchema =
           newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
-      Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
-      Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
-      Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+      Assert.assertEquals(i, databaseSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(i, databaseSchema.getDataReplicationFactor());
+      Assert.assertEquals(i, databaseSchema.getTimePartitionInterval());
       assertEquals(
           i, newTree.getNodeWithAutoCreate(pathList[i].concatNode("a")).getSchemaTemplateId());
     }
@@ -327,16 +327,16 @@ public class ConfigMTreeTest {
 
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      final IDatabaseMNode<IConfigMNode> storageGroupMNode =
+      final IDatabaseMNode<IConfigMNode> databaseMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
-      storageGroupMNode
+      databaseMNode
           .getAsMNode()
           .getDatabaseSchema()
           .setName(
               PathUtils.unQualifyDatabaseName(
-                  storageGroupMNode.getAsMNode().getDatabaseSchema().getName()));
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
+                  databaseMNode.getAsMNode().getDatabaseSchema().getName()));
+      databaseMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
+      databaseMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
 
