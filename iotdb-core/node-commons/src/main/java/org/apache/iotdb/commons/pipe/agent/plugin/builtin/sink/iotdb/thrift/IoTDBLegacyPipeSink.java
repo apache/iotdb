@@ -24,9 +24,9 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
  * This class is a placeholder and should not be initialized. It represents the IoTDB legacy pipe
- * connector (for IoTDB v1.1). There is a real implementation in the server module but cannot be
+ * sink (for IoTDB v1.1). There is a real implementation in the server module but cannot be
  * imported here. The pipe agent in the server module will replace this class with the real
- * implementation when initializing the IoTDB legacy pipe connector.
+ * implementation when initializing the IoTDB legacy pipe sink.
  */
 @TreeModel
 public class IoTDBLegacyPipeSink extends PlaceholderSink {}

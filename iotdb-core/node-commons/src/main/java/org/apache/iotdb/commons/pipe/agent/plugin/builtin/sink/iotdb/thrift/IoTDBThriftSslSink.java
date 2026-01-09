@@ -24,10 +24,10 @@ import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the IoTDB SSL connector.
+ * This class is a placeholder and should not be initialized. It represents the IoTDB SSL sink.
  * There is a real implementation in the server module but cannot be imported here. The pipe agent
  * in the server module will replace this class with the real implementation when initializing the
- * IoTDB SSL connector.
+ * IoTDB SSL sink.
  */
 @TreeModel
 @TableModel

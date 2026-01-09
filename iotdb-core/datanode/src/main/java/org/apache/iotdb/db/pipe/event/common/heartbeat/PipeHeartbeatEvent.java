@@ -56,7 +56,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private int sourceQueueTsFileSize;
   private int sourceQueueSize;
 
-  private int connectorQueueTabletSize;
+  private int sinkQueueTabletSize;
   private int connectorQueueTsFileSize;
   private int connectorQueueSize;
 
