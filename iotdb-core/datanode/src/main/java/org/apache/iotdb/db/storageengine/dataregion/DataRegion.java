@@ -359,7 +359,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * Record the insertWriteLock in SG is being hold by which method, it will be empty string if no
+   * Record the insertWriteLock in DB is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
@@ -715,7 +715,7 @@ public class DataRegion implements IDataRegionForQuery {
               recoverListener.getFilePath(),
               recoverListener.getCause());
         }
-        // update VSGRecoveryContext
+        // update VDBRecoveryContext
         dataRegionRecoveryContext.incrementRecoveredFilesNum();
       }
       // recover unsealed TsFiles, sort make sure last flush time not be replaced by early files
@@ -2062,7 +2062,7 @@ public class DataRegion implements IDataRegionForQuery {
               logger.warn("Cannot remove mod file {}", x, e);
             }
           });
-      deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllDBFolders(TierManager.getInstance().getAllFilesFolders());
       deleteAllObjectFiles(TierManager.getInstance().getAllObjectFileFolders());
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
@@ -2082,7 +2082,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void deleteAllSGFolders(List<String> folder) {
+  private void deleteAllDBFolders(List<String> folder) {
     for (String tsfilePath : folder) {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, databaseName + File.separator + dataRegionIdString);
@@ -2679,7 +2679,7 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public boolean tryReadLock(long waitMillis) {
     try {
-      // apply read lock for SG insert lock to prevent inconsistent with concurrently writing
+      // apply read lock for DB insert lock to prevent inconsistent with concurrently writing
       // memtable
       long startTime = System.nanoTime();
       if (insertLock.readLock().tryLock(waitMillis, TimeUnit.MILLISECONDS)) {
@@ -2795,7 +2795,7 @@ public class DataRegion implements IDataRegionForQuery {
     final long endTime = node.getDeleteEndTime();
     final long searchIndex = node.getSearchIndex();
     // TODO: how to avoid partial deletion?
-    // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
+    // FIXME: notice that if we may remove a DBProcessor out of memory, we need to close all opened
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock("delete");
 

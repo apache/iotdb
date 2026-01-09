@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 
 public enum MNodeType {
   ROOT((byte) 0, "ROOT"),
-  SG_INTERNAL((byte) 1, "SG INTERNAL"),
+  DB_INTERNAL((byte) 1, "DB INTERNAL"),
   STORAGE_GROUP((byte) 2, "DATABASE"),
   INTERNAL((byte) 3, "INTERNAL"),
   DEVICE((byte) 4, "DEVICE"),
@@ -48,7 +48,7 @@ public enum MNodeType {
       case 0:
         return MNodeType.ROOT;
       case 1:
-        return MNodeType.SG_INTERNAL;
+        return MNodeType.DB_INTERNAL;
       case 2:
         return MNodeType.STORAGE_GROUP;
       case 3:

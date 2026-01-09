@@ -70,12 +70,12 @@ public class SettleService implements IService {
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 
-    /* Classify the file paths by the SG, and then call the methods of StorageGroupProcessor of each
-    SG in turn to get the TsFileResources.*/
+    /* Classify the file paths by the DB, and then call the methods of StorageGroupProcessor of each
+    DB in turn to get the TsFileResources.*/
     Map<PartialPath, List<String>> tmpSgResourcesMap = new HashMap<>(); // sgPath -> tsFilePaths
     try {
       for (String filePath : TsFileAndModSettleTool.getInstance().recoverSettleFileMap.keySet()) {
-        PartialPath sgPath = getSGByFilePath(filePath);
+        PartialPath sgPath = getDBByFilePath(filePath);
         if (tmpSgResourcesMap.containsKey(sgPath)) {
           List<String> filePaths = tmpSgResourcesMap.get(sgPath);
           filePaths.add(filePath);
@@ -144,7 +144,7 @@ public class SettleService implements IService {
     return filesToBeSettledCount;
   }
 
-  public PartialPath getSGByFilePath(String tsFilePath) throws WriteProcessException {
+  public PartialPath getDBByFilePath(String tsFilePath) throws WriteProcessException {
     PartialPath sgPath = null;
     try {
       sgPath =
