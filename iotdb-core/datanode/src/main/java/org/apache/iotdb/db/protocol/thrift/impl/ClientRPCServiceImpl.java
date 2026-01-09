@@ -3214,7 +3214,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private TSExecuteStatementResp createResponse(DatasetHeader header, long queryId) {
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
     resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
-    // TODO deal with the db name here
+    // TODO deal with the sg name here
     resp.setSgColumns(new ArrayList<>());
     resp.setColumns(header.getRespColumns());
     resp.setDataTypeList(header.getRespDataTypeList());
