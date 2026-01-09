@@ -31,7 +31,7 @@ logger = Logger()
 class SktimePipeline(ForecastPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         model_kwargs.pop("device", None)  # sktime models run on CPU
-        super().__init__(model_info, model_kwargs=model_kwargs)
+        super().__init__(model_info, **model_kwargs)
 
     def preprocess(
         self,
