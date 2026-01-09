@@ -89,43 +89,55 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   }
 
   @Override
-  public void update(Procedure<ConfigNodeProcedureEnv> procedure) {
+  public void update(Procedure<ConfigNodeProcedureEnv> procedure) throws Exception {
     Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
       configManager.getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(
+          "pid={} Failed in the write update API executing the consensus layer due to: ",
+          procedure.getProcId(),
+          e);
+      // In consensus layer API, do nothing but just throw an exception to let upper caller handle
+      // it.
+      throw e;
     }
   }
 
   @Override
-  public void update(Procedure[] subprocs) {
+  public void update(Procedure[] subprocs) throws Exception {
     for (Procedure subproc : subprocs) {
       update(subproc);
     }
   }
 
   @Override
-  public void delete(long procId) {
+  public void delete(long procId) throws Exception {
     DeleteProcedurePlan deleteProcedurePlan = new DeleteProcedurePlan();
     deleteProcedurePlan.setProcId(procId);
     try {
       configManager.getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
-      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOG.warn(
+          "pid={} Failed in the write delete API executing the consensus layer due to: ",
+          procId,
+          e);
+      // In consensus layer API, do nothing but just throw an exception to let upper caller handle
+      // it.
+      throw e;
     }
   }
 
   @Override
-  public void delete(long[] childProcIds) {
+  public void delete(long[] childProcIds) throws Exception {
     for (long childProcId : childProcIds) {
       delete(childProcId);
     }
   }
 
   @Override
-  public void delete(long[] batchIds, int startIndex, int batchCount) {
+  public void delete(long[] batchIds, int startIndex, int batchCount) throws Exception {
     for (int i = startIndex; i < batchCount; i++) {
       delete(batchIds[i]);
     }
