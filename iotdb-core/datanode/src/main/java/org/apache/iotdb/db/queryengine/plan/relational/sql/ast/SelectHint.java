@@ -22,11 +22,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 public class SelectHint extends Node {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SelectHint.class);
+
   private final List<Node> hintItems;
 
   public SelectHint(List<Node> hintItems) {
@@ -83,5 +87,13 @@ public class SelectHint extends Node {
 
     sb.append(" */");
     return sb.toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(hintItems);
+    return size;
   }
 }

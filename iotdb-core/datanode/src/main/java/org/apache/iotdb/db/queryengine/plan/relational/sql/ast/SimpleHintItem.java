@@ -22,12 +22,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 /** Represents a simple hint without parameters, e.g., "LEADER". */
 public class SimpleHintItem extends Node {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SimpleHintItem.class);
+
   private final String hintName;
 
   public SimpleHintItem(String hintName) {
@@ -69,5 +73,13 @@ public class SimpleHintItem extends Node {
   @Override
   public String toString() {
     return hintName;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(hintName);
+    return size;
   }
 }
