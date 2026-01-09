@@ -65,9 +65,9 @@ public class IoTDBUDFWindowQuery2IT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -77,11 +77,11 @@ public class IoTDBUDFWindowQuery2IT {
     // SessionWindow
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (1, 1, 1)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (2, 2, 2)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (3, 3, 3)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (9, 9, 9)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (5, 5, 5)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (1, 1, 1)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (2, 2, 2)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (3, 3, 3)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (9, 9, 9)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (5, 5, 5)");
       statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)");
       statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (14, 14, 14)");
       statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (18, 18, 18)");

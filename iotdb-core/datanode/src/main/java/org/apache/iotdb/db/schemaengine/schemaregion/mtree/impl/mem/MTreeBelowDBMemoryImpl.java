@@ -134,9 +134,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
  *   <li>Interfaces and Implementation for Template check
  * </ol>
  */
-public class MTreeBelowSGMemoryImpl {
+public class MTreeBelowDBMemoryImpl {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowSGMemoryImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowDBMemoryImpl.class);
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -153,7 +153,7 @@ public class MTreeBelowSGMemoryImpl {
   private final MemSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSGMemoryImpl(
+  public MTreeBelowDBMemoryImpl(
       final PartialPath databasePath,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
@@ -168,7 +168,7 @@ public class MTreeBelowSGMemoryImpl {
     this.attributeGetter = attributeGetter;
   }
 
-  private MTreeBelowSGMemoryImpl(
+  private MTreeBelowDBMemoryImpl(
       final PartialPath databasePath,
       final MemMTreeStore store,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
@@ -192,7 +192,7 @@ public class MTreeBelowSGMemoryImpl {
     return store.createSnapshot(snapshotDir);
   }
 
-  public static MTreeBelowSGMemoryImpl loadFromSnapshot(
+  public static MTreeBelowDBMemoryImpl loadFromSnapshot(
       final File snapshotDir,
       final String databaseFullPath,
       final MemSchemaRegionStatistics regionStatistics,
@@ -203,7 +203,7 @@ public class MTreeBelowSGMemoryImpl {
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
-    return new MTreeBelowSGMemoryImpl(
+    return new MTreeBelowDBMemoryImpl(
         PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
         MemMTreeStore.loadFromSnapshot(
             snapshotDir,

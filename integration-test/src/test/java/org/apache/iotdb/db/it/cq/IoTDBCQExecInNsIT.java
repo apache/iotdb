@@ -57,19 +57,19 @@ public class IoTDBCQExecInNsIT {
   @Test
   public void testCQExecution1() {
     String insertTemplate =
-        "INSERT INTO root.sg.d1(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
+        "INSERT INTO root.db.d1(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000_000L;
       long firstExecutionTime = now + 10_000_000_000L;
       long startTime = firstExecutionTime - 3_000_000_000L;
 
-      statement.execute("create timeseries root.sg.d1.s1 WITH DATATYPE=INT64");
-      statement.execute("create timeseries root.sg.d1.s1_max WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.db.d1.s1 WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.db.d1.s1_max WITH DATATYPE=INT64");
 
       // firstly write one row to init data region, just for accelerating the following insert
       // statement.
-      statement.execute("INSERT INTO root.sg.d1(time, s1) VALUES (0,0)");
+      statement.execute("INSERT INTO root.db.d1(time, s1) VALUES (0,0)");
 
       statement.execute(
           String.format(
@@ -101,8 +101,8 @@ public class IoTDBCQExecInNsIT {
               + String.format("BOUNDARY %d\n", firstExecutionTime)
               + "BEGIN \n"
               + "  SELECT max_value(s1) \n"
-              + "  INTO root.sg.d1(s1_max)\n"
-              + "  FROM root.sg.d1\n"
+              + "  INTO root.db.d1(s1_max)\n"
+              + "  FROM root.db.d1\n"
               + "  GROUP BY(1s) \n"
               + "END");
 
@@ -126,11 +126,11 @@ public class IoTDBCQExecInNsIT {
       };
       long[] expectedValue = {4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.db.d1")) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d1.s1_max"));
+          assertEquals(expectedValue[cnt], resultSet.getLong("root.db.d1.s1_max"));
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
@@ -147,14 +147,14 @@ public class IoTDBCQExecInNsIT {
   @Test
   public void testCQExecution2() {
     String insertTemplate =
-        "INSERT INTO root.sg.d2(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
+        "INSERT INTO root.db.d2(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000_000L;
       long firstExecutionTime = now + 10_000_000_000L;
       long startTime = firstExecutionTime - 3_000_000_000L;
 
-      statement.execute("create timeseries root.sg.d2.s1 WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.db.d2.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d2.s1_max WITH DATATYPE=INT64");
 
       // firstly write one row to init data region, just for accelerating the following insert

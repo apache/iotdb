@@ -71,15 +71,15 @@ public class IoTDBSyntaxConventionIdentifierIT {
     };
 
     String[] resultTimeseries = {
-      "root.sg1.d1.add",
-      "root.sg1.d1.as",
-      "root.sg1.d1.select",
-      "root.sg1.d1.drop_trigger",
-      "root.sg1.d1.REVOKE_USER_ROLE",
-      "root.sg1.d1.pipesink",
-      "root.sg1.d1.boolean",
-      "root.sg1.d1.datatype",
-      "root.sg1.d1.device",
+      "root.db1.d1.add",
+      "root.db1.d1.as",
+      "root.db1.d1.select",
+      "root.db1.d1.drop_trigger",
+      "root.db1.d1.REVOKE_USER_ROLE",
+      "root.db1.d1.pipesink",
+      "root.db1.d1.boolean",
+      "root.db1.d1.datatype",
+      "root.db1.d1.device",
     };
 
     String[] selectNodeNames = {
@@ -109,14 +109,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String createNodeName : createNodeNames) {
-        String createSql = String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeName);
+        String createSql = String.format("CREATE TIMESERIES root.db1.d1.%s INT32", createNodeName);
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeName);
+            String.format("INSERT INTO root.db1.d1(time, %s) VALUES(1, 1)", createNodeName);
         statement.execute(createSql);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -129,10 +129,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.db1.d1 WHERE time = 1", selectNodeNames[i]);
         try (ResultSet resultSet = statement.executeQuery(selectSql)) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+          Assert.assertEquals(1, resultSet.getInt("root.db1.d1." + suffixInResultColumns[i]));
         }
       }
 
@@ -175,33 +175,33 @@ public class IoTDBSyntaxConventionIdentifierIT {
     };
 
     String[] resultTimeseries = {
-      "root.sg1.d1.a_1",
-      "root.sg1.d1.aaa",
-      "root.sg1.d1.in",
-      "root.sg1.d1.between",
-      "root.sg1.d1.is",
-      "root.sg1.d1.select",
-      "root.sg1.d1.`a.b`",
-      "root.sg1.d1.`111`",
-      "root.sg1.d1.`a``b`",
-      "root.sg1.d1.`a.\"b`",
-      "root.sg1.d1.`a.'b`",
-      "root.sg1.d1.````",
-      "root.sg1.d1.`c.d.```",
-      "root.sg1.d1.abc",
-      "root.sg1.d1.`+12`",
-      "root.sg1.d1.`1e3`",
-      "root.sg1.d1.`001`",
-      "root.sg1.d1.`-1.0`",
-      "root.sg1.d1.`01e-3`",
-      "root.sg1.d1.`+0001`",
-      "root.sg1.d1.`-0001`",
-      "root.sg1.d1.`++1`",
-      "root.sg1.d1.`+-1`",
-      "root.sg1.d1.`--1`",
-      "root.sg1.d1.123w",
-      "root.sg1.d1.123d",
-      "root.sg1.d1.123h"
+      "root.db1.d1.a_1",
+      "root.db1.d1.aaa",
+      "root.db1.d1.in",
+      "root.db1.d1.between",
+      "root.db1.d1.is",
+      "root.db1.d1.select",
+      "root.db1.d1.`a.b`",
+      "root.db1.d1.`111`",
+      "root.db1.d1.`a``b`",
+      "root.db1.d1.`a.\"b`",
+      "root.db1.d1.`a.'b`",
+      "root.db1.d1.````",
+      "root.db1.d1.`c.d.```",
+      "root.db1.d1.abc",
+      "root.db1.d1.`+12`",
+      "root.db1.d1.`1e3`",
+      "root.db1.d1.`001`",
+      "root.db1.d1.`-1.0`",
+      "root.db1.d1.`01e-3`",
+      "root.db1.d1.`+0001`",
+      "root.db1.d1.`-0001`",
+      "root.db1.d1.`++1`",
+      "root.db1.d1.`+-1`",
+      "root.db1.d1.`--1`",
+      "root.db1.d1.123w",
+      "root.db1.d1.123d",
+      "root.db1.d1.123h"
     };
 
     String[] selectNodeNames = {
@@ -267,14 +267,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String createNodeName : createNodeNames) {
-        String createSql = String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeName);
+        String createSql = String.format("CREATE TIMESERIES root.db1.d1.%s INT32", createNodeName);
         String insertSql =
-            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeName);
+            String.format("INSERT INTO root.db1.d1(time, %s) VALUES(1, 1)", createNodeName);
         statement.execute(createSql);
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {

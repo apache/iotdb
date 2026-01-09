@@ -801,15 +801,15 @@ public class ConfigManager implements IManager {
     if (path.getFullPath().contains(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
-    // with database = root.sg, path = root.*.d1
-    // convert path = root.sg.d1
+    // with database = root.db, path = root.*.d1
+    // convert path = root.db.d1
     final List<PartialPath> innerPathList = path.alterPrefixPath(database);
     if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
     final String[] devicePath =
         Arrays.copyOf(innerPathList.get(0).getNodes(), innerPathList.get(0).getNodeLength() - 1);
-    // root.sg1.*.d1
+    // root.db1.*.d1
     for (final String node : devicePath) {
       if (node.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
         return Collections.emptyList();

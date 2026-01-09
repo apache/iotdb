@@ -55,7 +55,7 @@ import static org.junit.Assert.fail;
 public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",

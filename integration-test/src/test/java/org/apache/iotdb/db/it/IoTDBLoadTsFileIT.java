@@ -241,7 +241,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -488,7 +488,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -578,7 +578,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -595,7 +595,7 @@ public class IoTDBLoadTsFileIT {
       isAligned.put(SchemaConfig.DEVICE_2, "false");
       isAligned.put(SchemaConfig.DEVICE_3, "false");
       isAligned.put(SchemaConfig.DEVICE_4, "true");
-      try (final ResultSet resultSet = statement.executeQuery("show devices root.sg.**")) {
+      try (final ResultSet resultSet = statement.executeQuery("show devices root.db.**")) {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
@@ -744,7 +744,7 @@ public class IoTDBLoadTsFileIT {
               file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -764,7 +764,7 @@ public class IoTDBLoadTsFileIT {
               file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -833,7 +833,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -953,7 +953,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
@@ -965,7 +965,7 @@ public class IoTDBLoadTsFileIT {
       }
 
       TestUtils.assertSingleResultSetEqual(
-          TestUtils.executeQueryWithRetry(statement, "count timeSeries root.sg.**"),
+          TestUtils.executeQueryWithRetry(statement, "count timeSeries root.db.**"),
           Collections.singletonMap("count(timeseries)", "18"));
     }
   }

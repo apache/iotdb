@@ -92,7 +92,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowSGMemoryImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowDBMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
@@ -215,7 +215,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
-  private MTreeBelowSGMemoryImpl mTree;
+  private MTreeBelowDBMemoryImpl mTree;
   private TagManager tagManager;
   private IDeviceAttributeStore deviceAttributeStore;
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
@@ -275,7 +275,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               regionStatistics, PathUtils.unQualifyDatabaseName(databaseFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mTree =
-          new MTreeBelowSGMemoryImpl(
+          new MTreeBelowDBMemoryImpl(
               PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
@@ -591,7 +591,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       mTree =
-          MTreeBelowSGMemoryImpl.loadFromSnapshot(
+          MTreeBelowDBMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
               databaseFullPath,
               regionStatistics,

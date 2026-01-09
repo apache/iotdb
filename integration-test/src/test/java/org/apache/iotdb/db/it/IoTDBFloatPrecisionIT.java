@@ -182,16 +182,16 @@ public class IoTDBFloatPrecisionIT {
       statement.execute(
           "insert into root.db.d1(time, s1, s2) values (1, 6.5536403E8, 9.223372036854E18)");
       statement.execute(
-          "insert into root.sg.d1(time, s1, s2) values (2, 3.123456768E20, 9.223372036854E100)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (3, NaN, NaN)");
+          "insert into root.db.d1(time, s1, s2) values (2, 3.123456768E20, 9.223372036854E100)");
+      statement.execute("insert into root.db.d1(time, s1, s2) values (3, NaN, NaN)");
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db.d1")) {
         assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
-          assertEquals(floats[cnt], resultSet.getFloat("root.sg.d1.s1"), DELTA_FLOAT);
-          assertEquals(doubles[cnt], resultSet.getDouble("root.sg.d1.s2"), DELTA_DOUBLE);
+          assertEquals(floats[cnt], resultSet.getFloat("root.db.d1.s1"), DELTA_FLOAT);
+          assertEquals(doubles[cnt], resultSet.getDouble("root.db.d1.s2"), DELTA_DOUBLE);
           cnt++;
         }
         assertEquals(3, cnt);
@@ -199,12 +199,12 @@ public class IoTDBFloatPrecisionIT {
 
       statement.execute("flush");
 
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db.d1")) {
         assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {
-          assertEquals(floats[cnt], resultSet.getFloat("root.sg.d1.s1"), DELTA_FLOAT);
-          assertEquals(doubles[cnt], resultSet.getDouble("root.sg.d1.s2"), DELTA_DOUBLE);
+          assertEquals(floats[cnt], resultSet.getFloat("root.db.d1.s1"), DELTA_FLOAT);
+          assertEquals(doubles[cnt], resultSet.getDouble("root.db.d1.s2"), DELTA_DOUBLE);
           cnt++;
         }
         assertEquals(3, cnt);

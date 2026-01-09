@@ -95,9 +95,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     // path is root.db.`abc`, fullPath is root.db.abc
     // path is root.db.`select`, fullPath is root.db.select
-    // path is root.sg.`111`, fullPath is root.sg.`111`
-    // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
-    // path is root.sg.`a``b`, fullPath is root.sg.`a``b`
+    // path is root.db.`111`, fullPath is root.db.`111`
+    // path is root.db.`a.b`, fullPath is root.db.`a.b`
+    // path is root.db.`a``b`, fullPath is root.db.`a``b`
     this.fullPath = getFullPath();
   }
 
@@ -410,8 +410,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * Test if current PartialPath matches a full path. Current partialPath acts as a full path
    * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g.
-   * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
-   * and "root.sg.vehicle.s1"
+   * "root.db.device.*" matches path "root.db.device.s1" whereas it does not match "root.db.device"
+   * and "root.db.vehicle.s1"
    *
    * <p>Note: If the current path is a path ending with "**", and does not have any * before it,
    * like "root.a.b.c.**", then the rPath can be a path with *, and this method returns {@code true}
@@ -439,7 +439,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * Test if current PartialPath matches a full path. Current partialPath acts as a full path
    * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g.
-   * "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not match "root.sg.device"
+   * "root.db.device.*" matches path "root.db.device.s1" whereas it does not match "root.sg.device"
    * and "root.sg.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries

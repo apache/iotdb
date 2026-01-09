@@ -99,12 +99,12 @@ public class IoTDBSimpleQueryIT {
       } catch (Exception e) {
         assertEquals(
             TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()
-                + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+                + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.db1.d0.s1",
             e.getMessage());
       }
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -159,21 +159,21 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -182,7 +182,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -200,28 +200,28 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
 
       for (int time = 1; time < 8; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(15,10)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(16,20)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(17,1)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(18,30)";
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       String[] timestamps = {"1", "7", "15", "16", "17", "18"};
@@ -229,7 +229,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -243,28 +243,28 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
 
       for (int time = 1; time < 8; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(15,10)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(16,20)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(17,1)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(18,30)";
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       // will not store time = 16 since time distance to last stored time 15 is within compMinTime
@@ -273,7 +273,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -287,18 +287,18 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
 
       for (int time = 1; time < 50; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       String[] timestamps = {"1", "21", "41", "49"};
@@ -306,7 +306,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -320,25 +320,25 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // insert unseq
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -347,7 +347,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -365,21 +365,21 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -388,7 +388,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -405,25 +405,25 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // insert unseq
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -432,7 +432,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -449,7 +449,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
       try {
@@ -473,7 +473,7 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery("select * from root.sg1.** align by device");
+        resultSet = statement.executeQuery("select * from root.db1.** align by device");
         // has time and device columns
         Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -509,15 +509,15 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (2, 2)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (3, 3)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (4, 4)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (3, 3)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (1, 1)");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (2, 2)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (3, 3)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (4, 4)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (3, 3)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (1, 1)");
       statement.execute("flush");
 
       String[] ret =
@@ -527,12 +527,12 @@ public class IoTDBSimpleQueryIT {
 
       int cur = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.sg1.** order by time desc")) {
+          statement.executeQuery("select * from root.db1.** order by time desc")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
-                  + resultSet.getString("root.sg1.d0.s0")
+                  + resultSet.getString("root.db1.d0.s0")
                   + ","
                   + resultSet.getString("root.sg1.d0.s1");
           assertEquals(ret[cur], ans);
