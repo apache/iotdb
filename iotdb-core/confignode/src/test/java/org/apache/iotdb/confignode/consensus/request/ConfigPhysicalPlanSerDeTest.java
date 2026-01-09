@@ -261,7 +261,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));

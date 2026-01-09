@@ -279,7 +279,7 @@ public class IoTDBPartitionCreationIT {
       EnvFactory.getEnv().registerNewDataNode(true);
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               2,
               2 + testSeriesPartitionBatchSize,
               2,
@@ -308,7 +308,7 @@ public class IoTDBPartitionCreationIT {
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           2,
           2 + testSeriesPartitionBatchSize,
           2,
@@ -352,7 +352,7 @@ public class IoTDBPartitionCreationIT {
       TimeUnit.SECONDS.sleep(25);
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               3,
               3 + testSeriesPartitionBatchSize,
               3,
@@ -381,7 +381,7 @@ public class IoTDBPartitionCreationIT {
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           3,
           3 + testSeriesPartitionBatchSize,
           3,

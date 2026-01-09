@@ -97,7 +97,7 @@ public class ErrorHandlingUtils {
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
-      // ignore logging sg not ready exception
+      // ignore logging db not ready exception
       if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
         String message =
             String.format(

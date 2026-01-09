@@ -171,16 +171,16 @@ public class IoTDBDatabaseSetAndDeleteIT {
       status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // set Database1 by specific values
-      TDatabaseSchema databaseSchema1 = new TDatabaseSchema(sg1);
+      TDatabaseSchema databaseSchema1 = new TDatabaseSchema(db1);
       status = client.setDatabase(databaseSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       TDeleteDatabasesReq deleteDatabasesReq = new TDeleteDatabasesReq();
-      List<String> sgs = Arrays.asList(sg0, sg1);
-      deleteDatabasesReq.setPrefixPathList(sgs);
+      List<String> dbs = Arrays.asList(db0, db1);
+      deleteDatabasesReq.setPrefixPathList(dbs);
       TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "db*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }

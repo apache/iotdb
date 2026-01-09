@@ -393,7 +393,7 @@ public class IoTDBPartitionDurableIT {
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               1,
               1 + testSeriesPartitionBatchSize,
               1,
@@ -420,7 +420,7 @@ public class IoTDBPartitionDurableIT {
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           1,
           1 + testSeriesPartitionBatchSize,
           1,

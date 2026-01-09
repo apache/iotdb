@@ -240,7 +240,7 @@ public abstract class AbstractMetricManager {
    *
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Histogram getOrCreateHistogram(String name, MetricLevel metricLevel, String... tags) {
@@ -271,7 +271,7 @@ public abstract class AbstractMetricManager {
    *
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Timer getOrCreateTimer(String name, MetricLevel metricLevel, String... tags) {
@@ -307,7 +307,7 @@ public abstract class AbstractMetricManager {
    * @param delta the value to update
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    */
   public Counter count(long delta, String name, MetricLevel metricLevel, String... tags) {
     Counter counter = getOrCreateCounter(name, metricLevel, tags);
@@ -321,7 +321,7 @@ public abstract class AbstractMetricManager {
    * @param value the value of gauge
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    */
   public Gauge gauge(long value, String name, MetricLevel metricLevel, String... tags) {
     Gauge gauge = getOrCreateGauge(name, metricLevel, tags);
