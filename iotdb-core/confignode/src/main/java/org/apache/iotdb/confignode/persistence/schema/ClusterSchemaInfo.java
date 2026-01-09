@@ -717,10 +717,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
-          return storageGroupSchema.getMaxSchemaRegionGroupNum();
+          return databaseSchema.getMaxSchemaRegionGroupNum();
         case DataRegion:
         default:
-          return storageGroupSchema.getMaxDataRegionGroupNum();
+          return databaseSchema.getMaxDataRegionGroupNum();
       }
     } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
