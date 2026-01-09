@@ -174,7 +174,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   @Override
   protected long getMaxBlockingTimeMs() {
     // The dataNode processor can sleep if it supplies null
-    // Here we return immediately to be consistent with the data region extractor
+    // Here we return immediately to be consistent with the data region source
     return 0;
   }
 

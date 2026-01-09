@@ -217,7 +217,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k ->
                 new PipeDataNodeRemainingEventAndTimeOperator(
                     source.getPipeName(), source.getCreationTime()))
-        .register(extractor);
+        .register(source);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }

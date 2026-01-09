@@ -398,12 +398,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void validatePipePluginUsageByPipeInternal(String pluginName) {
     Iterable<PipeMeta> pipeMetas = getPipeMetaList();
     for (PipeMeta pipeMeta : pipeMetas) {
-      PipeParameters extractorParameters = pipeMeta.getStaticMeta().getSourceParameters();
-      final String extractorPluginName =
-          extractorParameters.getStringOrDefault(
+      PipeParameters sourceParameters = pipeMeta.getStaticMeta().getSourceParameters();
+      final String sourcePluginName =
+          sourceParameters.getStringOrDefault(
               Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
-      if (pluginName.equals(extractorPluginName)) {
+      if (pluginName.equals(sourcePluginName)) {
         String exceptionMessage =
             String.format(
                 "PipePlugin '%s' is already used by Pipe '%s' as a source.",

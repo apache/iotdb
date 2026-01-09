@@ -60,7 +60,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
           new TCreatePipeReq()
               .setPipeName(pipeName)
               .setNeedManuallyStart(needManuallyStart)
-              .setExtractorAttributes(extractorAttributes)
+              .setExtractorAttributes(sourceAttributes)
               .setProcessorAttributes(processorAttributes)
               .setConnectorAttributes(connectorAttributes);
       TSStatus status = configNodeClient.createPipe(req);

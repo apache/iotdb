@@ -31,7 +31,7 @@ import java.util.HashMap;
 public class IoTDBConfigRegionSourceTest {
   @Test
   public void testIoTDBConfigExtractor() {
-    try (final IoTDBConfigRegionSource extractor = new IoTDBConfigRegionSource()) {
+    try (final IoTDBConfigRegionSource source = new IoTDBConfigRegionSource()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(

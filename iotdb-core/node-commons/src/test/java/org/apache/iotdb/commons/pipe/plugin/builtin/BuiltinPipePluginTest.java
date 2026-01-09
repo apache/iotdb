@@ -45,7 +45,7 @@ import static org.mockito.Mockito.mock;
 public class BuiltinPipePluginTest {
   @Test
   public void testBuildInPipePlugin() {
-    PipeExtractor extractor = new IoTDBSource();
+    PipeExtractor source = new IoTDBSource();
     try {
       extractor.validate(mock(PipeParameterValidator.class));
       Assert.fail();

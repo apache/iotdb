@@ -44,8 +44,8 @@ public interface PipeDataRegionMatcher {
   int getRegisterCount();
 
   /**
-   * Match the event's schema info with the registered sources' patterns. If the event's schema
-   * info matches the pattern of an source, the source will be returned.
+   * Match the event's schema info with the registered sources' patterns. If the event's schema info
+   * matches the pattern of an source, the source will be returned.
    *
    * @param event the event to be matched
    * @return pair of matched sources and unmatched sources.

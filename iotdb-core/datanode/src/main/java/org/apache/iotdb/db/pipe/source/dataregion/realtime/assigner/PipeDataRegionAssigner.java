@@ -163,26 +163,26 @@ public class PipeDataRegionAssigner implements Closeable {
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       source.getPipeName(),
-                      extractor.getCreationTime(),
-                      extractor.getPipeTaskMeta(),
-                      extractor.getTreePattern(),
-                      extractor.getTablePattern(),
-                      String.valueOf(extractor.getUserId()),
-                      extractor.getUserName(),
-                      extractor.getCliHostname(),
-                      extractor.isSkipIfNoPrivileges(),
-                      extractor.getRealtimeDataExtractionStartTime(),
-                      extractor.getRealtimeDataExtractionEndTime());
+                      source.getCreationTime(),
+                      source.getPipeTaskMeta(),
+                      source.getTreePattern(),
+                      source.getTablePattern(),
+                      String.valueOf(source.getUserId()),
+                      source.getUserName(),
+                      source.getCliHostname(),
+                      source.isSkipIfNoPrivileges(),
+                      source.getRealtimeDataExtractionStartTime(),
+                      source.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
               // if using IoTV2, assign a replicateIndex for this realtime event
               if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
                   && PipeConsensusProcessor.isShouldReplicate(innerEvent)) {
                 innerEvent.setReplicateIndexForIoTV2(
                     ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
-                        extractor.getPipeName()));
+                        source.getPipeName()));
                 LOGGER.debug(
                     "[{}]Set {} for realtime event {}",
-                    extractor.getPipeName(),
+                    source.getPipeName(),
                     innerEvent.getReplicateIndexForIoTV2(),
                     innerEvent);
               }
@@ -190,15 +190,14 @@ public class PipeDataRegionAssigner implements Closeable {
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
                     (PipeTsFileInsertionEvent) innerEvent;
-                tsFileInsertionEvent.disableMod4NonTransferPipes(
-                    extractor.isShouldTransferModFile());
+                tsFileInsertionEvent.disableMod4NonTransferPipes(source.isShouldTransferModFile());
               }
 
               if (innerEvent instanceof PipeDeleteDataNodeEvent) {
                 final PipeDeleteDataNodeEvent deleteDataNodeEvent =
                     (PipeDeleteDataNodeEvent) innerEvent;
                 final DeletionResourceManager manager =
-                    DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                    DeletionResourceManager.getInstance(source.getDataRegionId());
                 // increase deletion resource's reference and bind real deleteEvent
                 if (Objects.nonNull(manager)
                     && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
@@ -215,13 +214,13 @@ public class PipeDataRegionAssigner implements Closeable {
                     copiedEvent);
                 return;
               }
-              extractor.extract(copiedEvent);
+              source.extract(copiedEvent);
             });
 
     matchedAndUnmatched
         .getRight()
         .forEach(
-            extractor -> {
+            source -> {
               if (disruptor.isClosed()) {
                 return;
               }
@@ -231,9 +230,7 @@ public class PipeDataRegionAssigner implements Closeable {
                   || innerEvent instanceof TsFileInsertionEvent) {
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
-                        extractor.getPipeName(),
-                        extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta());
+                        source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
@@ -241,17 +238,17 @@ public class PipeDataRegionAssigner implements Closeable {
                       reportEvent);
                   return;
                 }
-                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
+                source.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
               }
             });
   }
 
-  public void startAssignTo(final PipeRealtimeDataRegionSource extractor) {
-    matcher.register(extractor);
+  public void startAssignTo(final PipeRealtimeDataRegionSource source) {
+    matcher.register(source);
   }
 
-  public void stopAssignTo(final PipeRealtimeDataRegionSource extractor) {
-    matcher.deregister(extractor);
+  public void stopAssignTo(final PipeRealtimeDataRegionSource source) {
+    matcher.deregister(source);
   }
 
   public void invalidateCache() {

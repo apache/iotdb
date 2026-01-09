@@ -58,7 +58,7 @@ public class PipeTimePartitionListener {
       return;
     }
     sources.remove(source.getTaskID());
-    if (extractors.isEmpty()) {
+    if (sources.isEmpty()) {
       dataRegionId2Extractors.remove(dataRegionId);
     }
   }
@@ -84,14 +84,13 @@ public class PipeTimePartitionListener {
     }
 
     if (shouldBroadcastTimePartitionChange) {
-      Map<String, PipeRealtimeDataRegionSource> extractors =
-          dataRegionId2Extractors.get(dataRegionId);
-      if (Objects.isNull(extractors)) {
+      Map<String, PipeRealtimeDataRegionSource> sources = dataRegionId2Extractors.get(dataRegionId);
+      if (Objects.isNull(sources)) {
         return;
       }
       Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
-      extractors.forEach(
-          (id, extractor) -> extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound));
+      sources.forEach(
+          (id, source) -> source.setDataRegionTimePartitionIdBound(timePartitionIdBound));
     }
   }
 

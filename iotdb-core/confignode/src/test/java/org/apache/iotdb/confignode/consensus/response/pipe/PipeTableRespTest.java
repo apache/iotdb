@@ -44,7 +44,7 @@ public class PipeTableRespTest {
     List<PipeMeta> pipeMetaList = new ArrayList<>();
 
     // PipeMeta 1
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
