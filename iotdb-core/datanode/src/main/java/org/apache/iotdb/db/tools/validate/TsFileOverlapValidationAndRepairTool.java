@@ -154,7 +154,7 @@ public class TsFileOverlapValidationAndRepairTool {
         System.out.println(sequenceDataDir.getAbsolutePath() + " is not a correct path");
         continue;
       }
-      for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
+      for (File db : Objects.requireNonNull(sequenceDataDir.listFiles())) {
         if (!sg.isDirectory()) {
           continue;
         }

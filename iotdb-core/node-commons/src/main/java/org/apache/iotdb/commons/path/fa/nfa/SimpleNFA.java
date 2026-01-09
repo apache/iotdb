@@ -40,7 +40,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 /**
  * Given path pattern root.db.*.s, the SimpleNFA is:
  *
- * <p>initial -(root)-> state[0] -(sg)-> state[1] -(*)-> state[2] -(s)-> state[3] <br>
+ * <p>initial -(root)-> state[0] -(db)-> state[1] -(*)-> state[2] -(s)-> state[3] <br>
  * state[3] is final state
  *
  * <p>Given path pattern root.**.s, the SimpleNFA is:
@@ -51,7 +51,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  *
  * <p>Given path pattern root.db.d with prefix match, the SimpleNFA is:
  *
- * <p>initial -(root)-> state[0] -(sg)-> state[1] -(d)-> state[2] -(*)-> state[3] <br>
+ * <p>initial -(root)-> state[0] -(db)-> state[1] -(d)-> state[2] -(*)-> state[3] <br>
  * with extra: state[3] -(*)-> state[3] <br>
  * both state[2] and state[3] are final states
  */

@@ -72,9 +72,9 @@ public class IoTDBPartitionDurableIT {
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataNodeId = 0;
-  private static final String sg = "root.db";
-  final String d0 = sg + ".d0.s";
-  final String d1 = sg + ".d1.s";
+  private static final String db = "root.db";
+  final String d0 = db + ".d0.s";
+  final String d1 = db + ".d1.s";
   private static final int testSeriesPartitionBatchSize = 1;
   private static final int testTimePartitionBatchSize = 1;
 
@@ -110,7 +110,7 @@ public class IoTDBPartitionDurableIT {
   private void setDatabase() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSStatus status = client.setDatabase(new TDatabaseSchema(sg));
+      TSStatus status = client.setDatabase(new TDatabaseSchema(db));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
@@ -129,7 +129,7 @@ public class IoTDBPartitionDurableIT {
       /* Test getOrCreateDataPartition, ConfigNode should create DataPartition and return */
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               0,
               testSeriesPartitionBatchSize,
               0,
@@ -142,7 +142,7 @@ public class IoTDBPartitionDurableIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           0,
           testSeriesPartitionBatchSize,
           0,
@@ -202,7 +202,7 @@ public class IoTDBPartitionDurableIT {
       /* Test getOrCreateDataPartition, the result should be NO_ENOUGH_DATANODE */
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               1,
               1 + testSeriesPartitionBatchSize,
               1,
@@ -220,7 +220,7 @@ public class IoTDBPartitionDurableIT {
       /* Test getOrCreateDataPartition, ConfigNode should create DataPartition and return */
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               1,
               1 + testSeriesPartitionBatchSize,
               1,
@@ -232,7 +232,7 @@ public class IoTDBPartitionDurableIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataPartitionTableResp.getStatus().getCode());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           1,
           1 + testSeriesPartitionBatchSize,
           1,
@@ -331,7 +331,7 @@ public class IoTDBPartitionDurableIT {
       // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
+              db,
               0,
               testSeriesPartitionBatchSize,
               0,
@@ -359,7 +359,7 @@ public class IoTDBPartitionDurableIT {
           dataPartitionTableResp.getStatus().getCode());
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
+          db,
           0,
           testSeriesPartitionBatchSize,
           0,

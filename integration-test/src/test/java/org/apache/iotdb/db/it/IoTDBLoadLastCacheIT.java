@@ -223,7 +223,7 @@ public class IoTDBLoadLastCacheIT {
 
     final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
@@ -251,7 +251,7 @@ public class IoTDBLoadLastCacheIT {
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
     }
 
-    // device 2, device 3, device4, sg 1
+    // device 2, device 3, device4, db 1
     try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
@@ -586,7 +586,7 @@ public class IoTDBLoadLastCacheIT {
     private static final String DATABASE_0 = "root.db.test_0";
     private static final String DATABASE_1 = "root.db.test_1";
 
-    // device 0, nonaligned, sg 0
+    // device 0, nonaligned, db 0
     private static final String DEVICE_0 = "root.db.test_0.d_0";
     private static final MeasurementSchema MEASUREMENT_00 =
         new MeasurementSchema("sensor_00", TSDataType.INT32, TSEncoding.RLE);
@@ -605,7 +605,7 @@ public class IoTDBLoadLastCacheIT {
     private static final MeasurementSchema MEASUREMENT_07 =
         new MeasurementSchema("sensor_07", TSDataType.STRING, TSEncoding.PLAIN);
 
-    // device 1, aligned, sg 0
+    // device 1, aligned, db 0
     private static final String DEVICE_1 = "root.db.test_0.a_1";
     private static final MeasurementSchema MEASUREMENT_10 =
         new MeasurementSchema("sensor_10", TSDataType.INT32, TSEncoding.RLE);
@@ -624,17 +624,17 @@ public class IoTDBLoadLastCacheIT {
     private static final MeasurementSchema MEASUREMENT_17 =
         new MeasurementSchema("sensor_17", TSDataType.STRING, TSEncoding.PLAIN);
 
-    // device 2, non aligned, sg 1
+    // device 2, non aligned, db 1
     private static final String DEVICE_2 = "root.db.test_1.d_2";
     private static final MeasurementSchema MEASUREMENT_20 =
         new MeasurementSchema("sensor_20", TSDataType.INT32, TSEncoding.RLE);
 
-    // device 3, non aligned, sg 1
+    // device 3, non aligned, db 1
     private static final String DEVICE_3 = "root.db.test_1.d_3";
     private static final MeasurementSchema MEASUREMENT_30 =
         new MeasurementSchema("sensor_30", TSDataType.INT32, TSEncoding.RLE);
 
-    // device 4, aligned, sg 1
+    // device 4, aligned, db 1
     private static final String DEVICE_4 = "root.db.test_1.a_4";
     private static final MeasurementSchema MEASUREMENT_40 =
         new MeasurementSchema("sensor_40", TSDataType.INT32, TSEncoding.RLE);

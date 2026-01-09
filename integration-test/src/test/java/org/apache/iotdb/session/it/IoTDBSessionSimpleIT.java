@@ -1383,7 +1383,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertIllegalPathTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String msg = "[%s] Exception occurred: %s failed. %s is not a legal path";
+      String mdb = "[%s] Exception occurred: %s failed. %s is not a legal path";
       String deviceId = "root.db..d1";
       List<String> deviceIds = Arrays.asList("root.db..d1", "root.db.d2");
       List<Long> timestamps = Arrays.asList(1L, 1L);

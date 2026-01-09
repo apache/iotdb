@@ -94,7 +94,7 @@ public abstract class AbstractMetricManager {
    *
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Counter getOrCreateCounter(String name, MetricLevel metricLevel, String... tags) {
@@ -178,7 +178,7 @@ public abstract class AbstractMetricManager {
    *
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
@@ -209,7 +209,7 @@ public abstract class AbstractMetricManager {
    *
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Rate getOrCreateRate(String name, MetricLevel metricLevel, String... tags) {

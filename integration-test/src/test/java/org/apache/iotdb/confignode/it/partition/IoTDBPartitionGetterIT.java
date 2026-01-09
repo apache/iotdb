@@ -83,7 +83,7 @@ public class IoTDBPartitionGetterIT {
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 5;
 
-  private static final String sg = "root.db";
+  private static final String db = "root.db";
   private static final int databaseNum = 2;
   private static final int testSeriesPartitionSlotNum = 1000;
   private static final int seriesPartitionBatchSize = 10;
@@ -118,18 +118,18 @@ public class IoTDBPartitionGetterIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set Databases */
       for (int i = 0; i < databaseNum; i++) {
-        TSStatus status = client.setDatabase(new TDatabaseSchema(sg + i));
+        TSStatus status = client.setDatabase(new TDatabaseSchema(db + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
       /* Create SchemaPartitions */
-      final String sg0 = "root.db0";
-      final String sg1 = "root.db1";
+      final String db0 = "root.db0";
+      final String db1 = "root.db1";
 
-      final String d00 = sg0 + ".d0.s";
-      final String d01 = sg0 + ".d1.s";
-      final String d10 = sg1 + ".d0.s";
-      final String d11 = sg1 + ".d1.s";
+      final String d00 = db0 + ".d0.s";
+      final String d01 = db0 + ".d1.s";
+      final String d10 = db1 + ".d0.s";
+      final String d11 = db1 + ".d1.s";
 
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq();
       TSchemaPartitionTableResp schemaPartitionTableResp;
@@ -144,7 +144,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
       for (int i = 0; i < 2; i++) {
-        Assert.assertTrue(schemaPartitionTable.containsKey(sg + i));
+        Assert.assertTrue(schemaPartitionTable.containsKey(db + i));
         Assert.assertEquals(2, schemaPartitionTable.get(sg + i).size());
       }
 

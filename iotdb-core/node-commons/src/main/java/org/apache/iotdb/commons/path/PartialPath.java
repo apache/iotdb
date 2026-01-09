@@ -84,7 +84,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
-   * = "root.db.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
+   * = "root.db.`d.1`.`s.1`" nodes = {"root", "db", "`d.1`", "`s.1`"}
    *
    * @param path a full String of a time series path
    */
