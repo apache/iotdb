@@ -48,7 +48,7 @@ class BasicPipeline(ABC):
 
 class ForecastPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
-        super().__init__(model_info, model_kwargs=model_kwargs)
+        super().__init__(model_info, **model_kwargs)
 
     def preprocess(
         self,
@@ -199,7 +199,7 @@ class ForecastPipeline(BasicPipeline):
 
 class ClassificationPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
-        super().__init__(model_info, model_kwargs=model_kwargs)
+        super().__init__(model_info, **model_kwargs)
 
     def preprocess(self, inputs, **kwargs):
         return inputs
@@ -214,7 +214,7 @@ class ClassificationPipeline(BasicPipeline):
 
 class ChatPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
-        super().__init__(model_info, model_kwargs=model_kwargs)
+        super().__init__(model_info, **model_kwargs)
 
     def preprocess(self, inputs, **kwargs):
         return inputs
