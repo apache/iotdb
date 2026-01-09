@@ -544,7 +544,7 @@ public class AuthorInfoTest {
 
     List<PartialPath> userPaths = new ArrayList<>();
     userPaths.add(new PartialPath("root.ln.**"));
-    userPaths.add(new PartialPath("root.sg.**"));
+    userPaths.add(new PartialPath("root.db.**"));
 
     List<PartialPath> rolePaths = new ArrayList<>();
     rolePaths.add(new PartialPath("root.role_1.**"));

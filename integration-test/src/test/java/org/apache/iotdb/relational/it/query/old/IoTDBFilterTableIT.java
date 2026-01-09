@@ -201,10 +201,10 @@ public class IoTDBFilterTableIT {
         DATABASE_NAME);
     // TODO After Aggregation supported
     /*assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");*/
   }
 

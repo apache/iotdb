@@ -70,21 +70,21 @@ public class AggregationAlignByDeviceTest {
    * IdentitySinkNode-10
    *   └──MergeSort-7
    *       ├──DeviceView-5
-   *       │   └──SeriesAggregationScanNode-1:[SeriesPath: root.sg.d22.s1,
+   *       │   └──SeriesAggregationScanNode-1:[SeriesPath: root.db.d22.s1,
    *              Descriptor: [AggregationDescriptor(first_value, SINGLE)],
    *              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *       └──ExchangeNode-8: [SourceAddress:192.0.4.1/test.2.0/9]
    *
    *  IdentitySinkNode-9
    *   └──DeviceView-6
-   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d55555.s1,
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.db.d55555.s1,
    *          Descriptor: [AggregationDescriptor(first_value, SINGLE)],
    *          DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByDeviceTest1() {
     // one aggregation measurement, two devices
-    sql = "select first_value(s1) from root.sg.d22, root.sg.d55555 align by device";
+    sql = "select first_value(s1) from root.db.d22, root.db.d55555 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -108,7 +108,7 @@ public class AggregationAlignByDeviceTest {
             instanceof SeriesAggregationScanNode);
 
     // one aggregation measurement, one device
-    sql = "select first_value(s1) from root.sg.d22 align by device";
+    sql = "select first_value(s1) from root.db.d22 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -122,7 +122,7 @@ public class AggregationAlignByDeviceTest {
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof SeriesAggregationScanNode);
 
     // two aggregation measurement, two devices
-    sql = "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 align by device";
+    sql = "select first_value(s1), count(s2) from root.db.d22, root.db.d55555 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -144,7 +144,7 @@ public class AggregationAlignByDeviceTest {
         secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
 
     // two aggregation measurement, one device
-    sql = "select first_value(s1), count(s2) from root.sg.d22 align by device";
+    sql = "select first_value(s1), count(s2) from root.db.d22 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -165,9 +165,9 @@ public class AggregationAlignByDeviceTest {
    *       │   └──AggregationNode-17
    *       │       └──FilterNode-16
    *       │           └──FullOuterTimeJoinNode-15
-   *       │               ├──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1,
+   *       │               ├──SeriesScanNode-18:[SeriesPath: root.db.d22.s1,
    *                          DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       │               └──SeriesScanNode-19:[SeriesPath: root.sg.d22.s2,
+   *       │               └──SeriesScanNode-19:[SeriesPath: root.db.d22.s2,
    *                          DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *       └──ExchangeNode-29: [SourceAddress:192.0.4.1/test.2.0/30]
    *
@@ -176,29 +176,29 @@ public class AggregationAlignByDeviceTest {
    *       └──AggregationNode-25
    *           └──FilterNode-24
    *               └──FullOuterTimeJoinNode-23
-   *                   ├──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1,
+   *                   ├──SeriesScanNode-26:[SeriesPath: root.db.d55555.s1,
    *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d55555.s2,
+   *                   └──SeriesScanNode-27:[SeriesPath: root.db.d55555.s2,
    *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
 
   /**
    * IdentitySinkNode-35 └──MergeSort-32 ├──DeviceView-16 │ └──AggregationNode-21 │
    * └──ProjectNode-20 │ └──LeftOuterTimeJoinNode-19 │ ├──SeriesScanNode-17:[SeriesPath:
-   * root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)] │
-   * └──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1, DataRegion:
+   * root.db.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)] │
+   * └──SeriesScanNode-18:[SeriesPath: root.db.d22.s1, DataRegion:
    * TConsensusGroupId(type:DataRegion, id:3)] └──ExchangeNode-33:
    * [SourceAddress:192.0.4.1/test.2.0/34]
    *
    * <p>IdentitySinkNode-34 └──DeviceView-24 └──AggregationNode-29 └──ProjectNode-28
-   * └──LeftOuterTimeJoinNode-27 ├──SeriesScanNode-25:[SeriesPath: root.sg.d55555.s2, DataRegion:
-   * TConsensusGroupId(type:DataRegion, id:4)] └──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1,
+   * └──LeftOuterTimeJoinNode-27 ├──SeriesScanNode-25:[SeriesPath: root.db.d55555.s2, DataRegion:
+   * TConsensusGroupId(type:DataRegion, id:4)] └──SeriesScanNode-26:[SeriesPath: root.db.d55555.s1,
    * DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByDeviceTest2() {
     // one aggregation measurement, two devices, with filter
-    sql = "select first_value(s1) from root.sg.d22, root.sg.d55555 where s2>1 align by device";
+    sql = "select first_value(s1) from root.db.d22, root.db.d55555 where s2>1 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -227,7 +227,7 @@ public class AggregationAlignByDeviceTest {
 
     // two aggregation measurement, two devices, with filter
     sql =
-        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 where s2>1 align by device";
+        "select first_value(s1), count(s2) from root.db.d22, root.db.d55555 where s2>1 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -263,10 +263,10 @@ public class AggregationAlignByDeviceTest {
    *           │   └──TransformNode-25
    *           │       └──DeviceView-11
    *           │           └──HorizontallyConcatNode-17
-   *           │               ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d22.s1,
+   *           │               ├──SeriesAggregationScanNode-15:[SeriesPath: root.db.d22.s1,
    *                              Descriptor: [AggregationDescriptor(avg, SINGLE)],
    *                              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *           │               └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d22.s2,
+   *           │               └──SeriesAggregationScanNode-16:[SeriesPath: root.db.d22.s2,
    *                              Descriptor: [AggregationDescriptor(avg, SINGLE),
    *                              AggregationDescriptor(max_value, SINGLE)],
    *                              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
@@ -277,17 +277,17 @@ public class AggregationAlignByDeviceTest {
    *       └──TransformNode-26
    *           └──DeviceView-18
    *               └──HorizontallyConcatNode-24
-   *                   ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d55555.s1,
+   *                   ├──SeriesAggregationScanNode-22:[SeriesPath: root.db.d55555.s1,
    *                      Descriptor: [AggregationDescriptor(avg, SINGLE)],
    *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                   └──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d55555.s2,
+   *                   └──SeriesAggregationScanNode-23:[SeriesPath: root.db.d55555.s2,
    *                      Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)],
    *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest() {
     sql =
-        "select avg(s1)+avg(s2) from root.sg.d22, root.sg.d55555 order by max_value(s2) align by device";
+        "select avg(s1)+avg(s2) from root.db.d22, root.db.d55555 order by max_value(s2) align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -352,7 +352,7 @@ public class AggregationAlignByDeviceTest {
   public void orderByTimeTest1() {
     // one aggregation measurement, two devices
     sql =
-        "select first_value(s1) from root.sg.d22, root.sg.d55555 order by time desc align by device";
+        "select first_value(s1) from root.db.d22, root.db.d55555 order by time desc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -376,7 +376,7 @@ public class AggregationAlignByDeviceTest {
             instanceof SeriesAggregationScanNode);
 
     // one aggregation measurement, one device
-    sql = "select first_value(s1) from root.sg.d22 order by time desc align by device";
+    sql = "select first_value(s1) from root.db.d22 order by time desc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -391,7 +391,7 @@ public class AggregationAlignByDeviceTest {
 
     // two aggregation measurement, two devices
     sql =
-        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 "
+        "select first_value(s1), count(s2) from root.db.d22, root.db.d55555 "
             + "order by time desc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
@@ -418,7 +418,7 @@ public class AggregationAlignByDeviceTest {
             instanceof HorizontallyConcatNode);
 
     // two aggregation measurement, one device
-    sql = "select first_value(s1), count(s2) from root.sg.d22 order by time desc align by device";
+    sql = "select first_value(s1), count(s2) from root.db.d22 order by time desc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -437,7 +437,7 @@ public class AggregationAlignByDeviceTest {
   @Test
   public void crossRegionTest() {
     // one aggregation measurement, two devices
-    sql = "select last_value(s1),last_value(s2)from root.sg.d1 align by device";
+    sql = "select last_value(s1),last_value(s2)from root.db.d1 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -451,10 +451,10 @@ public class AggregationAlignByDeviceTest {
       assertEquals(
           firstFiRoot.getChildren().get(0).getChildren().get(0).getOutputColumnNames(),
           ImmutableList.of(
-              "last_value(root.sg.d1.s1)",
-              "max_time(root.sg.d1.s1)",
-              "last_value(root.sg.d1.s2)",
-              "max_time(root.sg.d1.s2)"));
+              "last_value(root.db.d1.s1)",
+              "max_time(root.db.d1.s1)",
+              "last_value(root.db.d1.s2)",
+              "max_time(root.db.d1.s2)"));
     }
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
@@ -463,14 +463,14 @@ public class AggregationAlignByDeviceTest {
       assertEquals(
           firstFiRoot.getChildren().get(0).getChildren().get(0).getOutputColumnNames(),
           ImmutableList.of(
-              "last_value(root.sg.d1.s1)",
-              "max_time(root.sg.d1.s1)",
-              "last_value(root.sg.d1.s2)",
-              "max_time(root.sg.d1.s2)"));
+              "last_value(root.db.d1.s1)",
+              "max_time(root.db.d1.s1)",
+              "last_value(root.db.d1.s2)",
+              "max_time(root.db.d1.s2)"));
     }
 
     // order by time
-    sql = "select last_value(s1),last_value(s2)from root.sg.d1 order by time align by device";
+    sql = "select last_value(s1),last_value(s2)from root.db.d1 order by time align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));

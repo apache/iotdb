@@ -1249,7 +1249,7 @@ public class TsFileProcessorTest {
 
   private InsertTabletNode genInsertTableNode(long startTime, boolean isAligned)
       throws IllegalPathException {
-    String deviceId = "root.sg.device5";
+    String deviceId = "root.db.device5";
     String[] measurements = new String[3000];
     TSDataType[] dataTypes = new TSDataType[3000];
     TSEncoding[] encodings = new TSEncoding[3000];
@@ -1292,7 +1292,7 @@ public class TsFileProcessorTest {
 
   private InsertTabletNode genInsertTableNodeFors3000ToS6000(long startTime, boolean isAligned)
       throws IllegalPathException {
-    String deviceId = "root.sg.device5";
+    String deviceId = "root.db.device5";
     String[] measurements = new String[3000];
     TSDataType[] dataTypes = new TSDataType[3000];
     TSEncoding[] encodings = new TSEncoding[3000];

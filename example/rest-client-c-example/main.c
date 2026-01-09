@@ -86,7 +86,7 @@ void nonQuery(char* sql_str) {
 }
 
 void insertTablet(char * sql_str) {
-    // curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataTypes":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"isAligned":false,"deviceId":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
+    // curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataTypes":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"isAligned":false,"deviceId":"root.db27"}' http://127.0.0.1:18080/rest/v1/insertTablet
     CURL *curl_handle = curl_easy_init();
     if (curl_handle == NULL) {
         fprintf(stderr, "curl_handle == NULL\n");

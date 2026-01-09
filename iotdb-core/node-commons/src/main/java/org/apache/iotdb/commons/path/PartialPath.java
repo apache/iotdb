@@ -697,11 +697,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    *
    * <ul>
    *   <li>"root.db.**" overlaps with prefix full path "root" because "root.db.**" share some common
-   *       element "root.sg.d" with "root.**"
-   *   <li>"root.*.d*.s" overlaps with prefix full path "root.sg" because "root.*.d*.s" share some
-   *       common element "root.sg.d1.s" with "root.sg.**"
-   *   <li>"root.*.d.s" doesn't overlap with prefix full path "root.sg.d1" because there is no
-   *       common element between "root.*.d.s" and "root.sg.d1.**"
+   *       element "root.db.d" with "root.**"
+   *   <li>"root.*.d*.s" overlaps with prefix full path "root.db" because "root.*.d*.s" share some
+   *       common element "root.db.d1.s" with "root.db.**"
+   *   <li>"root.*.d.s" doesn't overlap with prefix full path "root.db.d1" because there is no
+   *       common element between "root.*.d.s" and "root.db.d1.**"
    * </ul>
    *
    * @param prefixFullPath prefix full path
@@ -735,7 +735,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * Generate a list of partial paths which are the intersection of this path pattern and input
    * prefix pattern.
    *
-   * @param prefixPattern must be a prefix full path ending with one "**", like "root.sg.**"
+   * @param prefixPattern must be a prefix full path ending with one "**", like "root.db.**"
    * @return a list of partial paths which are the intersection of this path pattern and input
    *     prefix pattern.
    */
@@ -751,7 +751,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     matchIndex[0] = true; // "root" must match "root"
 
     // dp[i][j] means if prefixFullPath[0:i] matches nodes[0:j]
-    // for example: "root.**.d1.**" intersect "root.sg1.d1(.**)"
+    // for example: "root.**.d1.**" intersect "root.db1.d1(.**)"
     // dp[i][j] = (nodes[j]=="**"&&dp[i][j-1]) || (nodes[j] matches prefixFullPath[i]&&dp[i-1][j-1])
     // 1 0 0 0 |→| 1 0 0 0 |→| 1 0 0 0
     // 0 0 0 0 |↓| 0 1 0 0 |→| 0 1 0 0
@@ -772,7 +772,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       matchIndex = newMatchIndex;
     }
     // Scan in reverse order to construct the result set.
-    // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.sg1.d1 + **】
+    // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.db1.d1 + **】
     // It can be pruned if the remaining nodes start with **.
     List<PartialPath> res = new ArrayList<>();
     if (matchIndex[thisLength - 1] && nodes[thisLength - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {

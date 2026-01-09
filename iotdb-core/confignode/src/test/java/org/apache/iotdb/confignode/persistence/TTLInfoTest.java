@@ -232,12 +232,12 @@ public class TTLInfoTest {
     final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
     for (int i = 0; i < tTlRuleCapacity - 1; i++) {
       SetTTLPlan setTTLPlan =
-          new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d" + i + ".**"), 1000);
+          new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.db1.d" + i + ".**"), 1000);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
     }
     SetTTLPlan setTTLPlan =
         new SetTTLPlan(
-            PathNodesGenerator.splitPathToNodes("root.sg1.d" + tTlRuleCapacity + ".**"), 1000);
+            PathNodesGenerator.splitPathToNodes("root.db1.d" + tTlRuleCapacity + ".**"), 1000);
     final TSStatus status = ttlInfo.setTTL(setTTLPlan);
     assertEquals(TSStatusCode.OVERSIZE_TTL.getStatusCode(), status.code);
     assertEquals(

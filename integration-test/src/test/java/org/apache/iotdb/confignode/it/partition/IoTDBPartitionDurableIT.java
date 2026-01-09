@@ -72,7 +72,7 @@ public class IoTDBPartitionDurableIT {
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataNodeId = 0;
-  private static final String sg = "root.sg";
+  private static final String sg = "root.db";
   final String d0 = sg + ".d0.s";
   final String d1 = sg + ".d1.s";
   private static final int testSeriesPartitionBatchSize = 1;

@@ -64,16 +64,16 @@ public class IoTDBSpaceQuotaIT {
   public void timeseriesNumExceedTest() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=3 on root.sg0");
+      adminStmt.execute("set space quota timeseries=3 on root.db0");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
           "1700: The number of timeseries has reached the upper limit", throwables.getMessage());
@@ -84,16 +84,16 @@ public class IoTDBSpaceQuotaIT {
   public void devicesNumExceedTest() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3 on root.sg0");
+      adminStmt.execute("set space quota devices=3 on root.db0");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
       adminStmt.execute(
-          "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
           "1700: The number of devices has reached the upper limit", throwables.getMessage());
@@ -104,42 +104,42 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest0() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=3 on root.sg0");
+      adminStmt.execute("set space quota timeseries=3 on root.db0");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
-      adminStmt.execute("set space quota timeseries=4 on root.sg0");
+      adminStmt.execute("set space quota timeseries=4 on root.db0");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3 on root.sg1");
+      adminStmt.execute("set space quota devices=3 on root.db1");
       adminStmt.execute(
-          "create timeseries root.sg1.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
-      adminStmt.execute("set space quota devices=4 on root.sg1");
+      adminStmt.execute("set space quota devices=4 on root.db1");
       adminStmt.execute(
-          "create timeseries root.sg1.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk=100M on root.sg2");
-      adminStmt.execute("set space quota disk=200M on root.sg2");
+      adminStmt.execute("set space quota disk=100M on root.db2");
+      adminStmt.execute("set space quota disk=200M on root.db2");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
@@ -149,15 +149,15 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest1() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=3 on root.sg0");
+      adminStmt.execute("set space quota timeseries=3 on root.db0");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
-      adminStmt.execute("set space quota timeseries=2 on root.sg0");
+      adminStmt.execute("set space quota timeseries=2 on root.db0");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
           "301: The used quota exceeds the preset quota. Please set a larger value.",
@@ -166,15 +166,15 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3 on root.sg1");
+      adminStmt.execute("set space quota devices=3 on root.db1");
       adminStmt.execute(
-          "create timeseries root.sg1.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db1.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs() * 2);
-      adminStmt.execute("set space quota devices=2 on root.sg1");
+      adminStmt.execute("set space quota devices=2 on root.db1");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
           "301: The used quota exceeds the preset quota. Please set a larger value.",
@@ -186,7 +186,7 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest2() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=0 on root.sg0");
+      adminStmt.execute("set space quota timeseries=0 on root.db0");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of timeseries greater than 0", throwables.getMessage());
@@ -194,7 +194,7 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=0 on root.sg1");
+      adminStmt.execute("set space quota devices=0 on root.db1");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of devices greater than 0", throwables.getMessage());
@@ -202,14 +202,14 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk=0M on root.sg2");
+      adminStmt.execute("set space quota disk=0M on root.db2");
     } catch (SQLException throwables) {
       Assert.assertEquals("701: Please set the disk size greater than 0", throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=0,devices=0,disk=0M on root.sg3");
+      adminStmt.execute("set space quota timeseries=0,devices=0,disk=0M on root.db3");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of devices greater than 0", throwables.getMessage());
@@ -220,33 +220,33 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest3() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=2 on root.sg0");
-      adminStmt.execute("set space quota timeseries='unlimited' on root.sg0");
+      adminStmt.execute("set space quota timeseries=2 on root.db0");
+      adminStmt.execute("set space quota timeseries='unlimited' on root.db0");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=2 on root.sg1");
-      adminStmt.execute("set space quota devices='unlimited' on root.sg1");
+      adminStmt.execute("set space quota devices=2 on root.db1");
+      adminStmt.execute("set space quota devices='unlimited' on root.db1");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk=10M on root.sg2");
-      adminStmt.execute("set space quota disk='unlimited' on root.sg2");
+      adminStmt.execute("set space quota disk=10M on root.db2");
+      adminStmt.execute("set space quota disk='unlimited' on root.db2");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=2,devices=2,disk=10M on root.sg3");
+      adminStmt.execute("set space quota timeseries=2,devices=2,disk=10M on root.db3");
       adminStmt.execute(
-          "set space quota timeseries='unlimited',devices='unlimited',disk='unlimited' on root.sg3");
+          "set space quota timeseries='unlimited',devices='unlimited',disk='unlimited' on root.db3");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
@@ -256,31 +256,31 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest4() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3,timeseries=5 on root.sg0;");
+      adminStmt.execute("set space quota devices=3,timeseries=5 on root.db0;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt03.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt03.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt04.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt04.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status2 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
-      adminStmt.execute("set space quota devices=4,timeseries=6 on root.sg0;");
+          "create timeseries root.db0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute("set space quota devices=4,timeseries=6 on root.db0;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt05.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt05.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status5 with datatype=BOOLEAN,encoding=PLAIN;");
-      adminStmt.execute("set space quota devices='unlimited',timeseries='unlimited' on root.sg0;");
+          "create timeseries root.db0.wf01.wt01.status5 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute("set space quota devices='unlimited',timeseries='unlimited' on root.db0;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt06.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt06.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status6 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status6 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException throwables) {
       Assert.fail(throwables.getMessage());
     }
@@ -290,21 +290,21 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest5() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.sg0;");
+      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.db0;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt02.status1 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt02.status1 with datatype=BOOLEAN,encoding=PLAIN;");
       Thread.sleep(2000);
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg0;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db0;");
       String ans1 =
-          "root.sg0,diskSize,0.09765625G,0.0G"
+          "root.db0,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg0,deviceNum,3,2"
+              + "root.db0,deviceNum,3,2"
               + ",\n"
-              + "root.sg0,timeSeriesNum,5,3"
+              + "root.db0,timeSeriesNum,5,3"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     } catch (InterruptedException | SQLException e) {
@@ -316,7 +316,7 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest6() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='100K' on root.sg0;");
+      adminStmt.execute("set space quota disk='100K' on root.db0;");
     } catch (SQLException e) {
       Assert.assertEquals(
           "701: When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit",
@@ -324,14 +324,14 @@ public class IoTDBSpaceQuotaIT {
     }
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='100M' on root.sg0;");
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg0;");
+      adminStmt.execute("set space quota disk='100M' on root.db0;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db0;");
       String ans1 =
-          "root.sg0,diskSize,0.09765625G,0.0G"
+          "root.db0,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg0,deviceNum,unlimited,0"
+              + "root.db0,deviceNum,unlimited,0"
               + ",\n"
-              + "root.sg0,timeSeriesNum,unlimited,0"
+              + "root.db0,timeSeriesNum,unlimited,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     } catch (SQLException e) {
@@ -339,14 +339,14 @@ public class IoTDBSpaceQuotaIT {
     }
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='100G' on root.sg1;");
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg1;");
+      adminStmt.execute("set space quota disk='100G' on root.db1;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db1;");
       String ans1 =
-          "root.sg1,diskSize,100.0G,0.0G"
+          "root.db1,diskSize,100.0G,0.0G"
               + ",\n"
-              + "root.sg1,deviceNum,unlimited,0"
+              + "root.db1,deviceNum,unlimited,0"
               + ",\n"
-              + "root.sg1,timeSeriesNum,unlimited,0"
+              + "root.db1,timeSeriesNum,unlimited,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     } catch (SQLException e) {
@@ -354,14 +354,14 @@ public class IoTDBSpaceQuotaIT {
     }
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='100T' on root.sg2;");
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg2;");
+      adminStmt.execute("set space quota disk='100T' on root.db2;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db2;");
       String ans1 =
-          "root.sg2,diskSize,102400.0G,0.0G"
+          "root.db2,diskSize,102400.0G,0.0G"
               + ",\n"
-              + "root.sg2,deviceNum,unlimited,0"
+              + "root.db2,deviceNum,unlimited,0"
               + ",\n"
-              + "root.sg2,timeSeriesNum,unlimited,0"
+              + "root.db2,timeSeriesNum,unlimited,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     } catch (SQLException e) {
@@ -369,14 +369,14 @@ public class IoTDBSpaceQuotaIT {
     }
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='100P' on root.sg3;");
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg3;");
+      adminStmt.execute("set space quota disk='100P' on root.db3;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db3;");
       String ans1 =
-          "root.sg3,diskSize,1.048576E8G,0.0G"
+          "root.db3,diskSize,1.048576E8G,0.0G"
               + ",\n"
-              + "root.sg3,deviceNum,unlimited,0"
+              + "root.db3,deviceNum,unlimited,0"
               + ",\n"
-              + "root.sg3,timeSeriesNum,unlimited,0"
+              + "root.db3,timeSeriesNum,unlimited,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     } catch (SQLException e) {
@@ -389,18 +389,18 @@ public class IoTDBSpaceQuotaIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute(
-          "create timeseries root.sg0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf02.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf03.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db0.wf04.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
-          "create timeseries root.sg0.wf05.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
-      adminStmt.execute("set space quota devices=5 on root.sg0;");
-      adminStmt.execute("set space quota disk='5g' on root.sg0;");
-      adminStmt.execute("set space quota devices=10 on root.sg0;");
+          "create timeseries root.db0.wf05.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN;");
+      adminStmt.execute("set space quota devices=5 on root.db0;");
+      adminStmt.execute("set space quota disk='5g' on root.db0;");
+      adminStmt.execute("set space quota devices=10 on root.db0;");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
@@ -410,7 +410,7 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest8() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=-5 on root.sg0");
+      adminStmt.execute("set space quota timeseries=-5 on root.db0");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of timeseries greater than 0", throwables.getMessage());
@@ -418,7 +418,7 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=-6 on root.sg1");
+      adminStmt.execute("set space quota devices=-6 on root.db1");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of devices greater than 0", throwables.getMessage());
@@ -426,14 +426,14 @@ public class IoTDBSpaceQuotaIT {
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota disk='-7M' on root.sg2");
+      adminStmt.execute("set space quota disk='-7M' on root.db2");
     } catch (SQLException throwables) {
       Assert.assertEquals("701: Please set the disk size greater than 0", throwables.getMessage());
     }
 
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeseries=-5,devices=6,disk=0M on root.sg3");
+      adminStmt.execute("set space quota timeseries=-5,devices=6,disk=0M on root.db3");
     } catch (SQLException throwables) {
       Assert.assertEquals(
           "701: Please set the number of timeseries greater than 0", throwables.getMessage());
@@ -444,7 +444,7 @@ public class IoTDBSpaceQuotaIT {
   public void setSpaceQuotaTest9() {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota timeserie=5 on root.sg0");
+      adminStmt.execute("set space quota timeserie=5 on root.db0");
     } catch (SQLException throwables) {
       Assert.assertEquals("701: Wrong space quota type: timeserie", throwables.getMessage());
     }
@@ -455,31 +455,31 @@ public class IoTDBSpaceQuotaIT {
     IoTDBDescriptor.getInstance().getConfig().setQuotaEnable(true);
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.sg1,root.sg2;");
+      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.db1,root.db2;");
       ResultSet resultSet1 = adminStmt.executeQuery("show space quota;");
       String ans1 =
-          "root.sg1,diskSize,0.09765625G,0.0G"
+          "root.db1,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg1,deviceNum,3,0"
+              + "root.db1,deviceNum,3,0"
               + ",\n"
-              + "root.sg1,timeSeriesNum,5,0"
+              + "root.db1,timeSeriesNum,5,0"
               + ",\n"
-              + "root.sg2,diskSize,0.09765625G,0.0G"
+              + "root.db2,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg2,deviceNum,3,0"
+              + "root.db2,deviceNum,3,0"
               + ",\n"
-              + "root.sg2,timeSeriesNum,5,0"
+              + "root.db2,timeSeriesNum,5,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
       adminStmt.execute(
-          "set space quota devices='unlimited',timeseries='unlimited',disk='unlimited' on root.sg1;");
-      ResultSet resultSet2 = adminStmt.executeQuery("show space quota root.sg1;");
+          "set space quota devices='unlimited',timeseries='unlimited',disk='unlimited' on root.db1;");
+      ResultSet resultSet2 = adminStmt.executeQuery("show space quota root.db1;");
       String ans2 =
-          "root.sg1,diskSize,unlimited,0.0G"
+          "root.db1,diskSize,unlimited,0.0G"
               + ",\n"
-              + "root.sg1,deviceNum,unlimited,0"
+              + "root.db1,deviceNum,unlimited,0"
               + ",\n"
-              + "root.sg1,timeSeriesNum,unlimited,0"
+              + "root.db1,timeSeriesNum,unlimited,0"
               + ",\n";
       validateResultSet(resultSet2, ans2);
       IoTDBDescriptor.getInstance().getConfig().setQuotaEnable(false);
@@ -490,20 +490,20 @@ public class IoTDBSpaceQuotaIT {
   public void showSpaceQuotaTest1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.sg4,root.sg5;");
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg4,root.sg5;");
+      adminStmt.execute("set space quota devices=3,timeseries=5,disk='100M' on root.db4,root.db5;");
+      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.db4,root.db5;");
       String ans1 =
-          "root.sg4,diskSize,0.09765625G,0.0G"
+          "root.db4,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg4,deviceNum,3,0"
+              + "root.db4,deviceNum,3,0"
               + ",\n"
-              + "root.sg4,timeSeriesNum,5,0"
+              + "root.db4,timeSeriesNum,5,0"
               + ",\n"
-              + "root.sg5,diskSize,0.09765625G,0.0G"
+              + "root.db5,diskSize,0.09765625G,0.0G"
               + ",\n"
-              + "root.sg5,deviceNum,3,0"
+              + "root.db5,deviceNum,3,0"
               + ",\n"
-              + "root.sg5,timeSeriesNum,5,0"
+              + "root.db5,timeSeriesNum,5,0"
               + ",\n";
       validateResultSet(resultSet1, ans1);
     }

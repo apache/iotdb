@@ -83,7 +83,7 @@ public class IoTDBPartitionGetterIT {
   private static final long testTimePartitionInterval = 604800000;
   private static final int testDataRegionGroupPerDatabase = 5;
 
-  private static final String sg = "root.sg";
+  private static final String sg = "root.db";
   private static final int databaseNum = 2;
   private static final int testSeriesPartitionSlotNum = 1000;
   private static final int seriesPartitionBatchSize = 10;
@@ -123,8 +123,8 @@ public class IoTDBPartitionGetterIT {
       }
 
       /* Create SchemaPartitions */
-      final String sg0 = "root.sg0";
-      final String sg1 = "root.sg1";
+      final String sg0 = "root.db0";
+      final String sg1 = "root.db1";
 
       final String d00 = sg0 + ".d0.s";
       final String d01 = sg0 + ".d1.s";
@@ -202,16 +202,16 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSchemaPartition() throws Exception {
-    final String sg = "root.sg";
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg = "root.db";
+    final String sg0 = "root.db0";
+    final String sg1 = "root.db1";
 
     final String d11 = sg1 + ".d1.s";
 
-    final String allPaths = "root.sg*";
-    final String allSg0 = "root.sg0.**";
+    final String allPaths = "root.db*";
+    final String allSg0 = "root.db0.**";
 
-    final String notExistsSg = "root.sg10.**";
+    final String notExistsSg = "root.db10.**";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -254,10 +254,10 @@ public class IoTDBPartitionGetterIT {
           schemaPartitionTableResp.getStatus().getCode());
       Assert.assertEquals(2, schemaPartitionTableResp.getSchemaPartitionTableSize());
       schemaPartitionTable = schemaPartitionTableResp.getSchemaPartitionTable();
-      // Check "root.sg0"
+      // Check "root.db0"
       Assert.assertTrue(schemaPartitionTable.containsKey(sg0));
       Assert.assertEquals(2, schemaPartitionTable.get(sg0).size());
-      // Check "root.sg1"
+      // Check "root.db1"
       Assert.assertTrue(schemaPartitionTable.containsKey(sg1));
       Assert.assertEquals(1, schemaPartitionTable.get(sg1).size());
     }
@@ -344,8 +344,8 @@ public class IoTDBPartitionGetterIT {
 
   @Test
   public void testGetSlots() throws Exception {
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.db0";
+    final String sg1 = "root.db1";
 
     final IDeviceID d00 = Factory.DEFAULT_FACTORY.create(sg0 + ".d0.s");
     final IDeviceID d01 = Factory.DEFAULT_FACTORY.create(sg0 + ".d1.s");

@@ -106,7 +106,7 @@ public class TsFileValidationScanTest {
 
   private static List<File> prepareTsFiles() throws IOException {
     List<File> files = new ArrayList<>();
-    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.sg1.d1");
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.db1.d1");
     // overlap between chunks
     File file = new File(TestConstant.BASE_OUTPUT_PATH, "1.tsfile");
     TsFileResource resource = new TsFileResource(file);

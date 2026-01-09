@@ -57,9 +57,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-    String device1 = "root.sg.d1";
-    String device2 = "root.sg.d22";
-    String device3 = "root.sg.d333";
+    String device1 = "root.db.d1";
+    String device2 = "root.db.d22";
+    String device3 = "root.db.d333";
 
     SchemaPartition schemaPartition =
         new SchemaPartition(
@@ -104,7 +104,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
                     .setClientRpcEndPoint(new TEndPoint("192.0.1.2", 9000))));
     regionMap.put(new TSeriesPartitionSlot(device3.length()), region3);
 
-    schemaPartitionMap.put("root.sg", regionMap);
+    schemaPartitionMap.put("root.db", regionMap);
 
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
@@ -130,9 +130,9 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    String device1 = "root.sg.d1";
-    String device2 = "root.sg.d22";
-    String device3 = "root.sg.d333";
+    String device1 = "root.db.d1";
+    String device2 = "root.db.d22";
+    String device3 = "root.db.d333";
 
     DataPartition dataPartition =
         new DataPartition(
@@ -209,7 +209,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     sgPartitionMap.put(new TSeriesPartitionSlot(device2.length()), d2DataRegionMap);
     sgPartitionMap.put(new TSeriesPartitionSlot(device3.length()), d3DataRegionMap);
 
-    dataPartitionMap.put("root.sg", sgPartitionMap);
+    dataPartitionMap.put("root.db", sgPartitionMap);
 
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
@@ -232,7 +232,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
 
-    // only test root.sg
+    // only test root.db
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -242,7 +242,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
         dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
-    dataPartitionMap.put("root.sg", sgPartitionMap);
+    dataPartitionMap.put("root.db", sgPartitionMap);
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
     List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();

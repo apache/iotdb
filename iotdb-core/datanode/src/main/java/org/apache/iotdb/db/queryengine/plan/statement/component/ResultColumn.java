@@ -28,37 +28,37 @@ import java.util.Objects;
  * This class is used to represent a result column of a query.
  *
  * <p>Assume that we have time series in db as follows: <br>
- * [ root.sg.d.a, root.sg.d.b, root.sg.e.a, root.sg.e.b ]
+ * [ root.db.d.a, root.db.d.b, root.db.e.a, root.db.e.b ]
  *
  * <ul>
- *   Example 1: select a, a + b, udf(udf(b)) from root.sg.d, root.sg.e;
+ *   Example 1: select a, a + b, udf(udf(b)) from root.db.d, root.db.e;
  *   <li>Step 1: constructed by sql visitor in logical operator: <br>
  *       result columns: <br>
  *       [a, a + b, udf(udf(b))]
  *   <li>Step 2: concatenated with prefix paths in logical optimizer:<br>
  *       result columns: <br>
- *       [root.sg.d.a, root.sg.e.a, root.sg.d.a + root.sg.d.b, root.sg.d.a + root.sg.e.b,
- *       root.sg.e.a + root.sg.d.b, root.sg.e.a + root.sg.e.b, udf(udf(root.sg.d.b)),
- *       udf(udf(root.sg.e.b))]
+ *       [root.db.d.a, root.db.e.a, root.db.d.a + root.db.d.b, root.db.d.a + root.db.e.b,
+ *       root.db.e.a + root.db.d.b, root.db.e.a + root.db.e.b, udf(udf(root.db.d.b)),
+ *       udf(udf(root.db.e.b))]
  *   <li>Step 3: remove wildcards in logical optimizer:<br>
  *       result columns: <br>
- *       [root.sg.d.a, root.sg.e.a, root.sg.d.a + root.sg.d.b, root.sg.d.a + root.sg.e.b,
- *       root.sg.e.a + root.sg.d.b, root.sg.e.a + root.sg.e.b, udf(udf(root.sg.d.b)),
- *       udf(udf(root.sg.e.b))]
+ *       [root.db.d.a, root.db.e.a, root.db.d.a + root.db.d.b, root.db.d.a + root.db.e.b,
+ *       root.db.e.a + root.db.d.b, root.db.e.a + root.db.e.b, udf(udf(root.db.d.b)),
+ *       udf(udf(root.db.e.b))]
  * </ul>
  *
  * <ul>
- *   Example 2: select *, a + *, udf(udf(*)) from root.sg.d;
+ *   Example 2: select *, a + *, udf(udf(*)) from root.db.d;
  *   <li>Step 1: constructed by sql visitor in logical operator: <br>
  *       result columns: <br>
  *       [*, a + * , udf(udf(*))]
  *   <li>Step 2: concatenated with prefix paths in logical optimizer:<br>
  *       result columns: <br>
- *       [root.sg.d.*, root.sg.d.a + root.sg.d.*, udf(udf(root.sg.d.*))]
+ *       [root.db.d.*, root.db.d.a + root.db.d.*, udf(udf(root.db.d.*))]
  *   <li>Step 3: remove wildcards in logical optimizer:<br>
  *       result columns: <br>
- *       [root.sg.d.a, root.sg.d.b, root.sg.d.a + root.sg.d.a, root.sg.d.a + root.sg.d.b,
- *       udf(udf(root.sg.d.a)), udf(udf(root.sg.d.b))]
+ *       [root.db.d.a, root.db.d.b, root.db.d.a + root.db.d.a, root.db.d.a + root.db.d.b,
+ *       udf(udf(root.db.d.a)), udf(udf(root.db.d.b))]
  * </ul>
  */
 public class ResultColumn extends StatementNode {

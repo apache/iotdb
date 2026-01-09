@@ -153,11 +153,11 @@ public class StatementGeneratorTest {
   public void testRawDataQuery() throws IllegalPathException {
     TSRawDataQueryReq req =
         new TSRawDataQueryReq(
-            101L, Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"), 100L, 200L, 102L);
+            101L, Arrays.asList("root.db.d1.s1", "root.db.d1.s2"), 100L, 200L, 102L);
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
         queryStatement.getPaths());
     assertEquals(
         new LogicAndExpression(
@@ -171,11 +171,11 @@ public class StatementGeneratorTest {
   @Test
   public void testLastDataQuery() throws IllegalPathException {
     TSLastDataQueryReq req =
-        new TSLastDataQueryReq(101L, Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"), 200L, 102L);
+        new TSLastDataQueryReq(101L, Arrays.asList("root.db.d1.s1", "root.db.d1.s2"), 200L, 102L);
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
         queryStatement.getPaths());
     assertEquals(
         new GreaterEqualExpression(
@@ -189,19 +189,19 @@ public class StatementGeneratorTest {
         new TSAggregationQueryReq(
             101L,
             102L,
-            Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"),
+            Arrays.asList("root.db.d1.s1", "root.db.d1.s2"),
             Arrays.asList(TAggregationType.AVG, TAggregationType.COUNT));
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
         queryStatement.getPaths());
     assertEquals(
         new ResultColumn(
             new FunctionExpression(
                 "AVG",
                 new LinkedHashMap<>(),
-                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
+                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1")))),
             ResultColumn.ColumnType.AGGREGATION),
         queryStatement.getSelectComponent().getResultColumns().get(0));
     assertEquals(
@@ -209,7 +209,7 @@ public class StatementGeneratorTest {
             new FunctionExpression(
                 "COUNT",
                 new LinkedHashMap<>(),
-                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))),
+                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s2")))),
             ResultColumn.ColumnType.AGGREGATION),
         queryStatement.getSelectComponent().getResultColumns().get(1));
   }
@@ -219,7 +219,7 @@ public class StatementGeneratorTest {
     TSInsertRecordReq req =
         new TSInsertRecordReq(
             101L,
-            "root.sg.d1",
+            "root.db.d1",
             Arrays.asList("s1", "s2"),
             ByteBuffer.wrap(new byte[] {0, 0, 0, 0}),
             1000L);
@@ -232,7 +232,7 @@ public class StatementGeneratorTest {
     TSInsertTabletReq req =
         new TSInsertTabletReq(
             101L,
-            "root.sg.d1",
+            "root.db.d1",
             Collections.singletonList("s1"),
             ByteBuffer.wrap(new byte[] {0, 0, 0, 0}),
             ByteBuffer.wrap(new byte[] {0, 0, 0, 0, 0, 0, 0, 0}),
@@ -255,7 +255,7 @@ public class StatementGeneratorTest {
     TSInsertTabletReq req =
         new TSInsertTabletReq(
             101L,
-            "root.sg.d1",
+            "root.db.d1",
             measurements,
             ByteBuffer.wrap(new byte[128]),
             ByteBuffer.wrap(new byte[128]),
@@ -418,14 +418,14 @@ public class StatementGeneratorTest {
     TSInsertTabletsReq req =
         new TSInsertTabletsReq(
             101L,
-            Collections.singletonList("root.sg.d1"),
+            Collections.singletonList("root.db.d1"),
             Collections.singletonList(Collections.singletonList("s1")),
             Collections.singletonList(ByteBuffer.wrap(new byte[] {0, 0, 0, 0})),
             Collections.singletonList(ByteBuffer.wrap(new byte[] {0, 0, 0, 0, 0, 0, 0, 0})),
             Collections.singletonList(Collections.singletonList(1)),
             Collections.singletonList(1));
     InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1.s1")), statement.getPaths());
   }
 
   @Test
@@ -433,12 +433,12 @@ public class StatementGeneratorTest {
     TSInsertRecordsReq req =
         new TSInsertRecordsReq(
             101L,
-            Collections.singletonList("root.sg.d1"),
+            Collections.singletonList("root.db.d1"),
             Collections.singletonList(Collections.singletonList("s1")),
             Collections.singletonList(ByteBuffer.wrap(new byte[] {0, 0, 0, 0})),
             Collections.singletonList(1L));
     InsertRowsStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1.s1")), statement.getPaths());
   }
 
   @Test
@@ -446,12 +446,12 @@ public class StatementGeneratorTest {
     TSInsertStringRecordsReq req =
         new TSInsertStringRecordsReq(
             101L,
-            Collections.singletonList("root.sg.d1"),
+            Collections.singletonList("root.db.d1"),
             Collections.singletonList(Collections.singletonList("s1")),
             Collections.singletonList(Collections.singletonList("1")),
             Collections.singletonList(1L));
     InsertRowsStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1.s1")), statement.getPaths());
   }
 
   @Test
@@ -459,12 +459,12 @@ public class StatementGeneratorTest {
     TSInsertRecordsOfOneDeviceReq req =
         new TSInsertRecordsOfOneDeviceReq(
             101L,
-            "root.sg.d1",
+            "root.db.d1",
             Collections.singletonList(Collections.singletonList("s1")),
             Collections.singletonList(ByteBuffer.wrap(new byte[] {0, 0, 0, 0})),
             Collections.singletonList(1L));
     InsertRowsOfOneDeviceStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1.s1")), statement.getPaths());
   }
 
   @Test
@@ -472,12 +472,12 @@ public class StatementGeneratorTest {
     TSInsertStringRecordsOfOneDeviceReq req =
         new TSInsertStringRecordsOfOneDeviceReq(
             101L,
-            "root.sg.d1",
+            "root.db.d1",
             Collections.singletonList(Collections.singletonList("s1")),
             Collections.singletonList(Collections.singletonList("1")),
             Collections.singletonList(1L));
     InsertRowsOfOneDeviceStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1.s1")), statement.getPaths());
   }
 
   @Test
@@ -549,10 +549,10 @@ public class StatementGeneratorTest {
   @Test
   public void testDeleteData() throws IllegalPathException {
     TSDeleteDataReq req =
-        new TSDeleteDataReq(1L, Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"), 1L, 100L);
+        new TSDeleteDataReq(1L, Arrays.asList("root.db.d1.s1", "root.db.d1.s2"), 1L, 100L);
     DeleteDataStatement statement = StatementGenerator.createStatement(req);
     assertEquals(
-        Arrays.asList(new PartialPath("root.sg.d1.s1"), new PartialPath("root.sg.d1.s2")),
+        Arrays.asList(new PartialPath("root.db.d1.s1"), new PartialPath("root.db.d1.s2")),
         statement.getPaths());
     assertEquals(1L, statement.getDeleteStartTime());
     assertEquals(100L, statement.getDeleteEndTime());
@@ -583,7 +583,7 @@ public class StatementGeneratorTest {
 
   @Test
   public void testUnsetSchemaTemplate() throws IllegalPathException {
-    TSUnsetSchemaTemplateReq req = new TSUnsetSchemaTemplateReq(1L, "root.sg.d1", "test");
+    TSUnsetSchemaTemplateReq req = new TSUnsetSchemaTemplateReq(1L, "root.db.d1", "test");
     UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
     assertEquals("test", statement.getTemplateName());
   }
@@ -599,16 +599,16 @@ public class StatementGeneratorTest {
   public void testBatchActivateTemplate() throws IllegalPathException {
     BatchActivateTemplateStatement statement =
         StatementGenerator.createBatchActivateTemplateStatement(
-            Collections.singletonList("root.sg.d1"));
+            Collections.singletonList("root.db.d1"));
     assertEquals(
-        Collections.singletonList(new PartialPath("root.sg.d1")), statement.getDevicePathList());
+        Collections.singletonList(new PartialPath("root.db.d1")), statement.getDevicePathList());
   }
 
   @Test
   public void testDeleteTimeSeries() throws IllegalPathException {
     DeleteTimeSeriesStatement statement =
-        StatementGenerator.createDeleteTimeSeriesStatement(Collections.singletonList("root.sg.d1"));
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1")), statement.getPaths());
+        StatementGenerator.createDeleteTimeSeriesStatement(Collections.singletonList("root.db.d1"));
+    assertEquals(Collections.singletonList(new PartialPath("root.db.d1")), statement.getPaths());
   }
 
   private org.apache.iotdb.isession.template.Template getTemplate()
@@ -629,11 +629,11 @@ public class StatementGeneratorTest {
 
   @Test
   public void rawDataQueryTest() {
-    String sql = "SELECT s1, s2 FROM root.sg1.d1 WHERE time > 1 and s3 > 2 LIMIT 10 OFFSET 11";
+    String sql = "SELECT s1, s2 FROM root.db1.d1 WHERE time > 1 and s3 > 2 LIMIT 10 OFFSET 11";
     checkQueryStatement(
         sql,
         Arrays.asList("s1", "s2"),
-        Collections.singletonList("root.sg1.d1"),
+        Collections.singletonList("root.db1.d1"),
         "Time > 1 & s3 > 2",
         10,
         11);
@@ -643,7 +643,7 @@ public class StatementGeneratorTest {
   public void groupByTagWithDuplicatedKeysTest() {
     try {
       checkQueryStatement(
-          "SELECT avg(*) FROM root.sg.** GROUP BY TAGS(k1, k2, k1)",
+          "SELECT avg(*) FROM root.db.** GROUP BY TAGS(k1, k2, k1)",
           Collections.emptyList(),
           Collections.emptyList(),
           "",
@@ -994,16 +994,16 @@ public class StatementGeneratorTest {
   public void testCreateView() throws IllegalPathException {
     // 1. create with select
     CreateLogicalViewStatement stmt =
-        createViewStmt("create view root.sg.view_dd as select s1 from root.sg.d1;");
+        createViewStmt("create view root.db.view_dd as select s1 from root.db.d1;");
     List<PartialPath> path = new ArrayList<>();
-    path.add(new PartialPath("root.sg.d1"));
+    path.add(new PartialPath("root.db.d1"));
     assertEquals(null, stmt.getSourcePaths().fullPathList);
     assertEquals(path, stmt.getQueryStatement().getFromComponent().getPrefixPaths());
 
     // 2. create with path
-    stmt = createViewStmt("create view root.sg as root.sg.d2;");
+    stmt = createViewStmt("create view root.db as root.db.d2;");
     List<PartialPath> path2 = new ArrayList<>();
-    path2.add(new PartialPath("root.sg.d2"));
+    path2.add(new PartialPath("root.db.d2"));
     assertEquals(path2, stmt.getSourcePaths().fullPathList);
     assertEquals(null, stmt.getQueryStatement());
   }

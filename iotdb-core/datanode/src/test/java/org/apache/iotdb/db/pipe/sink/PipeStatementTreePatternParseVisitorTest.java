@@ -291,7 +291,7 @@ public class PipeStatementTreePatternParseVisitorTest {
         Arrays.asList(new PartialPath("root.db.device.a1"), new PartialPath("root.db1.device.a1")));
     createLogicalViewStatement.setViewExpressions(
         Arrays.asList(
-            new TimeSeriesViewOperand("root.sg1.d1"), new TimeSeriesViewOperand("root.sg1.d2")));
+            new TimeSeriesViewOperand("root.db1.d1"), new TimeSeriesViewOperand("root.db1.d2")));
 
     final CreateLogicalViewStatement targetLogicalViewStatement =
         (CreateLogicalViewStatement)
@@ -302,7 +302,7 @@ public class PipeStatementTreePatternParseVisitorTest {
         Collections.singletonList(new PartialPath("root.db.device.a1")),
         targetLogicalViewStatement.getPaths());
     Assert.assertEquals(
-        Collections.singletonList(new TimeSeriesViewOperand("root.sg1.d1")),
+        Collections.singletonList(new TimeSeriesViewOperand("root.db1.d1")),
         targetLogicalViewStatement.getViewExpressions());
   }
 }

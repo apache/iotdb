@@ -37,8 +37,8 @@ public class AlterEncodingCompressorProcedureTest {
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final String queryId = "1";
     final PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
-    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.db2.*.s1"));
     patternTree.constructTree();
     final AlterEncodingCompressorProcedure alterEncodingCompressorProcedure =
         new AlterEncodingCompressorProcedure(

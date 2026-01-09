@@ -49,25 +49,25 @@ public class RegionScanPlanningTest {
 
   static {
     try {
-      devicePaths.add(new PartialPath("root.sg.d1"));
-      devicePaths.add(new PartialPath("root.sg.d22"));
-      devicePaths.add(new PartialPath("root.sg.d333"));
-      devicePaths.add(new PartialPath("root.sg.d4444"));
-      devicePaths.add(new PartialPath("root.sg.d55555"));
-      devicePaths.add(new PartialPath("root.sg.d666666"));
+      devicePaths.add(new PartialPath("root.db.d1"));
+      devicePaths.add(new PartialPath("root.db.d22"));
+      devicePaths.add(new PartialPath("root.db.d333"));
+      devicePaths.add(new PartialPath("root.db.d4444"));
+      devicePaths.add(new PartialPath("root.db.d55555"));
+      devicePaths.add(new PartialPath("root.db.d666666"));
 
-      path.add(new MeasurementPath("root.sg.d1.s1"));
-      path.add(new MeasurementPath("root.sg.d1.s2"));
-      path.add(new MeasurementPath("root.sg.d22.s1"));
-      path.add(new MeasurementPath("root.sg.d22.s2"));
-      path.add(new MeasurementPath("root.sg.d333.s1"));
-      path.add(new MeasurementPath("root.sg.d333.s2"));
-      path.add(new MeasurementPath("root.sg.d4444.s1"));
-      path.add(new MeasurementPath("root.sg.d4444.s2"));
-      path.add(new MeasurementPath("root.sg.d55555.s1"));
-      path.add(new MeasurementPath("root.sg.d55555.s2"));
-      path.add(new MeasurementPath("root.sg.d666666.s1"));
-      path.add(new MeasurementPath("root.sg.d666666.s2"));
+      path.add(new MeasurementPath("root.db.d1.s1"));
+      path.add(new MeasurementPath("root.db.d1.s2"));
+      path.add(new MeasurementPath("root.db.d22.s1"));
+      path.add(new MeasurementPath("root.db.d22.s2"));
+      path.add(new MeasurementPath("root.db.d333.s1"));
+      path.add(new MeasurementPath("root.db.d333.s2"));
+      path.add(new MeasurementPath("root.db.d4444.s1"));
+      path.add(new MeasurementPath("root.db.d4444.s2"));
+      path.add(new MeasurementPath("root.db.d55555.s1"));
+      path.add(new MeasurementPath("root.db.d55555.s2"));
+      path.add(new MeasurementPath("root.db.d666666.s1"));
+      path.add(new MeasurementPath("root.db.d666666.s2"));
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }

@@ -69,7 +69,7 @@ public class MetadataWriteNodeSerDeTest {
   public void testActivateTemplateNode() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("ActivateTemplateNode");
     ActivateTemplateNode activateTemplateNode =
-        new ActivateTemplateNode(planNodeId, new PartialPath("root.sg.d1.s1"), 2, 1);
+        new ActivateTemplateNode(planNodeId, new PartialPath("root.db.d1.s1"), 2, 1);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     activateTemplateNode.serialize(byteBuffer);
     byteBuffer.flip();
@@ -85,7 +85,7 @@ public class MetadataWriteNodeSerDeTest {
     AlterTimeSeriesNode alterTimeSeriesNode =
         new AlterTimeSeriesNode(
             planNodeId,
-            new MeasurementPath("root.sg.d1.s1"),
+            new MeasurementPath("root.db.d1.s1"),
             AlterTimeSeriesStatement.AlterType.RENAME,
             map,
             "alias",
@@ -117,8 +117,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testConstructSchemaBlackListNode() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("ConstructSchemaBlackListNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     ConstructSchemaBlackListNode constructSchemaBlackListNode =
         new ConstructSchemaBlackListNode(planNodeId, patternTree);
@@ -204,8 +204,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testDeleteTimeSeriesNode() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("DeleteTimeSeriesNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     DeleteTimeSeriesNode deleteTimeSeriesNode = new DeleteTimeSeriesNode(planNodeId, patternTree);
 
@@ -294,8 +294,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testRollbackSchemaBlackListNode() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("RollbackSchemaBlackListNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     RollbackSchemaBlackListNode rollbackSchemaBlackListNode =
         new RollbackSchemaBlackListNode(planNodeId, patternTree);
@@ -311,7 +311,7 @@ public class MetadataWriteNodeSerDeTest {
     PlanNodeId planNodeId = new PlanNodeId("AlterLogicalViewNode");
     Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
     viewPathToSourceMap.put(
-        new PartialPath("root.sg1.d1"), new TimeSeriesViewOperand("root.sg1.d1"));
+        new PartialPath("root.db1.d1"), new TimeSeriesViewOperand("root.db1.d1"));
     AlterLogicalViewNode alterLogicalViewNode =
         new AlterLogicalViewNode(planNodeId, viewPathToSourceMap);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -325,8 +325,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testConstructLogicalViewBlackListNode() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("ConstructLogicalViewBlackListNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     ConstructLogicalViewBlackListNode constructLogicalViewBlackListNode =
         new ConstructLogicalViewBlackListNode(planNodeId, patternTree);
@@ -342,7 +342,7 @@ public class MetadataWriteNodeSerDeTest {
     PlanNodeId planNodeId = new PlanNodeId("CreateLogicalViewNode");
     Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
     viewPathToSourceMap.put(
-        new PartialPath("root.sg1.d1"), new TimeSeriesViewOperand("root.sg1.d1"));
+        new PartialPath("root.db1.d1"), new TimeSeriesViewOperand("root.db1.d1"));
     CreateLogicalViewNode createLogicalViewNode =
         new CreateLogicalViewNode(planNodeId, viewPathToSourceMap);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -356,8 +356,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testDeleteLogicalViewNode() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("DeleteLogicalViewNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     DeleteLogicalViewNode deleteLogicalViewNode =
         new DeleteLogicalViewNode(planNodeId, patternTree);
@@ -372,8 +372,8 @@ public class MetadataWriteNodeSerDeTest {
   public void testRollbackLogicalViewBlackListNode() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("RollbackLogicalViewBlackListNode");
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg.d1.s1"));
-    patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d1.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db.d2.*"));
     patternTree.constructTree();
     RollbackLogicalViewBlackListNode rollbackLogicalViewBlackListNode =
         new RollbackLogicalViewBlackListNode(planNodeId, patternTree);

@@ -46,8 +46,8 @@ import java.util.Collections;
 
 public class TreePredicateConversionTest {
 
-  Expression int64Column = new TimeSeriesOperand(new PartialPath("root.sg.d1.Int64Column"));
-  Expression int32Column = new TimeSeriesOperand(new PartialPath("root.sg.d1.Int32Column"));
+  Expression int64Column = new TimeSeriesOperand(new PartialPath("root.db.d1.Int64Column"));
+  Expression int32Column = new TimeSeriesOperand(new PartialPath("root.db.d1.Int32Column"));
 
   public TreePredicateConversionTest() throws IllegalPathException {}
 

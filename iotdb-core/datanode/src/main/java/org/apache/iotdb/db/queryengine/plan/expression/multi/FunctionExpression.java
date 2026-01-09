@@ -64,9 +64,9 @@ public class FunctionExpression extends Expression {
   private final LinkedHashMap<String, String> functionAttributes;
 
   /**
-   * example: select udf(a, b, udf(c)) from root.sg.d;
+   * example: select udf(a, b, udf(c)) from root.db.d;
    *
-   * <p>3 expressions [root.sg.d.a, root.sg.d.b, udf(root.sg.d.c)] will be in this field.
+   * <p>3 expressions [root.db.d.a, root.db.d.b, udf(root.db.d.c)] will be in this field.
    */
   private List<Expression> expressions;
 
@@ -329,9 +329,9 @@ public class FunctionExpression extends Expression {
    *
    * <p>Example:
    *
-   * <p>Full column name -> udf(root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2')
+   * <p>Full column name -> udf(root.db.d.s1, sin(root.db.d.s1), 'key1'='value1', 'key2'='value2')
    *
-   * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
+   * <p>The parameter part -> root.db.d.s1, sin(root.db.d.s1), 'key1'='value1', 'key2'='value2'
    */
   private String getParametersString() {
     if (parametersString == null) {

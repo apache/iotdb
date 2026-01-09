@@ -153,8 +153,8 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    final PartialPath databasePath = new PartialPath("root.sg");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final PartialPath databasePath = new PartialPath("root.db");
     // Tree in memtree:
     // root->sg->s1->g1->temp
     //          |     |->status
@@ -163,9 +163,9 @@ public class SchemaRegionSnapshotParserTest {
     //              |->g5->level
     final HashMap<String, ICreateTimeSeriesPlan> planMap = new HashMap<>();
     planMap.put(
-        "root.sg.s1.g1.temp",
+        "root.db.s1.g1.temp",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s1.g1.temp"),
+            new MeasurementPath("root.db.s1.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -174,9 +174,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg.s1.g1.status",
+        "root.db.s1.g1.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s1.g1.status"),
+            new MeasurementPath("root.db.s1.g1.status"),
             TSDataType.INT64,
             TSEncoding.TS_2DIFF,
             CompressionType.LZ4,
@@ -185,9 +185,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg.s2.g2.t2.temp",
+        "root.db.s2.g2.t2.temp",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s2.g2.t2.temp"),
+            new MeasurementPath("root.db.s2.g2.t2.temp"),
             TSDataType.DOUBLE,
             TSEncoding.RLE,
             CompressionType.GZIP,
@@ -196,9 +196,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg.s2.g4.status",
+        "root.db.s2.g4.status",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s2.g4.status"),
+            new MeasurementPath("root.db.s2.g4.status"),
             TSDataType.INT64,
             TSEncoding.RLE,
             CompressionType.ZSTD,
@@ -207,9 +207,9 @@ public class SchemaRegionSnapshotParserTest {
             null,
             null));
     planMap.put(
-        "root.sg.s2.g5.level",
+        "root.db.s2.g5.level",
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s2.g5.level"),
+            new MeasurementPath("root.db.s2.g5.level"),
             TSDataType.INT32,
             TSEncoding.GORILLA,
             CompressionType.LZMA2,
@@ -260,7 +260,7 @@ public class SchemaRegionSnapshotParserTest {
     }
     final ISchemaRegion schemaRegion = getSchemaRegion("sg", 0);
     final String tableName = "t";
-    final PartialPath databasePath = new PartialPath("root.sg");
+    final PartialPath databasePath = new PartialPath("root.db");
 
     final List<Pair<String[], Map<String, String>>> deviceIdList =
         Arrays.asList(
@@ -333,11 +333,11 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    final PartialPath database = new PartialPath("root.sg");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final PartialPath database = new PartialPath("root.db");
     final ICreateAlignedTimeSeriesPlan plan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg.t1.t2"),
+            new PartialPath("root.db.t1.t2"),
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN),
             Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.PLAIN),
@@ -480,11 +480,11 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    final PartialPath databasePath = new PartialPath("root.sg");
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final PartialPath databasePath = new PartialPath("root.db");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s1.g1.temp"),
+            new MeasurementPath("root.db.s1.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -495,7 +495,7 @@ public class SchemaRegionSnapshotParserTest {
         0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s1.g3.temp"),
+            new MeasurementPath("root.db.s1.g3.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -506,7 +506,7 @@ public class SchemaRegionSnapshotParserTest {
         0);
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new MeasurementPath("root.sg.s2.g1.temp"),
+            new MeasurementPath("root.db.s2.g1.temp"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -526,12 +526,12 @@ public class SchemaRegionSnapshotParserTest {
     final HashMap<String, IActivateTemplateInClusterPlan> planMap = new HashMap<>();
     final IActivateTemplateInClusterPlan plan1 =
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.s2"), 1, template.getId());
+            new PartialPath("root.db.s2"), 1, template.getId());
     final IActivateTemplateInClusterPlan plan2 =
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.s3"), 1, template.getId());
-    planMap.put("root.sg.s2", plan1);
-    planMap.put("root.sg.s3", plan2);
+            new PartialPath("root.db.s3"), 1, template.getId());
+    planMap.put("root.db.s2", plan1);
+    planMap.put("root.db.s3", plan2);
     schemaRegion.activateSchemaTemplate(plan1, template);
     schemaRegion.activateSchemaTemplate(plan2, template);
     final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");

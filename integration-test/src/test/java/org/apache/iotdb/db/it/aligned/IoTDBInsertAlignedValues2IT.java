@@ -120,11 +120,11 @@ public class IoTDBInsertAlignedValues2IT {
   public void testInsertAlignedWithEmptyPage2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
-      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
-      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.db.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.db.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.db.d1(time, s1,s2) aligned values(1,'aa','bb')");
       statement.execute("flush");
-      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.db.d1(time, s1,s2) aligned values(1,'aa','bb')");
     }
   }
 
@@ -132,19 +132,19 @@ public class IoTDBInsertAlignedValues2IT {
   public void testInsertComplexAlignedValues() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.addBatch("create aligned timeseries root.sg.d1(s1 int32, s2 int32, s3 int32)");
-      statement.addBatch("insert into root.sg.d1(time,s1) values(3,1)");
-      statement.addBatch("insert into root.sg.d1(time,s1) values(1,1)");
-      statement.addBatch("insert into root.sg.d1(time,s1) values(2,1)");
-      statement.addBatch("insert into root.sg.d1(time,s2) values(2,2)");
-      statement.addBatch("insert into root.sg.d1(time,s2) values(1,2)");
-      statement.addBatch("insert into root.sg.d1(time,s2) values(3,2)");
-      statement.addBatch("insert into root.sg.d1(time,s3) values(1,3)");
-      statement.addBatch("insert into root.sg.d1(time,s3) values(3,3)");
+      statement.addBatch("create aligned timeseries root.db.d1(s1 int32, s2 int32, s3 int32)");
+      statement.addBatch("insert into root.db.d1(time,s1) values(3,1)");
+      statement.addBatch("insert into root.db.d1(time,s1) values(1,1)");
+      statement.addBatch("insert into root.db.d1(time,s1) values(2,1)");
+      statement.addBatch("insert into root.db.d1(time,s2) values(2,2)");
+      statement.addBatch("insert into root.db.d1(time,s2) values(1,2)");
+      statement.addBatch("insert into root.db.d1(time,s2) values(3,2)");
+      statement.addBatch("insert into root.db.d1(time,s3) values(1,3)");
+      statement.addBatch("insert into root.db.d1(time,s3) values(3,3)");
       statement.executeBatch();
 
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s1), count(s2), count(s3) from root.sg.d1")) {
+          statement.executeQuery("select count(s1), count(s2), count(s3) from root.db.d1")) {
 
         assertTrue(resultSet.next());
         assertEquals(3, resultSet.getInt(1));
@@ -156,7 +156,7 @@ public class IoTDBInsertAlignedValues2IT {
 
       statement.execute("flush");
       try (ResultSet resultSet =
-          statement.executeQuery("select count(s1), count(s2), count(s3) from root.sg.d1")) {
+          statement.executeQuery("select count(s1), count(s2), count(s3) from root.db.d1")) {
 
         assertTrue(resultSet.next());
         assertEquals(3, resultSet.getInt(1));

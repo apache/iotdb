@@ -367,12 +367,12 @@ public class IoTDBAuthIT {
 
         ResultSet set1 = adminStmt.executeQuery("SELECT * from root.db.aligned_template");
         assertEquals(3, set1.getMetaData().getColumnCount());
-        assertEquals("root.sg.aligned_template.temperature", set1.getMetaData().getColumnName(2));
-        assertEquals("root.sg.aligned_template.status", set1.getMetaData().getColumnName(3));
+        assertEquals("root.db.aligned_template.temperature", set1.getMetaData().getColumnName(2));
+        assertEquals("root.db.aligned_template.status", set1.getMetaData().getColumnName(3));
 
-        ResultSet set2 = userStmt.executeQuery("SELECT * from root.sg.aligned_template");
+        ResultSet set2 = userStmt.executeQuery("SELECT * from root.db.aligned_template");
         assertEquals(2, set2.getMetaData().getColumnCount());
-        assertEquals("root.sg.aligned_template.temperature", set2.getMetaData().getColumnName(2));
+        assertEquals("root.db.aligned_template.temperature", set2.getMetaData().getColumnName(2));
       }
     }
   }
@@ -883,8 +883,8 @@ public class IoTDBAuthIT {
       adminStmt.execute("CREATE USER tempuser 'temppw123456'");
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStatement = userCon.createStatement()) {
-        userStatement.addBatch("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64");
-        userStatement.addBatch("CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64");
+        userStatement.addBatch("CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT64");
+        userStatement.addBatch("CREATE TIMESERIES root.db2.d1.s1 WITH DATATYPE=INT64");
         Assert.assertThrows(BatchUpdateException.class, () -> userStatement.executeBatch());
       }
     }
@@ -895,19 +895,19 @@ public class IoTDBAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw123456'");
-      adminStmt.execute("GRANT WRITE_DATA on root.sg1.** TO USER tempuser");
-      adminStmt.execute("GRANT WRITE_SCHEMA on root.sg1.** TO USER tempuser");
+      adminStmt.execute("GRANT WRITE_DATA on root.db1.** TO USER tempuser");
+      adminStmt.execute("GRANT WRITE_SCHEMA on root.db1.** TO USER tempuser");
       adminStmt.execute("GRANT SYSTEM on root.** TO USER tempuser");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStatement = userCon.createStatement()) {
-        userStatement.addBatch("insert into root.sg1.d1(timestamp,s1) values (1,1)");
-        userStatement.addBatch("insert into root.sg1.d1(timestamp,s2) values (3,1)");
-        userStatement.addBatch("insert into root.sg2.d1(timestamp,s1) values (2,1)");
-        userStatement.addBatch("insert into root.sg2.d1(timestamp,s1) values (4,1)");
+        userStatement.addBatch("insert into root.db1.d1(timestamp,s1) values (1,1)");
+        userStatement.addBatch("insert into root.db1.d1(timestamp,s2) values (3,1)");
+        userStatement.addBatch("insert into root.db2.d1(timestamp,s1) values (2,1)");
+        userStatement.addBatch("insert into root.db2.d1(timestamp,s1) values (4,1)");
         Assert.assertThrows(BatchUpdateException.class, userStatement::executeBatch);
       }
-      ResultSet resultSet = adminStmt.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = adminStmt.executeQuery("select * from root.db1.**");
       String[] expected = new String[] {"1, 1.0", "1, null", "3, null", "3, 1.0"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
@@ -916,11 +916,11 @@ public class IoTDBAuthIT {
         result.add(
             resultSet.getString(ColumnHeaderConstant.TIME)
                 + ", "
-                + resultSet.getString("root.sg1.d1.s1"));
+                + resultSet.getString("root.db1.d1.s1"));
         result.add(
             resultSet.getString(ColumnHeaderConstant.TIME)
                 + ", "
-                + resultSet.getString("root.sg1.d1.s2"));
+                + resultSet.getString("root.db1.d1.s2"));
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));
@@ -1170,27 +1170,27 @@ public class IoTDBAuthIT {
     Connection adminCon = EnvFactory.getEnv().getConnection();
     Statement adminStmt = adminCon.createStatement();
     adminStmt.execute("CREATE USER user1 'password123456'");
-    adminStmt.execute("GRANT READ_DATA ON root.sg.d1.** TO USER user1 with grant option;");
-    adminStmt.execute("GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER user1;");
-    adminStmt.execute("CREATE DATABASE root.sg;");
+    adminStmt.execute("GRANT READ_DATA ON root.db.d1.** TO USER user1 with grant option;");
+    adminStmt.execute("GRANT READ_DATA ON root.db.aligned_template.temperature TO USER user1;");
+    adminStmt.execute("CREATE DATABASE root.db;");
     adminStmt.execute(
         "create device template t1 aligned (temperature FLOAT encoding=Gorilla, status BOOLEAN encoding=PLAIN);");
-    adminStmt.execute("set device template t1 to root.sg.aligned_template;");
-    adminStmt.execute("insert into root.sg.d1(time,s1,s2) values(1,1,1)");
-    adminStmt.execute("insert into root.sg.d2(time,s1,s2) values(1,1,1)");
+    adminStmt.execute("set device template t1 to root.db.aligned_template;");
+    adminStmt.execute("insert into root.db.d1(time,s1,s2) values(1,1,1)");
+    adminStmt.execute("insert into root.db.d2(time,s1,s2) values(1,1,1)");
     adminStmt.execute(
-        "insert into root.sg.aligned_template(time,temperature,status) values(1,20,true)");
-    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.sg.**;")) {
+        "insert into root.db.aligned_template(time,temperature,status) values(1,20,true)");
+    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.db.**;")) {
       Set<String> standards =
           new HashSet<>(
               Arrays.asList(
                   "Time",
-                  "root.sg.aligned_template.temperature",
-                  "root.sg.aligned_template.status",
-                  "root.sg.d2.s1",
-                  "root.sg.d2.s2",
-                  "root.sg.d1.s1",
-                  "root.sg.d1.s2"));
+                  "root.db.aligned_template.temperature",
+                  "root.db.aligned_template.status",
+                  "root.db.d2.s1",
+                  "root.db.d2.s2",
+                  "root.db.d1.s1",
+                  "root.db.d1.s2"));
       ResultSetMetaData metaData = resultSet.getMetaData();
       for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
         Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
@@ -1204,9 +1204,9 @@ public class IoTDBAuthIT {
           new HashSet<>(
               Arrays.asList(
                   "Time",
-                  "root.sg.aligned_template.temperature",
-                  "root.sg.d1.s1",
-                  "root.sg.d1.s2"));
+                  "root.db.aligned_template.temperature",
+                  "root.db.d1.s1",
+                  "root.db.d1.s2"));
       ResultSetMetaData metaData = resultSet.getMetaData();
       for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
         Assert.assertTrue(standards.remove(metaData.getColumnName(i)));

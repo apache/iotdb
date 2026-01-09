@@ -201,8 +201,8 @@ public class SchemaQueryLogicalPlannerTest {
       req.setPaths(
           new ArrayList<String>() {
             {
-              add("root.sg1.d2.s1");
-              add("root.sg1.d2.s2");
+              add("root.db1.d2.s1");
+              add("root.db1.d2.s2");
             }
           });
       req.setMeasurementAliasList(

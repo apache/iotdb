@@ -109,7 +109,7 @@ public class PipelineBuilderTest {
       assertEquals(SeriesScanOperator.class, childrenOperator.get(i).getClass());
       assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i),
+          String.format("root.db.d%d.s1", i),
           fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -160,9 +160,9 @@ public class PipelineBuilderTest {
 
     // Validate the changes of node structure
     assertEquals(
-        "root.sg.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+        "root.db.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+        "root.db.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     assertEquals(
         FullOuterTimeJoinNode.class, fullOuterTimeJoinNode.getChildren().get(2).getClass());
 
@@ -171,10 +171,10 @@ public class PipelineBuilderTest {
         (FullOuterTimeJoinNode) fullOuterTimeJoinNode.getChildren().get(2);
     assertEquals(2, subFullOuterTimeJoinNode.getChildren().size());
     assertEquals(
-        "root.sg.d2.s1",
+        "root.db.d2.s1",
         subFullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d3.s1",
+        "root.db.d3.s1",
         subFullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
 
     // Validate the number exchange operator
@@ -244,9 +244,9 @@ public class PipelineBuilderTest {
     // Validate the changes of node structure
     assertEquals(3, fullOuterTimeJoinNode.getChildren().size());
     assertEquals(
-        "root.sg.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+        "root.db.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+        "root.db.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     assertEquals(
         FullOuterTimeJoinNode.class, fullOuterTimeJoinNode.getChildren().get(2).getClass());
 
@@ -259,10 +259,10 @@ public class PipelineBuilderTest {
         (FullOuterTimeJoinNode) fullOuterTimeJoinNode.getChildren().get(2);
     assertEquals(2, subFullOuterTimeJoinNode.getChildren().size());
     assertEquals(
-        "root.sg.d2.s1",
+        "root.db.d2.s1",
         subFullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d3.s1",
+        "root.db.d3.s1",
         subFullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(2);
     assertEquals(exchangeOperator2.getSourceId(), subFullOuterTimeJoinNode.getPlanNodeId());
@@ -338,7 +338,7 @@ public class PipelineBuilderTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i),
+          String.format("root.db.d%d.s1", i),
           fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -419,7 +419,7 @@ public class PipelineBuilderTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i),
+          String.format("root.db.d%d.s1", i),
           fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -504,7 +504,7 @@ public class PipelineBuilderTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i),
+          String.format("root.db.d%d.s1", i),
           fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -623,7 +623,7 @@ public class PipelineBuilderTest {
     for (int i = 0; i < 4; i++) {
       assertEquals(AlignedSeriesScanOperator.class, childrenOperator.get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i),
+          String.format("root.db.d%d.s1", i),
           deviceViewNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -1066,14 +1066,14 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeOneByOneChildrenPipelineBuilderDependency() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setTreeModelType("root.sg.d0.s1", TSDataType.INT64);
-    typeProvider.setTreeModelType("root.sg.d1.s1", TSDataType.INT64);
-    typeProvider.setTreeModelType("count(root.sg.d0.s1)", TSDataType.INT64);
-    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("root.db.d0.s1", TSDataType.INT64);
+    typeProvider.setTreeModelType("root.db.d1.s1", TSDataType.INT64);
+    typeProvider.setTreeModelType("count(root.db.d0.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("count(root.db.d1.s1)", TSDataType.INT64);
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(new PlanNodeId("DeviceViewNode"), null, null, null);
     for (int i = 0; i < 2; i++) {
-      PartialPath path = new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT64);
+      PartialPath path = new MeasurementPath(String.format("root.db.d%d.s1", i), TSDataType.INT64);
       AggregationNode aggregationNode =
           new AggregationNode(
               new PlanNodeId(String.format("AggregationOperator%d", i)),
@@ -1181,12 +1181,12 @@ public class PipelineBuilderTest {
     assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
     assertEquals(SeriesScanNode.class, leftOuterTimeJoinNode.getLeftChild().getClass());
     assertEquals(
-        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
+        "root.db.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
 
     assertEquals(SeriesScanOperator.class, childrenOperator.get(1).getClass());
     assertEquals(SeriesScanNode.class, leftOuterTimeJoinNode.getRightChild().getClass());
     assertEquals(
-        "root.sg.d1.s1", leftOuterTimeJoinNode.getRightChild().getOutputColumnNames().get(0));
+        "root.db.d1.s1", leftOuterTimeJoinNode.getRightChild().getOutputColumnNames().get(0));
 
     // Validate the number exchange operator
     assertEquals(0, context.getExchangeSumNum());
@@ -1215,7 +1215,7 @@ public class PipelineBuilderTest {
     // Validate the first pipeline
     assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
     assertEquals(
-        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
+        "root.db.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
 
     // Validate the second pipeline
     ExchangeOperator exchangeOperator = (ExchangeOperator) childrenOperator.get(1);
@@ -1313,7 +1313,7 @@ public class PipelineBuilderTest {
       assertEquals(SeriesScanOperator.class, childrenOperator.get(i).getClass());
       assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
-          String.format("root.sg.d%d.s1", i - 3),
+          String.format("root.db.d%d.s1", i - 3),
           fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
@@ -1627,7 +1627,7 @@ public class PipelineBuilderTest {
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+              new MeasurementPath(String.format("root.db.d%d.s1", i), TSDataType.INT32));
       typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
@@ -1651,7 +1651,7 @@ public class PipelineBuilderTest {
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+              new MeasurementPath(String.format("root.db.d%d.s1", i), TSDataType.INT32));
       typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
@@ -1666,7 +1666,7 @@ public class PipelineBuilderTest {
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+              new MeasurementPath(String.format("root.db.d%d.s1", i), TSDataType.INT32));
       typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       leftOuterTimeJoinNode.addChild(seriesScanNode);
     }
@@ -1687,7 +1687,7 @@ public class PipelineBuilderTest {
       AlignedSeriesScanNode alignedSeriesScanNode =
           new AlignedSeriesScanNode(
               new PlanNodeId(String.format("AlignedSeriesScanNode%d", i)),
-              new AlignedPath(String.format("root.sg.d%d", i), "s1"));
+              new AlignedPath(String.format("root.db.d%d", i), "s1"));
       deviceViewNode.addChild(alignedSeriesScanNode);
     }
     return deviceViewNode;
@@ -1709,13 +1709,13 @@ public class PipelineBuilderTest {
           new SingleDeviceViewNode(
               new PlanNodeId(String.format("SingleDeviceViewNode%d", i)),
               Arrays.asList("Time", "Device", "s1"),
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i),
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d" + i),
               Arrays.asList(0, 1, 2));
       singleDeviceViewNode.setCacheOutputColumnNames(true);
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+              new MeasurementPath(String.format("root.db.d%d.s1", i), TSDataType.INT32));
       typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       singleDeviceViewNode.addChild(seriesScanNode);
       typeProvider.setTreeModelType("Time", TSDataType.INT64);

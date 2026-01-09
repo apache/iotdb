@@ -60,7 +60,7 @@ public class TsFileAndModSettleToolTest {
   private final long newPartitionInterval = 3600_000;
   protected final long maxTimestamp = 50000L; // 100000000L;
   protected final String folder = "target" + File.separator + "settle";
-  protected final String STORAGE_GROUP = "root.sg_0";
+  protected final String STORAGE_GROUP = "root.db_0";
   protected final String DEVICE1 = STORAGE_GROUP + ".device_1";
   protected final String DEVICE2 = STORAGE_GROUP + ".device_2";
   protected final String SENSOR1 = "sensor_1";

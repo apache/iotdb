@@ -199,7 +199,7 @@ def performance_test(
     for i in range(0, col):
         # if i % 500 == 0:
         #     print(f"insert {i} cols")
-        device_id = "root.sg%d.%d" % (i % 8, i)
+        device_id = "root.db%d.%d" % (i % 8, i)
         if not use_new:
             # Use the ORIGINAL method to construct tablet
             timestamps_ = []

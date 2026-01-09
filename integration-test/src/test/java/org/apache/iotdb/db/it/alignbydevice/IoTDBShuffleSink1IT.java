@@ -47,11 +47,11 @@ public class IoTDBShuffleSink1IT {
   // two devices
   protected static final String[] MULTI_SERIES =
       new String[] {
-        "create database root.sg",
-        "insert into root.sg.d1(time,s1,s2) values (1,2,2)",
-        "insert into root.sg.d1(time,s1,s2) values (now(),3,3)",
-        "insert into root.sg.d2(time,s1,s2) values (1,4,4)",
-        "insert into root.sg.d2(time,s1,s2) values (now(),5,5)"
+        "create database root.db",
+        "insert into root.db.d1(time,s1,s2) values (1,2,2)",
+        "insert into root.db.d1(time,s1,s2) values (now(),3,3)",
+        "insert into root.db.d2(time,s1,s2) values (1,4,4)",
+        "insert into root.db.d2(time,s1,s2) values (now(),5,5)"
       };
 
   @BeforeClass
@@ -80,10 +80,10 @@ public class IoTDBShuffleSink1IT {
 
     // result of MULTI_SERIES
     String expectedHeader2 = "Device,count(s1),count(s2),";
-    String[] retArray2 = new String[] {"root.sg.d1,2,2,", "root.sg.d2,2,2,"};
+    String[] retArray2 = new String[] {"root.db.d1,2,2,", "root.db.d2,2,2,"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.sg.** align by device", expectedHeader2, retArray2);
+        "select count(s1),count(s2) from root.db.** align by device", expectedHeader2, retArray2);
   }
 
   @Test
@@ -99,10 +99,10 @@ public class IoTDBShuffleSink1IT {
 
     // result of MULTI_SERIES
     String expectedHeader2 = "Device,count(s1),count(s2),";
-    String[] retArray2 = new String[] {"root.sg.d1,2,2,", "root.sg.d2,1,1,"};
+    String[] retArray2 = new String[] {"root.db.d1,2,2,", "root.db.d2,1,1,"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.sg.** where s1 <= 4 align by device",
+        "select count(s1),count(s2) from root.db.** where s1 <= 4 align by device",
         expectedHeader2,
         retArray2);
   }
@@ -120,10 +120,10 @@ public class IoTDBShuffleSink1IT {
 
     // result of MULTI_SERIES
     String expectedHeader2 = "Device,count(s1),count(s2),";
-    String[] retArray2 = new String[] {"root.sg.d1,2,2,", "root.sg.d2,2,2,"};
+    String[] retArray2 = new String[] {"root.db.d1,2,2,", "root.db.d2,2,2,"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.sg.** order by time align by device",
+        "select count(s1),count(s2) from root.db.** order by time align by device",
         expectedHeader2,
         retArray2);
   }
@@ -141,10 +141,10 @@ public class IoTDBShuffleSink1IT {
 
     // result of MULTI_SERIES
     String expectedHeader2 = "Device,count(s1),count(s2),";
-    String[] retArray2 = new String[] {"root.sg.d1,2,2,", "root.sg.d2,1,1,"};
+    String[] retArray2 = new String[] {"root.db.d1,2,2,", "root.db.d2,1,1,"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.sg.** where s1 <= 4 order by time align by device",
+        "select count(s1),count(s2) from root.db.** where s1 <= 4 order by time align by device",
         expectedHeader2,
         retArray2);
   }

@@ -82,10 +82,10 @@ public class PatternDFATest {
     Map<String, IFATransition> transitionMap = new HashMap<>();
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg2.**"),
-            new PartialPath("root.sg1.d1.**"),
-            new PartialPath("root.sg1.d2.**"),
-            new PartialPath("root.sg1.d2.s1"));
+            new PartialPath("root.db2.**"),
+            new PartialPath("root.db1.d1.**"),
+            new PartialPath("root.db1.d2.**"),
+            new PartialPath("root.db1.d2.s1"));
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath pathPattern : partialPathList) {
       patternTree.appendPathPattern(pathPattern);
@@ -127,11 +127,11 @@ public class PatternDFATest {
     PathPatternTree patternTree = new PathPatternTree();
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg2.d1"),
-            new PartialPath("root.sg2.d1.s1"),
-            new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d2.s2"),
-            new PartialPath("root.sg1.d2"));
+            new PartialPath("root.db2.d1"),
+            new PartialPath("root.db2.d1.s1"),
+            new PartialPath("root.db1.d2.s1"),
+            new PartialPath("root.db1.d2.s2"),
+            new PartialPath("root.db1.d2"));
     AtomicInteger transitionIndex = new AtomicInteger();
     for (PartialPath pathPattern : partialPathList) {
       patternTree.appendFullPath(pathPattern);
@@ -148,26 +148,26 @@ public class PatternDFATest {
 
   @Test
   public void testMatchFullPath() throws IllegalPathException {
-    PartialPath p1 = new PartialPath("root.sg1.d1.*");
+    PartialPath p1 = new PartialPath("root.db1.d1.*");
 
-    Assert.assertTrue(p1.matchFullPath(new PartialPath("root.sg1.d1.s2")));
-    Assert.assertTrue(checkMatchUsingDFA(p1, new PartialPath("root.sg1.d1.s2")));
-    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg1.d1")));
-    Assert.assertFalse(checkMatchUsingDFA(p1, new PartialPath("root.sg1.d1")));
-    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
-    Assert.assertFalse(checkMatchUsingDFA(p1, new PartialPath("root.sg2.d1.*")));
+    Assert.assertTrue(p1.matchFullPath(new PartialPath("root.db1.d1.s2")));
+    Assert.assertTrue(checkMatchUsingDFA(p1, new PartialPath("root.db1.d1.s2")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.db1.d1")));
+    Assert.assertFalse(checkMatchUsingDFA(p1, new PartialPath("root.db1.d1")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.db2.d1.*")));
+    Assert.assertFalse(checkMatchUsingDFA(p1, new PartialPath("root.db2.d1.*")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("", false)));
     Assert.assertFalse(checkMatchUsingDFA(p1, new PartialPath("", false)));
 
-    PartialPath path = new PartialPath("root.sg1.d1.s1");
+    PartialPath path = new PartialPath("root.db1.d1.s1");
     String[] patterns1 = {
-      "root.sg1.d1.s1",
-      "root.sg1.*.s1",
+      "root.db1.d1.s1",
+      "root.db1.*.s1",
       "root.*.d1.*",
       "root.*.*.*",
       "root.**",
       "root.**.s1",
-      "root.sg1.**",
+      "root.db1.**",
     };
     for (String pattern : patterns1) {
       Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
@@ -176,14 +176,14 @@ public class PatternDFATest {
 
     String[] patterns2 = {
       "root2.sg1.d1.s1",
-      "root.sg1.*.s2",
+      "root.db1.*.s2",
       "root.*.d2.s1",
       "root.*",
       "root.*.*",
       "root2.**",
       "root.**.s2",
       "root.**.d1",
-      "root.sg2.**",
+      "root.db2.**",
     };
     for (String pattern : patterns2) {
       Assert.assertFalse(new PartialPath(pattern).matchFullPath(path));

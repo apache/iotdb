@@ -58,13 +58,13 @@ public class GroupByLevelNodeSerdeTest {
     SeriesAggregationScanNode seriesAggregationScanNode1 =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
                     TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1"))))),
             Ordering.ASC,
             gt(time(), longValue(100)),
             groupByTimeParameter,
@@ -72,13 +72,13 @@ public class GroupByLevelNodeSerdeTest {
     SeriesAggregationScanNode seriesAggregationScanNode2 =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
+            new MeasurementPath("root.db.d2.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
                     TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
+                        new TimeSeriesOperand(new PartialPath("root.db.d2.s1"))))),
             Ordering.ASC,
             gt(time(), longValue(100)),
             groupByTimeParameter,
@@ -93,12 +93,12 @@ public class GroupByLevelNodeSerdeTest {
                     TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))),
+                        new TimeSeriesOperand(new PartialPath("root.db.d1.s1")),
+                        new TimeSeriesOperand(new PartialPath("root.db.d2.s1"))),
                     2,
                     Collections.emptyMap(),
                     Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.*.s1"))))),
+                        new TimeSeriesOperand(new PartialPath("root.db.*.s1"))))),
             groupByTimeParameter,
             Ordering.ASC);
 

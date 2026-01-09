@@ -126,35 +126,35 @@ public class IoTDBTemplatePermissionIT {
         "test123123456");
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.**");
     executeNonQuery(
-        "insert into root.sg1.d1(time, temperature) values(1,1)", "test", "test123123456");
+        "insert into root.db1.d1(time, temperature) values(1,1)", "test", "test123123456");
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, s1) values(1,1)",
+        "insert into root.db1.d1(time, s1) values(1,1)",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     grantUserSeriesPrivilege("test", PrivilegeType.SYSTEM, "root.**");
-    executeNonQuery("insert into root.sg1.d1(time, s1) values(1,1)", "test", "test123123456");
+    executeNonQuery("insert into root.db1.d1(time, s1) values(1,1)", "test", "test123123456");
 
     // show
-    executeNonQuery("create database root.sg2");
-    executeNonQuery("set device template t1 to root.sg2.d1");
+    executeNonQuery("create database root.db2");
+    executeNonQuery("set device template t1 to root.db2.d1");
     resultSetEqualTest(
         "show paths using device template t1",
         showPathsUsingTemplateHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .toArray(String[]::new),
-        new String[] {"root.sg1.d1,"},
+        new String[] {"root.db1.d1,"},
         "test",
         "test123123456");
 
     // deActive
-    revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
+    revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
     assertNonQueryTestFail(
-        "deactivate device template t1 from root.sg1.d1",
-        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.s1, root.sg1.d1.status]",
+        "deactivate device template t1 from root.db1.d1",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db1.d1.temperature, root.db1.d1.s1, root.db1.d1.status]",
         "test",
         "test123123456");
-    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-    executeNonQuery("deactivate device template t1 from root.sg1.d1", "test", "test123123456");
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
+    executeNonQuery("deactivate device template t1 from root.db1.d1", "test", "test123123456");
   }
 }

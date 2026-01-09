@@ -54,13 +54,13 @@ public class SeriesAggregationScanNodeSerdeTest {
         new AggregationDescriptor(
             TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
-            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+            Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.db.d1.s1")))));
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(1, 100, new TimeDuration(1, 0), new TimeDuration(1, 0), true);
     SeriesAggregationScanNode seriesAggregationScanNode =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
+            new MeasurementPath("root.db.d1.s1", TSDataType.BOOLEAN),
             aggregationDescriptorList,
             Ordering.ASC,
             gt(time(), longValue(100)),

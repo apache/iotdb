@@ -1096,13 +1096,13 @@ public class IoTDBAlterColumnTypeIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
+      if (!session.checkTimeseriesExists("root.db1.d1.s1")) {
         session.createTimeseries(
-            "root.sg1.d1.s1", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db1.d1.s1", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
       }
-      if (!session.checkTimeseriesExists("root.sg1.d1.s2")) {
+      if (!session.checkTimeseriesExists("root.db1.d1.s2")) {
         session.createTimeseries(
-            "root.sg1.d1.s2", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.db1.d1.s2", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY);
       }
 
       Double firstValue = null;
@@ -1114,7 +1114,7 @@ public class IoTDBAlterColumnTypeIT {
       List<File> filesToLoad = new ArrayList<>();
       for (int i = 1; i <= 3; i++) {
         File file = new File("target", "f" + i + ".tsfile");
-        List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+        List<String> columnNames = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
         List<String> columnTypes = Arrays.asList("DOUBLE", "DOUBLE");
 
         if (file.exists()) {
@@ -1126,7 +1126,7 @@ public class IoTDBAlterColumnTypeIT {
           Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
           Set<String> alignedDevices = new HashSet<>();
           Map<String, List<IMeasurementSchema>> deviceSchemaMap = new LinkedHashMap<>();
-          //          deviceSchemaMap.put("root.sg1.d1", new ArrayList<>());
+          //          deviceSchemaMap.put("root.db1.d1", new ArrayList<>());
 
           collectSchemas(
               session,
@@ -1177,7 +1177,7 @@ public class IoTDBAlterColumnTypeIT {
       filesToLoad.clear();
 
       // check load result
-      SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
+      SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.db1.d1");
       RowRecord rec;
       rec = dataSet.next();
       assertEquals(3, rec.getFields().get(0).getLongV());
@@ -1188,7 +1188,7 @@ public class IoTDBAlterColumnTypeIT {
       // file4-file6
       for (int i = 4; i <= 6; i++) {
         File file = new File("target", "f" + i + ".tsfile");
-        List<String> columnNames = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2");
+        List<String> columnNames = Arrays.asList("root.db1.d1.s1", "root.db1.d1.s2");
         List<String> columnTypes = Arrays.asList("INT32", "INT32");
 
         if (file.exists()) {
@@ -1239,17 +1239,17 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       // check load result
-      dataSet = session.executeQueryStatement("select count(s1) from root.sg1.d1");
+      dataSet = session.executeQueryStatement("select count(s1) from root.db1.d1");
       rec = dataSet.next();
       assertEquals(6, rec.getFields().get(0).getLongV());
       assertFalse(dataSet.hasNext());
 
-      dataSet = session.executeQueryStatement("select first_value(s1) from root.sg1.d1");
+      dataSet = session.executeQueryStatement("select first_value(s1) from root.db1.d1");
       rec = dataSet.next();
       assertEquals(firstValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
 
-      dataSet = session.executeQueryStatement("select last_value(s1) from root.sg1.d1");
+      dataSet = session.executeQueryStatement("select last_value(s1) from root.db1.d1");
       rec = dataSet.next();
       assertEquals(lastValue.doubleValue(), rec.getFields().get(0).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
@@ -1262,7 +1262,7 @@ public class IoTDBAlterColumnTypeIT {
             resourceFile.delete();
           });
       filesToLoad.clear();
-      session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
+      session.executeNonQueryStatement("DELETE TIMESERIES root.db1.d1.s1");
     }
   }
 

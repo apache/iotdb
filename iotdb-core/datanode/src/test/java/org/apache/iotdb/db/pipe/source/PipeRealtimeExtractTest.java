@@ -72,8 +72,8 @@ public class PipeRealtimeExtractTest {
 
   private final String dataRegion1 = "1";
   private final String dataRegion2 = "2";
-  private final String pattern1 = "root.sg.d";
-  private final String pattern2 = "root.sg.d.a";
+  private final String pattern1 = "root.db.d";
+  private final String pattern2 = "root.db.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
   private final AtomicBoolean alive = new AtomicBoolean();
   private File tmpDir;
@@ -96,7 +96,7 @@ public class PipeRealtimeExtractTest {
                 + File.separator
                 + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
-                + "root.sg");
+                + "root.db");
   }
 
   @After

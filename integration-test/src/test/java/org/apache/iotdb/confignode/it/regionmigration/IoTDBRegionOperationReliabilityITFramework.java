@@ -88,13 +88,13 @@ public class IoTDBRegionOperationReliabilityITFramework {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBRegionOperationReliabilityITFramework.class);
   public static final String INSERTION1 =
-      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
+      "INSERT INTO root.db.d1(timestamp,speed,temperature) values(100, 1, 2)";
   private static final String INSERTION2 =
-      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)";
+      "INSERT INTO root.db.d1(timestamp,speed,temperature) values(101, 3, 4)";
   public static final String FLUSH_COMMAND = "flush on cluster";
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
-  private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
+  private static final String COUNT_TIMESERIES = "select count(*) from root.db.**";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
   ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 

@@ -100,7 +100,7 @@ public class LastQueryTest {
 
   @Test
   public void testLastQuery1Series1Region() throws IllegalPathException {
-    String d2s1Path = "root.sg.d22.s1";
+    String d2s1Path = "root.db.d22.s1";
     MPPQueryContext context =
         new MPPQueryContext(
             "", new QueryId("test_last_1_series_1_region"), null, new TEndPoint(), new TEndPoint());
@@ -124,7 +124,7 @@ public class LastQueryTest {
 
   @Test
   public void testLastQuery1Series2Region() throws IllegalPathException {
-    String d1s1Path = "root.sg.d1.s1";
+    String d1s1Path = "root.db.d1.s1";
     MPPQueryContext context =
         new MPPQueryContext(
             "", new QueryId("test_last_1_series_2_region"), null, new TEndPoint(), new TEndPoint());
@@ -153,8 +153,8 @@ public class LastQueryTest {
 
   @Test
   public void testLastQuery2Series3Region() throws IllegalPathException {
-    String d1s1Path = "root.sg.d1.s1";
-    String d2s1Path = "root.sg.d22.s1";
+    String d1s1Path = "root.db.d1.s1";
+    String d2s1Path = "root.db.d22.s1";
     MPPQueryContext context =
         new MPPQueryContext(
             "", new QueryId("test_last_1_series_2_region"), null, new TEndPoint(), new TEndPoint());
@@ -183,8 +183,8 @@ public class LastQueryTest {
 
   @Test
   public void testLastQuery2Series2Region() throws IllegalPathException {
-    String d3s1Path = "root.sg.d333.s1";
-    String d4s1Path = "root.sg.d4444.s1";
+    String d3s1Path = "root.db.d333.s1";
+    String d4s1Path = "root.db.d4444.s1";
     MPPQueryContext context =
         new MPPQueryContext(
             "", new QueryId("test_last_1_series_2_region"), null, new TEndPoint(), new TEndPoint());
@@ -213,8 +213,8 @@ public class LastQueryTest {
 
   @Test
   public void testLastQuery2Series2DiffRegion() throws IllegalPathException {
-    String d3s1Path = "root.sg.d22.s1";
-    String d4s1Path = "root.sg.d55555.s1";
+    String d3s1Path = "root.db.d22.s1";
+    String d4s1Path = "root.db.d55555.s1";
     MPPQueryContext context =
         new MPPQueryContext(
             "",

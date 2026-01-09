@@ -33,7 +33,7 @@ public class SetTemplateProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IOException {
     SetTemplateProcedure setTemplateProcedure =
-        new SetTemplateProcedure("1", "t1", "root.sg", false);
+        new SetTemplateProcedure("1", "t1", "root.db", false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

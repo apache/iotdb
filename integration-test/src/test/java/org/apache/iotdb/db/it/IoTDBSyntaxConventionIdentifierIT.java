@@ -1019,27 +1019,27 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.device_*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*_123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_12*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*_12*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*12*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*12*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*e*")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.*e*")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }

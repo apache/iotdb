@@ -64,8 +64,8 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.db1.d1.s1 where time <= 15");
+      statement.execute("delete timeseries root.db1.d1.s2");
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -86,16 +86,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -104,16 +104,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -135,16 +135,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -153,16 +153,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -189,16 +189,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -207,16 +207,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+              "select count(s1), sum(s2), avg(s3) from root.db1.d1 "
                   + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(avg("root.sg1.d1.s3"));
+                  + resultSet.getString(avg("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -237,18 +237,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + "where s3 > 5 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -257,18 +257,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -296,18 +296,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + "where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -316,18 +316,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + " where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -354,18 +354,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -374,18 +374,18 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.db1.d1 "
                   + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(minValue("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(minTime("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -404,16 +404,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + "where s3 > 5 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -422,16 +422,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -459,16 +459,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -477,16 +477,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -513,16 +513,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -531,16 +531,16 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.db1.d1 "
                   + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.db1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -564,28 +564,28 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*), last_value(*) from root.sg1.d1 "
+              "select count(*), last_value(*) from root.db1.d1 "
                   + " where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s3"))
+                  + resultSet.getString(count("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s4"))
+                  + resultSet.getString(count("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"))
+                  + resultSet.getString(count("root.db1.d1.s5"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -594,28 +594,28 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*), last_value(*) from root.sg1.d1 "
+              "select count(*), last_value(*) from root.db1.d1 "
                   + "where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s3"))
+                  + resultSet.getString(count("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s4"))
+                  + resultSet.getString(count("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"))
+                  + resultSet.getString(count("root.db1.d1.s5"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -645,20 +645,20 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*) from root.sg1.d1 "
+              "select count(*) from root.db1.d1 "
                   + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s3"))
+                  + resultSet.getString(count("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s4"))
+                  + resultSet.getString(count("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"));
+                  + resultSet.getString(count("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -667,20 +667,20 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select count(*) from root.sg1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
+              "select count(*) from root.db1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
                   + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + resultSet.getString(count("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s3"))
+                  + resultSet.getString(count("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s4"))
+                  + resultSet.getString(count("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"));
+                  + resultSet.getString(count("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -710,20 +710,20 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.sg1.d1 "
+              "select last_value(*) from root.db1.d1 "
                   + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -732,20 +732,20 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last_value(*) from root.sg1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
+              "select last_value(*) from root.db1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
                   + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.db1.d1.s1"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.db1.d1.s3"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.db1.d1.s4"))
                   + ","
-                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.db1.d1.s5"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }

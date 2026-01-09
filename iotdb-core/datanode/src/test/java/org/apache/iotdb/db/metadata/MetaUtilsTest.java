@@ -85,18 +85,18 @@ public class MetaUtilsTest {
     List<PartialPath> pathList = new ArrayList<>();
 
     MeasurementPath path1 =
-        new MeasurementPath(new PartialPath("root.sg.device1.s1"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.device1.s1"), TSDataType.INT32);
     pathList.add(path1);
     MeasurementPath path2 =
-        new MeasurementPath(new PartialPath("root.sg.device1.s2"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.device1.s2"), TSDataType.INT32);
     pathList.add(path2);
 
     MeasurementPath path3 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device.s1"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device.s1"), TSDataType.INT32);
     path3.setUnderAlignedEntity(true);
     pathList.add(path3);
     MeasurementPath path4 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device.s2"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device.s2"), TSDataType.INT32);
     path4.setUnderAlignedEntity(true);
     pathList.add(path4);
 
@@ -149,25 +149,25 @@ public class MetaUtilsTest {
   public void testGroupAlignedSeries() throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
     MeasurementPath path1 =
-        new MeasurementPath(new PartialPath("root.sg.device1.s1"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.device1.s1"), TSDataType.INT32);
     pathList.add(path1);
     MeasurementPath path2 =
-        new MeasurementPath(new PartialPath("root.sg.device1.s2"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.device1.s2"), TSDataType.INT32);
     pathList.add(path2);
     MeasurementPath path3 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device1.s1"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device1.s1"), TSDataType.INT32);
     path3.setUnderAlignedEntity(true);
     pathList.add(path3);
     MeasurementPath path4 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device2.s1"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device2.s1"), TSDataType.INT32);
     path4.setUnderAlignedEntity(true);
     pathList.add(path4);
     MeasurementPath path5 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device1.s2"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device1.s2"), TSDataType.INT32);
     path5.setUnderAlignedEntity(true);
     pathList.add(path5);
     MeasurementPath path6 =
-        new MeasurementPath(new PartialPath("root.sg.aligned_device2.s2"), TSDataType.INT32);
+        new MeasurementPath(new PartialPath("root.db.aligned_device2.s2"), TSDataType.INT32);
     path6.setUnderAlignedEntity(true);
     pathList.add(path6);
 

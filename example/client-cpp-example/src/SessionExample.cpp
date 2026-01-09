@@ -24,35 +24,35 @@ using namespace std;
 Session *session;
 
 void createTimeseries() {
-    if (!session->checkTimeseriesExists("root.sg1.d1.s1")) {
-        session->createTimeseries("root.sg1.d1.s1", TSDataType::BOOLEAN, TSEncoding::RLE,
+    if (!session->checkTimeseriesExists("root.db1.d1.s1")) {
+        session->createTimeseries("root.db1.d1.s1", TSDataType::BOOLEAN, TSEncoding::RLE,
                                   CompressionType::SNAPPY);
     }
-    if (!session->checkTimeseriesExists("root.sg1.d1.s2")) {
-        session->createTimeseries("root.sg1.d1.s2", TSDataType::INT32, TSEncoding::RLE,
+    if (!session->checkTimeseriesExists("root.db1.d1.s2")) {
+        session->createTimeseries("root.db1.d1.s2", TSDataType::INT32, TSEncoding::RLE,
                                   CompressionType::SNAPPY);
     }
-    if (!session->checkTimeseriesExists("root.sg1.d1.s3")) {
-        session->createTimeseries("root.sg1.d1.s3", TSDataType::FLOAT, TSEncoding::RLE,
+    if (!session->checkTimeseriesExists("root.db1.d1.s3")) {
+        session->createTimeseries("root.db1.d1.s3", TSDataType::FLOAT, TSEncoding::RLE,
                                   CompressionType::SNAPPY);
     }
 
     // create timeseries with tags and attributes
-    if (!session->checkTimeseriesExists("root.sg1.d1.s4")) {
+    if (!session->checkTimeseriesExists("root.db1.d1.s4")) {
         map<string, string> tags;
         tags["tag1"] = "v1";
         map<string, string> attributes;
         attributes["description"] = "v1";
-        session->createTimeseries("root.sg1.d1.s4", TSDataType::INT64, TSEncoding::RLE,
+        session->createTimeseries("root.db1.d1.s4", TSDataType::INT64, TSEncoding::RLE,
                                   CompressionType::SNAPPY, nullptr, &tags, &attributes, "temperature");
     }
 }
 
 void createMultiTimeseries() {
-    if (!session->checkTimeseriesExists("root.sg1.d2.s1") && !session->checkTimeseriesExists("root.sg1.d2.s2")) {
+    if (!session->checkTimeseriesExists("root.db1.d2.s1") && !session->checkTimeseriesExists("root.db1.d2.s2")) {
         vector<string> paths;
-        paths.emplace_back("root.sg1.d2.s1");
-        paths.emplace_back("root.sg1.d2.s2");
+        paths.emplace_back("root.db1.d2.s1");
+        paths.emplace_back("root.db1.d2.s2");
         vector<TSDataType::TSDataType> tsDataTypes;
         tsDataTypes.push_back(TSDataType::INT64);
         tsDataTypes.push_back(TSDataType::DOUBLE);
@@ -104,12 +104,12 @@ void createSchemaTemplate() {
         temp.addToTemplate(mNodeS2);
 
         session->createSchemaTemplate(temp);
-        session->setSchemaTemplate("template1", "root.sg3.d1");
+        session->setSchemaTemplate("template1", "root.db3.d1");
     }
 }
 
 void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
+    session->executeNonQueryStatement("insert into root.db3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showTimeseries() {
@@ -129,7 +129,7 @@ void showTimeseries() {
 }
 
 void insertRecord() {
-    string deviceId = "root.sg2.d1";
+    string deviceId = "root.db2.d1";
     vector<string> measurements;
     measurements.emplace_back("s1");
     measurements.emplace_back("s2");
@@ -152,7 +152,7 @@ void insertTablet() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 100);
+    Tablet tablet("root.db1.d1", schemas, 100);
 
     for (int64_t time = 0; time < 30; time++) {
         size_t row = tablet.rowSize++;
@@ -180,7 +180,7 @@ void insertTablet() {
 }
 
 void insertRecords() {
-    string deviceId = "root.sg2.d1";
+    string deviceId = "root.db2.d1";
     vector<string> measurements;
     measurements.emplace_back("s1");
     measurements.emplace_back("s2");
@@ -222,12 +222,12 @@ void insertTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d2", schemas, 100);
-    Tablet tablet2("root.sg1.d3", schemas, 100);
+    Tablet tablet1("root.db1.d2", schemas, 100);
+    Tablet tablet2("root.db1.d3", schemas, 100);
 
     unordered_map<string, Tablet *> tabletMap;
-    tabletMap["root.sg1.d2"] = &tablet1;
-    tabletMap["root.sg1.d3"] = &tablet2;
+    tabletMap["root.db1.d2"] = &tablet1;
+    tabletMap["root.db1.d3"] = &tablet2;
 
     for (int64_t time = 0; time < 30; time++) {
         size_t row1 = tablet1.rowSize++;
@@ -285,7 +285,7 @@ void insertTabletWithNullValues() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d4", schemas, 30);
+    Tablet tablet("root.db1.d4", schemas, 30);
 
     for (int64_t time = 0; time < 30; time++) {
         size_t row = tablet.rowSize++;
@@ -311,7 +311,7 @@ void insertTabletWithNullValues() {
 }
 
 void nonQuery() {
-    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(100, 1);");
+    session->executeNonQueryStatement("insert into root.db1.d1(timestamp,s1) values(100, 1);");
 }
 
 void query() {
@@ -331,18 +331,18 @@ void query() {
 }
 
 void deleteData() {
-    string path = "root.sg1.d1.s1";
+    string path = "root.db1.d1.s1";
     int64_t deleteTime = 99;
     session->deleteData(path, deleteTime);
 }
 
 void deleteTimeseries() {
     vector<string> paths;
-    vector<string> timeseriesGrp = { "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", 
-                                    "root.sg1.d2.s1", "root.sg1.d2.s2", "root.sg1.d2.s3", 
-                                    "root.sg1.d3.s1", "root.sg1.d3.s2", "root.sg1.d3.s3",
-                                    "root.sg1.d4.s1", "root.sg1.d4.s2", "root.sg1.d4.s3",
-                                    "root.sg2.d1.s1", "root.sg2.d1.s2", "root.sg2.d1.s3" };
+    vector<string> timeseriesGrp = { "root.db1.d1.s1", "root.db1.d1.s2", "root.db1.d1.s3",
+                                    "root.db1.d2.s1", "root.db1.d2.s2", "root.db1.d2.s3",
+                                    "root.db1.d3.s1", "root.db1.d3.s2", "root.db1.d3.s3",
+                                    "root.db1.d4.s1", "root.db1.d4.s2", "root.db1.d4.s3",
+                                    "root.db2.d1.s1", "root.db2.d1.s2", "root.db2.d1.s3" };
     for (const string& timeseries : timeseriesGrp) {
         if (session->checkTimeseriesExists(timeseries)) {
             paths.push_back(timeseries);
@@ -353,8 +353,8 @@ void deleteTimeseries() {
 
 void deleteStorageGroups() {
     vector<string> storageGroups;
-    storageGroups.emplace_back("root.sg1");
-    storageGroups.emplace_back("root.sg2");
+    storageGroups.emplace_back("root.db1");
+    storageGroups.emplace_back("root.db2");
     session->deleteStorageGroups(storageGroups);
 }
 
@@ -379,9 +379,9 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setStorageGroup: root.sg1\n" << endl;
+    cout << "setStorageGroup: root.db1\n" << endl;
     try {
-        session->setStorageGroup("root.sg1");
+        session->setStorageGroup("root.db1");
     }
     catch (IoTDBException &e) {
         string errorMessage(e.what());
@@ -391,9 +391,9 @@ int main() {
         //throw e;
     }
 
-    cout << "setStorageGroup: root.sg2\n" << endl;
+    cout << "setStorageGroup: root.db2\n" << endl;
     try {
-        session->setStorageGroup("root.sg2");
+        session->setStorageGroup("root.db2");
     }
     catch (IoTDBException &e) {
         string errorMessage(e.what());

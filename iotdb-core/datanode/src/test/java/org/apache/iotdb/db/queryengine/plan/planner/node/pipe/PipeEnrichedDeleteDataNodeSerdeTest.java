@@ -42,8 +42,8 @@ public class PipeEnrichedDeleteDataNodeSerdeTest {
     long startTime = 1;
     long endTime = 10;
     List<MeasurementPath> pathList = new ArrayList<>();
-    pathList.add(new MeasurementPath("root.sg.d1.s1"));
-    pathList.add(new MeasurementPath("root.sg.d2.*"));
+    pathList.add(new MeasurementPath("root.db.d1.s1"));
+    pathList.add(new MeasurementPath("root.db.d2.*"));
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(planNodeId, pathList, startTime, endTime, MinimumProgressIndex.INSTANCE);
     PipeEnrichedDeleteDataNode pipeEnrichedDeleteDataNode =

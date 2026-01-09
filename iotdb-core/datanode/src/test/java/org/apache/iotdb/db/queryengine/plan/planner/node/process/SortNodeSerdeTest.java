@@ -44,7 +44,7 @@ public class SortNodeSerdeTest {
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            new MeasurementPath("root.db.d1.s1", TSDataType.INT32),
             Ordering.DESC,
             null,
             100,

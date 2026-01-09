@@ -52,7 +52,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       boolean withTemplate,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -62,7 +62,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       PathPatternTree authorityScope,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -72,7 +72,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       PathPatternTree authorityScope,
       MPPQueryContext context,
       boolean canSeeAuditDB) {
-    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    schemaTree.setDatabases(Collections.singleton("root.db"));
     return schemaTree;
   }
 
@@ -101,8 +101,8 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   /**
-   * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
-   * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
+   * Generate the following tree: root.db.d1.s1, root.db.d1.s2(status) root.db.d2.s1,
+   * root.db.d2.s2(status) root.db.d2.a.s1, root.db.d2.a.s2(status)
    *
    * @return the root node of the generated schemaTree
    */

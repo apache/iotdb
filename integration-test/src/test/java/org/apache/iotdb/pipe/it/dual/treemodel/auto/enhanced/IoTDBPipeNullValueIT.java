@@ -73,13 +73,13 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
 
   private static final List<String> CREATE_TIMESERIES_SQL =
       Arrays.asList(
-          "create timeseries root.sg.d1.s0 with datatype=float",
-          "create timeseries root.sg.d1.s1 with datatype=float");
+          "create timeseries root.db.d1.s0 with datatype=float",
+          "create timeseries root.db.d1.s1 with datatype=float");
 
   private static final List<String> CREATE_ALIGNED_TIMESERIES_SQL =
-      Collections.singletonList("create aligned timeseries root.sg.d1(s0 float, s1 float)");
+      Collections.singletonList("create aligned timeseries root.db.d1(s0 float, s1 float)");
 
-  private final String deviceId = "root.sg.d1";
+  private final String deviceId = "root.db.d1";
   private final List<String> measurements = Arrays.asList("s0", "s1");
   private final List<TSDataType> types = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
 
@@ -189,18 +189,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
               senderEnv,
               isAligned
                   ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
+                      "insert into root.db.d1(time, s0, s1) aligned values (3, null, 25.34)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"),
+                      "insert into root.db.d1(time, s0, s1) values (3, null, 25.34)"),
               null);
           // All null
           TestUtils.executeNonQueries(
               senderEnv,
               isAligned
                   ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
+                      "insert into root.db.d1(time, s0, s1) aligned values (4, null, null)")
                   : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"),
+                      "insert into root.db.d1(time, s0, s1) values (4, null, null)"),
               null);
         });
   }
@@ -228,7 +228,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
       if (withParsing) {
         sourceAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
         sourceAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
-        sourceAttributes.put("source.pattern", "root.sg.d1");
+        sourceAttributes.put("source.pattern", "root.db.d1");
       }
 
       final TSStatus status =
@@ -250,8 +250,8 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.sg.**",
-        "count(root.sg.d1.s0),count(root.sg.d1.s1),",
+        "select count(*) from root.db.**",
+        "count(root.db.d1.s0),count(root.db.d1.s1),",
         Collections.singleton("0,1,"));
   }
 

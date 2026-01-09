@@ -152,11 +152,11 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   /**
    * For an aggregate function that takes two inputs, the inputExpressions may be like
-   * [root.sg.d1.s1, root.sg.d1.s2, root.sg.d2.s1, root.sg.d2.s2]. The inputExpressions is a
+   * [root.db.d1.s1, root.db.d1.s2, root.db.d2.s1, root.db.d2.s2]. The inputExpressions is a
    * one-dimensional List, but it is split by expressionNumOfOneInput. The split result is stored in
-   * groupedInputExpressions So the returned map of this method is : <"root.sg.d1.s1,
-   * root.sg.d1.s2", [root.sg.d1.s1, root.sg.d1.s2]> <"root.sg.d2.s1, root.sg.d2.s2",
-   * [root.sg.d2.s1, root.sg.d2.s2]>
+   * groupedInputExpressions So the returned map of this method is : <"root.db.d1.s1,
+   * root.db.d1.s2", [root.db.d1.s1, root.db.d1.s2]> <"root.db.d2.s1, root.db.d2.s2",
+   * [root.db.d2.s1, root.db.d2.s2]>
    */
   public Map<String, List<Expression>> getGroupedInputStringToExpressionsMap() {
     Map<String, List<Expression>> map = new HashMap<>();

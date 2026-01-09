@@ -68,8 +68,8 @@ public class IoTDBDatabaseSetAndDeleteIT {
   @Test
   public void testSetAndQueryDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.db0";
+    final String sg1 = "root.db1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -161,8 +161,8 @@ public class IoTDBDatabaseSetAndDeleteIT {
   @Test
   public void testDeleteDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.db0";
+    final String sg1 = "root.db1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
