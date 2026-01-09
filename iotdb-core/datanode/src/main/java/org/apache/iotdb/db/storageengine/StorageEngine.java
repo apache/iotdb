@@ -272,12 +272,12 @@ public class StorageEngine implements IService {
   /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
-    File[] sgDirs = system.listFiles();
+    File[] dbDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
-    if (sgDirs == null) {
+    if (dbDirs == null) {
       return localDataRegionInfo;
     }
-    for (File sgDir : sgDirs) {
+    for (File sgDir : dbDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }

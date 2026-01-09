@@ -109,7 +109,7 @@ public class TsFileValidationTool {
 
       List<File> dbDirs =
           Arrays.asList(Objects.requireNonNull(seqDataDir.listFiles(File::isDirectory)));
-      for (File sgDir : Objects.requireNonNull(sgDirs)) {
+      for (File sgDir : Objects.requireNonNull(dbDirs)) {
         if (!checkIsDirectory(sgDir)) {
           continue;
         }

@@ -98,7 +98,7 @@ public class IoTDBLoadTsFileIT {
 
   @After
   public void tearDown() throws Exception {
-    deleteSG();
+    deletedb();
     EnvFactory.getEnv().cleanClusterEnvironment();
 
     if (!deleteDir()) {
