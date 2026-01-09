@@ -151,8 +151,8 @@ public class QueryStatementTest {
         (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     List<PartialPath> fullPaths = statement.getPaths();
     assertEquals(2, fullPaths.size());
-    assertEquals("root.db.d1.s1", fullPaths.get(0).getFullPath());
-    assertEquals("root.db.d1.s3", fullPaths.get(1).getFullPath());
+    assertEquals("root.db.d1.s3", fullPaths.get(0).getFullPath());
+    assertEquals("root.db.d1.s1", fullPaths.get(1).getFullPath());
   }
 
   private void checkErrorQuerySql(String sql) {
