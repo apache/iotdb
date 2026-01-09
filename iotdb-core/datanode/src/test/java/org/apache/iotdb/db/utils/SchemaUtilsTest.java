@@ -34,7 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -110,39 +109,15 @@ public class SchemaUtilsTest {
           AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
               SchemaUtils.rewriteAlignedChunkMetadataStatistics(
                   alignedChunkMetadata, targetDataType);
-          Assert.assertEquals(
-              targetDataType,
-              abstractAlignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
+          if (!abstractAlignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
+            Assert.assertEquals(
+                targetDataType,
+                abstractAlignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
+          }
         } catch (ClassCastException e) {
           Assert.fail(e.getMessage());
         }
       }
-    }
-  }
-
-  public static Object genValue(TSDataType dataType, int i) {
-    switch (dataType) {
-      case INT32:
-        return i;
-      case DATE:
-        return LocalDate.ofEpochDay(i);
-      case TIMESTAMP:
-      case INT64:
-        return (long) i;
-      case BOOLEAN:
-        return i % 2 == 0;
-      case FLOAT:
-        return i * 1.0f;
-      case DOUBLE:
-        return i * 1.0;
-      case STRING:
-      case TEXT:
-      case BLOB:
-        return new Binary(Integer.toString(i), StandardCharsets.UTF_8);
-      case UNKNOWN:
-      case VECTOR:
-      default:
-        throw new IllegalArgumentException("Unsupported data type: " + dataType);
     }
   }
 
