@@ -104,7 +104,7 @@ public class PipeConsensusTsFileInsertionEventHandler
     transferMod = event.isWithMod();
     currentFile = transferMod ? modFile : tsFile;
 
-    readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 

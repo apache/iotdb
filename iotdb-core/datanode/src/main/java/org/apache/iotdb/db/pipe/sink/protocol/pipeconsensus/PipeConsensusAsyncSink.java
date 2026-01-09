@@ -56,6 +56,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.Pipe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -143,7 +144,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     // initialize metric components
     pipeConsensusSinkMetrics = new PipeConsensusSinkMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
+        .addConsensusPipeSink(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusSinkMetrics);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
@@ -700,7 +701,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
+        .removeConsensusPipeSink(new ConsensusPipeName(consensusPipeName));
     MetricService.getInstance().removeMetricSet(this.pipeConsensusSinkMetrics);
   }
 

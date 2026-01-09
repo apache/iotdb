@@ -49,6 +49,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.Pipe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -445,7 +446,7 @@ public class PipeConsensusSyncSink extends IoTDBSink {
       final TCommitId tCommitId,
       final TConsensusGroupId tConsensusGroupId)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {

@@ -34,10 +34,10 @@ public class PipeFunctionSupport {
   public static void applyNowFunctionToExtractorAttributes(
       final Map<String, String> sourceAttributes,
       final String sourceKey,
-      final String sourceKey,
+      final String extractorKey,
       final long currentTime) {
     final Pair<String, String> pair =
-        getExtractorAttributesKeyAndValue(sourceAttributes, sourceKey, sourceKey);
+        getExtractorAttributesKeyAndValue(sourceAttributes, sourceKey, extractorKey);
 
     if (pair == null) {
       return;
@@ -48,7 +48,9 @@ public class PipeFunctionSupport {
   }
 
   private static Pair<String, String> getExtractorAttributesKeyAndValue(
-      final Map<String, String> sourceAttributes, final String sourceKey, final String sourceKey) {
+      final Map<String, String> sourceAttributes,
+      final String sourceKey,
+      final String extractorKey) {
     String key = sourceKey;
     String value = sourceAttributes.get(key);
     if (value != null) {
@@ -69,7 +71,7 @@ public class PipeFunctionSupport {
       return new Pair<>(key, value);
     }
 
-    key = sourceKey;
+    key = extractorKey;
     value = sourceAttributes.get(key);
     if (value != null) {
       return new Pair<>(key, value);
