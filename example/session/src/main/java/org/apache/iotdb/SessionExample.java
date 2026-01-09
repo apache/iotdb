@@ -63,7 +63,7 @@ public class SessionExample {
   private static final String LOCAL_HOST = "127.0.0.1";
   public static final String SELECT_D1 = "select * from root.sg1.d1";
 
-  private static Random random = new Random();
+  private static final Random RANDOM = new Random();
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -100,13 +100,12 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+    queryByIterator();
     //    queryWithTimeout();
     rawDataQuery();
     lastDataQuery();
     aggregationQuery();
     groupByQuery();
-    //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
     //    setTimeout();
@@ -407,7 +406,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = random.nextLong();
+        long value = RANDOM.nextLong();
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -480,7 +479,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = random.nextLong();
+        long value = RANDOM.nextLong();
         // mark null value
         if (row % 3 == s) {
           tablet.bitMaps[s].mark((int) row);
@@ -560,7 +559,7 @@ public class SessionExample {
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 3; i++) {
-        long value = random.nextLong();
+        long value = RANDOM.nextLong();
         tablet1.addValue(schemaList.get(i).getMeasurementId(), row1, value);
         tablet2.addValue(schemaList.get(i).getMeasurementId(), row2, value);
         tablet3.addValue(schemaList.get(i).getMeasurementId(), row3, value);
@@ -687,16 +686,6 @@ public class SessionExample {
     session.deleteTimeseries(paths);
   }
 
-  private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
-      System.out.println(dataSet.getColumnNames());
-      dataSet.setFetchSize(1024); // default is 10000
-      while (dataSet.hasNext()) {
-        System.out.println(dataSet.next());
-      }
-    }
-  }
-
   private static void query4Redirect()
       throws IoTDBConnectionException, StatementExecutionException {
     String selectPrefix = "select * from root.redirect";
@@ -704,11 +693,7 @@ public class SessionExample {
       try (SessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(selectPrefix + i + ".d1")) {
 
-        System.out.println(dataSet.getColumnNames());
-        dataSet.setFetchSize(1024); // default is 10000
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
     }
 
@@ -717,11 +702,7 @@ public class SessionExample {
           sessionEnableRedirect.executeQueryStatement(
               selectPrefix + i + ".d1 where time >= 1 and time < 10")) {
 
-        System.out.println(dataSet.getColumnNames());
-        dataSet.setFetchSize(1024); // default is 10000
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
     }
 
@@ -730,11 +711,7 @@ public class SessionExample {
           sessionEnableRedirect.executeQueryStatement(
               selectPrefix + i + ".d1 where time >= 1 and time < 10 align by device")) {
 
-        System.out.println(dataSet.getColumnNames());
-        dataSet.setFetchSize(1024); // default is 10000
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
     }
 
@@ -746,11 +723,7 @@ public class SessionExample {
                   + ".d1 where time >= 1 and time < 10 and root.redirect"
                   + i
                   + ".d1.s1 > 1")) {
-        System.out.println(dataSet.getColumnNames());
-        dataSet.setFetchSize(1024); // default is 10000
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
     }
   }
@@ -758,11 +731,7 @@ public class SessionExample {
   private static void queryWithTimeout()
       throws IoTDBConnectionException, StatementExecutionException {
     try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1, 2000)) {
-      System.out.println(dataSet.getColumnNames());
-      dataSet.setFetchSize(1024); // default is 10000
-      while (dataSet.hasNext()) {
-        System.out.println(dataSet.next());
-      }
+      printDataSet(dataSet);
     }
   }
 
@@ -776,12 +745,7 @@ public class SessionExample {
     long timeOut = 60000;
 
     try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
-
-      System.out.println(dataSet.getColumnNames());
-      dataSet.setFetchSize(1024);
-      while (dataSet.hasNext()) {
-        System.out.println(dataSet.next());
-      }
+      printDataSet(dataSet);
     }
   }
 
@@ -790,12 +754,8 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S1);
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
-    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
+    try (SessionDataSet dataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+      printDataSet(dataSet);
     }
   }
 
@@ -806,14 +766,10 @@ public class SessionExample {
     paths.add("s1");
     paths.add("s2");
     paths.add("s3");
-    try (SessionDataSet sessionDataSet =
+    try (SessionDataSet dataSet =
         sessionEnableRedirect.executeLastDataQueryForOneDevice(
             ROOT_SG1, ROOT_SG1_D1, paths, true)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
+      printDataSet(dataSet);
     }
   }
 
@@ -828,12 +784,8 @@ public class SessionExample {
     aggregations.add(TAggregationType.COUNT);
     aggregations.add(TAggregationType.SUM);
     aggregations.add(TAggregationType.MAX_VALUE);
-    try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
-      }
+    try (SessionDataSet dataSet = session.executeAggregationQuery(paths, aggregations)) {
+      printDataSet(dataSet);
     }
   }
 
@@ -847,13 +799,28 @@ public class SessionExample {
     aggregations.add(TAggregationType.COUNT);
     aggregations.add(TAggregationType.SUM);
     aggregations.add(TAggregationType.MAX_VALUE);
-    try (SessionDataSet sessionDataSet =
+    try (SessionDataSet dataSet =
         session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
-      System.out.println(sessionDataSet.getColumnNames());
-      sessionDataSet.setFetchSize(1024);
-      while (sessionDataSet.hasNext()) {
-        System.out.println(sessionDataSet.next());
+      printDataSet(dataSet);
+    }
+  }
+
+  public static void printDataSet(SessionDataSet dataSet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    DataIterator iterator = dataSet.iterator();
+    System.out.println(dataSet.getColumnNames());
+    System.out.println(dataSet.getColumnTypes());
+    int columnCount = dataSet.getColumnNames().size();
+    while (iterator.next()) {
+      StringBuilder builder = new StringBuilder();
+      for (int i = 1; i <= columnCount; i++) {
+        if (!iterator.isNull(i)) {
+          builder.append(iterator.getString(i)).append(",");
+        } else {
+          builder.append("null").append(",");
+        }
       }
+      System.out.println(builder);
     }
   }
 
@@ -863,7 +830,6 @@ public class SessionExample {
 
       DataIterator iterator = dataSet.iterator();
       System.out.println(dataSet.getColumnNames());
-      dataSet.setFetchSize(1024); // default is 10000
       while (iterator.next()) {
         StringBuilder builder = new StringBuilder();
         // get time
