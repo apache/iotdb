@@ -139,9 +139,9 @@ public class PartialPathTest {
     nodes = new String[] {"root", "sg", "abc"};
     checkNodes(nodes, t.getNodes());
 
-    PartialPath u = new PartialPath("root.db.set_storage_group");
-    Assert.assertEquals("root.db.set_storage_group", u.getFullPath());
-    nodes = new String[] {"root", "sg", "set_storage_group"};
+    PartialPath u = new PartialPath("root.db.set_database");
+    Assert.assertEquals("root.db.set_database", u.getFullPath());
+    nodes = new String[] {"root", "sg", "set_database"};
     checkNodes(nodes, u.getNodes());
   }
 
