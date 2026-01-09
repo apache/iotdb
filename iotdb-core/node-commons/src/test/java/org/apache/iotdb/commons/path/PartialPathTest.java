@@ -284,7 +284,7 @@ public class PartialPathTest {
 
     PartialPath n = new MeasurementPath("root.db", "`abc`");
     Assert.assertEquals("root.db.abc", n.getFullPath());
-    nodes = new String[] {"root", "sg", "abc"};
+    nodes = new String[] {"root", "db", "abc"};
     checkNodes(nodes, n.getNodes());
   }
 
@@ -373,13 +373,13 @@ public class PartialPathTest {
   public void testConcatPath() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
     PartialPath b = new PartialPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
     Assert.assertEquals("s1", b.getTailNode());
     Assert.assertEquals("root.db1.d1", a.concatAsMeasurementPath(b).getDevicePath().getFullPath());
     Assert.assertEquals("root.db1", a.toString());
@@ -387,22 +387,22 @@ public class PartialPathTest {
 
   @Test
   public void testConcatArray() throws IllegalPathException {
-    PartialPath a = new PartialPath("root", "sg1");
+    PartialPath a = new PartialPath("root", "db1");
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
     a.concatPath(arr2);
-    Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.getNodes()));
+    Assert.assertEquals("[root, db1, d1, s1]", Arrays.toString(a.getNodes()));
   }
 
   @Test
   public void testConcatNode() {
     String[] arr1 = new String[2];
     arr1[0] = "root";
-    arr1[1] = "sg1";
+    arr1[1] = "db1";
     PartialPath a = new PartialPath(arr1);
     PartialPath b = a.concatNode("d1");
-    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(b.getNodes()));
+    Assert.assertEquals("[root, db1, d1]", Arrays.toString(b.getNodes()));
     Assert.assertEquals("root.db1.d1", b.getFullPath());
     Assert.assertTrue(b.startsWithOrPrefixOf(arr1));
     Assert.assertEquals("root", b.getFirstNode());

@@ -242,7 +242,7 @@ public class Util {
     SchemaNode root = new SchemaInternalNode("root");
 
     SchemaNode db = new SchemaInternalNode("db");
-    root.addChild("sg", sg);
+    root.addChild("db", db);
 
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
@@ -252,17 +252,17 @@ public class Util {
     s2.setTagMap(Collections.singletonMap("key1", "value1"));
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
     d1.addChild("s1", s1);
     d1.addChild("s2", s2);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d22");
-    sg.addChild("d22", d2);
+    db.addChild("d22", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
 
     SchemaEntityNode d3 = new SchemaEntityNode("d333");
-    sg.addChild("d333", d3);
+    db.addChild("d333", d3);
     d3.addChild("s1", s1);
     d3.addChild("s2", s2);
 

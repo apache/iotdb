@@ -362,7 +362,7 @@ public class ClusterSchemaTreeTest {
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
+    SchemaNode db = new SchemaInternalNode("db");
     root.addChild("sg", sg);
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
