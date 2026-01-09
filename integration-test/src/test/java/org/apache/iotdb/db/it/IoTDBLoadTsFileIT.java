@@ -783,7 +783,7 @@ public class IoTDBLoadTsFileIT {
     final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     final File file2 = new File(tmpDir, "a-1.tsfile");
     final long writtenPoint1;
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
@@ -813,7 +813,7 @@ public class IoTDBLoadTsFileIT {
     }
 
     final long writtenPoint2;
-    // device 2, device 3, device4, sg 1
+    // device 2, device 3, device4, db 1
     try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
@@ -835,10 +835,10 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
-          Assert.assertEquals(writtenPoint1, sg1Count);
-          final long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
-          Assert.assertEquals(writtenPoint2, sg2Count);
+          final long db1Count = resultSet.getLong("count(root.db.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, db1Count);
+          final long db2Count = resultSet.getLong("count(root.db.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, db2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
@@ -853,7 +853,7 @@ public class IoTDBLoadTsFileIT {
     registerSchema();
 
     final long writtenPoint1;
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     File relativePathFile = new File(System.getProperty(USER_DIR), "1-0-0-0.tsfile");
     try {
       try (final TsFileGenerator generator = new TsFileGenerator(relativePathFile)) {
@@ -872,8 +872,8 @@ public class IoTDBLoadTsFileIT {
         try (final ResultSet resultSet =
             statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
           if (resultSet.next()) {
-            final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
-            Assert.assertEquals(writtenPoint1, sg1Count);
+            final long db1Count = resultSet.getLong("count(root.db.test_0.*.*)");
+            Assert.assertEquals(writtenPoint1, db1Count);
           } else {
             Assert.fail("This ResultSet is empty.");
           }
@@ -890,7 +890,7 @@ public class IoTDBLoadTsFileIT {
   @Test
   public void testLoadWithMods() throws Exception {
     final long writtenPoint1;
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     try (final TsFileGenerator generator =
         new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
@@ -922,7 +922,7 @@ public class IoTDBLoadTsFileIT {
     }
 
     final long writtenPoint2;
-    // device 2, device 3, device4, sg 1
+    // device 2, device 3, device4, db 1
     try (final TsFileGenerator generator =
         new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
       generator.resetRandom(1000);
@@ -955,10 +955,10 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
-          Assert.assertEquals(writtenPoint1, sg1Count);
-          final long sg2Count = resultSet.getLong("count(root.db.test_1.*.*)");
-          Assert.assertEquals(writtenPoint2, sg2Count);
+          final long db1Count = resultSet.getLong("count(root.db.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, db1Count);
+          final long db2Count = resultSet.getLong("count(root.db.test_1.*.*)");
+          Assert.assertEquals(writtenPoint2, db2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
@@ -1032,7 +1032,7 @@ public class IoTDBLoadTsFileIT {
     registerSchema();
 
     final long writtenPoint1;
-    // device 0, device 1, sg 0
+    // device 0, device 1, db 0
     try (final TsFileGenerator generator =
         new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
@@ -1049,8 +1049,8 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
-          Assert.assertEquals(writtenPoint1, sg1Count);
+          final long db1Count = resultSet.getLong("count(root.db.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, db1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
@@ -1093,8 +1093,8 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
-          final long sgCount = resultSet.getLong("count(root.db.test_0.*.*)");
-          Assert.assertEquals(writtenPoint, sgCount);
+          final long dbCount = resultSet.getLong("count(root.db.test_0.*.*)");
+          Assert.assertEquals(writtenPoint, dbCount);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
@@ -1131,7 +1131,7 @@ public class IoTDBLoadTsFileIT {
     private static final String DATABASE_0 = "root.db.test_0";
     private static final String DATABASE_1 = "root.db.test_1";
 
-    // device 0, nonaligned, sg 0
+    // device 0, nonaligned, db 0
     private static final String DEVICE_0 = "root.db.test_0.d_0";
     private static final MeasurementSchema MEASUREMENT_00 =
         new MeasurementSchema("sensor_00", TSDataType.INT32, TSEncoding.RLE);

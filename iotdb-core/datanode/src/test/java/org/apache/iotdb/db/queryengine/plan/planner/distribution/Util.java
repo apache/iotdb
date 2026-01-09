@@ -267,18 +267,18 @@ public class Util {
     d3.addChild("s2", s2);
 
     SchemaEntityNode d4 = new SchemaEntityNode("d4444");
-    sg.addChild("d4444", d4);
+    db.addChild("d4444", d4);
     d4.addChild("s1", s1);
     d4.addChild("s2", s2);
 
     SchemaEntityNode d5 = new SchemaEntityNode("d55555");
-    sg.addChild("d55555", d5);
+    db.addChild("d55555", d5);
     d5.addChild("s1", s1);
     d5.addChild("s2", s2);
 
     SchemaEntityNode d6 = new SchemaEntityNode("d666666");
     d6.setAligned(true);
-    sg.addChild("d666666", d6);
+    db.addChild("d666666", d6);
     d6.addChild("s1", s1);
     d6.addChild("s2", s2);
 
@@ -402,19 +402,19 @@ public class Util {
 
       @Override
       public DataPartition getDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+          Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();
       }
 

@@ -363,10 +363,10 @@ public class ClusterSchemaTreeTest {
     SchemaNode root = new SchemaInternalNode("root");
 
     SchemaNode db = new SchemaInternalNode("db");
-    root.addChild("sg", sg);
+    root.addChild("db", db);
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
+    db.addChild("d1", d1);
 
     MeasurementSchema schema1 = new MeasurementSchema("s1", TSDataType.INT32);
     MeasurementSchema schema2 = new MeasurementSchema("s2", TSDataType.INT64);
@@ -378,7 +378,7 @@ public class ClusterSchemaTreeTest {
     d1.addAliasChild("status", s2);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
-    sg.addChild("d2", d2);
+    db.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);
