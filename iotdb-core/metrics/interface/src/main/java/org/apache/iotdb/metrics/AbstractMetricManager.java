@@ -422,7 +422,7 @@ public abstract class AbstractMetricManager {
    *
    * @param type the type of name
    * @param name the name of name
-   * @param tags string pairs, like db="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public void remove(MetricType type, String name, String... tags) {

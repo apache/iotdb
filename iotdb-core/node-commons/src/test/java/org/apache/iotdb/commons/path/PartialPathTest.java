@@ -214,72 +214,72 @@ public class PartialPathTest {
     // normal node
     PartialPath a = new MeasurementPath("root.db", "s1");
     Assert.assertEquals("root.db.s1", a.getFullPath());
-    nodes = new String[] {"root", "sg", "s1"};
+    nodes = new String[] {"root", "db", "s1"};
     checkNodes(nodes, a.getNodes());
 
     PartialPath b = new MeasurementPath("root.db", "s2");
     Assert.assertEquals("root.db.s2", b.getFullPath());
-    nodes = new String[] {"root", "sg", "s2"};
+    nodes = new String[] {"root", "db", "s2"};
     checkNodes(nodes, b.getNodes());
 
     PartialPath c = new MeasurementPath("root.db", "a");
     Assert.assertEquals("root.db.a", c.getFullPath());
-    nodes = new String[] {"root", "sg", "a"};
+    nodes = new String[] {"root", "db", "a"};
     checkNodes(nodes, c.getNodes());
 
     // quoted node
     PartialPath d = new MeasurementPath("root.db", "`a.b`");
     Assert.assertEquals("root.db.`a.b`", d.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b`"};
+    nodes = new String[] {"root", "db", "`a.b`"};
     checkNodes(nodes, d.getNodes());
 
     PartialPath e = new MeasurementPath("root.db", "`a.``b`");
     Assert.assertEquals("root.db.`a.``b`", e.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.``b`"};
+    nodes = new String[] {"root", "db", "`a.``b`"};
     checkNodes(nodes, e.getNodes());
 
-    PartialPath f = new MeasurementPath("root.`sg\"`", "`a.``b`");
-    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
-    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    PartialPath f = new MeasurementPath("root.`db\"`", "`a.``b`");
+    Assert.assertEquals("root.`db\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`db\"`", "`a.``b`"};
     checkNodes(nodes, f.getNodes());
 
     PartialPath g = new MeasurementPath("root.db", "`a.b\\\\`");
     Assert.assertEquals("root.db.`a.b\\\\`", g.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    nodes = new String[] {"root", "db", "`a.b\\\\`"};
     checkNodes(nodes, g.getNodes());
 
     // quoted node of digits
     PartialPath h = new MeasurementPath("root.db", "`111`");
     Assert.assertEquals("root.db.`111`", h.getFullPath());
-    nodes = new String[] {"root", "sg", "`111`"};
+    nodes = new String[] {"root", "db", "`111`"};
     checkNodes(nodes, h.getNodes());
 
     // quoted node of key word
     PartialPath i = new MeasurementPath("root.db", "`select`");
     Assert.assertEquals("root.db.select", i.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
     PartialPath j = new MeasurementPath("root.db", "`a*b`");
     Assert.assertEquals("root.db.`a*b`", j.getFullPath());
-    nodes = new String[] {"root", "sg", "`a*b`"};
+    nodes = new String[] {"root", "db", "`a*b`"};
     checkNodes(nodes, j.getNodes());
 
     PartialPath k = new MeasurementPath("root.db", "*");
     Assert.assertEquals("root.db.*", k.getFullPath());
-    nodes = new String[] {"root", "sg", "*"};
+    nodes = new String[] {"root", "db", "*"};
     checkNodes(nodes, k.getNodes());
 
     PartialPath l = new MeasurementPath("root.db", "**");
     Assert.assertEquals("root.db.**", l.getFullPath());
-    nodes = new String[] {"root", "sg", "**"};
+    nodes = new String[] {"root", "db", "**"};
     checkNodes(nodes, l.getNodes());
 
     // other
     PartialPath m = new MeasurementPath("root.db", "`to`.be.prefix.s");
     Assert.assertEquals("root.db.to.be.prefix.s", m.getFullPath());
-    nodes = new String[] {"root", "sg", "to", "be", "prefix", "s"};
+    nodes = new String[] {"root", "db", "to", "be", "prefix", "s"};
     checkNodes(nodes, m.getNodes());
 
     PartialPath n = new MeasurementPath("root.db", "`abc`");

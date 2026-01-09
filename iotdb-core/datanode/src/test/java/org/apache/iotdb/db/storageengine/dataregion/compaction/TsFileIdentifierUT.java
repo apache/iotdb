@@ -41,7 +41,7 @@ public class TsFileIdentifierUT {
     String firstPath =
         "sequence"
             + File.separator
-            + "root.test.sg"
+            + "root.test.db"
             + File.separator
             + "0"
             + File.separator

@@ -130,7 +130,7 @@ public class Util {
 
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbPartitionMap =
           new HashMap<>();
 
       List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
@@ -167,14 +167,14 @@ public class Util {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> d6DataRegionMap = new HashMap<>();
       d6DataRegionMap.put(new TTimePartitionSlot(), d6DataRegions);
 
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device4), d4DataRegionMap);
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device5), d5DataRegionMap);
-      sgPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device4), d4DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device5), d5DataRegionMap);
+      dbPartitionMap.put(executor.getSeriesPartitionSlot(device6), d6DataRegionMap);
 
-      dataPartitionMap.put("root.db", sgPartitionMap);
+      dataPartitionMap.put("root.db", dbPartitionMap);
       analysis.setDatabaseName("root.db");
 
       dataPartition.setDataPartitionMap(dataPartitionMap);
@@ -241,7 +241,7 @@ public class Util {
   private static ISchemaTree genSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
-    SchemaNode sg = new SchemaInternalNode("sg");
+    SchemaNode db = new SchemaInternalNode("db");
     root.addChild("sg", sg);
 
     SchemaMeasurementNode s1 =

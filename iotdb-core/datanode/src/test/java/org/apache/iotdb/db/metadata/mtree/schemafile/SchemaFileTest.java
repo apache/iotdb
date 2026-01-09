@@ -169,8 +169,8 @@ public class SchemaFileTest {
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.dbvt.vt", TEST_SCHEMA_REGION_ID);
     IDatabaseMNode<ICachedMNode> dbNode =
-        nodeFactory.createDatabaseDeviceMNode(null, "sg").getAsDatabaseMNode();
-    sf.updateDatabaseNode(sgNode);
+        nodeFactory.createDatabaseDeviceMNode(null, "db").getAsDatabaseMNode();
+    sf.updateDatabaseNode(dbNode);
 
     ICachedMNode root = getVerticalTree(100, "VT");
     Iterator<ICachedMNode> ite = getTreeBFT(root);
@@ -285,7 +285,7 @@ public class SchemaFileTest {
   @Test
   public void test2KMeasurement() throws MetadataException, IOException {
     int i = 2000, j = 20;
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
     ISchemaFile sf = SchemaFile.initSchemaFile(dbNode.getName(), TEST_SCHEMA_REGION_ID);
 
     while (j >= 0) {
@@ -317,7 +317,7 @@ public class SchemaFileTest {
 
   @Test
   public void testMassiveSegment() throws MetadataException, IOException {
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
     fillChildren(dbNode, 500, "MEN", this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile(dbNode.getName(), TEST_SCHEMA_REGION_ID);
 
@@ -328,7 +328,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    ICachedMNode dbNode2 = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot2");
+    ICachedMNode dbNode2 = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot2");
     fillChildren(dbNode2, 5000, "MEN", this::supplyEntity);
     ISchemaFile sf2 = SchemaFile.initSchemaFile(dbNode2.getName(), TEST_SCHEMA_REGION_ID);
     try {
@@ -361,7 +361,7 @@ public class SchemaFileTest {
   @Test
   public void testDevices() throws MetadataException, IOException {
     int i = 100;
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
 
     // write with empty entitiy
     while (i >= 0) {
@@ -468,7 +468,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    sf = SchemaFile.loadSchemaFile("sgRoot", TEST_SCHEMA_REGION_ID);
+    sf = SchemaFile.loadSchemaFile("dbRoot", TEST_SCHEMA_REGION_ID);
 
     // verify alias of random measurement
     for (String key : resName) {
@@ -569,7 +569,7 @@ public class SchemaFileTest {
      * related methods shall be merged further: {@linkplain SchemaFile#reEstimateSegSize}
      * ,{@linkplain PageManager#reEstimateSegSize}
      */
-    ICachedMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
+    ICachedMNode dbNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
     ICachedMNode d1 = fillChildren(sgNode, 300, "d", this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     try {
