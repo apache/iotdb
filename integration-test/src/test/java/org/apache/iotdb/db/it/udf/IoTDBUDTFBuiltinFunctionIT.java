@@ -260,7 +260,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.db.d1 align by device",
                   BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -284,7 +284,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1");
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.db.d1");
 
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 2, columnCount);
@@ -302,7 +302,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       resultSet =
           statement.executeQuery(
-              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.sg.d1 align by device");
+              "select STRING_CONTAINS(s6, 's'='0'), STRING_MATCHES(s6, 'regex'='\\d') from root.db.d1 align by device");
 
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(2 + 2, columnCount);
@@ -338,7 +338,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1",
                   functionName, functionName, functionName, functionName));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -359,7 +359,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1 align by device",
                   functionName, functionName, functionName, functionName));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -397,7 +397,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
-                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1")) {
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.db.d1")) {
         assertEquals(1 + 5, resultSet.getMetaData().getColumnCount());
 
         for (int i = 0; i < INSERTION_SQLS.length; ++i) {
@@ -415,7 +415,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(
-                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.sg.d1 align by device")) {
+                  "select s7, s8, const(s7, 'value'='1024', 'type'='INT64'), pi(s7, s7), e(s7, s8, s7, s8) from root.db.d1 align by device")) {
         assertEquals(2 + 5, resultSet.getMetaData().getColumnCount());
 
         for (int i = 0; i < INSERTION_SQLS.length; ++i) {
@@ -433,7 +433,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
-              statement.executeQuery("select const(s7, 'value'='1024') from root.sg.d1")) {
+              statement.executeQuery("select const(s7, 'value'='1024') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("attribute \"type\" is required but was not provided"));

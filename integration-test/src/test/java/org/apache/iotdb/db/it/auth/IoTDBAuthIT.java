@@ -356,14 +356,14 @@ public class IoTDBAuthIT {
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw123456");
           Statement userStmt = userCon.createStatement()) {
         adminStmt.execute(
-            "GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER tempuser");
-        adminStmt.execute("CREATE DATABASE root.sg");
+            "GRANT READ_DATA ON root.db.aligned_template.temperature TO USER tempuser");
+        adminStmt.execute("CREATE DATABASE root.db");
         adminStmt.execute(
             "create device template t1 aligned (temperature FLOAT encoding=Gorilla, status BOOLEAN encoding=PLAIN);");
-        adminStmt.execute("set device template t1 to root.sg.aligned_template;");
-        adminStmt.execute("create timeseries using device template on root.sg.aligned_template;");
+        adminStmt.execute("set device template t1 to root.db.aligned_template;");
+        adminStmt.execute("create timeseries using device template on root.db.aligned_template;");
         adminStmt.execute(
-            "insert into root.sg.aligned_template(time,temperature,status) values(1,20,false),(2,22.1,true),(3,18,false);");
+            "insert into root.db.aligned_template(time,temperature,status) values(1,20,false),(2,22.1,true),(3,18,false);");
 
         ResultSet set1 = adminStmt.executeQuery("SELECT * from root.sg.aligned_template");
         assertEquals(3, set1.getMetaData().getColumnCount());

@@ -483,7 +483,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1 where `1`>1")) {
+          statement.executeQuery("SELECT sin(`1`) + 1 FROM root.db1.d1 where `1`>1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -492,7 +492,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\'")) {
+          statement.executeQuery("SELECT text FROM root.db1.d1 where text = '\'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -502,7 +502,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT text FROM root.sg1.d1 where text = '\' or text = 'asdf'")) {
+              "SELECT text FROM root.db1.d1 where text = '\' or text = 'asdf'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -511,7 +511,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT text FROM root.sg1.d1 where text = '\\'")) {
+          statement.executeQuery("SELECT text FROM root.db1.d1 where text = '\\'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -521,7 +521,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       cnt = 0;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT text FROM root.sg1.d1 where text = '\\' and text = 'asdf'")) {
+              "SELECT text FROM root.db1.d1 where text = '\\' and text = 'asdf'")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -784,22 +784,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //        Statement statement = connection.createStatement()) {
   //      try {
   //        statement.execute(
-  //            "create trigger trigger` before insert on root.sg1.d1  "
+  //            "create trigger trigger` before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      } catch (Exception ignored) {
   //      }
   //
   //      try {
   //        statement.execute(
-  //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
-  //        fail();
-  //      } catch (Exception ignored) {
-  //      }
-  //
-  //      try {
-  //        statement.execute(
-  //            "create trigger 111 before insert on root.sg1.d1  "
+  //            "create trigger `trigger`` before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -807,7 +799,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //
   //      try {
   //        statement.execute(
-  //            "create trigger 'tri' before insert on root.sg1.d1  "
+  //            "create trigger 111 before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -815,7 +807,15 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //
   //      try {
   //        statement.execute(
-  //            "create trigger \"tri\" before insert on root.sg1.d1  "
+  //            "create trigger 'tri' before insert on root.db1.d1  "
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
+  //        fail();
+  //      } catch (Exception ignored) {
+  //      }
+  //
+  //      try {
+  //        statement.execute(
+  //            "create trigger \"tri\" before insert on root.db1.d1  "
   //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
@@ -1013,7 +1013,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testNodeNameWithWildcard() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.device_123.s1 INT32");
+      statement.execute("CREATE TIMESERIES root.db.device_123.s1 INT32");
 
       try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_123")) {
         Assert.assertTrue(resultSet.next());

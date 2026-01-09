@@ -145,24 +145,24 @@ public class SessionTest {
 
   @Test
   public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup("root.sg1");
+    session.setStorageGroup("root.db1");
   }
 
   @Test
   public void testDeleteStorageGroup()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteStorageGroup("root.sg1");
+    session.deleteStorageGroup("root.db1");
   }
 
   @Test
   public void testDeleteStorageGroups()
       throws IoTDBConnectionException, StatementExecutionException {
-    session.deleteStorageGroups(Arrays.asList("root.sg1"));
+    session.deleteStorageGroups(Arrays.asList("root.db1"));
   }
 
   @Test
   public void testCreateDatabase() throws IoTDBConnectionException, StatementExecutionException {
-    session.createDatabase("root.sg1");
+    session.createDatabase("root.db1");
   }
 
   @Test

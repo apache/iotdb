@@ -106,25 +106,25 @@ public class IoTDBTemplatePermissionIT {
     executeNonQuery(
         "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
     executeNonQuery("create database root.db1");
-    executeNonQuery("set device template t1 to root.sg1.d1");
+    executeNonQuery("set device template t1 to root.db1.d1");
 
     // active
     assertNonQueryTestFail(
-        "create timeseries using device template on root.sg1.d1",
-        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.status]",
+        "create timeseries using device template on root.db1.d1",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db1.d1.temperature, root.db1.d1.status]",
         "test",
         "test123123456");
-    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.db1.d1.**");
     executeNonQuery(
-        "create timeseries using device template on root.sg1.d1", "test", "test123123456");
+        "create timeseries using device template on root.db1.d1", "test", "test123123456");
 
     // insert
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, s1) values(1,1)",
-        "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg1.d1.s1]",
+        "insert into root.db1.d1(time, s1) values(1,1)",
+        "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db1.d1.s1]",
         "test",
         "test123123456");
-    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.db1.**");
     executeNonQuery(
         "insert into root.sg1.d1(time, temperature) values(1,1)", "test", "test123123456");
     assertNonQueryTestFail(

@@ -424,19 +424,19 @@ public class IoTDBCQExecInNsIT {
   @Test
   public void testCQExecution5() {
     String insertTemplate =
-        "INSERT INTO root.sg.d5(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
+        "INSERT INTO root.db.d5(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000_000L;
       long firstExecutionTime = now + 10_000_000_000L;
       long startTime = firstExecutionTime - 3_000_000_000L;
 
-      statement.execute("create timeseries root.sg.d5.s1 WITH DATATYPE=INT64");
-      statement.execute("create timeseries root.sg.d5.precalculated_s1 WITH DATATYPE=DOUBLE");
+      statement.execute("create timeseries root.db.d5.s1 WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.db.d5.precalculated_s1 WITH DATATYPE=DOUBLE");
 
       // firstly write one row to init data region, just for accelerating the following insert
       // statement.
-      statement.execute("INSERT INTO root.sg.d5(time, s1) VALUES (0,0)");
+      statement.execute("INSERT INTO root.db.d5(time, s1) VALUES (0,0)");
 
       statement.execute(
           String.format(
@@ -469,8 +469,8 @@ public class IoTDBCQExecInNsIT {
               + "RANGE 4s\n"
               + "BEGIN \n"
               + "  SELECT s1 + 1 \n"
-              + "  INTO root.sg.d5(precalculated_s1)\n"
-              + "  FROM root.sg.d5\n"
+              + "  INTO root.db.d5(precalculated_s1)\n"
+              + "  FROM root.db.d5\n"
               + "  align by device\n"
               + "END");
 
@@ -502,7 +502,7 @@ public class IoTDBCQExecInNsIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select precalculated_s1 from root.sg.d5 where time between "
+              "select precalculated_s1 from root.db.d5 where time between "
                   + startTime
                   + " and "
                   + (startTime + 4_500_000_000L))) {
@@ -510,7 +510,7 @@ public class IoTDBCQExecInNsIT {
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
           assertEquals(
-              expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
+              expectedValue[cnt], resultSet.getDouble("root.db.d5.precalculated_s1"), 0.00001);
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);
